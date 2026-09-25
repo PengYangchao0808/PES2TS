@@ -30,6 +30,11 @@ from pes2ts_core.g0.fetch import (
 )
 from pes2ts_core.g0.inventory import build_inventory
 from pes2ts_core.g0.reader import H5SchemaError
+from pes2ts_core.g0.split import (
+    EXIT_SPLIT_SCHEMA_ERROR,
+    SplitSchemaError,
+    adopt_official_split,
+)
 from pes2ts_core.g0.truth_quarantine import (
     EXIT_QUARANTINE_ERROR,
     quarantine_truth,
@@ -104,6 +109,32 @@ def _g0_inventory_handler(_args: argparse.Namespace, config: dict[str, Any]) -> 
     return 0
 
 
+def _g0_split_handler(_args: argparse.Namespace, config: dict[str, Any]) -> int:
+    """Adopt the official split; exit 5 on schema violation, 3 on missing input."""
+    logger = logging.getLogger(__name__)
+    try:
+        result = adopt_official_split(config)
+    except SplitSchemaError as exc:
+        logger.error("Split schema error: %s", exc)
+        return EXIT_SPLIT_SCHEMA_ERROR
+    except FileNotFoundError as exc:
+        logger.error("%s", exc)
+        return EXIT_CHECKSUM_MISMATCH
+    logger.info(
+        "Split adoption: covered=%d/%d not_in_split=%d -> %s",
+        result.covered,
+        result.covered + result.n_not_in_split,
+        result.n_not_in_split,
+        result.manifest_path,
+    )
+    print(
+        f"split: train={result.counts['train']} valid={result.counts['valid']} "
+        f"test={result.counts['test']} total={result.counts['total']} "
+        f"covered={result.covered} not_in_split={result.n_not_in_split}"
+    )
+    return 0
+
+
 def _g0_quarantine_handler(_args: argparse.Namespace, config: dict[str, Any]) -> int:
     """Extract, relocate, and manifest the TS/IRC ground truth."""
     logger = logging.getLogger(__name__)
@@ -164,6 +195,7 @@ SUBCOMMAND_HANDLERS: dict[str, G0Handler] = {
 #: Implemented handlers; the remaining entries are still stubs.
 SUBCOMMAND_HANDLERS["fetch"] = _fetch_handler
 SUBCOMMAND_HANDLERS["inventory"] = _g0_inventory_handler
+SUBCOMMAND_HANDLERS["split"] = _g0_split_handler
 SUBCOMMAND_HANDLERS["quarantine"] = _g0_quarantine_handler
 SUBCOMMAND_HANDLERS["truth-index"] = _g0_truth_index_handler
 
@@ -226,6 +258,8 @@ def build_parser() -> argparse.ArgumentParser:
             help_text = "extract and relocate TS/IRC ground truth behind the audited accessor"
         elif name == "truth-index":
             help_text = "audited summary of the quarantined IRC index"
+        elif name == "split":
+            help_text = "adopt the authors' official train/valid/test split"
         else:
             help_text = f"g0 {name} (not implemented yet)"
         sub_parser = g0_subparsers.add_parser(name, help=help_text)
