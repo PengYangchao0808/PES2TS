@@ -1,0 +1,21 @@
+#!/usr/bin/env python3
+"""Executable entry point for the PES2TS CLI.
+
+Run as ``python bin/pes2ts ...`` from the project root (or ``./bin/pes2ts``);
+the project root is inserted on ``sys.path`` so the ``pes2ts_core`` package
+imports without installation.
+"""
+
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from pes2ts_core.cli import main
+
+if __name__ == "__main__":
+    raise SystemExit(main())

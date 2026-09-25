@@ -1,0 +1,51 @@
+# PES2TS default configuration (G0 data entry and split).
+source:
+  zenodo_record: 18551029
+  zenodo_doi: 10.5281/zenodo.18551029
+  zenodo_revision: "1"
+  zenodo_modified: "2025-09-01"
+  files:
+    B3LYPD3_TZVP.h5:
+      filename: B3LYPD3_TZVP.h5
+      url: https://zenodo.org/api/records/18551029/files/B3LYPD3_TZVP.h5/content
+      md5: 2c572a68849e805bc0dbb257a53a1fd2
+    B3LYPD3_TZVP_IRC.h5:
+      filename: B3LYPD3_TZVP_IRC.h5
+      url: https://zenodo.org/api/records/18551029/files/B3LYPD3_TZVP_IRC.h5/content
+      md5: 782a4e5e8099de8f2b8e0e90128028cb
+    B3LYPD3_TZVP_reaction_info.csv:
+      filename: B3LYPD3_TZVP_reaction_info.csv
+      url: https://zenodo.org/api/records/18551029/files/B3LYPD3_TZVP_reaction_info.csv/content
+      md5: 6bbf509808a5193770a2093874fb7ad8
+    B3LYP-RXN_train.csv:
+      filename: B3LYP-RXN_train.csv
+      url: https://zenodo.org/api/records/18551029/files/B3LYP-RXN_train.csv/content
+      md5: 222059ce2ec2585a385518af393ecaae
+    B3LYP-RXN_valid.csv:
+      filename: B3LYP-RXN_valid.csv
+      url: https://zenodo.org/api/records/18551029/files/B3LYP-RXN_valid.csv/content
+      md5: 0174d304143089c26a93dc89632f5317
+    B3LYP-RXN_test.csv:
+      filename: B3LYP-RXN_test.csv
+      url: https://zenodo.org/api/records/18551029/files/B3LYP-RXN_test.csv/content
+      md5: 359332ff1ccb289751ef43bb544f2373
+paths:
+  data_root: data
+  raw: data/raw/reaction_qm
+  interim: data/interim
+  ground_truth: data/ground_truth
+  truth_sources: data/ground_truth/sources
+  manifests: data/manifests
+split:
+  seed: 42
+near_dup:
+  threshold: 0.90
+  cluster_threshold: 0.80
+  fp_size: 2048
+  block_size: 1000
+  max_seconds: 7200
+  max_pairs: 10000
+cohorts:
+  trial: 200
+  stratified: 1000
+  require_authoritative_strata: false
