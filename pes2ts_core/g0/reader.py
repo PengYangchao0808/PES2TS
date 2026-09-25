@@ -8,7 +8,7 @@ Two source formats are implemented:
   duplicate IDs are detected against earlier *accepted* rows only, and the
   reaction SMILES must contain exactly one ``>>`` with every dot-separated
   component on both sides parseable by RDKit;
-* the combined ``B3LYPD3_TZVP.h5`` file, read with :mod:`h5py` over the
+* the combined Reaction-QM bundle HDF5, read with :mod:`h5py` over the
   bundle-group hierarchy (bundle group → ``RXN_<10-digit>`` reaction group →
   species node). Bundle and reaction names are never parsed beyond the
   ``RXN_`` prefix; species may be sub-groups or flattened compound datasets,

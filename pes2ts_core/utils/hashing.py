@@ -1,7 +1,7 @@
 """Hashing and canonical-serialization helpers for PES2TS.
 
 File digests are computed with a streaming loop over fixed-size chunks so that
-multi-gigabyte artifacts (for example the 9.9 GB ``B3LYPD3_TZVP_IRC.h5``) can be
+multi-gigabyte artifacts (for example the 9.9 GB IRC trajectory HDF5) can be
 hashed in constant memory.
 """
 

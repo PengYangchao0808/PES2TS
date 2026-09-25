@@ -5,10 +5,12 @@ Usage::
     pes2ts [--config PATH] [--log-level LEVEL] [--log-file PATH] g0 <SUBCOMMAND>
 
 ``g0 fetch`` downloads and checksum-verifies the configured Reaction-QM
-source files.  The remaining ``g0`` subcommands are stubs in this scaffold
-release: they parse their arguments, load the (merged) configuration, log that
-they are not implemented yet, and exit with a subcommand-specific non-zero
-code.  ``--help`` works for every subcommand and exits 0.
+source files; ``g0 quarantine`` extracts and relocates the TS/IRC ground truth
+and writes its manifest; ``g0 truth-index`` is the audited accessor for the
+resulting IRC index.  The remaining ``g0`` subcommands are still stubs: they
+parse their arguments, load the (merged) configuration, log that they are not
+implemented yet, and exit with a subcommand-specific non-zero code.
+``--help`` works for every subcommand and exits 0.
 """
 
 from __future__ import annotations
@@ -27,6 +29,11 @@ from pes2ts_core.g0.fetch import (
     write_source_manifest,
 )
 from pes2ts_core.g0.inventory import build_inventory
+from pes2ts_core.g0.reader import H5SchemaError
+from pes2ts_core.g0.truth_quarantine import (
+    EXIT_QUARANTINE_ERROR,
+    quarantine_truth,
+)
 from pes2ts_core.logging_setup import setup_logging
 from pes2ts_core.version import __version__
 
@@ -97,14 +104,68 @@ def _g0_inventory_handler(_args: argparse.Namespace, config: dict[str, Any]) -> 
     return 0
 
 
+def _g0_quarantine_handler(_args: argparse.Namespace, config: dict[str, Any]) -> int:
+    """Extract, relocate, and manifest the TS/IRC ground truth."""
+    logger = logging.getLogger(__name__)
+    try:
+        result = quarantine_truth(config)
+    except ConfigError as exc:
+        logger.error("Quarantine configuration error: %s", exc)
+        return EXIT_CONFIG_ERROR
+    except (OSError, H5SchemaError) as exc:
+        logger.error("Quarantine failed: %s", exc)
+        return EXIT_QUARANTINE_ERROR
+    logger.info(
+        "Quarantine %s: %d TS row(s), %d IRC index row(s), %d reaction(s) without TS",
+        "verified (skipped)" if result.skipped else "extracted",
+        result.n_ts_rows,
+        result.n_irc_rows,
+        result.n_reactions_without_ts,
+    )
+    print(
+        f"quarantine: ts_rows={result.n_ts_rows} "
+        f"irc_index_rows={result.n_irc_rows} "
+        f"reactions_without_ts={result.n_reactions_without_ts} "
+        f"relocated={list(result.relocated)} skipped={result.skipped}"
+    )
+    return 0
+
+
+def _g0_truth_index_handler(args: argparse.Namespace, config: dict[str, Any]) -> int:
+    """Audited access to the quarantined IRC index (the single truth-index path)."""
+    from pes2ts_core.g0.truth import truth_reader
+
+    logger = logging.getLogger(__name__)
+    manifests_dir = config["paths"]["manifests"]
+    reaction_id = getattr(args, "reaction_id", None)
+    if reaction_id:
+        frames = truth_reader.load_irc_frames(
+            reaction_id, allow_truth=True, manifests_dir=manifests_dir
+        )
+        logger.info("Truth-index read reaction %s", frames["reaction_id"])
+        print(
+            f"truth-index: {frames['reaction_id']} n_atoms={frames['n_atoms']} "
+            f"n_frames={frames['n_frames']} has_forces={frames['has_forces']} "
+            f"EHG={'present' if frames['EHG'] is not None else 'absent'}"
+        )
+    else:
+        rows = truth_reader.load_irc_index(allow_truth=True, manifests_dir=manifests_dir)
+        with_forces = sum(1 for row in rows if row["has_forces"])
+        logger.info("Truth-index summary over %d reaction(s)", len(rows))
+        print(f"truth-index: reactions={len(rows)} with_forces={with_forces}")
+    return 0
+
+
 #: Populated lazily so tests can import the module without side effects.
 SUBCOMMAND_HANDLERS: dict[str, G0Handler] = {
     name: _make_stub(name) for name in G0_SUBCOMMANDS
 }
 
-#: ``g0 fetch`` is implemented; the remaining entries are still stubs.
+#: Implemented handlers; the remaining entries are still stubs.
 SUBCOMMAND_HANDLERS["fetch"] = _fetch_handler
 SUBCOMMAND_HANDLERS["inventory"] = _g0_inventory_handler
+SUBCOMMAND_HANDLERS["quarantine"] = _g0_quarantine_handler
+SUBCOMMAND_HANDLERS["truth-index"] = _g0_truth_index_handler
 
 
 def _add_common_options(parser: argparse.ArgumentParser, *, suppress_defaults: bool) -> None:
@@ -161,6 +222,10 @@ def build_parser() -> argparse.ArgumentParser:
     for name in G0_SUBCOMMANDS:
         if name == "fetch":
             help_text = "download and checksum-verify the configured source files"
+        elif name == "quarantine":
+            help_text = "extract and relocate TS/IRC ground truth behind the audited accessor"
+        elif name == "truth-index":
+            help_text = "audited summary of the quarantined IRC index"
         else:
             help_text = f"g0 {name} (not implemented yet)"
         sub_parser = g0_subparsers.add_parser(name, help=help_text)
@@ -170,6 +235,13 @@ def build_parser() -> argparse.ArgumentParser:
                 "--force",
                 action="store_true",
                 help="Re-download even when the local MD5 already matches",
+            )
+        elif name == "truth-index":
+            sub_parser.add_argument(
+                "--reaction-id",
+                metavar="RXN_ID",
+                default=None,
+                help="Reaction whose IRC frames to read (omitted: index summary)",
             )
         sub_parser.set_defaults(handler=SUBCOMMAND_HANDLERS[name])
     return parser
