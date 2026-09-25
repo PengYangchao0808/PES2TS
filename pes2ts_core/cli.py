@@ -18,9 +18,11 @@ from __future__ import annotations
 import argparse
 import logging
 from collections.abc import Callable, Sequence
+from pathlib import Path
 from typing import Any
 
 from pes2ts_core.config_loader import EXIT_CONFIG_ERROR, ConfigError, load_config
+from pes2ts_core.g0.dedup import detect_duplicates
 from pes2ts_core.g0.fetch import (
     EXIT_CHECKSUM_MISMATCH,
     ChecksumMismatch,
@@ -28,7 +30,7 @@ from pes2ts_core.g0.fetch import (
     verify_sources,
     write_source_manifest,
 )
-from pes2ts_core.g0.inventory import build_inventory
+from pes2ts_core.g0.inventory import INVENTORY_PARQUET_FILENAME, build_inventory
 from pes2ts_core.g0.reader import H5SchemaError
 from pes2ts_core.g0.split import (
     EXIT_SPLIT_SCHEMA_ERROR,
@@ -105,6 +107,33 @@ def _g0_inventory_handler(_args: argparse.Namespace, config: dict[str, Any]) -> 
         result.n_rows,
         result.n_rejections,
         result.parquet_path,
+    )
+    return 0
+
+
+def _g0_dedup_handler(_args: argparse.Namespace, config: dict[str, Any]) -> int:
+    """Detect exact duplicates and written reverses in the inventory."""
+    logger = logging.getLogger(__name__)
+    inventory_path = Path(config["paths"]["interim"]) / INVENTORY_PARQUET_FILENAME
+    try:
+        result = detect_duplicates(inventory_path, config)
+    except FileNotFoundError as exc:
+        logger.error("%s", exc)
+        return EXIT_CHECKSUM_MISMATCH
+    logger.info(
+        "Dedup: %d row(s), %d unique, %d group(s), %d duplicate(s), %d reverse(s) -> %s",
+        result.n_rows,
+        result.n_unique,
+        result.n_duplicate_groups,
+        result.n_exact_duplicates,
+        result.n_reverse_pairs,
+        result.ledger_path,
+    )
+    print(
+        f"dedup: rows={result.n_rows} unique={result.n_unique} "
+        f"groups={result.n_duplicate_groups} "
+        f"exact_duplicates={result.n_exact_duplicates} "
+        f"reverse_pairs={result.n_reverse_pairs}"
     )
     return 0
 
@@ -195,6 +224,7 @@ SUBCOMMAND_HANDLERS: dict[str, G0Handler] = {
 #: Implemented handlers; the remaining entries are still stubs.
 SUBCOMMAND_HANDLERS["fetch"] = _fetch_handler
 SUBCOMMAND_HANDLERS["inventory"] = _g0_inventory_handler
+SUBCOMMAND_HANDLERS["dedup"] = _g0_dedup_handler
 SUBCOMMAND_HANDLERS["split"] = _g0_split_handler
 SUBCOMMAND_HANDLERS["quarantine"] = _g0_quarantine_handler
 SUBCOMMAND_HANDLERS["truth-index"] = _g0_truth_index_handler

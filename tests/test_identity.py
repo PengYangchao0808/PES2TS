@@ -20,6 +20,7 @@ from pes2ts_core.g0.identity import (
     IGNORE_ATOM_MAP_KWARG,
     IdentityError,
     canonical_reaction_identity,
+    directional_preimage,
     is_reverse_of,
     reverse_pair_key,
 )
@@ -70,6 +71,40 @@ def test_reaction_direction_is_invariant() -> None:
     )
     assert is_reverse_of(forward, reverse)
     assert is_reverse_of(reverse, forward)
+
+
+def test_directional_preimage_preserves_written_side_order() -> None:
+    # Given: a reaction with several components on both sides
+    reactants, products = directional_preimage("CCO.CC(=O)O>>CCOC(C)=O.O")
+
+    # Then: components are canonically sorted WITHIN each side, but the
+    # reactant/product assignment follows the written input
+    assert reactants == "CC(=O)O+CCO"
+    assert products == "CCOC(C)=O+O"
+
+
+def test_directional_preimage_swaps_for_a_written_reverse() -> None:
+    # Given: a reaction and its written reverse
+    forward = directional_preimage("CCO.CC(=O)O>>CCOC(C)=O.O")
+    reverse = directional_preimage("CCOC(C)=O.O>>CCO.CC(=O)O")
+
+    # Then: the directional tuple is exactly swapped
+    assert reverse == (forward[1], forward[0])
+    # And: the direction-agnostic identity is still shared
+    assert canonical_reaction_identity(
+        "CCO.CC(=O)O>>CCOC(C)=O.O"
+    ) == canonical_reaction_identity("CCOC(C)=O.O>>CCO.CC(=O)O")
+
+
+def test_directional_preimage_is_map_and_component_order_invariant() -> None:
+    # Given: unmapped, mapped, and renumbered/permuted renderings of one
+    # reaction, all written in the same direction
+    unmapped = directional_preimage(ESTERIFICATION_UNMAPPED)
+
+    # When / Then: map numbers and intra-side component order never change the
+    # directional tuple
+    assert directional_preimage(ESTERIFICATION_MAPPED) == unmapped
+    assert directional_preimage(ESTERIFICATION_RENUMBERED) == unmapped
 
 
 def test_map_renumbering_is_invariant() -> None:

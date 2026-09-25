@@ -103,6 +103,41 @@ def test_ledger_write_is_full_rewrite_from_memory(tmp_path: Path) -> None:
     assert summary["by_code"] == {"BAD_ID": 1, "NO_ARROW": 1}
 
 
+def test_ledger_load_tolerates_a_missing_file(tmp_path: Path) -> None:
+    # Given: no ledger has ever been written
+    # When: a stage loads the ledger and adds its first rejection
+    ledger = RejectionLedger.load(tmp_path)
+    ledger.add(_rejection(RejectionCode.BAD_ID))
+    ledger.write()
+
+    # Then: exactly the new rejection is persisted
+    lines = (tmp_path / LEDGER_FILENAME).read_text(encoding="utf-8").splitlines()
+    assert len(lines) == 1
+    assert json.loads(lines[0])["code"] == "BAD_ID"
+
+
+def test_ledger_load_then_add_appends_to_existing(tmp_path: Path) -> None:
+    # Given: an earlier stage persisted one rejection
+    first = RejectionLedger(tmp_path)
+    first.add(_rejection(RejectionCode.BAD_SMILES))
+    first.write()
+
+    # When: a later stage loads that ledger and adds its own rejection
+    loaded = RejectionLedger.load(tmp_path)
+    loaded.add(_rejection(RejectionCode.DUPLICATE_OF, reaction_id="RXN_0000000002"))
+    loaded.write()
+
+    # Then: the earlier line survives and the new one is appended
+    lines = (tmp_path / LEDGER_FILENAME).read_text(encoding="utf-8").splitlines()
+    assert len(lines) == 2
+    assert json.loads(lines[0])["code"] == "BAD_SMILES"
+    assert json.loads(lines[1])["code"] == "DUPLICATE_OF"
+    assert json.loads(lines[1])["reaction_id"] == "RXN_0000000002"
+    summary = json.loads((tmp_path / SUMMARY_FILENAME).read_text(encoding="utf-8"))
+    assert summary["total"] == 2
+    assert summary["by_code"] == {"BAD_SMILES": 1, "DUPLICATE_OF": 1}
+
+
 def test_rejection_with_unknown_code_raises_value_error() -> None:
     with pytest.raises(ValueError, match="NOT_A_CODE"):
         dataclasses.replace(_rejection(RejectionCode.BAD_ID), code="NOT_A_CODE")

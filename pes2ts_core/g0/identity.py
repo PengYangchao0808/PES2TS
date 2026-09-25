@@ -32,6 +32,15 @@ sorted pair of the two side strings. The identity is the lower-case SHA-256 hex
 digest of the UTF-8 encoding of that text. The preimage contains no timestamps,
 paths, or other run-dependent values.
 
+Directional comparisons
+-----------------------
+The identity sorts the two sides, so a reaction and its written reverse share
+one hash. :func:`directional_preimage` exposes the same canonicalization
+*without* sorting the two sides, so callers can tell a same-direction exact
+duplicate from a written reverse inside a single identity group. Both public
+functions delegate to the same side-canonicalization code path, so they can
+never disagree about what the canonical sides are.
+
 All functions are pure: caller-provided strings are never mutated and no state
 is cached across calls, so identities stay cheap to memoize in the caller.
 """
@@ -178,12 +187,18 @@ def _reaction_smiles_text(reaction_smiles: object) -> str:
     return reaction_smiles
 
 
-def _identity_preimage(reaction_smiles: str) -> str:
-    """Return the exact text whose UTF-8 SHA-256 is the reaction identity.
+def directional_preimage(reaction_smiles: str) -> tuple[str, str]:
+    """Return the two canonical map-free sides in the WRITTEN order.
 
-    The format is ``f"{side_a}{ARROW}{side_b}"`` with each side built by
-    :func:`_canonical_side` and the two sides sorted lexicographically, so a
-    reaction and its written reverse produce the same preimage.
+    The result is ``(reactant_side, product_side)``; each side is the
+    ``"+"``-joined, lexicographically sorted list of its canonical component
+    SMILES, exactly as used inside the identity preimage. Unlike
+    :func:`canonical_reaction_identity`, which sorts the two sides and is
+    therefore direction-agnostic, this function preserves the written
+    direction: a reaction and its written reverse return swapped tuples. It
+    exists so duplicate detection can separate same-direction exact duplicates
+    from reverse pairs inside one identity group, and it is the single side
+    canonicalization path both public functions share.
 
     Raises
     ------
@@ -206,6 +221,23 @@ def _identity_preimage(reaction_smiles: str) -> str:
     product_side = _canonical_side(
         product_smiles, side_name="product", reaction_smiles=reaction_smiles
     )
+    return reactant_side, product_side
+
+
+def _identity_preimage(reaction_smiles: str) -> str:
+    """Return the exact text whose UTF-8 SHA-256 is the reaction identity.
+
+    The format is ``f"{side_a}{ARROW}{side_b}"`` with each side produced by
+    :func:`directional_preimage` and the two sides sorted lexicographically, so
+    a reaction and its written reverse produce the same preimage.
+
+    Raises
+    ------
+    IdentityError
+        For a non-string input, anything other than exactly one ``">>"``,
+        empty sides/components, or unparseable components.
+    """
+    reactant_side, product_side = directional_preimage(reaction_smiles)
     side_a, side_b = sorted((reactant_side, product_side))
     return f"{side_a}{ARROW}{side_b}"
 
@@ -264,6 +296,7 @@ __all__ = [
     "IGNORE_ATOM_MAP_KWARG",
     "IdentityError",
     "canonical_reaction_identity",
+    "directional_preimage",
     "is_reverse_of",
     "reverse_pair_key",
 ]

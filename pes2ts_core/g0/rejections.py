@@ -4,11 +4,15 @@ Every stage records why a reaction left the pipeline with a member of the
 single :class:`RejectionCode` enum; defining codes anywhere else is forbidden.
 The ledger is persisted append-semantics-safe: :meth:`RejectionLedger.write`
 atomically rewrites the full in-memory state as JSONL and refreshes the
-summary, so a crash can never leave a torn ledger line.
+summary, so a crash can never leave a torn ledger line. Because ``write`` is a
+full rewrite, a later stage that wants to append must first read the persisted
+state back with :meth:`RejectionLedger.load` (which tolerates a missing file)
+instead of starting from an empty ledger.
 """
 
 from __future__ import annotations
 
+import json
 import logging
 from collections import Counter
 from dataclasses import dataclass
@@ -102,6 +106,78 @@ class RejectionLedger:
     def __init__(self, manifests_dir: Path) -> None:
         self._manifests_dir = manifests_dir
         self._rejections: list[Rejection] = []
+
+    @classmethod
+    def load(cls, manifests_dir: Path) -> RejectionLedger:
+        """Return a ledger preloaded with the rejections persisted there.
+
+        A missing ``rejection_ledger.jsonl`` yields an empty ledger, so callers
+        can always ``load(...).add(...).write()`` and preserve whatever an
+        earlier stage recorded instead of clobbering it. Blank lines are
+        ignored; a line that is not a JSON object or that misses a field raises
+        :class:`ValueError` naming the line number, because silently dropping a
+        recorded rejection would corrupt the pipeline's audit trail.
+        """
+        logger = logging.getLogger(__name__)
+        ledger = cls(manifests_dir)
+        path = Path(manifests_dir) / LEDGER_FILENAME
+        if not path.is_file():
+            return ledger
+        with path.open("r", encoding="utf-8") as handle:
+            for line_number, line in enumerate(handle, start=1):
+                text = line.strip()
+                if not text:
+                    continue
+                try:
+                    record: object = json.loads(text)
+                except ValueError as exc:
+                    msg = (
+                        f"Malformed rejection ledger line {line_number} in "
+                        f"{path}: {exc}"
+                    )
+                    raise ValueError(msg) from exc
+                if not isinstance(record, dict):
+                    msg = (
+                        f"Malformed rejection ledger line {line_number} in "
+                        f"{path}: expected a JSON object"
+                    )
+                    raise ValueError(msg)
+                reaction_id = record.get("reaction_id")
+                stage = record.get("stage")
+                code = record.get("code")
+                detail = record.get("detail")
+                source_pointer = record.get("source_pointer")
+                if not (
+                    isinstance(reaction_id, str)
+                    and isinstance(stage, str)
+                    and isinstance(code, str)
+                    and isinstance(detail, str)
+                    and isinstance(source_pointer, str)
+                ):
+                    msg = (
+                        f"Malformed rejection ledger line {line_number} in "
+                        f"{path}: expected five string fields"
+                    )
+                    raise ValueError(msg)
+                try:
+                    rejection = Rejection(
+                        reaction_id=reaction_id,
+                        stage=stage,
+                        code=RejectionCode(code),
+                        detail=detail,
+                        source_pointer=source_pointer,
+                    )
+                except ValueError as exc:
+                    msg = (
+                        f"Malformed rejection ledger line {line_number} in "
+                        f"{path}: {exc}"
+                    )
+                    raise ValueError(msg) from exc
+                ledger.add(rejection)
+        logger.info(
+            "Loaded %d rejection(s) from %s", len(ledger._rejections), path
+        )
+        return ledger
 
     def add(self, rejection: Rejection) -> None:
         """Validate and append *rejection* to the in-memory ledger."""
