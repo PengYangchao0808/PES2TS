@@ -4,10 +4,11 @@ Usage::
 
     pes2ts [--config PATH] [--log-level LEVEL] [--log-file PATH] g0 <SUBCOMMAND>
 
-The ``g0`` subcommands are stubs in this scaffold release: they parse their
-arguments, load the (merged) configuration, log that they are not implemented
-yet, and exit with a subcommand-specific non-zero code.  ``--help`` works for
-every subcommand and exits 0.
+``g0 fetch`` downloads and checksum-verifies the configured Reaction-QM
+source files.  The remaining ``g0`` subcommands are stubs in this scaffold
+release: they parse their arguments, load the (merged) configuration, log that
+they are not implemented yet, and exit with a subcommand-specific non-zero
+code.  ``--help`` works for every subcommand and exits 0.
 """
 
 from __future__ import annotations
@@ -18,6 +19,13 @@ from collections.abc import Callable, Sequence
 from typing import Any
 
 from pes2ts_core.config_loader import EXIT_CONFIG_ERROR, ConfigError, load_config
+from pes2ts_core.g0.fetch import (
+    EXIT_CHECKSUM_MISMATCH,
+    ChecksumMismatch,
+    fetch_sources,
+    verify_sources,
+    write_source_manifest,
+)
 from pes2ts_core.logging_setup import setup_logging
 from pes2ts_core.version import __version__
 
@@ -57,10 +65,27 @@ def _make_stub(name: str) -> G0Handler:
     return _handler
 
 
+def _fetch_handler(args: argparse.Namespace, config: dict[str, Any]) -> int:
+    """Acquire the configured source files, verify them, then record the manifest."""
+    logger = logging.getLogger(__name__)
+    try:
+        fetched = fetch_sources(config, force=bool(getattr(args, "force", False)))
+        digests = verify_sources(config)
+        manifest_path = write_source_manifest(config, fetched, digests)
+    except ChecksumMismatch as exc:
+        logger.error("%s", exc)
+        return EXIT_CHECKSUM_MISMATCH
+    logger.info("Source manifest written: %s", manifest_path)
+    return 0
+
+
 #: Populated lazily so tests can import the module without side effects.
 SUBCOMMAND_HANDLERS: dict[str, G0Handler] = {
     name: _make_stub(name) for name in G0_SUBCOMMANDS
 }
+
+#: ``g0 fetch`` is implemented; the remaining entries are still stubs.
+SUBCOMMAND_HANDLERS["fetch"] = _fetch_handler
 
 
 def _add_common_options(parser: argparse.ArgumentParser, *, suppress_defaults: bool) -> None:
@@ -115,8 +140,18 @@ def build_parser() -> argparse.ArgumentParser:
         dest="g0_command", required=True, metavar="SUBCOMMAND"
     )
     for name in G0_SUBCOMMANDS:
-        sub_parser = g0_subparsers.add_parser(name, help=f"g0 {name} (not implemented yet)")
+        if name == "fetch":
+            help_text = "download and checksum-verify the configured source files"
+        else:
+            help_text = f"g0 {name} (not implemented yet)"
+        sub_parser = g0_subparsers.add_parser(name, help=help_text)
         _add_common_options(sub_parser, suppress_defaults=True)
+        if name == "fetch":
+            sub_parser.add_argument(
+                "--force",
+                action="store_true",
+                help="Re-download even when the local MD5 already matches",
+            )
         sub_parser.set_defaults(handler=SUBCOMMAND_HANDLERS[name])
     return parser
 
