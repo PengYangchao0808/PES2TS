@@ -34,8 +34,6 @@ logger = logging.getLogger(__name__)
 TRUTH_MANIFEST_FILENAME: Final[str] = "truth_manifest.json"
 #: Append-only audit log of every successful truth read.
 TRUTH_ACCESS_LOG_FILENAME: Final[str] = "truth_access_log.jsonl"
-#: Fallback manifests directory when the caller does not supply one.
-DEFAULT_MANIFESTS_DIR: Final[str] = "data/manifests"
 #: Suffix identifying the IRC source entry inside the manifest.
 IRC_FILENAME_SUFFIX: Final[str] = "_IRC.h5"
 #: Permission message required by the isolation contract.
@@ -50,12 +48,12 @@ def _require_allow_truth(reaction_id: object, allow_truth: bool) -> None:
         raise PermissionError(f"{PERMISSION_MESSAGE} (reaction_id={reaction_id!r})")
 
 
-def _manifests_dir(manifests_dir: str | Path | None) -> Path:
-    """Resolve the manifests directory, defaulting to the configured layout."""
-    return Path(manifests_dir) if manifests_dir is not None else Path(DEFAULT_MANIFESTS_DIR)
+def _manifests_dir(manifests_dir: str | Path) -> Path:
+    """Resolve the manifests directory supplied by the caller."""
+    return Path(manifests_dir)
 
 
-def _load_manifest(manifests_dir: str | Path | None) -> dict[str, Any]:
+def _load_manifest(manifests_dir: str | Path) -> dict[str, Any]:
     """Read ``truth_manifest.json`` or fail with an actionable message."""
     path = _manifests_dir(manifests_dir) / TRUTH_MANIFEST_FILENAME
     if not path.is_file():
@@ -105,7 +103,7 @@ def _irc_source_path(manifest: dict[str, Any]) -> Path:
     raise ValueError(msg)
 
 
-def _audit(manifests_dir: str | Path | None, function: str, reaction_id: str) -> None:
+def _audit(manifests_dir: str | Path, function: str, reaction_id: str) -> None:
     """Append one audit line for a successful read (plain append, never rewrite)."""
     directory = _manifests_dir(manifests_dir)
     directory.mkdir(parents=True, exist_ok=True)
@@ -135,7 +133,7 @@ def load_ts_geometry(
     reaction_id: str,
     allow_truth: bool = False,
     *,
-    manifests_dir: str | Path | None = None,
+    manifests_dir: str | Path,
 ) -> dict[str, Any]:
     """Return the quarantined TS geometry row for *reaction_id*.
 
@@ -165,7 +163,7 @@ def load_irc_frames(
     reaction_id: str,
     allow_truth: bool = False,
     *,
-    manifests_dir: str | Path | None = None,
+    manifests_dir: str | Path,
 ) -> dict[str, Any]:
     """Return the IRC trajectory frames of one reaction.
 
@@ -195,7 +193,7 @@ def load_irc_frames(
 def load_irc_index(
     allow_truth: bool = False,
     *,
-    manifests_dir: str | Path | None = None,
+    manifests_dir: str | Path,
 ) -> list[dict[str, Any]]:
     """Return the shape-only IRC index rows (no trajectory data).
 
@@ -212,7 +210,6 @@ def load_irc_index(
 
 
 __all__ = [
-    "DEFAULT_MANIFESTS_DIR",
     "IRC_FILENAME_SUFFIX",
     "PERMISSION_MESSAGE",
     "TRUTH_ACCESS_LOG_FILENAME",

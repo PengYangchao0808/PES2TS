@@ -216,15 +216,15 @@ def test_guard_flags_paths_files_and_dynamic_exec(tmp_path: Path) -> None:
 def test_truth_access_without_allow_truth_raises_permission_error() -> None:
     # Given / When / Then: neither accessor opens anything without the flag
     with pytest.raises(PermissionError, match="allow_truth=True") as irc_exc:
-        truth_reader.load_irc_frames(RXN_1)
+        truth_reader.load_irc_frames(RXN_1, manifests_dir="/dev/null")
     assert RXN_1 in str(irc_exc.value)
 
     with pytest.raises(PermissionError, match="audited") as ts_exc:
-        truth_reader.load_ts_geometry(RXN_1)
+        truth_reader.load_ts_geometry(RXN_1, manifests_dir="/dev/null")
     assert RXN_1 in str(ts_exc.value)
 
     with pytest.raises(PermissionError):
-        truth_reader.load_irc_index()
+        truth_reader.load_irc_index(manifests_dir="/dev/null")
 
 
 def test_allowlisted_module_is_not_flagged(tmp_path: Path) -> None:
