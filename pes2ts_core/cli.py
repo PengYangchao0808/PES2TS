@@ -26,6 +26,7 @@ from pes2ts_core.g0.fetch import (
     verify_sources,
     write_source_manifest,
 )
+from pes2ts_core.g0.inventory import build_inventory
 from pes2ts_core.logging_setup import setup_logging
 from pes2ts_core.version import __version__
 
@@ -79,6 +80,23 @@ def _fetch_handler(args: argparse.Namespace, config: dict[str, Any]) -> int:
     return 0
 
 
+def _g0_inventory_handler(_args: argparse.Namespace, config: dict[str, Any]) -> int:
+    """Build the TS-free reactant/product inventory and report the artifacts."""
+    logger = logging.getLogger(__name__)
+    try:
+        result = build_inventory(config)
+    except (ChecksumMismatch, FileNotFoundError) as exc:
+        logger.error("%s", exc)
+        return EXIT_CHECKSUM_MISMATCH
+    logger.info(
+        "Inventory: %d row(s), %d rejection(s) -> %s",
+        result.n_rows,
+        result.n_rejections,
+        result.parquet_path,
+    )
+    return 0
+
+
 #: Populated lazily so tests can import the module without side effects.
 SUBCOMMAND_HANDLERS: dict[str, G0Handler] = {
     name: _make_stub(name) for name in G0_SUBCOMMANDS
@@ -86,6 +104,7 @@ SUBCOMMAND_HANDLERS: dict[str, G0Handler] = {
 
 #: ``g0 fetch`` is implemented; the remaining entries are still stubs.
 SUBCOMMAND_HANDLERS["fetch"] = _fetch_handler
+SUBCOMMAND_HANDLERS["inventory"] = _g0_inventory_handler
 
 
 def _add_common_options(parser: argparse.ArgumentParser, *, suppress_defaults: bool) -> None:
