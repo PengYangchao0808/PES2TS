@@ -31,6 +31,12 @@ from pes2ts_core.g0.fetch import (
     write_source_manifest,
 )
 from pes2ts_core.g0.inventory import INVENTORY_PARQUET_FILENAME, build_inventory
+from pes2ts_core.g0.neardup import (
+    EXIT_AUDIT_BUDGET_EXCEEDED,
+    AuditBudgetExceeded,
+    compute_fingerprints,
+    cross_split_leak_audit,
+)
 from pes2ts_core.g0.reader import H5SchemaError
 from pes2ts_core.g0.split import (
     EXIT_SPLIT_SCHEMA_ERROR,
@@ -138,6 +144,31 @@ def _g0_dedup_handler(_args: argparse.Namespace, config: dict[str, Any]) -> int:
     return 0
 
 
+def _g0_audit_handler(_args: argparse.Namespace, config: dict[str, Any]) -> int:
+    """Run the full cross-split near-duplicate audit; exit 6 on budget abort."""
+    logger = logging.getLogger(__name__)
+    try:
+        fingerprints = compute_fingerprints(config)
+        result = cross_split_leak_audit(config, fingerprints.fingerprints)
+    except FileNotFoundError as exc:
+        logger.error("%s", exc)
+        return EXIT_CHECKSUM_MISMATCH
+    except AuditBudgetExceeded as exc:
+        logger.error("Leak audit aborted: %s", exc)
+        return EXIT_AUDIT_BUDGET_EXCEEDED
+    logger.info(
+        "Leak audit: %d pair(s) over threshold, max_similarity=%.6f -> %s",
+        result.n_pairs_over_threshold,
+        result.max_similarity,
+        result.manifest_path,
+    )
+    print(
+        f"audit: pairs_over_threshold={result.n_pairs_over_threshold} "
+        f"max_similarity={result.max_similarity:.6f} complete={result.complete}"
+    )
+    return 0
+
+
 def _g0_split_handler(_args: argparse.Namespace, config: dict[str, Any]) -> int:
     """Adopt the official split; exit 5 on schema violation, 3 on missing input."""
     logger = logging.getLogger(__name__)
@@ -225,6 +256,7 @@ SUBCOMMAND_HANDLERS: dict[str, G0Handler] = {
 SUBCOMMAND_HANDLERS["fetch"] = _fetch_handler
 SUBCOMMAND_HANDLERS["inventory"] = _g0_inventory_handler
 SUBCOMMAND_HANDLERS["dedup"] = _g0_dedup_handler
+SUBCOMMAND_HANDLERS["audit"] = _g0_audit_handler
 SUBCOMMAND_HANDLERS["split"] = _g0_split_handler
 SUBCOMMAND_HANDLERS["quarantine"] = _g0_quarantine_handler
 SUBCOMMAND_HANDLERS["truth-index"] = _g0_truth_index_handler
@@ -290,6 +322,8 @@ def build_parser() -> argparse.ArgumentParser:
             help_text = "audited summary of the quarantined IRC index"
         elif name == "split":
             help_text = "adopt the authors' official train/valid/test split"
+        elif name == "audit":
+            help_text = "run the mandatory DRFP near-duplicate cross-split leakage audit"
         else:
             help_text = f"g0 {name} (not implemented yet)"
         sub_parser = g0_subparsers.add_parser(name, help=help_text)
