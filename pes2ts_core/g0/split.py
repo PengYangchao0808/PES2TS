@@ -1,4 +1,4 @@
-"""Adoption of the authors' official reaction-level train/valid/test split.
+"""Adoption and freezing of the official reaction-level train/valid/test split.
 
 :func:`adopt_official_split` reads the three official split CSVs through
 :mod:`pes2ts_core.g0.split_sources` (located by their ``_train.csv`` /
@@ -7,8 +7,9 @@ resulting assignment against the TS-free inventory.  Every inventory reaction
 absent from all three files is recorded as a ``NOT_IN_SPLIT`` rejection in the
 unified ledger (never dropped silently), and the assignment Parquet plus the
 split manifest are written atomically with ``leak_status="pending"``; the
-leakage verdict belongs to the later freeze stage.  The split CSVs are
-read-only and are never mutated.
+leakage verdict belongs to :func:`freeze_split`, which is implemented in
+:mod:`pes2ts_core.g0.split_freeze` and re-exported here together with the leak
+policy names.  The split CSVs are read-only and are never mutated.
 """
 
 from __future__ import annotations
@@ -29,8 +30,31 @@ from pes2ts_core.g0.rejections import (
     RejectionCode,
     RejectionLedger,
 )
+from pes2ts_core.g0.split_freeze import (
+    EXIT_AUDIT_INCOMPLETE,
+    EXIT_LEAK_FOUND,
+    EXIT_REMEDIATION_FAILED,
+    AuditIncompleteError,
+    FreezeResult,
+    OffenseTuple,
+    RemediationFailedError,
+    freeze_split,
+)
+from pes2ts_core.g0.split_policy import (
+    KIND_KNOWN_DUPLICATE,
+    KIND_NEAR_DUP,
+    LEAK_STATUS_CLEAN,
+    LEAK_STATUS_LEAK_FOUND,
+    REBUILT_STRATEGY,
+    REMEDIATION_CHOICES,
+    REMEDIATION_EXCLUDE_LEAKY,
+    REMEDIATION_NONE,
+    REMEDIATION_REBUILD,
+)
 from pes2ts_core.g0.split_sources import (
+    SPLIT_ASSIGNMENT_FILENAME,
     SPLIT_LABELS,
+    SPLIT_MANIFEST_FILENAME,
     SplitSchemaError,
     build_assignment,
     read_inventory_ids,
@@ -42,10 +66,6 @@ from pes2ts_core.utils.parquet_io import write_parquet
 
 logger = logging.getLogger(__name__)
 
-#: Assignment table filename written under ``config["paths"]["interim"]``.
-SPLIT_ASSIGNMENT_FILENAME: Final[str] = "split_assignment.parquet"
-#: Split manifest filename written under ``config["paths"]["manifests"]``.
-SPLIT_MANIFEST_FILENAME: Final[str] = "split_manifest.json"
 #: Stage name stamped into every rejection emitted by this module.
 SPLIT_STAGE: Final[str] = "adopt_official_split"
 #: Strategy value recorded in the manifest.
@@ -213,15 +233,32 @@ def adopt_official_split(config: Mapping[str, Any]) -> SplitAdoptionResult:
 
 
 __all__ = [
+    "EXIT_AUDIT_INCOMPLETE",
+    "EXIT_LEAK_FOUND",
+    "EXIT_REMEDIATION_FAILED",
     "EXIT_SPLIT_SCHEMA_ERROR",
+    "KIND_KNOWN_DUPLICATE",
+    "KIND_NEAR_DUP",
+    "LEAK_STATUS_CLEAN",
+    "LEAK_STATUS_LEAK_FOUND",
     "LEAK_STATUS_PENDING",
     "MAX_SPLIT_ONLY_EXAMPLES",
+    "REBUILT_STRATEGY",
+    "REMEDIATION_CHOICES",
+    "REMEDIATION_EXCLUDE_LEAKY",
+    "REMEDIATION_NONE",
+    "REMEDIATION_REBUILD",
     "SPLIT_ASSIGNMENT_FILENAME",
     "SPLIT_LABELS",
     "SPLIT_MANIFEST_FILENAME",
     "SPLIT_STAGE",
     "SPLIT_STRATEGY",
+    "AuditIncompleteError",
+    "FreezeResult",
+    "OffenseTuple",
+    "RemediationFailedError",
     "SplitAdoptionResult",
     "SplitSchemaError",
     "adopt_official_split",
+    "freeze_split",
 ]

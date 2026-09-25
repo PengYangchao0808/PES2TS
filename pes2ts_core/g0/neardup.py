@@ -94,11 +94,14 @@ class LeakAuditResult:
     max_similarity: float
     complete: bool
     manifest_path: Path
+    all_offending_pairs: tuple[tuple[str, str], ...] = ()
 
 
 def cross_split_leak_audit(
     config: Mapping[str, Any],
     fingerprints: Sequence[tuple[str, ExplicitBitVect]] | None = None,
+    *,
+    collect_all_pairs: bool = False,
 ) -> LeakAuditResult:
     """Run the mandatory full cross-split near-duplicate audit.
 
@@ -120,6 +123,8 @@ def cross_split_leak_audit(
         Optional in-memory table from
         :func:`~pes2ts_core.g0.fingerprints.compute_fingerprints`; when omitted
         the table is rebuilt from ``fingerprints.parquet``.
+    collect_all_pairs:
+        Also return every offense pair (IDs only, not just the capped best).
 
     Raises
     ------
@@ -176,6 +181,7 @@ def cross_split_leak_audit(
         known_cross_duplicates=len(known_cross_pairs),
     )
     total_comparisons = progress.total_comparisons
+    all_offending_pairs: list[tuple[str, str]] = []
     start = time.monotonic()
 
     def _abort(current_probe_id: str) -> Never:
@@ -235,6 +241,8 @@ def cross_split_leak_audit(
                 progress.offenses.observe(
                     float(similarities[index]), probe_id, reference_id
                 )
+                if collect_all_pairs:
+                    all_offending_pairs.append((probe_id, reference_id))
         progress.probes_completed += 1
 
     duration = time.monotonic() - start
@@ -258,6 +266,7 @@ def cross_split_leak_audit(
         max_similarity=progress.max_similarity,
         complete=True,
         manifest_path=manifest_path,
+        all_offending_pairs=tuple(all_offending_pairs),
     )
 
 

@@ -32,8 +32,7 @@ from rdkit import DataStructs
 from rdkit.DataStructs import ExplicitBitVect
 
 from pes2ts_core.g0.inventory import INVENTORY_PARQUET_FILENAME
-from pes2ts_core.g0.split import SPLIT_ASSIGNMENT_FILENAME
-from pes2ts_core.g0.split_sources import SPLIT_LABELS
+from pes2ts_core.g0.split_sources import SPLIT_ASSIGNMENT_FILENAME, SPLIT_LABELS
 from pes2ts_core.utils.parquet_io import read_parquet, write_parquet
 
 logger = logging.getLogger(__name__)

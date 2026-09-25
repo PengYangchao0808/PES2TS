@@ -39,9 +39,17 @@ from pes2ts_core.g0.neardup import (
 )
 from pes2ts_core.g0.reader import H5SchemaError
 from pes2ts_core.g0.split import (
+    EXIT_AUDIT_INCOMPLETE,
+    EXIT_LEAK_FOUND,
+    EXIT_REMEDIATION_FAILED,
     EXIT_SPLIT_SCHEMA_ERROR,
+    REMEDIATION_CHOICES,
+    REMEDIATION_NONE,
+    AuditIncompleteError,
+    RemediationFailedError,
     SplitSchemaError,
     adopt_official_split,
+    freeze_split,
 )
 from pes2ts_core.g0.truth_quarantine import (
     EXIT_QUARANTINE_ERROR,
@@ -195,6 +203,51 @@ def _g0_split_handler(_args: argparse.Namespace, config: dict[str, Any]) -> int:
     return 0
 
 
+def _g0_freeze_handler(args: argparse.Namespace, config: dict[str, Any]) -> int:
+    """Freeze the split manifest under the explicit leak decision policy."""
+    logger = logging.getLogger(__name__)
+    remediation = str(getattr(args, "remediation", REMEDIATION_NONE))
+    try:
+        result = freeze_split(config, remediation=remediation)
+    except AuditIncompleteError as exc:
+        logger.error("Split freeze refused: %s", exc)
+        return EXIT_AUDIT_INCOMPLETE
+    except RemediationFailedError as exc:
+        logger.error("Split remediation failed: %s", exc)
+        return EXIT_REMEDIATION_FAILED
+    except AuditBudgetExceeded as exc:
+        logger.error("Leak audit aborted during split freeze: %s", exc)
+        return EXIT_AUDIT_BUDGET_EXCEEDED
+    except FileNotFoundError as exc:
+        logger.error("%s", exc)
+        return EXIT_CHECKSUM_MISMATCH
+    if result.halted:
+        logger.error(
+            "Split freeze halted with leak_status=%s: %d offense(s); re-run "
+            "with --remediation exclude-leaky or --remediation rebuild to "
+            "remediate",
+            result.leak_status,
+            result.n_pairs_over_threshold + result.n_cross_split_known_duplicates,
+        )
+        return EXIT_LEAK_FOUND
+    logger.info(
+        "Split freeze: leak_status=%s skipped=%s counts=%s excluded=%d -> %s",
+        result.leak_status,
+        result.skipped,
+        result.counts,
+        len(result.excluded_ids),
+        result.manifest_path,
+    )
+    print(
+        f"freeze: leak_status={result.leak_status} skipped={result.skipped} "
+        f"train={result.counts.get('train', 0)} "
+        f"valid={result.counts.get('valid', 0)} "
+        f"test={result.counts.get('test', 0)} "
+        f"excluded={len(result.excluded_ids)}"
+    )
+    return 0
+
+
 def _g0_quarantine_handler(_args: argparse.Namespace, config: dict[str, Any]) -> int:
     """Extract, relocate, and manifest the TS/IRC ground truth."""
     logger = logging.getLogger(__name__)
@@ -258,6 +311,7 @@ SUBCOMMAND_HANDLERS["inventory"] = _g0_inventory_handler
 SUBCOMMAND_HANDLERS["dedup"] = _g0_dedup_handler
 SUBCOMMAND_HANDLERS["audit"] = _g0_audit_handler
 SUBCOMMAND_HANDLERS["split"] = _g0_split_handler
+SUBCOMMAND_HANDLERS["freeze"] = _g0_freeze_handler
 SUBCOMMAND_HANDLERS["quarantine"] = _g0_quarantine_handler
 SUBCOMMAND_HANDLERS["truth-index"] = _g0_truth_index_handler
 
@@ -324,6 +378,8 @@ def build_parser() -> argparse.ArgumentParser:
             help_text = "adopt the authors' official train/valid/test split"
         elif name == "audit":
             help_text = "run the mandatory DRFP near-duplicate cross-split leakage audit"
+        elif name == "freeze":
+            help_text = "freeze the split manifest under the explicit leak decision policy"
         else:
             help_text = f"g0 {name} (not implemented yet)"
         sub_parser = g0_subparsers.add_parser(name, help=help_text)
@@ -340,6 +396,16 @@ def build_parser() -> argparse.ArgumentParser:
                 metavar="RXN_ID",
                 default=None,
                 help="Reaction whose IRC frames to read (omitted: index summary)",
+            )
+        elif name == "freeze":
+            sub_parser.add_argument(
+                "--remediation",
+                choices=REMEDIATION_CHOICES,
+                default=REMEDIATION_NONE,
+                help=(
+                    "Leak remediation applied only when the audit found "
+                    "leakage (default: none halts with LEAK_FOUND)"
+                ),
             )
         sub_parser.set_defaults(handler=SUBCOMMAND_HANDLERS[name])
     return parser

@@ -32,6 +32,10 @@ INVENTORY_HINT: Final[str] = "run `g0 inventory` first"
 ID_COLUMN_CANDIDATES: Final[tuple[str, ...]] = ("reaction_id", "rxn_id", "id")
 #: Split labels in fixed processing order; also the manifest/Parquet values.
 SPLIT_LABELS: Final[tuple[str, ...]] = ("train", "valid", "test")
+#: Assignment table filename written under ``config["paths"]["interim"]``.
+SPLIT_ASSIGNMENT_FILENAME: Final[str] = "split_assignment.parquet"
+#: Split manifest filename written under ``config["paths"]["manifests"]``.
+SPLIT_MANIFEST_FILENAME: Final[str] = "split_manifest.json"
 #: Configured-source suffix per split label.
 SPLIT_SUFFIXES: Final[dict[str, str]] = {
     "train": "_train.csv",
@@ -164,7 +168,9 @@ __all__ = [
     "FETCH_HINT",
     "ID_COLUMN_CANDIDATES",
     "INVENTORY_HINT",
+    "SPLIT_ASSIGNMENT_FILENAME",
     "SPLIT_LABELS",
+    "SPLIT_MANIFEST_FILENAME",
     "SPLIT_SUFFIXES",
     "SplitSchemaError",
     "build_assignment",
