@@ -51,6 +51,11 @@ from pes2ts_core.g0.split import (
     adopt_official_split,
     freeze_split,
 )
+from pes2ts_core.g0.strata import (
+    EXIT_AUTHORITATIVE_STRATA_REQUIRED,
+    AuthoritativeStrataRequiredError,
+    select_cohorts,
+)
 from pes2ts_core.g0.truth_quarantine import (
     EXIT_QUARANTINE_ERROR,
     quarantine_truth,
@@ -248,6 +253,30 @@ def _g0_freeze_handler(args: argparse.Namespace, config: dict[str, Any]) -> int:
     return 0
 
 
+def _g0_cohorts_handler(_args: argparse.Namespace, config: dict[str, Any]) -> int:
+    """Select the deterministic trial and stratified cohorts from the inventory."""
+    logger = logging.getLogger(__name__)
+    try:
+        result = select_cohorts(config)
+    except AuthoritativeStrataRequiredError as exc:
+        logger.error("Cohorts halted: %s", exc)
+        return EXIT_AUTHORITATIVE_STRATA_REQUIRED
+    except FileNotFoundError as exc:
+        logger.error("%s", exc)
+        return EXIT_CHECKSUM_MISMATCH
+    logger.info(
+        "Cohorts: trial=%d, stratified=%d -> %s",
+        result.trial_size,
+        result.stratified_size,
+        result.report_path,
+    )
+    print(
+        f"cohorts: trial={result.trial_size} "
+        f"stratified={result.stratified_size} report={result.report_path}"
+    )
+    return 0
+
+
 def _g0_quarantine_handler(_args: argparse.Namespace, config: dict[str, Any]) -> int:
     """Extract, relocate, and manifest the TS/IRC ground truth."""
     logger = logging.getLogger(__name__)
@@ -312,6 +341,7 @@ SUBCOMMAND_HANDLERS["dedup"] = _g0_dedup_handler
 SUBCOMMAND_HANDLERS["audit"] = _g0_audit_handler
 SUBCOMMAND_HANDLERS["split"] = _g0_split_handler
 SUBCOMMAND_HANDLERS["freeze"] = _g0_freeze_handler
+SUBCOMMAND_HANDLERS["cohorts"] = _g0_cohorts_handler
 SUBCOMMAND_HANDLERS["quarantine"] = _g0_quarantine_handler
 SUBCOMMAND_HANDLERS["truth-index"] = _g0_truth_index_handler
 
@@ -380,6 +410,8 @@ def build_parser() -> argparse.ArgumentParser:
             help_text = "run the mandatory DRFP near-duplicate cross-split leakage audit"
         elif name == "freeze":
             help_text = "freeze the split manifest under the explicit leak decision policy"
+        elif name == "cohorts":
+            help_text = "select the deterministic trial and stratified cohorts"
         else:
             help_text = f"g0 {name} (not implemented yet)"
         sub_parser = g0_subparsers.add_parser(name, help=help_text)
