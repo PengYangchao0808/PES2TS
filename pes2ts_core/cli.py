@@ -4,12 +4,15 @@ Usage::
 
     pes2ts [--config PATH] [--log-level LEVEL] [--log-file PATH] g0 <SUBCOMMAND>
 
-``g0 fetch`` downloads and checksum-verifies the configured Reaction-QM
-source files; ``g0 quarantine`` extracts and relocates the TS/IRC ground truth
-and writes its manifest; ``g0 truth-index`` is the audited accessor for the
-resulting IRC index.  The remaining ``g0`` subcommands are still stubs: they
-parse their arguments, load the (merged) configuration, log that they are not
-implemented yet, and exit with a subcommand-specific non-zero code.
+Every ``g0`` subcommand is implemented. ``fetch`` downloads and checksum-verifies
+the configured Reaction-QM source files; ``inventory`` builds the TS-free R/P
+inventory; ``quarantine`` extracts and relocates the TS/IRC ground truth and
+writes its manifest; ``dedup`` detects exact duplicates and written reverses;
+``split`` adopts the authors' official split; ``audit`` runs the mandatory DRFP
+near-duplicate cross-split leakage audit; ``freeze`` freezes the split manifest
+under the explicit leak decision policy; ``cohorts`` selects the deterministic
+trial and stratified cohorts; ``run-all`` orchestrates the idempotent pipeline;
+and ``truth-index`` is the audited accessor for the resulting IRC index.
 ``--help`` works for every subcommand and exits 0.
 """
 
@@ -19,7 +22,7 @@ import argparse
 import logging
 from collections.abc import Callable, Sequence
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal, cast
 
 from pes2ts_core.config_loader import EXIT_CONFIG_ERROR, ConfigError, load_config
 from pes2ts_core.g0.dedup import detect_duplicates
@@ -84,24 +87,7 @@ G0_SUBCOMMANDS: tuple[str, ...] = (
     "truth-index",
 )
 
-#: Each stub exits with its own code so callers can tell which stage ran.
-NOT_IMPLEMENTED_EXIT_CODES: dict[str, int] = {
-    name: 10 + index for index, name in enumerate(G0_SUBCOMMANDS)
-}
-
 G0Handler = Callable[[argparse.Namespace, dict[str, Any]], int]
-
-
-def _make_stub(name: str) -> G0Handler:
-    """Build the placeholder handler for g0 subcommand *name*."""
-    exit_code = NOT_IMPLEMENTED_EXIT_CODES[name]
-
-    def _handler(_args: argparse.Namespace, _config: dict[str, Any]) -> int:
-        logging.getLogger(__name__).warning("g0 %s: not implemented yet", name)
-        return exit_code
-
-    _handler.__name__ = f"{name.replace('-', '_')}_handler"
-    return _handler
 
 
 def _fetch_handler(args: argparse.Namespace, config: dict[str, Any]) -> int:
@@ -216,7 +202,10 @@ def _g0_split_handler(_args: argparse.Namespace, config: dict[str, Any]) -> int:
 def _g0_freeze_handler(args: argparse.Namespace, config: dict[str, Any]) -> int:
     """Freeze the split manifest under the explicit leak decision policy."""
     logger = logging.getLogger(__name__)
-    remediation = str(getattr(args, "remediation", REMEDIATION_NONE))
+    remediation = cast(
+        Literal["none", "exclude-leaky", "rebuild"],
+        getattr(args, "remediation", REMEDIATION_NONE),
+    )
     try:
         result = freeze_split(config, remediation=remediation)
     except AuditIncompleteError as exc:
@@ -375,22 +364,19 @@ def _g0_truth_index_handler(args: argparse.Namespace, config: dict[str, Any]) ->
     return 0
 
 
-#: Populated lazily so tests can import the module without side effects.
+#: The handler for every ``g0`` subcommand; all are implemented.
 SUBCOMMAND_HANDLERS: dict[str, G0Handler] = {
-    name: _make_stub(name) for name in G0_SUBCOMMANDS
+    "fetch": _fetch_handler,
+    "inventory": _g0_inventory_handler,
+    "quarantine": _g0_quarantine_handler,
+    "dedup": _g0_dedup_handler,
+    "audit": _g0_audit_handler,
+    "split": _g0_split_handler,
+    "freeze": _g0_freeze_handler,
+    "cohorts": _g0_cohorts_handler,
+    "run-all": _g0_run_all_handler,
+    "truth-index": _g0_truth_index_handler,
 }
-
-#: Implemented handlers; the remaining entries are still stubs.
-SUBCOMMAND_HANDLERS["fetch"] = _fetch_handler
-SUBCOMMAND_HANDLERS["inventory"] = _g0_inventory_handler
-SUBCOMMAND_HANDLERS["dedup"] = _g0_dedup_handler
-SUBCOMMAND_HANDLERS["audit"] = _g0_audit_handler
-SUBCOMMAND_HANDLERS["split"] = _g0_split_handler
-SUBCOMMAND_HANDLERS["freeze"] = _g0_freeze_handler
-SUBCOMMAND_HANDLERS["cohorts"] = _g0_cohorts_handler
-SUBCOMMAND_HANDLERS["run-all"] = _g0_run_all_handler
-SUBCOMMAND_HANDLERS["quarantine"] = _g0_quarantine_handler
-SUBCOMMAND_HANDLERS["truth-index"] = _g0_truth_index_handler
 
 
 def _add_common_options(parser: argparse.ArgumentParser, *, suppress_defaults: bool) -> None:
@@ -444,26 +430,20 @@ def build_parser() -> argparse.ArgumentParser:
     g0_subparsers = g0_parser.add_subparsers(
         dest="g0_command", required=True, metavar="SUBCOMMAND"
     )
+    help_texts: dict[str, str] = {
+        "fetch": "download and checksum-verify the configured source files",
+        "inventory": "build the TS-free reactant/product inventory",
+        "quarantine": "extract and relocate TS/IRC ground truth behind the audited accessor",
+        "dedup": "detect exact duplicates and written reverses across the inventory",
+        "audit": "run the mandatory DRFP near-duplicate cross-split leakage audit",
+        "split": "adopt the authors' official train/valid/test split",
+        "freeze": "freeze the split manifest under the explicit leak decision policy",
+        "cohorts": "select the deterministic trial and stratified cohorts",
+        "run-all": "run the full idempotent G0 pipeline and write the run report",
+        "truth-index": "audited summary of the quarantined IRC index",
+    }
     for name in G0_SUBCOMMANDS:
-        if name == "fetch":
-            help_text = "download and checksum-verify the configured source files"
-        elif name == "quarantine":
-            help_text = "extract and relocate TS/IRC ground truth behind the audited accessor"
-        elif name == "truth-index":
-            help_text = "audited summary of the quarantined IRC index"
-        elif name == "split":
-            help_text = "adopt the authors' official train/valid/test split"
-        elif name == "audit":
-            help_text = "run the mandatory DRFP near-duplicate cross-split leakage audit"
-        elif name == "freeze":
-            help_text = "freeze the split manifest under the explicit leak decision policy"
-        elif name == "cohorts":
-            help_text = "select the deterministic trial and stratified cohorts"
-        elif name == "run-all":
-            help_text = "run the full idempotent G0 pipeline and write the run report"
-        else:
-            help_text = f"g0 {name} (not implemented yet)"
-        sub_parser = g0_subparsers.add_parser(name, help=help_text)
+        sub_parser = g0_subparsers.add_parser(name, help=help_texts[name])
         _add_common_options(sub_parser, suppress_defaults=True)
         if name == "fetch":
             sub_parser.add_argument(
