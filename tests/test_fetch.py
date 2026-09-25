@@ -32,6 +32,7 @@ from pes2ts_core.g0.fetch import (
     verify_sources,
     write_source_manifest,
 )
+from pes2ts_core.utils.hashing import md5_file
 
 SOURCE_NAMES: tuple[str, ...] = (
     "B3LYPD3_TZVP.h5",
@@ -267,11 +268,67 @@ def test_realdata_manifest_and_no_redownload() -> None:
     if not raw_dir.exists():
         pytest.skip(f"real Reaction-QM data not present: {raw_dir}")
 
+    configured = config["source"]["files"]
+    missing_from_raw = {
+        name for name in configured if not (raw_dir / name).is_file()
+    }
+
+    truth_manifest_path = Path(config["paths"]["manifests"]) / "truth_manifest.json"
+    is_post_quarantine = False
+    relocated_filenames: set[str] = set()
+    truth_sources: list[dict[str, Any]] = []
+    if missing_from_raw and truth_manifest_path.is_file():
+        truth_manifest = json.loads(truth_manifest_path.read_text(encoding="utf-8"))
+        truth_sources = truth_manifest.get("sources", [])
+        truth_filenames = {entry["filename"] for entry in truth_sources}
+        if missing_from_raw <= truth_filenames:
+            is_post_quarantine = True
+            relocated_filenames = missing_from_raw
+
+    if is_post_quarantine:
+        # ---- post-quarantine fast path ----
+        # (i) verify each present file's MD5 against config
+        present_names = {
+            name for name in configured if (raw_dir / name).is_file()
+        }
+        for name in present_names:
+            actual = md5_file(raw_dir / name)
+            assert actual == configured[name]["md5"], (
+                f"MD5 mismatch for present file {name}"
+            )
+
+        # (ii) verify source_manifest.json has 6 entries with valid sha256
+        #      and matching zenodo_md5
+        sm_path = source_manifest_path(config)
+        assert sm_path.exists(), "source_manifest.json missing"
+        source_manifest = json.loads(sm_path.read_text(encoding="utf-8"))
+        records = source_manifest["files"]
+        assert len(records) == 6
+        for record in records:
+            name = record["filename"]
+            assert record["zenodo_md5"] == configured[name]["md5"]
+            assert len(record["sha256"]) == 64
+            assert all(
+                char in "0123456789abcdef" for char in record["sha256"]
+            )
+
+        # (iii) truth_manifest relocation entries match the missing set exactly
+        assert relocated_filenames == missing_from_raw
+        for entry in truth_sources:
+            assert entry["filename"] in relocated_filenames
+            assert "relocated_path" in entry
+            assert len(entry["sha256"]) == 64
+
+        pytest.skip(
+            "sources relocated post-quarantine; re-fetch would re-download "
+            "~12 GB by design (pipeline skips via stage state)"
+        )
+
+    # ---- fresh-tree path: original full assertions ----
     fetched = fetch_sources(config)
     digests = verify_sources(config)
     manifest_path = write_source_manifest(config, fetched, digests)
 
-    configured = config["source"]["files"]
     assert set(fetched) == set(configured)
 
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
