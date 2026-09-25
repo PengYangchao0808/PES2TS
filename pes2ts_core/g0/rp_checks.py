@@ -58,13 +58,18 @@ def element_symbols(atomic_numbers: Sequence[int]) -> list[str]:
 def _mapped_atom_numbers(side: str, label: str, reaction_id: str) -> set[int]:
     """Collect the non-zero atom-map numbers on one side of mapped SMILES.
 
-    Components RDKit cannot parse are skipped with a debug log (the CSV reader
-    already rejects unparseable reactions), and ``0`` (the unmapped marker) is
-    never collected.
+    Explicit hydrogens are preserved while parsing (``removeHs=False`` on
+    :class:`rdkit.Chem.SmilesParserParams`): RDKit's default sanitization drops
+    mapped explicit Hs bonded to heavy atoms, which would silently remove their
+    map numbers from the comparison.  Components RDKit cannot parse are skipped
+    with a debug log (the CSV reader already rejects unparseable reactions), and
+    ``0`` (the unmapped marker) is never collected.
     """
+    params = Chem.SmilesParserParams()
+    params.removeHs = False
     numbers: set[int] = set()
     for component in side.split("."):
-        mol = Chem.MolFromSmiles(component)
+        mol = Chem.MolFromSmiles(component, params)  # pyright: ignore[reportUnknownMemberType]
         if mol is None:  # pyright: ignore[reportUnnecessaryComparison]
             logger.debug(
                 "Reaction %s: skipping unparseable %s component %r in the atom-map check",

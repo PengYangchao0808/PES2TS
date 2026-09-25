@@ -50,8 +50,16 @@ STRATUM_COLUMNS: Final[tuple[str, ...]] = (
 
 
 def _component_bond_keys(component: str) -> set[BondKey] | None:
-    """Return the mapped bond keys of one component, or ``None`` when unmapped."""
-    mol = Chem.MolFromSmiles(component)  # pyright: ignore[reportUnknownMemberType]
+    """Return the mapped bond keys of one component, or ``None`` when unmapped.
+
+    Explicit hydrogens are preserved while parsing (``removeHs=False`` on
+    :class:`rdkit.Chem.SmilesParserParams`): RDKit's default sanitization drops
+    mapped explicit Hs bonded to heavy atoms, which would hide every C-H and
+    H-H bond from the diff.
+    """
+    params = Chem.SmilesParserParams()
+    params.removeHs = False
+    mol = Chem.MolFromSmiles(component, params)  # pyright: ignore[reportUnknownMemberType]
     if mol is None or mol.GetNumAtoms() == 0:  # pyright: ignore[reportUnnecessaryComparison]
         return None
     keys: set[BondKey] = set()
@@ -93,8 +101,9 @@ def compute_bond_changes_preview(record: Mapping[str, Any]) -> dict[str, int]:
     """Return the mapped-graph bond diff between the reactant and product sides.
 
     Only the row's ``reaction_smiles`` is read.  Each side is parsed
-    component-wise with atom maps preserved (``Chem.MolFromSmiles``), and every
-    bond becomes a key ``((map_a, map_b), order)`` with the map pair sorted.
+    component-wise with atom maps preserved and explicit hydrogens retained
+    (``removeHs=False``, so C-H and H-H bonds are visible), and every bond
+    becomes a key ``((map_a, map_b), order)`` with the map pair sorted.
     ``n_bonds_formed`` counts product keys absent from the reactant key set,
     ``n_bonds_broken`` counts reactant keys absent from the product key set,
     and ``n_bond_order_changed`` counts map pairs bonded on both sides with a
