@@ -37,6 +37,11 @@ from pes2ts_core.g0.neardup import (
     compute_fingerprints,
     cross_split_leak_audit,
 )
+from pes2ts_core.g0.pipeline import (
+    EXIT_PIPELINE_FAILED,
+    run_pipeline,
+    with_data_root,
+)
 from pes2ts_core.g0.reader import H5SchemaError
 from pes2ts_core.g0.split import (
     EXIT_AUDIT_INCOMPLETE,
@@ -304,6 +309,47 @@ def _g0_quarantine_handler(_args: argparse.Namespace, config: dict[str, Any]) ->
     return 0
 
 
+def _g0_run_all_handler(args: argparse.Namespace, config: dict[str, Any]) -> int:
+    """Run the full idempotent G0 pipeline; exit 21 on a stage failure or halt."""
+    logger = logging.getLogger(__name__)
+    data_root = getattr(args, "data_root", None)
+    if data_root:
+        config = with_data_root(config, data_root)
+    report = run_pipeline(
+        config,
+        skip_fetch=bool(getattr(args, "skip_fetch", False)),
+        force=bool(getattr(args, "force", False)),
+        remediation=str(getattr(args, "remediation", REMEDIATION_NONE)),
+    )
+    if not report.ok:
+        failed = next(
+            (stage for stage in report.stages if stage.status == "failed"), None
+        )
+        if failed is not None:
+            logger.error(
+                "g0 run-all failed at stage %s: %s",
+                failed.name,
+                failed.error or failed.reason,
+            )
+        else:
+            logger.error("g0 run-all did not complete every stage")
+        return EXIT_PIPELINE_FAILED
+    ran = sum(1 for stage in report.stages if stage.status == "ran")
+    skipped = sum(1 for stage in report.stages if stage.status == "skipped")
+    logger.info(
+        "g0 run-all complete: %d ran, %d skipped, leak_status=%s -> %s",
+        ran,
+        skipped,
+        report.leak_status,
+        report.report_path,
+    )
+    print(
+        f"run-all: stages={len(report.stages)} ran={ran} skipped={skipped} "
+        f"leak_status={report.leak_status} report={report.report_path}"
+    )
+    return 0
+
+
 def _g0_truth_index_handler(args: argparse.Namespace, config: dict[str, Any]) -> int:
     """Audited access to the quarantined IRC index (the single truth-index path)."""
     from pes2ts_core.g0.truth import truth_reader
@@ -342,6 +388,7 @@ SUBCOMMAND_HANDLERS["audit"] = _g0_audit_handler
 SUBCOMMAND_HANDLERS["split"] = _g0_split_handler
 SUBCOMMAND_HANDLERS["freeze"] = _g0_freeze_handler
 SUBCOMMAND_HANDLERS["cohorts"] = _g0_cohorts_handler
+SUBCOMMAND_HANDLERS["run-all"] = _g0_run_all_handler
 SUBCOMMAND_HANDLERS["quarantine"] = _g0_quarantine_handler
 SUBCOMMAND_HANDLERS["truth-index"] = _g0_truth_index_handler
 
@@ -412,6 +459,8 @@ def build_parser() -> argparse.ArgumentParser:
             help_text = "freeze the split manifest under the explicit leak decision policy"
         elif name == "cohorts":
             help_text = "select the deterministic trial and stratified cohorts"
+        elif name == "run-all":
+            help_text = "run the full idempotent G0 pipeline and write the run report"
         else:
             help_text = f"g0 {name} (not implemented yet)"
         sub_parser = g0_subparsers.add_parser(name, help=help_text)
@@ -437,6 +486,35 @@ def build_parser() -> argparse.ArgumentParser:
                 help=(
                     "Leak remediation applied only when the audit found "
                     "leakage (default: none halts with LEAK_FOUND)"
+                ),
+            )
+        elif name == "run-all":
+            sub_parser.add_argument(
+                "--data-root",
+                metavar="PATH",
+                default=None,
+                help=(
+                    "Override paths.data_root and rebuild every derived path "
+                    "under it"
+                ),
+            )
+            sub_parser.add_argument(
+                "--force",
+                action="store_true",
+                help="Re-run every stage regardless of recorded input digests",
+            )
+            sub_parser.add_argument(
+                "--skip-fetch",
+                action="store_true",
+                help="Verify existing sources instead of downloading them",
+            )
+            sub_parser.add_argument(
+                "--remediation",
+                choices=REMEDIATION_CHOICES,
+                default=REMEDIATION_NONE,
+                help=(
+                    "Leak remediation passed to the freeze stage "
+                    "(default: none halts with LEAK_FOUND)"
                 ),
             )
         sub_parser.set_defaults(handler=SUBCOMMAND_HANDLERS[name])
