@@ -1,18 +1,26 @@
 """Readers for the Reaction-QM reaction-info sources.
 
-This module currently implements the CSV path, reading the
-``*_reaction_info.csv`` table with the standard-library :mod:`csv` module
-(pandas is deliberately avoided) and applying row-level validation:
+Two source formats are implemented:
 
-* reaction IDs are normalized via
-  :func:`pes2ts_core.g0.ids.normalize_reaction_id`;
-* duplicate IDs are detected against earlier *accepted* rows only;
-* the reaction SMILES must contain exactly one ``>>`` and every dot-separated
-  component on both sides must parse with RDKit.
+* the ``*_reaction_info.csv`` table, read with the standard-library :mod:`csv`
+  module (pandas is deliberately avoided) and validated row by row: reaction
+  IDs are normalized via :func:`pes2ts_core.g0.ids.normalize_reaction_id`,
+  duplicate IDs are detected against earlier *accepted* rows only, and the
+  reaction SMILES must contain exactly one ``>>`` with every dot-separated
+  component on both sides parseable by RDKit;
+* the combined ``B3LYPD3_TZVP.h5`` file, read with :mod:`h5py` over the
+  bundle-group hierarchy (bundle group → ``RXN_<10-digit>`` reaction group →
+  species node). Bundle and reaction names are never parsed beyond the
+  ``RXN_`` prefix; species may be sub-groups or flattened compound datasets,
+  and each one carries ``smiles``, ``EHG``, ``charge``, ``multiplicity``,
+  ``atomic_numbers``, and ``coordinates``. Transition-state species are
+  returned separately from reactants/products so callers can quarantine them.
 
-Every row that does not become a record produces exactly one typed
-:class:`~pes2ts_core.g0.rejections.Rejection`; the caller accumulates the
-ledger, this module never writes it.
+Every HDF5 node that does not match the expected schema raises
+:class:`H5SchemaError` naming the reaction and the offending dataset/species;
+the CSV path rejects rows with typed
+:class:`~pes2ts_core.g0.rejections.Rejection` objects instead. Neither reader
+writes anything: the caller accumulates the ledger and the manifest.
 """
 
 from __future__ import annotations
@@ -20,12 +28,20 @@ from __future__ import annotations
 import csv
 import logging
 from collections.abc import Iterator, Sequence
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Final, TypedDict
 
+import h5py
+import numpy as np
+from numpy.typing import NDArray
 from rdkit import Chem, RDLogger
 
-from pes2ts_core.g0.ids import BadReactionId, normalize_reaction_id
+from pes2ts_core.g0.ids import (
+    REACTION_ID_PREFIX,
+    BadReactionId,
+    normalize_reaction_id,
+)
 from pes2ts_core.g0.rejections import Rejection, RejectionCode
 
 logger = logging.getLogger(__name__)
@@ -288,13 +304,322 @@ def read_reaction_info_csv(
     return records, rejections
 
 
+# --------------------------------------------------------------------------- #
+# HDF5 reader: combined B3LYP-D3/TZVP artifact
+# --------------------------------------------------------------------------- #
+
+#: Species tag of the transition state inside a reaction group.
+TS_TAG: Final[str] = "TS"
+
+#: Expected shape of the ``EHG`` energy vector (E, H, G in Hartree).
+EHG_SHAPE: Final[tuple[int, ...]] = (3,)
+
+
+class H5SchemaError(Exception):
+    """Raised when a Reaction-QM HDF5 node does not match the expected schema.
+
+    The message always names the reaction (or, for a malformed bundle entry,
+    the offending group) and the dataset or species involved.
+    """
+
+
+@dataclass(frozen=True, slots=True, eq=False)
+class SpeciesRecord:
+    """One molecular species read from the combined Reaction-QM HDF5.
+
+    ``coordinates`` has shape ``(n_atoms, 3)`` in Å and ``EHG`` holds the
+    ``(E, H, G)`` energies in Hartree. Generated equality is disabled because
+    the numpy-array fields make it ambiguous; compare fields with
+    :func:`numpy.array_equal` instead.
+    """
+
+    tag: str
+    smiles: str
+    atomic_numbers: NDArray[np.int64]
+    coordinates: NDArray[np.float64]
+    charge: int
+    multiplicity: int
+    EHG: NDArray[np.float64]
+
+
+def _reaction_id_from_name(name: str) -> str:
+    """Return the normalized reaction ID embedded in an HDF5 object path.
+
+    The last path segment starting with ``RXN_`` wins; when it cannot be
+    normalized it is returned verbatim, and a node with no such segment is
+    identified by its full path.
+    """
+    for segment in reversed(name.split("/")):
+        if segment.startswith(REACTION_ID_PREFIX):
+            try:
+                return normalize_reaction_id(segment)
+            except BadReactionId:
+                return segment
+    return name or "<unknown reaction>"
+
+
+def _require_dataset(node: h5py.Group | h5py.Dataset, name: str, prefix: str) -> object:
+    """Return the raw value of dataset/field *name* on a species node.
+
+    A species node is either a sub-group with one dataset per field (the
+    official layout, which also covers datasets reached via ``R0/smiles``
+    paths) or a single flattened compound dataset with the same field names.
+    """
+    if isinstance(node, h5py.Group):
+        dataset = node.get(name)
+        if dataset is None:
+            msg = f"{prefix}: missing dataset {name!r}"
+            raise H5SchemaError(msg)
+        return dataset
+    fields = node.dtype.names
+    if fields is None:
+        msg = f"{prefix}: flattened species {node.name!r} is not a compound dataset"
+        raise H5SchemaError(msg)
+    if name not in fields:
+        msg = f"{prefix}: missing dataset {name!r} in flattened species {node.name!r}"
+        raise H5SchemaError(msg)
+    return node[name]
+
+
+def _read_smiles(value: object, prefix: str) -> str:
+    """Decode a species SMILES from a string dataset, bytes field, or string."""
+    raw = value
+    if isinstance(raw, h5py.Dataset):
+        try:
+            raw = raw.asstr()[()]
+        except (TypeError, ValueError) as exc:
+            msg = f"{prefix}: dataset 'smiles' is not a string dataset ({exc})"
+            raise H5SchemaError(msg) from exc
+    if isinstance(raw, np.ndarray):
+        if raw.size != 1:
+            msg = f"{prefix}: dataset 'smiles' holds {raw.size} values; expected exactly one"
+            raise H5SchemaError(msg)
+        raw = raw.reshape(-1)[0]
+    if isinstance(raw, bytes):
+        try:
+            return raw.decode("utf-8")
+        except UnicodeDecodeError as exc:
+            msg = f"{prefix}: dataset 'smiles' is not valid UTF-8"
+            raise H5SchemaError(msg) from exc
+    if isinstance(raw, str):
+        return raw
+    msg = f"{prefix}: dataset 'smiles' has unsupported type {type(raw).__name__}"
+    raise H5SchemaError(msg)
+
+
+def _read_float_array(value: object, name: str, prefix: str) -> NDArray[np.float64]:
+    """Materialize *value* as a float64 array (1-D or 2-D)."""
+    raw = value[()] if isinstance(value, h5py.Dataset) else value
+    try:
+        return np.asarray(raw, dtype=np.float64)
+    except (TypeError, ValueError) as exc:
+        msg = f"{prefix}: dataset {name!r} is not numeric ({exc})"
+        raise H5SchemaError(msg) from exc
+
+
+def _read_atomic_numbers(value: object, prefix: str) -> NDArray[np.int64]:
+    """Read the 1-D integer array of atomic numbers of a species."""
+    raw = value[()] if isinstance(value, h5py.Dataset) else value
+    array = np.asarray(raw)
+    if not np.issubdtype(array.dtype, np.integer):
+        msg = f"{prefix}: dataset 'atomic_numbers' has non-integer dtype {array.dtype}"
+        raise H5SchemaError(msg)
+    if array.ndim != 1:
+        msg = f"{prefix}: dataset 'atomic_numbers' has shape {array.shape}; expected a 1-D array"
+        raise H5SchemaError(msg)
+    return array.astype(np.int64)
+
+
+def _read_scalar_int(value: object, name: str, prefix: str) -> int:
+    """Read a single integer scalar such as ``charge`` or ``multiplicity``."""
+    raw = value[()] if isinstance(value, h5py.Dataset) else value
+    array = np.asarray(raw)
+    if array.size != 1:
+        msg = f"{prefix}: dataset {name!r} holds {array.size} values; expected exactly one"
+        raise H5SchemaError(msg)
+    scalar = array.reshape(-1)[0]
+    if not isinstance(scalar, int | np.integer):
+        msg = f"{prefix}: dataset {name!r} is not an integer ({scalar!r})"
+        raise H5SchemaError(msg)
+    return int(scalar)
+
+
+def _read_species(
+    node: h5py.Group | h5py.Dataset, *, tag: str, reaction_id: str
+) -> SpeciesRecord:
+    """Read and validate one species node (sub-group or flattened dataset)."""
+    prefix = f"Reaction {reaction_id}, species {tag!r}"
+    smiles = _read_smiles(_require_dataset(node, "smiles", prefix), prefix)
+    EHG = _read_float_array(_require_dataset(node, "EHG", prefix), "EHG", prefix)
+    if EHG.shape != EHG_SHAPE:
+        msg = f"{prefix}: dataset 'EHG' has shape {EHG.shape}; expected {EHG_SHAPE}"
+        raise H5SchemaError(msg)
+    charge = _read_scalar_int(_require_dataset(node, "charge", prefix), "charge", prefix)
+    multiplicity = _read_scalar_int(
+        _require_dataset(node, "multiplicity", prefix), "multiplicity", prefix
+    )
+    atomic_numbers = _read_atomic_numbers(
+        _require_dataset(node, "atomic_numbers", prefix), prefix
+    )
+    coordinates = _read_float_array(
+        _require_dataset(node, "coordinates", prefix), "coordinates", prefix
+    )
+    expected_coordinates = (atomic_numbers.shape[0], 3)
+    if coordinates.shape != expected_coordinates:
+        msg = (
+            f"{prefix}: dataset 'coordinates' has shape {coordinates.shape}; "
+            f"expected {expected_coordinates}"
+        )
+        raise H5SchemaError(msg)
+    return SpeciesRecord(
+        tag=tag,
+        smiles=smiles,
+        atomic_numbers=atomic_numbers,
+        coordinates=coordinates,
+        charge=charge,
+        multiplicity=multiplicity,
+        EHG=EHG,
+    )
+
+
+def read_h5_species(species_group: h5py.Group | h5py.Dataset) -> SpeciesRecord:
+    """Read one species node of the combined Reaction-QM HDF5.
+
+    *species_group* may be a species sub-group (the official layout) or a
+    flattened compound dataset carrying the same fields; the last path
+    segment supplies the tag and the reaction ID is derived from the HDF5
+    path. Required datasets are ``smiles``, ``EHG``, ``charge``,
+    ``multiplicity``, ``atomic_numbers``, and ``coordinates`` (see
+    :class:`SpeciesRecord`).
+
+    Raises
+    ------
+    H5SchemaError
+        When a required dataset is missing, ``smiles`` cannot be decoded, or
+        the shapes violate ``coordinates.shape == (len(atomic_numbers), 3)``
+        or ``EHG.shape == (3,)``.
+    """
+    name = species_group.name
+    tag = name.rsplit("/", 1)[-1]
+    return _read_species(species_group, tag=tag, reaction_id=_reaction_id_from_name(name))
+
+
+def read_h5_reaction(
+    group: h5py.Group | h5py.Dataset,
+) -> tuple[list[SpeciesRecord], list[SpeciesRecord]]:
+    """Read one ``RXN_<10-digit>`` reaction node.
+
+    Returns ``(rp_species, ts_species)``: species tagged ``R<n>``/``P<n>`` in
+    the first list, the ``TS`` species in the second, each sorted by tag. The
+    component count is discovered from the node (a bimolecular reaction simply
+    carries ``R1``/``P1``), never assumed.
+
+    Raises
+    ------
+    H5SchemaError
+        When *group* is not an HDF5 group, a child tag is neither ``R<n>``,
+        ``P<n>``, nor ``TS``, or any species violates the species schema.
+    """
+    if not isinstance(group, h5py.Group):
+        identifier = _reaction_id_from_name(group.name)
+        msg = (
+            f"Reaction {identifier}: expected a reaction group, got "
+            f"{type(group).__name__} {group.name!r}"
+        )
+        raise H5SchemaError(msg)
+    reaction_id = _reaction_id_from_name(group.name)
+    rp_species: list[SpeciesRecord] = []
+    ts_species: list[SpeciesRecord] = []
+    for tag, node in group.items():
+        if tag == TS_TAG:
+            ts_species.append(_read_species(node, tag=tag, reaction_id=reaction_id))
+        elif tag.startswith(("R", "P")):
+            rp_species.append(_read_species(node, tag=tag, reaction_id=reaction_id))
+        else:
+            msg = (
+                f"Reaction {reaction_id}: unknown species tag {tag!r}; "
+                f"expected 'R<n>', 'P<n>', or {TS_TAG!r}"
+            )
+            raise H5SchemaError(msg)
+    rp_species.sort(key=lambda record: record.tag)
+    ts_species.sort(key=lambda record: record.tag)
+    return rp_species, ts_species
+
+
+def iter_h5_reactions(
+    path: str | Path,
+) -> Iterator[tuple[str, list[SpeciesRecord], list[SpeciesRecord]]]:
+    """Iterate the combined Reaction-QM HDF5 one reaction at a time.
+
+    The file is opened read-only inside the generator and never mutated. Every
+    top-level group is treated as a bundle and every ``RXN_``-prefixed child
+    as a reaction; bundles are consumed in HDF5 (name) order and reactions in
+    sorted key order. Non-``RXN_`` children (bundle metadata) are skipped with
+    a debug log; this leniency stops at the reaction level, where any species
+    problem raises.
+
+    Yields
+    ------
+    tuple[str, list[SpeciesRecord], list[SpeciesRecord]]
+        ``(normalized_reaction_id, rp_species, ts_species)`` per reaction.
+
+    Raises
+    ------
+    H5SchemaError
+        When an ``RXN_``-prefixed key cannot be normalized, the same reaction
+        ID occurs in two bundles (naming both bundles), or a reaction/species
+        violates the schema.
+    """
+    seen_bundles: dict[str, str] = {}
+    with h5py.File(path, "r") as handle:
+        for bundle_name, bundle_node in handle.items():
+            if not isinstance(bundle_node, h5py.Group):
+                logger.debug(
+                    "Skipping non-group top-level node %r in %s", bundle_name, path
+                )
+                continue
+            for reaction_key in sorted(bundle_node.keys()):
+                if not reaction_key.startswith(REACTION_ID_PREFIX):
+                    logger.debug(
+                        "Skipping non-reaction key %r in bundle %r",
+                        reaction_key,
+                        bundle_name,
+                    )
+                    continue
+                try:
+                    reaction_id = normalize_reaction_id(reaction_key)
+                except BadReactionId as exc:
+                    msg = (
+                        f"Bundle {bundle_name!r}: reaction group {reaction_key!r} "
+                        f"has an invalid reaction id: {exc}"
+                    )
+                    raise H5SchemaError(msg) from exc
+                previous_bundle = seen_bundles.get(reaction_id)
+                if previous_bundle is not None:
+                    msg = (
+                        f"Reaction id {reaction_id} appears in bundles "
+                        f"{previous_bundle!r} and {bundle_name!r}"
+                    )
+                    raise H5SchemaError(msg)
+                seen_bundles[reaction_id] = bundle_name
+                rp_species, ts_species = read_h5_reaction(bundle_node[reaction_key])
+                yield reaction_id, rp_species, ts_species
+
+
 __all__ = [
     "ARROW",
     "CsvSchemaError",
+    "EHG_SHAPE",
     "ENERGY_COLUMNS",
+    "H5SchemaError",
     "ID_COLUMN",
     "READ_STAGE",
     "SMILES_COLUMNS",
+    "TS_TAG",
     "ReactionInfoRecord",
+    "SpeciesRecord",
+    "iter_h5_reactions",
+    "read_h5_reaction",
+    "read_h5_species",
     "read_reaction_info_csv",
 ]
