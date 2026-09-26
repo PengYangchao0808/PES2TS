@@ -24,11 +24,14 @@ from pes2ts_core.g0.strata import (
     COHORT_STRATIFIED_FILENAME,
     COHORT_TRIAL_FILENAME,
     EXIT_AUTHORITATIVE_STRATA_REQUIRED,
+    G1_OBLIGATION,
     STRATA_REPORT_FILENAME,
+    STRATA_SOURCE_PREVIEW,
     AuthoritativeStrataRequiredError,
     compute_bond_changes_preview,
     compute_strata,
     select_cohorts,
+    select_cohorts_from_records,
 )
 from pes2ts_core.utils.hashing import sha256_bytes
 from pes2ts_core.utils.parquet_io import write_parquet
@@ -491,3 +494,184 @@ def test_cli_cohorts_authoritative_requirement_exits_nonzero(
     # Then
     assert exit_code == EXIT_AUTHORITATIVE_STRATA_REQUIRED
     assert not (tmp_path / "interim" / COHORT_TRIAL_FILENAME).exists()
+
+
+def _record(
+    reaction_id: str,
+    *,
+    element_set: str = "C,H,O",
+    n_components: int = 2,
+    bucket: str = "small",
+) -> dict[str, Any]:
+    """Build one strata record as :func:`compute_strata` would emit it."""
+    return {
+        "reaction_id": reaction_id,
+        "element_set": element_set,
+        "n_components": n_components,
+        "heavy_atom_bucket": bucket,
+        "n_bonds_formed": 0,
+        "n_bonds_broken": 0,
+        "n_bond_order_changed": 0,
+    }
+
+
+def test_select_cohorts_from_records_authoritative_report_and_preview_parity(
+    tmp_path: Path,
+) -> None:
+    # Given: the 40-row fixture, selected once through the preview wrapper and
+    # then from the same records handed to the record-level core under a
+    # config that forbids the preview wrapper
+    rows = _inventory_rows()
+    _write_inventory(tmp_path, rows)
+    records = compute_strata(_table(rows))
+    preview = select_cohorts(_fixture_config(tmp_path))
+    preview_trial = _load(preview.trial_path)
+    preview_stratified = _load(preview.stratified_path)
+    preview_report = _load(preview.report_path)
+
+    # When: the same records are selected authoritatively (no Parquet read)
+    result = select_cohorts_from_records(
+        records,
+        _fixture_config(tmp_path, require_authoritative=True),
+        strata_source="g1_authoritative",
+        authoritative=True,
+        g1_obligation=None,
+    )
+
+    # Then: membership is identical to the preview run over the same records
+    assert _strip_volatile(_load(result.trial_path)) == _strip_volatile(preview_trial)
+    assert _strip_volatile(_load(result.stratified_path)) == _strip_volatile(
+        preview_stratified
+    )
+
+    # And: provenance comes from the parameters, not from the records
+    report = _load(result.report_path)
+    assert report["strata_source"] == "g1_authoritative"
+    assert report["authoritative"] is True
+    assert "g1_obligation" not in report
+    assert report["seed"] == preview_report["seed"] == 42
+    assert report["seed_stratified"] == preview_report["seed_stratified"]
+    assert report["seed_stratified"] == int(sha256_bytes(b"42:stratified"), 16)
+    assert report["strata"] == preview_report["strata"]
+    assert report["totals"] == preview_report["totals"]
+
+    # And: the preview wrapper does halt on the very same config
+    with pytest.raises(AuthoritativeStrataRequiredError, match="G1"):
+        select_cohorts(_fixture_config(tmp_path, require_authoritative=True))
+
+
+def test_select_cohorts_from_records_needs_no_inventory(tmp_path: Path) -> None:
+    # Given: three hand-built records and no inventory Parquet on disk
+    records = [
+        _record("RXN_0000000001"),
+        _record("RXN_0000000002"),
+        _record("RXN_0000000003", element_set="C,H,N", n_components=3, bucket="medium"),
+    ]
+
+    # When: the record-level core selects with an explicit obligation note
+    result = select_cohorts_from_records(
+        records,
+        _fixture_config(tmp_path, trial=1, stratified=2),
+        strata_source=STRATA_SOURCE_PREVIEW,
+        authoritative=False,
+        g1_obligation=G1_OBLIGATION,
+    )
+
+    # Then: no inventory was read and the note is stamped verbatim
+    assert not (tmp_path / "interim" / INVENTORY_PARQUET_FILENAME).exists()
+    report = _load(result.report_path)
+    assert report["strata_source"] == STRATA_SOURCE_PREVIEW
+    assert report["authoritative"] is False
+    assert report["g1_obligation"] == G1_OBLIGATION
+    assert result.trial_size == 1
+    assert result.stratified_size == 2
+
+
+def test_select_cohorts_from_records_ranks_by_sha256_seed_keys(
+    tmp_path: Path,
+) -> None:
+    # Given: ten single-stratum records
+    records = [_record(f"RXN_{index:010d}") for index in range(1, 11)]
+    config = _fixture_config(tmp_path, trial=3, stratified=10, seed=7)
+
+    # When
+    result = select_cohorts_from_records(
+        records,
+        config,
+        strata_source="g1_authoritative",
+        authoritative=True,
+        g1_obligation=None,
+    )
+
+    # Then: stratification ranks by sha256("<seed2>:<rid>") and the trial
+    # ranks the stratified members by sha256("<seed>:<rid>")
+    ids = [record["reaction_id"] for record in records]
+    seed2 = int(sha256_bytes(b"7:stratified"), 16)
+    ranked_stratified = sorted(
+        ids, key=lambda rid: (sha256_bytes(f"{seed2}:{rid}".encode()), rid)
+    )
+    ranked_trial = sorted(
+        ranked_stratified, key=lambda rid: (sha256_bytes(f"7:{rid}".encode()), rid)
+    )
+    assert _load(result.stratified_path)["members"] == sorted(ranked_stratified)
+    assert _load(result.trial_path)["members"] == sorted(ranked_trial[:3])
+    assert _load(result.report_path)["seed_stratified"] == seed2
+
+
+def test_select_cohorts_from_records_is_deterministic_modulo_timestamp(
+    tmp_path: Path,
+) -> None:
+    # Given: one set of records and a config demanding authoritative strata
+    records = compute_strata(_table(_inventory_rows()))
+    config = _fixture_config(tmp_path, require_authoritative=True)
+
+    # When: the same records are selected twice
+    first = _docs(
+        select_cohorts_from_records(
+            records,
+            config,
+            strata_source="g1_authoritative",
+            authoritative=True,
+            g1_obligation=None,
+        )
+    )
+    second = _docs(
+        select_cohorts_from_records(
+            records,
+            config,
+            strata_source="g1_authoritative",
+            authoritative=True,
+            g1_obligation=None,
+        )
+    )
+
+    # Then: every artifact is identical except the generated_at timestamp
+    for first_doc, second_doc in zip(first, second, strict=True):
+        assert _strip_volatile(first_doc) == _strip_volatile(second_doc)
+
+
+def test_select_cohorts_from_records_seed_changes_membership(tmp_path: Path) -> None:
+    # Given: ten single-stratum records selected under two seeds
+    records = [_record(f"RXN_{index:010d}") for index in range(1, 11)]
+
+    # When
+    base = select_cohorts_from_records(
+        records,
+        _fixture_config(tmp_path, trial=3, stratified=5, seed=7),
+        strata_source="g1_authoritative",
+        authoritative=True,
+        g1_obligation=None,
+    )
+    base_trial = _load(base.trial_path)["members"]
+    base_stratified = _load(base.stratified_path)["members"]
+    other = select_cohorts_from_records(
+        records,
+        _fixture_config(tmp_path, trial=3, stratified=5, seed=8),
+        strata_source="g1_authoritative",
+        authoritative=True,
+        g1_obligation=None,
+    )
+
+    # Then: both cohorts change with the seed
+    assert base_trial != _load(other.trial_path)["members"]
+    assert base_stratified != _load(other.stratified_path)["members"]
