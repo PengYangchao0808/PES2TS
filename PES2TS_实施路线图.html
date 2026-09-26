@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>PES2TS｜逐步实施与验证路线图</title>
+  <style>
+    :root{--bg:#07111c;--surface:#101f2e;--surface2:#14283a;--line:#294050;--ink:#edf7fa;--muted:#a9becb;--mint:#53e2bf;--blue:#82bbff;--amber:#ffd187;--red:#ff8e8e;--radius:20px}
+    *{box-sizing:border-box}
+    html{scroll-behavior:smooth}
+    body{margin:0;background:radial-gradient(circle at 85% 4%,#163246 0,transparent 32%),radial-gradient(circle at 3% 36%,#102939 0,transparent 33%),var(--bg);color:var(--ink);font:16px/1.58 "Microsoft YaHei","Noto Sans SC",Arial,sans-serif}
+    a{color:var(--blue);text-underline-offset:3px}
+    button{font:inherit}
+    .wrap{max-width:1220px;margin:auto;padding:36px 28px 70px}
+    .eyebrow{display:inline-block;color:var(--mint);font-size:.77rem;letter-spacing:.17em;font-weight:800;text-transform:uppercase}
+    h1{font-size:clamp(2.6rem,6vw,5rem);letter-spacing:-.055em;line-height:1.08;margin:12px 0 16px}
+    h2{font-size:clamp(1.4rem,2.3vw,2rem);letter-spacing:-.03em;margin:0 0 8px}
+    h3{margin:0;font-size:1.05rem}
+    p{margin:0}
+    .lead{max-width:770px;font-size:1.16rem;color:#c8dce5}
+    .topline{display:flex;justify-content:space-between;gap:15px;align-items:center}
+    .stamp{border:1px solid var(--line);border-radius:999px;padding:7px 13px;color:var(--muted);font-size:.76rem;white-space:nowrap}
+    .hero{display:grid;grid-template-columns:1.15fr .85fr;gap:26px;align-items:center;padding:35px 0 55px}
+    .hero small{display:block;margin-top:22px;color:var(--muted)}
+    .hero-visual{border:1px solid #355467;border-radius:28px;padding:20px;background:linear-gradient(155deg,#163349,#0d1d2b);box-shadow:0 20px 70px #0004}
+    .hero-visual svg{width:100%;height:auto;display:block}
+    .hero-visual p{color:var(--muted);font-size:.9rem;text-align:center;margin-top:10px}
+    .pills{display:flex;gap:9px;flex-wrap:wrap;margin-top:23px}
+    .pill{padding:7px 12px;border:1px solid #3b5667;border-radius:999px;color:#dcebf0;font-size:.82rem}
+    .pill strong{color:var(--mint)}
+    .section-intro{color:var(--muted);margin-bottom:18px}
+    .workflow-head{display:flex;justify-content:space-between;gap:15px;align-items:end;flex-wrap:wrap}
+    .filters{display:flex;gap:8px;flex-wrap:wrap}
+    .filter,.mode{border:1px solid var(--line);border-radius:999px;background:#132534;color:var(--muted);padding:7px 13px;cursor:pointer;transition:.2s}
+    .filter:hover,.mode:hover,.stage:hover{border-color:var(--mint)}
+    .filter[aria-pressed="true"],.mode[aria-pressed="true"]{background:#1c554f;border-color:var(--mint);color:#f4fffb}
+    .workflow{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(300px,.85fr);gap:22px;margin-top:21px}
+    .lane{border:1px solid var(--line);background:#0e1b29ba;border-radius:var(--radius);padding:20px}
+    .lane-label{display:flex;justify-content:space-between;align-items:center;color:var(--mint);font-size:.78rem;font-weight:800;letter-spacing:.13em;margin:1px 0 12px}
+    .lane-label span:last-child{color:var(--muted);font-weight:500;letter-spacing:0}
+    .stage-list{display:grid;gap:11px}
+    .stage{width:100%;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:15px;color:var(--ink);padding:15px 17px;cursor:pointer;display:grid;grid-template-columns:41px 1fr auto;align-items:center;gap:12px;transition:transform .2s,border-color .2s,background .2s}
+    .stage:hover{transform:translateX(3px)}
+    .stage[aria-selected="true"]{border-color:var(--mint);background:#163b42;box-shadow:inset 3px 0 0 var(--mint)}
+    .stage[hidden]{display:none}
+    .num{font-size:.85rem;font-weight:800;color:var(--mint);font-variant-numeric:tabular-nums}
+    .stage-sub{display:block;color:var(--muted);font-size:.83rem;margin-top:2px}
+    .arrow{color:var(--mint);font-size:1.3rem}
+    .detail{position:sticky;top:18px;align-self:start;min-height:410px;background:linear-gradient(155deg,#173147,#0e202e);border:1px solid #3b6070;border-radius:var(--radius);padding:25px}
+    .detail-kicker{color:var(--mint);font-size:.75rem;letter-spacing:.14em;font-weight:800}
+    .detail h3{font-size:1.55rem;margin:10px 0}
+    .detail .description{color:#c7dce6;min-height:50px}
+    .detail dl{display:grid;grid-template-columns:76px 1fr;gap:13px 12px;margin:24px 0 0}
+    .detail dt{font-size:.8rem;color:var(--mint);font-weight:800}
+    .detail dd{margin:0;color:#dbeaf0}
+    .gate{margin-top:23px;padding:12px 15px;border-left:3px solid var(--amber);background:#ffe0a40e;border-radius:0 12px 12px 0;color:#ffedce}
+    section{margin-top:50px}
+    .cards{display:grid;grid-template-columns:repeat(4,1fr);gap:13px;margin-top:20px}
+    .card{background:var(--surface);border:1px solid var(--line);border-radius:17px;padding:18px;min-height:230px}
+    .card .step{font-weight:900;font-size:1.55rem;color:var(--blue)}
+    .card h3{margin:8px 0}
+    .card p{color:var(--muted);font-size:.89rem}
+    .card .metric{border-top:1px solid var(--line);margin-top:14px;padding-top:13px;color:#e1f6ed;font-size:.84rem;font-weight:700}
+    .compare{display:grid;grid-template-columns:1fr 1fr;gap:17px;margin-top:20px}
+    .panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:22px}
+    .panel p{color:var(--muted);margin-top:10px}
+    .formula{font-size:1.05rem;color:#e6fff4;background:#173e3d;padding:13px 15px;border-radius:11px;margin-top:15px;font-weight:800}
+    .toggle{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+    .timeline{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-top:20px}
+    .milestone{border:1px solid var(--line);border-radius:16px;padding:16px;background:#102332;position:relative}
+    .milestone:not(:last-child):after{content:"→";position:absolute;right:-15px;top:40%;font-size:1.2rem;color:var(--mint);z-index:2}
+    .milestone b{display:block;color:var(--mint);font-size:.78rem;letter-spacing:.1em}
+    .milestone strong{display:block;margin:9px 0;font-size:1.03rem}
+    .milestone span{font-size:.83rem;color:var(--muted)}
+    .verdict{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:20px}
+    .target{border:1px solid #5b765c;background:#173331;border-radius:17px;padding:20px}
+    .target strong{font-size:1.65rem;color:var(--mint)}
+    .target p{color:#cce4da;margin-top:5px}
+    .small-note{color:var(--muted);font-size:.85rem;margin-top:14px}
+    .sources{border-top:1px solid var(--line);padding-top:22px;color:var(--muted);font-size:.82rem}
+    .sources a{margin-right:18px;display:inline-block;margin-top:8px}
+    :focus-visible{outline:3px solid var(--amber);outline-offset:3px}
+    @media(max-width:900px){.hero,.workflow{grid-template-columns:1fr}.detail{position:static}.cards{grid-template-columns:repeat(2,1fr)}.timeline{grid-template-columns:repeat(2,1fr)}.milestone:after{display:none}}
+    @media(max-width:580px){.wrap{padding:22px 16px 45px}.topline{align-items:flex-start}.stamp{white-space:normal}.stage{grid-template-columns:32px 1fr auto;padding:13px}.cards,.compare,.verdict,.timeline{grid-template-columns:1fr}.card{min-height:0}.hero{padding:24px 0 40px}}
+    @media print{body{background:white;color:#12222d}.wrap{max-width:none}.hero-visual,.lane,.detail,.card,.panel,.milestone,.target{background:white;color:#12222d;box-shadow:none}.detail,.lane,.card,.panel,.milestone,.target,.stage{border-color:#9aabb3}.detail *,.card *,.panel *,.milestone *,.target *{color:#12222d!important}.filters,.toggle{display:none}.detail{position:static}.stage[hidden]{display:grid}}
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <div class="topline"><span class="eyebrow">Research roadmap · PES → TS seed</span><span class="stamp">方案 v1.0 · 2026-09-25 · 离线可用</span></div>
+    <header class="hero">
+      <div>
+        <h1>PES2TS<br>逐步实施路线图</h1>
+        <p class="lead">先识别反应中心，再生成廉价路径；先证实路径有可选的 TS 候选，再训练排序模型，最终以 OptTS＋频率＋IRC 检验实际价值。</p>
+        <div class="pills">
+          <span class="pill"><strong>输入</strong> 已映射 R / P</span>
+          <span class="pill"><strong>主路径</strong> GFN2-xTB PATH</span>
+          <span class="pill"><strong>输出</strong> Top-k 初猜</span>
+        </div>
+        <small>项目独立建于 E:\Calculations\AI4S_ML_Studys\PES2TS；验证后再与 RPH 对接。</small>
+      </div>
+      <div class="hero-visual" aria-label="示意能量曲线：端点可能高于内部反应峰">
+        <svg viewBox="0 0 460 245" role="img" aria-labelledby="curveTitle">
+          <title id="curveTitle">高能端点与内部过渡区域的区别</title>
+          <defs><linearGradient id="curveFill" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#53e2bf" stop-opacity=".38"/><stop offset="1" stop-color="#53e2bf" stop-opacity="0"/></linearGradient></defs>
+          <path d="M45 25V194H430" fill="none" stroke="#668597" stroke-width="2"/>
+          <path d="M47 43 C82 100 119 179 155 168 C205 159 223 79 270 93 C317 104 319 161 362 153 C392 149 405 140 426 144 L426 194 L47 194Z" fill="url(#curveFill)"/>
+          <path d="M47 43 C82 100 119 179 155 168 C205 159 223 79 270 93 C317 104 319 161 362 153 C392 149 405 140 426 144" fill="none" stroke="#53e2bf" stroke-width="4" stroke-linecap="round"/>
+          <circle cx="47" cy="43" r="7" fill="#ffd187"/><circle cx="270" cy="93" r="7" fill="#82bbff"/>
+          <text x="61" y="37" fill="#ffd187" font-size="15" font-weight="700">高能端点</text>
+          <text x="275" y="77" fill="#b7d7ff" font-size="15" font-weight="700">目标过渡区？</text>
+          <text x="7" y="18" fill="#a9becb" font-size="13">E</text><text x="432" y="200" fill="#a9becb" font-size="13">q</text>
+        </svg>
+        <p>全局最高点未必是目标 TS 的最佳初猜。选点要结合几何、路径质量与后续验证。</p>
+      </div>
+    </header>
+
+    <section aria-labelledby="flow-title">
+      <div class="workflow-head">
+        <div><span class="eyebrow">01 / Build</span><h2 id="flow-title">从数据到可提交的初猜</h2><p class="section-intro">点击步骤查看输入、产物与转段条件。</p></div>
+        <div class="filters" role="group" aria-label="流程筛选">
+          <button class="filter" data-filter="all" aria-pressed="true">全部</button>
+          <button class="filter" data-filter="data" aria-pressed="false">数据生成</button>
+          <button class="filter" data-filter="model" aria-pressed="false">训练拟合</button>
+          <button class="filter" data-filter="eval" aria-pressed="false">验证与接入</button>
+        </div>
+      </div>
+      <div class="workflow">
+        <div class="lane">
+          <div class="lane-label"><span>IMPLEMENTATION FLOW</span><span>选中步骤显示详情</span></div>
+          <div class="stage-list" role="listbox" aria-label="PES2TS 实施步骤">
+            <button class="stage" role="option" data-stage="source" data-kind="data" aria-selected="true"><span class="num">G0</span><span><strong>数据入口与固定划分</strong><span class="stage-sub">Reaction-QM · 映射 R/P · 真值隔离</span></span><span class="arrow">↗</span></button>
+            <button class="stage" role="option" data-stage="s0" data-kind="data" aria-selected="false"><span class="num">G1</span><span><strong>通用 S0：成键、断键、键级变化</strong><span class="stage-sub">统一原子映射和 0 基 XYZ 索引</span></span><span class="arrow">↗</span></button>
+            <button class="stage" role="option" data-stage="path" data-kind="data" aria-selected="false"><span class="num">G2</span><span><strong>R/P 双端廉价路径</strong><span class="stage-sub">GFN2-xTB PATH · 几何/拓扑检查</span></span><span class="arrow">↗</span></button>
+            <button class="stage" role="option" data-stage="label" data-kind="data" aria-selected="false"><span class="num">G3</span><span><strong>标签与 oracle gap</strong><span class="stage-sub">DFT TS 仅作标签 · IRC 仅作真值</span></span><span class="arrow">↗</span></button>
+            <button class="stage" role="option" data-stage="train" data-kind="model" aria-selected="false"><span class="num">M1</span><span><strong>帧排序训练</strong><span class="stage-sub">同路径启发式基线 · Top-k 输出</span></span><span class="arrow">↗</span></button>
+            <button class="stage" role="option" data-stage="benchmark" data-kind="eval" aria-selected="false"><span class="num">V1–4</span><span><strong>四级效果验证</strong><span class="stage-sub">拟合 → 初猜耗时 → OptTS → IRC</span></span><span class="arrow">↗</span></button>
+            <button class="stage" role="option" data-stage="bridge" data-kind="eval" aria-selected="false"><span class="num">RPH</span><span><strong>版本化接口接入 RPH</strong><span class="stage-sub">先外部环加成对照，再逐步替换</span></span><span class="arrow">↗</span></button>
+          </div>
+        </div>
+        <aside class="detail" aria-live="polite" aria-label="步骤详情">
+          <div class="detail-kicker" id="detail-kicker">G0 · 数据生成</div>
+          <h3 id="detail-title">数据入口与固定划分</h3>
+          <p class="description" id="detail-description">构建可追溯的反应输入，同时把 DFT 真值与路径生成严格隔离。</p>
+          <dl><dt>输入</dt><dd id="detail-input"></dd><dt>核心动作</dt><dd id="detail-action"></dd><dt>产物</dt><dd id="detail-output"></dd></dl>
+          <div class="gate" id="detail-gate"></div>
+        </aside>
+      </div>
+    </section>
+
+    <section aria-labelledby="validate-title">
+      <span class="eyebrow">02 / Prove</span><h2 id="validate-title">四级验证：每一步都要单独成立</h2>
+      <p class="section-intro">主比较使用同一批反应、同一条廉价路径和 Top-1 对 Top-1 候选预算。</p>
+      <div class="cards">
+        <article class="card"><span class="step">01</span><h3>拟合有效</h3><p>在未见反应上，Top-1 更接近参考 TS；Top-3 覆盖更多近邻帧。训练损失下降不等于泛化成功。</p><div class="metric">反应中心 RMSD · Top-3 覆盖率</div></article>
+        <article class="card"><span class="step">02</span><h3>获取初猜更快</h3><p>分别计量已有路径上的排序时间与 R/P 输入到候选 XYZ 的总时间。模型推理不会自动缩短路径计算。</p><div class="metric">映射 + 端点 + PATH + 能量 + 选点</div></article>
+        <article class="card"><span class="step">03</span><h3>后续优化更快</h3><p>相同理论级别、Hessian、核数和超时下，比较 OptTS 核时、迭代及重试；失败作业也计入成本。</p><div class="metric">OptTS 核时 · 收敛率 · 重试数</div></article>
+        <article class="card"><span class="step">04</span><h3>真正找到目标 TS</h3><p>OptTS 收敛、恰好一个显著虚频、模态匹配反应中心，双向 IRC 连回映射 R/P。</p><div class="metric">严格 TS＋IRC 成功率</div></article>
+      </div>
+    </section>
+
+    <section aria-labelledby="compare-title">
+      <span class="eyebrow">03 / Compare</span><h2 id="compare-title">把“选点能力”和“完整流程”分开比较</h2>
+      <div class="compare">
+        <article class="panel"><h3>公平的选点比较</h3><p>模型、全局能量峰、内部局部峰和 knee+shift 使用同一条 GFN2-xTB 路径。RPH 选点器、ORCA ScanTS 仅在适用反应子集参与。</p><div class="formula">同路径 · 同候选数 · 同 QC 预算</div></article>
+        <article class="panel"><h3>时间口径</h3><div class="toggle" role="group" aria-label="时间口径"><button class="mode" data-mode="seed" aria-pressed="true">初猜获取</button><button class="mode" data-mode="final" aria-pressed="false">完整验证</button></div><div class="formula" id="cost-formula">T_seed = T_mapping + T_endpoint + T_path + T_energy + T_select</div><p id="cost-note">初猜获取若要提速，须实测完整流程变化；只报告选点推理时间不足以证明。</p></article>
+      </div>
+    </section>
+
+    <section aria-labelledby="schedule-title">
+      <span class="eyebrow">04 / Scale</span><h2 id="schedule-title">规模与转段关卡</h2>
+      <div class="timeline">
+        <div class="milestone"><b>A · 合同</b><strong>100–200 条</strong><span>修复 S0 映射与索引错误；端点和失败分类可追溯。</span></div>
+        <div class="milestone"><b>B · 路径</b><strong>约 1,000 条</strong><span>分层测路径有效率；证明 oracle 选点优于启发式。</span></div>
+        <div class="milestone"><b>C · 训练</b><strong>约 1–2 万条</strong><span>冻结划分，训练排序模型；独立测试优于基线。</span></div>
+        <div class="milestone"><b>D · 物理验证</b><strong>至少 300 条</strong><span>必要时扩至预留的 1,000 条；完成等预算 OptTS/Freq/IRC。</span></div>
+        <div class="milestone"><b>E · 接入</b><strong>RPH 外部集</strong><span>先在现有环加成数据并行对照，再经适配器接入。</span></div>
+      </div>
+    </section>
+
+    <section aria-labelledby="verdict-title">
+      <span class="eyebrow">05 / Decision</span><h2 id="verdict-title">什么结果才可以称为“效果很好”</h2>
+      <div class="verdict">
+        <div class="target"><strong>+10 个百分点</strong><p>目标 TS＋双向 IRC 成功率，相对最强适用基线的预设提升目标。</p></div>
+        <div class="target"><strong>−20% 核时</strong><p>全部计算核时 ÷ 正确完成反应数，相对基线的预设降低目标。</p></div>
+      </div>
+      <p class="small-note">两项改善均需反应级配对 95% 置信区间支持。失败和超时计入总成本；队列等待单列。若未达到某一项，报告实际结果并返回对应阶段修复。</p>
+    </section>
+
+    <footer class="sources">
+      <strong>原始资料与完整方案</strong><br>
+      <a href="PES2TS_逐步实施与验证方案.md">完整 Markdown 方案</a>
+      <a href="https://www.nature.com/articles/s41597-026-07325-w_reference.pdf">Reaction-QM</a>
+      <a href="https://www.nature.com/articles/s41467-026-77230-8">UniTS</a>
+      <a href="https://www.nature.com/articles/s41467-026-72945-0">DeePEST-OS</a>
+      <a href="https://xtb-docs.readthedocs.io/en/latest/path.html">xTB PATH</a>
+      <a href="https://www.faccts.de/docs/orca/6.1/manual/contents/structurereactivity/irc.html">ORCA IRC</a>
+    </footer>
+  </main>
+  <script>
+    (function(){
+      const details={
+        source:{kicker:"G0 · 数据生成",title:"数据入口与固定划分",description:"构建可追溯的反应输入，同时把 DFT 真值与路径生成严格隔离。",input:"Reaction-QM 映射反应 SMILES、R/P 几何、元素、电荷、自旋。",action:"按反应固定训练/验证/测试；检查重复和逆向反应；TS/IRC 单独封存。",output:"反应清单、来源摘要、固定划分与剔除原因。",gate:"转段条件：每条记录能追溯，真值不进入路径生成。"},
+        s0:{kicker:"G1 · 数据生成",title:"通用 S0：识别完整键变化",description:"从 R/P 图差异可靠识别变化，不再假设只有两条新成键。",input:"已映射 R/P 分子图及独立组分的 XYZ。",action:"求形成键、断裂键、键级变化及反应中心；建立映射号到全局 0 基 XYZ 的转换。",output:"reaction_change.json、索引表与映射校验状态。",gate:"转段条件：无静默索引错误；歧义明确拒绝并留痕。"},
+        path:{kicker:"G2 · 数据生成",title:"R/P 双端廉价 PES 路径",description:"从真实两端构造同原子顺序的 PATH，并记录每帧几何与能量。",input:"有效 S0、R/P 几何及统一原子顺序。",action:"先单分子后多组分；GFN2-xTB PATH；失败时反向尝试；检查端点、拓扑、碰撞及能量。",output:"path_manifest.json、逐帧 XYZ/能量与完整日志。",gate:"转段条件：仅有效、完整且抵达目标端点的路径进入训练。"},
+        label:{kicker:"G3 · 数据生成",title:"标签与 oracle gap",description:"先确认路径里存在值得排序的 TS 候选，再决定是否训练。",input:"有效廉价路径、隔离保存的 DFT TS 与 IRC 真值。",action:"计算每帧反应中心距离；用 IRC 判断路径对应关系；比较最优可选帧与启发式。",output:"隔离标签、oracle 上界及路径质量分层报告。",gate:"转段条件：若 oracle 没有明显提升空间，先修路径而非训练。"},
+        train:{kicker:"M1 · 训练拟合",title:"帧排序模型与 Top-k",description:"训练一个可泛化的候选排序器，而不是直接生成 TS 或学习完整势能面。",input:"廉价路径可得特征、冻结划分和路径内标签。",action:"与能量峰、内部峰、knee+shift 同路径比较；验证集选模型，测试集一次性评估。",output:"冻结模型、版本、Top-k XYZ/分数与拒绝原因。",gate:"转段条件：未见反应的主要指标显著优于最强适用基线。"},
+        benchmark:{kicker:"V1–V4 · 验证",title:"四级物理效果验证",description:"把拟合、初猜获取、OptTS 优化与目标 IRC 成功逐层拆开。",input:"冻结模型、独立反应和相同预算的 QC 协议。",action:"配对比较 Top-1/Top-3，记录全流程核时、失败、虚频模态与双向 IRC 端点。",output:"成功率、每成功反应成本、95% 置信区间和失败分析。",gate:"研究目标：严格成功率至少 +10 个百分点且每成功反应核时至少 −20%。"},
+        bridge:{kicker:"RPH · 系统对接",title:"版本化接口接入 RPH",description:"先独立证明模型可用，再让 RPH 消费 PES2TS 选出的 TS 初猜。",input:"reaction_change.json、path_manifest.json 与 Top-k XYZ。",action:"在现有环加成案例上并行对照，逐步引入适配器和回归验证。",output:"RPH 可消费的候选几何与完整溯源。",gate:"边界：RPH 继续负责 QC 执行与恢复；训练和数据集构建留在 PES2TS。"}
+      };
+      const stageButtons=Array.from(document.querySelectorAll(".stage"));
+      function showStage(key){
+        const d=details[key]; if(!d) return;
+        document.getElementById("detail-kicker").textContent=d.kicker;
+        document.getElementById("detail-title").textContent=d.title;
+        document.getElementById("detail-description").textContent=d.description;
+        document.getElementById("detail-input").textContent=d.input;
+        document.getElementById("detail-action").textContent=d.action;
+        document.getElementById("detail-output").textContent=d.output;
+        document.getElementById("detail-gate").textContent=d.gate;
+        stageButtons.forEach(function(btn){btn.setAttribute("aria-selected",String(btn.dataset.stage===key));});
+      }
+      stageButtons.forEach(function(btn){btn.addEventListener("click",function(){showStage(btn.dataset.stage);});});
+      document.querySelectorAll(".filter").forEach(function(btn){btn.addEventListener("click",function(){
+        const filter=btn.dataset.filter;
+        document.querySelectorAll(".filter").forEach(function(item){item.setAttribute("aria-pressed",String(item===btn));});
+        stageButtons.forEach(function(item){item.hidden=filter!=="all"&&item.dataset.kind!==filter;});
+        const selected=document.querySelector('.stage[aria-selected="true"]');
+        if(selected&&selected.hidden){const first=stageButtons.find(function(item){return !item.hidden;});if(first)showStage(first.dataset.stage);}
+      });});
+      const modes={
+        seed:{formula:"T_seed = T_mapping + T_endpoint + T_path + T_energy + T_select",note:"初猜获取若要提速，须实测完整流程变化；只报告选点推理时间不足以证明。"},
+        final:{formula:"T_total = T_seed + T_OptTS + T_freq + T_IRC + T_retries",note:"失败与超时的已消耗核时必须计入；排队时间单列，最终比较每个正确完成反应的成本。"}
+      };
+      document.querySelectorAll(".mode").forEach(function(btn){btn.addEventListener("click",function(){
+        document.querySelectorAll(".mode").forEach(function(item){item.setAttribute("aria-pressed",String(item===btn));});
+        document.getElementById("cost-formula").textContent=modes[btn.dataset.mode].formula;
+        document.getElementById("cost-note").textContent=modes[btn.dataset.mode].note;
+      });});
+      showStage("source");
+    })();
+  </script>
+</body>
+</html>
