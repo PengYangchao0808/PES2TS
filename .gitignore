@@ -1,4 +1,14 @@
-data/
+# Raw data, heavy artifacts, quarantined truth and per-reaction documents are
+# never versioned. Only the small, human-readable result manifests are kept:
+# every .json under data/manifests/ (never the .jsonl logs) plus the G2
+# eligible id list. Parquet/HDF5/XYZ and data/raw|interim|ground_truth stay out.
+data/*
+!data/manifests/
+data/manifests/*
+!data/manifests/*.json
+!data/interim/
+data/interim/*
+!data/interim/g2_eligible.json
 Output/
 *.h5
 *.hdf5
