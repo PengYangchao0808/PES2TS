@@ -57,3 +57,21 @@ g1:
   neighborhood_shell: 1
   sample_size: 20
   sample_seed: 42
+g1_truth:
+  shard_size: 1000
+  max_combinations: 1024
+  rmsd_class_tolerance: 0.05
+  endpoint_rmsd_pass: 1.0
+  endpoint_rmsd_weak: 3.0
+  ts_frame_tolerance: 1.0e-4
+  splice_factor: 5.0
+  bond_distance_tolerance: 0.45
+  permutation_budget: 64
+  per_reaction_lookup_threshold: 512
+  sample_size: 20
+  sample_seed: 42
+g1_class:
+  taxonomy_version: "g1p2_taxonomy_v1"
+  canonical_budget: 2000
+  sample_size: 20
+  sample_seed: 42

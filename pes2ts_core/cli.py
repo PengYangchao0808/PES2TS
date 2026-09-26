@@ -18,8 +18,12 @@ Every ``g1`` subcommand is implemented as well. ``build`` assembles the
 per-reaction bond-change documents, summary, manifest, and coverage report for
 a cohort or the whole inventory; ``sample`` prints the deterministic
 manual-check sample; ``strata`` re-derives the authoritative strata and
-cohorts from a full-build summary; and ``verify`` re-reads the written tree and
-reconciles it with the summary and manifest.
+cohorts from a full-build summary; ``verify`` re-reads the written tree
+(``--stage build|p1|p2``) and reconciles it with the summary and manifest;
+``join-audit`` and ``resolve-map`` run the truth-assisted P1 layer (both
+demand an explicit ``--allow-truth`` and log every audited truth read);
+``classify`` builds the P2 hierarchical reaction taxonomy; and ``gate``
+writes the G2 eligibility decision.
 ``--help`` works for every subcommand and exits 0.
 """
 
@@ -82,7 +86,13 @@ from pes2ts_core.g1.build import (
     cohort_member_ids,
 )
 from pes2ts_core.g1.coverage import coverage_seed, manual_sample
+from pes2ts_core.g1.gate import GATE_HINT, run_gate
+from pes2ts_core.g1.p1_truth import resolve_p1, run_join_audit
+from pes2ts_core.g1.p1_verify import verify_p1
+from pes2ts_core.g1.p2_build import classify_p2
+from pes2ts_core.g1.p2_verify import verify_p2
 from pes2ts_core.g1.strata_auth import rebuild_authoritative_strata
+from pes2ts_core.g1.truth_schema import EXIT_TRUTH_FLAG_REQUIRED
 from pes2ts_core.g1.verify import verify_g1
 from pes2ts_core.logging_setup import setup_logging
 from pes2ts_core.utils.parquet_io import read_parquet
@@ -105,7 +115,19 @@ G0_SUBCOMMANDS: tuple[str, ...] = (
 )
 
 #: Order is user-visible in ``g1 --help``.
-G1_SUBCOMMANDS: tuple[str, ...] = ("build", "sample", "strata", "verify")
+G1_SUBCOMMANDS: tuple[str, ...] = (
+    "build",
+    "sample",
+    "strata",
+    "verify",
+    "join-audit",
+    "resolve-map",
+    "classify",
+    "gate",
+)
+
+#: ``g1 verify --stage`` choices.
+VERIFY_STAGES: tuple[str, ...] = ("build", "p1", "p2")
 
 G0Handler = Callable[[argparse.Namespace, dict[str, Any]], int]
 G1Handler = Callable[[argparse.Namespace, dict[str, Any]], int]
@@ -468,27 +490,146 @@ def _g1_strata_handler(_args: argparse.Namespace, config: dict[str, Any]) -> int
     return 0
 
 
-def _g1_verify_handler(_args: argparse.Namespace, config: dict[str, Any]) -> int:
-    """Re-read every written document; exit 22 on any reconciliation problem."""
+def _g1_verify_handler(args: argparse.Namespace, config: dict[str, Any]) -> int:
+    """Re-read the written documents of one stage; exit 22 on any problem."""
     logger = logging.getLogger(__name__)
+    stage = str(getattr(args, "stage", "build") or "build")
     try:
-        result = verify_g1(config)
+        if stage == "p1":
+            result = verify_p1(config)
+            n_ok, n_bad = result.n_eligible, result.n_total - result.n_eligible
+            problems = result.problems
+        elif stage == "p2":
+            result = verify_p2(config)
+            n_ok, n_bad = result.n_classified, result.n_total - result.n_classified
+            problems = result.problems
+        else:
+            result = verify_g1(config)
+            n_ok, n_bad = result.n_valid, result.n_rejected
+            problems = result.problems
     except FileNotFoundError as exc:
         logger.error("%s", exc)
         return EXIT_CHECKSUM_MISMATCH
     except ValueError as exc:
         logger.error("G1 verify failed: %s", exc)
         return EXIT_G1_BUILD_FAILED
-    if result.problems:
-        for problem in result.problems[:10]:
+    if problems:
+        for problem in problems[:10]:
             logger.error("G1 verify: %s", problem)
-        logger.error("G1 verify failed with %d problem(s)", len(result.problems))
+        logger.error("G1 verify failed with %d problem(s)", len(problems))
         return EXIT_G1_BUILD_FAILED
     logger.info(
-        "G1 verify OK: %d document(s), %d valid, %d rejected",
+        "G1 verify (%s) OK: %d document(s), %d ok, %d other",
+        stage,
+        n_ok + n_bad,
+        n_ok,
+        n_bad,
+    )
+    return 0
+
+
+def _g1_join_audit_handler(args: argparse.Namespace, config: dict[str, Any]) -> int:
+    """Write the P1 join audit; exit 23 without ``--allow-truth``."""
+    logger = logging.getLogger(__name__)
+    if not bool(getattr(args, "allow_truth", False)):
+        logger.error("join-audit reads the quarantined truth; pass --allow-truth")
+        return EXIT_TRUTH_FLAG_REQUIRED
+    try:
+        path = run_join_audit(config, allow_truth=True)
+    except FileNotFoundError as exc:
+        logger.error("%s", exc)
+        return EXIT_CHECKSUM_MISMATCH
+    except PermissionError as exc:
+        logger.error("Truth access refused: %s", exc)
+        return EXIT_TRUTH_FLAG_REQUIRED
+    logger.info("P1 join audit written: %s", path)
+    return 0
+
+
+def _g1_resolve_map_handler(args: argparse.Namespace, config: dict[str, Any]) -> int:
+    """Build the P1 mapping documents; exit 23 without ``--allow-truth``."""
+    logger = logging.getLogger(__name__)
+    if not bool(getattr(args, "allow_truth", False)):
+        logger.error("resolve-map reads the quarantined truth; pass --allow-truth")
+        return EXIT_TRUTH_FLAG_REQUIRED
+    try:
+        ids = cohort_member_ids(
+            config,
+            str(getattr(args, "cohort", "all")),
+            limit=getattr(args, "limit", None),
+        )
+        result = resolve_p1(
+            config, allow_truth=True, reaction_ids=ids,
+            limit=getattr(args, "limit", None),
+        )
+    except FileNotFoundError as exc:
+        logger.error("%s", exc)
+        return EXIT_CHECKSUM_MISMATCH
+    except PermissionError as exc:
+        logger.error("Truth access refused: %s", exc)
+        return EXIT_TRUTH_FLAG_REQUIRED
+    except ValueError as exc:
+        logger.error("P1 resolve failed: %s", exc)
+        return EXIT_G1_BUILD_FAILED
+    logger.info(
+        "P1 resolve-map: %d reaction(s), %d eligible -> %s",
         result.n_total,
-        result.n_valid,
-        result.n_rejected,
+        result.n_eligible,
+        result.summary_path,
+    )
+    print(
+        f"resolve-map: total={result.n_total} eligible={result.n_eligible} "
+        f"by_status={result.by_status}"
+    )
+    return 0
+
+
+def _g1_classify_handler(_args: argparse.Namespace, config: dict[str, Any]) -> int:
+    """Classify the P1 documents into the hierarchical reaction taxonomy."""
+    logger = logging.getLogger(__name__)
+    try:
+        result = classify_p2(config)
+    except FileNotFoundError as exc:
+        logger.error("%s", exc)
+        return EXIT_CHECKSUM_MISMATCH
+    except ValueError as exc:
+        logger.error("P2 classify failed: %s", exc)
+        return EXIT_G1_BUILD_FAILED
+    logger.info(
+        "P2 classify: %d reaction(s), %d classified -> %s",
+        result.n_total,
+        result.n_classified,
+        result.summary_path,
+    )
+    print(
+        f"classify: total={result.n_total} classified={result.n_classified} "
+        f"excluded={result.n_excluded}"
+    )
+    return 0
+
+
+def _g1_gate_handler(_args: argparse.Namespace, config: dict[str, Any]) -> int:
+    """Write the G2 eligibility gate manifest; exit 22 on failed verification."""
+    logger = logging.getLogger(__name__)
+    try:
+        result = run_gate(config)
+    except FileNotFoundError as exc:
+        logger.error("%s; %s", exc, GATE_HINT)
+        return EXIT_CHECKSUM_MISMATCH
+    if result.refusals:
+        for refusal in result.refusals[:10]:
+            logger.error("Gate refusal: %s", refusal)
+        return EXIT_G1_BUILD_FAILED
+    logger.info(
+        "G1 gate: %d/%d eligible (%.4f) -> %s",
+        result.n_eligible,
+        result.n_denominator,
+        result.eligible_fraction,
+        result.manifest_path,
+    )
+    print(
+        f"gate: eligible={result.n_eligible}/{result.n_denominator} "
+        f"fraction={result.eligible_fraction}"
     )
     return 0
 
@@ -513,6 +654,10 @@ G1_SUBCOMMAND_HANDLERS: dict[str, G1Handler] = {
     "sample": _g1_sample_handler,
     "strata": _g1_strata_handler,
     "verify": _g1_verify_handler,
+    "join-audit": _g1_join_audit_handler,
+    "resolve-map": _g1_resolve_map_handler,
+    "classify": _g1_classify_handler,
+    "gate": _g1_gate_handler,
 }
 
 
@@ -648,7 +793,11 @@ def build_parser() -> argparse.ArgumentParser:
         "build": "build the per-reaction bond-change documents, summary, and manifest",
         "sample": "print the deterministic manual-check sample from the summary",
         "strata": "re-derive the authoritative strata and cohorts from a full build",
-        "verify": "re-read every written document and reconcile it with the manifest",
+        "verify": "re-read the written documents of one stage and reconcile them",
+        "join-audit": "write the P1 inventory/TS/IRC join audit (requires --allow-truth)",
+        "resolve-map": "build the truth-assisted P1 TS/IRC mapping documents (requires --allow-truth)",
+        "classify": "classify the P1 documents into the hierarchical reaction taxonomy",
+        "gate": "write the G2 eligibility gate manifest and eligible id list",
     }
     for name in G1_SUBCOMMANDS:
         sub_parser = g1_subparsers.add_parser(name, help=g1_help[name])
@@ -681,6 +830,33 @@ def build_parser() -> argparse.ArgumentParser:
                 default=None,
                 help="Per-category sample size (default: g1.sample_size)",
             )
+        elif name == "verify":
+            sub_parser.add_argument(
+                "--stage",
+                choices=VERIFY_STAGES,
+                default="build",
+                help="Which tree to verify (default: build, the classic G1 documents)",
+            )
+        elif name in ("join-audit", "resolve-map"):
+            sub_parser.add_argument(
+                "--allow-truth",
+                action="store_true",
+                help="Explicitly permit audited ground-truth reads for this run",
+            )
+            if name == "resolve-map":
+                sub_parser.add_argument(
+                    "--cohort",
+                    choices=("trial", "stratified", "all"),
+                    default="all",
+                    help="Reaction subset to resolve (default: all inventory rows)",
+                )
+                sub_parser.add_argument(
+                    "--limit",
+                    type=int,
+                    metavar="N",
+                    default=None,
+                    help="Truncate the sorted cohort to its first N ids",
+                )
         sub_parser.set_defaults(handler=G1_SUBCOMMAND_HANDLERS[name])
     return parser
 
