@@ -49,3 +49,11 @@ cohorts:
   trial: 200
   stratified: 1000
   require_authoritative_strata: false
+g1:
+  shard_size: 1000
+  match_cap: 10000
+  max_candidates: 64
+  bond_tolerance: 0.45
+  neighborhood_shell: 1
+  sample_size: 20
+  sample_seed: 42

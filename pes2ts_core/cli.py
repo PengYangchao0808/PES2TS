@@ -2,7 +2,7 @@
 
 Usage::
 
-    pes2ts [--config PATH] [--log-level LEVEL] [--log-file PATH] g0 <SUBCOMMAND>
+    pes2ts [--config PATH] [--log-level LEVEL] [--log-file PATH] {g0,g1} <SUBCOMMAND>
 
 Every ``g0`` subcommand is implemented. ``fetch`` downloads and checksum-verifies
 the configured Reaction-QM source files; ``inventory`` builds the TS-free R/P
@@ -13,6 +13,13 @@ near-duplicate cross-split leakage audit; ``freeze`` freezes the split manifest
 under the explicit leak decision policy; ``cohorts`` selects the deterministic
 trial and stratified cohorts; ``run-all`` orchestrates the idempotent pipeline;
 and ``truth-index`` is the audited accessor for the resulting IRC index.
+
+Every ``g1`` subcommand is implemented as well. ``build`` assembles the
+per-reaction bond-change documents, summary, manifest, and coverage report for
+a cohort or the whole inventory; ``sample`` prints the deterministic
+manual-check sample; ``strata`` re-derives the authoritative strata and
+cohorts from a full-build summary; and ``verify`` re-reads the written tree and
+reconciles it with the summary and manifest.
 ``--help`` works for every subcommand and exits 0.
 """
 
@@ -68,7 +75,17 @@ from pes2ts_core.g0.truth_quarantine import (
     EXIT_QUARANTINE_ERROR,
     quarantine_truth,
 )
+from pes2ts_core.g1.build import (
+    EXIT_G1_BUILD_FAILED,
+    SUMMARY_FILENAME,
+    build_g1,
+    cohort_member_ids,
+)
+from pes2ts_core.g1.coverage import coverage_seed, manual_sample
+from pes2ts_core.g1.strata_auth import rebuild_authoritative_strata
+from pes2ts_core.g1.verify import verify_g1
 from pes2ts_core.logging_setup import setup_logging
+from pes2ts_core.utils.parquet_io import read_parquet
 from pes2ts_core.version import __version__
 
 PROG = "pes2ts"
@@ -87,7 +104,11 @@ G0_SUBCOMMANDS: tuple[str, ...] = (
     "truth-index",
 )
 
+#: Order is user-visible in ``g1 --help``.
+G1_SUBCOMMANDS: tuple[str, ...] = ("build", "sample", "strata", "verify")
+
 G0Handler = Callable[[argparse.Namespace, dict[str, Any]], int]
+G1Handler = Callable[[argparse.Namespace, dict[str, Any]], int]
 
 
 def _fetch_handler(args: argparse.Namespace, config: dict[str, Any]) -> int:
@@ -364,6 +385,114 @@ def _g0_truth_index_handler(args: argparse.Namespace, config: dict[str, Any]) ->
     return 0
 
 
+def _g1_build_handler(args: argparse.Namespace, config: dict[str, Any]) -> int:
+    """Build the G1 documents for a cohort; exit 3 on a missing cohort/inventory."""
+    logger = logging.getLogger(__name__)
+    try:
+        ids = cohort_member_ids(
+            config,
+            str(getattr(args, "cohort", "all")),
+            limit=getattr(args, "limit", None),
+        )
+        result = build_g1(config, reaction_ids=ids)
+    except FileNotFoundError as exc:
+        logger.error("%s", exc)
+        return EXIT_CHECKSUM_MISMATCH
+    except ValueError as exc:
+        logger.error("G1 build failed: %s", exc)
+        return EXIT_G1_BUILD_FAILED
+    logger.info(
+        "G1 build: %d reaction(s), %d valid, %d rejected -> %s",
+        result.n_total,
+        result.n_valid,
+        result.n_rejected,
+        result.summary_path,
+    )
+    return 0
+
+
+def _g1_sample_handler(args: argparse.Namespace, config: dict[str, Any]) -> int:
+    """Print the deterministic manual-check sample read from the summary parquet."""
+    logger = logging.getLogger(__name__)
+    summary_path = Path(config["paths"]["interim"]) / SUMMARY_FILENAME
+    if not summary_path.is_file():
+        logger.error("Missing summary %s; run `g1 build` first", summary_path)
+        return EXIT_CHECKSUM_MISMATCH
+    rows = read_parquet(summary_path).to_pylist()
+    g1_config = config.get("g1")
+    settings = g1_config if isinstance(g1_config, dict) else {}
+    n = getattr(args, "n", None)
+    if n is None:
+        n = int(settings.get("sample_size", 20))
+    seed, seed_source = coverage_seed(config)
+    sample = manual_sample(rows, n=int(n), seed=seed)
+    category = getattr(args, "category", None)
+    if category:
+        sample = [entry for entry in sample if entry["category"] == category]
+    by_id = {str(row["reaction_id"]): row for row in rows}
+    for entry in sample:
+        row = by_id[str(entry["reaction_id"])]
+        print(
+            f"{entry['reaction_id']} {entry['category']} formed={row['n_formed']} "
+            f"broken={row['n_broken']} order_changed={row['n_order_changed']} "
+            f"h_migration={row['n_h_migration']} index={row['index_status']} "
+            f"pairing={row['pairing_status']}"
+        )
+    logger.info(
+        "G1 sample: %d row(s) (n=%d, seed=%d from %s)",
+        len(sample),
+        n,
+        seed,
+        seed_source,
+    )
+    return 0
+
+
+def _g1_strata_handler(_args: argparse.Namespace, config: dict[str, Any]) -> int:
+    """Re-derive the authoritative strata and cohorts; exit 3 on missing input."""
+    logger = logging.getLogger(__name__)
+    try:
+        result = rebuild_authoritative_strata(config)
+    except FileNotFoundError as exc:
+        logger.error("%s", exc)
+        return EXIT_CHECKSUM_MISMATCH
+    except ValueError as exc:
+        logger.error("G1 strata failed: %s", exc)
+        return EXIT_G1_BUILD_FAILED
+    logger.info(
+        "G1 strata: %d inventory row(s), %d authoritative, report -> %s",
+        result.n_inventory,
+        result.n_valid,
+        result.report_path,
+    )
+    return 0
+
+
+def _g1_verify_handler(_args: argparse.Namespace, config: dict[str, Any]) -> int:
+    """Re-read every written document; exit 22 on any reconciliation problem."""
+    logger = logging.getLogger(__name__)
+    try:
+        result = verify_g1(config)
+    except FileNotFoundError as exc:
+        logger.error("%s", exc)
+        return EXIT_CHECKSUM_MISMATCH
+    except ValueError as exc:
+        logger.error("G1 verify failed: %s", exc)
+        return EXIT_G1_BUILD_FAILED
+    if result.problems:
+        for problem in result.problems[:10]:
+            logger.error("G1 verify: %s", problem)
+        logger.error("G1 verify failed with %d problem(s)", len(result.problems))
+        return EXIT_G1_BUILD_FAILED
+    logger.info(
+        "G1 verify OK: %d document(s), %d valid, %d rejected",
+        result.n_total,
+        result.n_valid,
+        result.n_rejected,
+    )
+    return 0
+
+
 #: The handler for every ``g0`` subcommand; all are implemented.
 SUBCOMMAND_HANDLERS: dict[str, G0Handler] = {
     "fetch": _fetch_handler,
@@ -376,6 +505,14 @@ SUBCOMMAND_HANDLERS: dict[str, G0Handler] = {
     "cohorts": _g0_cohorts_handler,
     "run-all": _g0_run_all_handler,
     "truth-index": _g0_truth_index_handler,
+}
+
+#: The handler for every ``g1`` subcommand; all are implemented.
+G1_SUBCOMMAND_HANDLERS: dict[str, G1Handler] = {
+    "build": _g1_build_handler,
+    "sample": _g1_sample_handler,
+    "strata": _g1_strata_handler,
+    "verify": _g1_verify_handler,
 }
 
 
@@ -498,6 +635,53 @@ def build_parser() -> argparse.ArgumentParser:
                 ),
             )
         sub_parser.set_defaults(handler=SUBCOMMAND_HANDLERS[name])
+
+    g1_parser = top_subparsers.add_parser(
+        "g1",
+        help="G1: authoritative bond changes and unified reaction indexes",
+    )
+    _add_common_options(g1_parser, suppress_defaults=True)
+    g1_subparsers = g1_parser.add_subparsers(
+        dest="g1_command", required=True, metavar="SUBCOMMAND"
+    )
+    g1_help: dict[str, str] = {
+        "build": "build the per-reaction bond-change documents, summary, and manifest",
+        "sample": "print the deterministic manual-check sample from the summary",
+        "strata": "re-derive the authoritative strata and cohorts from a full build",
+        "verify": "re-read every written document and reconcile it with the manifest",
+    }
+    for name in G1_SUBCOMMANDS:
+        sub_parser = g1_subparsers.add_parser(name, help=g1_help[name])
+        _add_common_options(sub_parser, suppress_defaults=True)
+        if name == "build":
+            sub_parser.add_argument(
+                "--cohort",
+                choices=("trial", "stratified", "all"),
+                default="all",
+                help="Reaction subset to build (default: all inventory rows)",
+            )
+            sub_parser.add_argument(
+                "--limit",
+                type=int,
+                metavar="N",
+                default=None,
+                help="Truncate the sorted cohort to its first N ids",
+            )
+        elif name == "sample":
+            sub_parser.add_argument(
+                "--category",
+                metavar="NAME",
+                default=None,
+                help="Only print sample entries of this category",
+            )
+            sub_parser.add_argument(
+                "--n",
+                type=int,
+                metavar="N",
+                default=None,
+                help="Per-category sample size (default: g1.sample_size)",
+            )
+        sub_parser.set_defaults(handler=G1_SUBCOMMAND_HANDLERS[name])
     return parser
 
 
