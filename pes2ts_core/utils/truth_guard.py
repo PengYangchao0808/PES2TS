@@ -9,6 +9,10 @@ dynamic-execution primitives.  The allowlist is intentionally tiny:
 * ``pes2ts_core/g0/truth_quarantine.py`` — extracts and relocates the truth;
 * ``pes2ts_core/g0/truth/truth_reader.py`` — the only audited accessors;
 * ``pes2ts_core/utils/truth_guard.py`` — this scanner;
+* ``pes2ts_core/g1/p1_truth.py`` — the single G1 P1 annotation module that
+  reads the quarantined TS/IRC truth through the audited accessors (the
+  plan's scoped exception); every other ``g1``/``g2`` module is checked
+  normally;
 * ``pes2ts_core/cli.py`` — only for the ``truth-index`` handler, the one
   deliberate human-facing access point.  Every other part of ``cli.py`` is
   checked normally, and the handler itself must not use subprocess/importlib.
@@ -45,6 +49,10 @@ DEFAULT_ALLOWLIST: Final[tuple[str, ...]] = (
     "pes2ts_core/g0/truth_quarantine.py",
     "pes2ts_core/g0/truth/truth_reader.py",
     "pes2ts_core/utils/truth_guard.py",
+    # The single G1 annotation module sanctioned by the P1 plan to read the
+    # quarantined TS/IPC truth through the audited accessors; every other
+    # g1/g2 module stays fully guarded.
+    "pes2ts_core/g1/p1_truth.py",
 )
 
 TRUTH_PATH_MARKERS: Final[tuple[str, ...]] = ("ground_truth", "truth_sources")
