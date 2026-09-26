@@ -1,0 +1,1 @@
+{"dataset_version":"zenodo-18551029-rev1","generated_at":"2026-09-25T11:35:41+00:00","n_reactions_in_csv":199874,"n_reactions_in_h5":199890,"n_rows":199217,"rejection_histogram":{"ATOM_COUNT_MISMATCH":657,"MISSING_IN_CSV":16,"UNPARSEABLE_MAPPED":16},"schema_version":"g0_manifest_v1"}

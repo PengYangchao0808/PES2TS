@@ -1,0 +1,1 @@
+{"eligible_fraction":0.959496,"exclusions":{"p1:source_structure_mismatch":714,"p1:ts_irc_endpoint_mismatch":2976,"p1:unresolved_truncated":4379},"gate_pass":true,"generated_at":"2026-09-26T18:55:06+00:00","n_denominator":199217,"n_eligible":191148,"refusals":[],"schema_version":"g1_gate_v1"}
