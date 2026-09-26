@@ -30,17 +30,22 @@ does **not**:
 - train any model;
 - interpret IRC energies as physics (the index records shapes only).
 
-G1 delivers **the universal S0 bond-change and index layer only**. It
-deliberately does **not**:
+G1 delivers **the universal S0 bond-change and index layer, plus (as clearly
+segregated truth-assisted annotation layers) the P1 TS/IRC reference mapping
+and the P2 reaction taxonomy**. It deliberately does **not**:
 
 - generate any reaction path (no GFN2-xTB, no `xtb`/`ORCA`/`Gaussian`/`crest`
   execution);
 - run any quantum-chemistry or QC validation work (no OptTS/frequency/IRC
   validation);
-- read anything but the transition-state-free inventory and cohort files (no
-  raw HDF5, no split CSVs);
-- touch the quarantined DFT/IRC truth — the G0 allow-listed accessor is not on
-  any G1 code path, and the static AST guard covers `pes2ts_core/g1/` too;
+- read anything but the transition-state-free inventory and cohort files on the
+  endpoint-only G1 build path (no raw HDF5, no split CSVs);
+- touch the quarantined DFT/IRC truth on the endpoint-only path — the truth
+  guard covers `pes2ts_core/g1/` with exactly one scoped exception: the P1
+  annotation module `pes2ts_core/g1/p1_truth.py`, which reads only through the
+  audited accessor behind an explicit `--allow-truth`, logs every read, and
+  persists no truth geometry; G2 path-generation inputs still exclude
+  TS/IRC-derived fields;
 - produce G2 path manifests, G3 labels, or oracle-gap data;
 - train any model.
 
@@ -155,6 +160,7 @@ forcing a transfer is `g0 fetch --force` on a fresh tree.
 | 20 | `EXIT_AUTHORITATIVE_STRATA_REQUIRED` | `cohorts.require_authoritative_strata=true` but only the non-authoritative preview exists. |
 | 21 | `EXIT_PIPELINE_FAILED` | `g0 run-all` did not complete every stage (the run report names the failing stage). |
 | 22 | `EXIT_G1_BUILD_FAILED` | A `g1` stage failed (e.g. a document that cannot be re-read by `g1 verify`, or an authoritative strata rebuild requested from a partial build). |
+| 23 | `EXIT_TRUTH_FLAG_REQUIRED` | A truth-assisted `g1` subcommand (`join-audit`, `resolve-map`) was invoked without the explicit `--allow-truth` flag, or the audited accessor refused the read. |
 
 ## Configuration keys
 
@@ -220,6 +226,14 @@ append-only.
 | `g0_run_report.json` | `data/manifests/` | `g0 run-all` | `stages[]`, `totals`, `leak_status`, `rejection_histogram`, `config_digest`, `data_root` |
 | `ts.parquet` | `data/ground_truth/` | `g0 quarantine` | `reaction_id`, `atomic_numbers`, `coordinates`, `EHG`, `charge`, `multiplicity`, `reaction_smiles` |
 | `irc_index.parquet` | `data/ground_truth/` | `g0 quarantine` | `reaction_id`, `n_atoms`, `n_frames`, `has_forces`, `ts_index` |
+| `g1_p1_join_audit.json` | `data/manifests/` | `g1 join-audit` / `resolve-map` | `n_inventory`, `n_ts`, `n_irc_index`, `n_joined_all`, `by_reason` (typed join reasons with capped examples), extra-id counts, source digests |
+| `p1_mapping/<shard>/<reaction_id>.json` | `data/interim/g1_truth/` | `g1 resolve-map` | `schema_version="g1_p1_truth_v1"`, `truth_assisted=true`, `sources` (dataset/inventory/truth-manifest/algorithm digests), `status` (8-valued enum), `mapping.map_to_atoms[{map, element, r/p component+local, ts_irc_index}]` + class statistics, `bond_events` (map-space edits), `irc_validation{ts_frame_index, layout, orientation, orientation_basis, orientation_bond_scores, endpoint_match, event_support[], synchrony, quality_flags}`, `reaction_center`, `graph` (map-space R/P bond lists), `validation`. No coordinate/energy arrays. |
+| `g1_p1_summary.parquet` | `data/interim/` | `g1 resolve-map` | One row per resolved reaction: `status`, `g2_eligible`, layout/orientation/endpoint columns, combination/class counts, event and support counts |
+| `g1_p1_manifest.json` / `g1_p1_coverage.json` | `data/manifests/` | `g1 resolve-map` | Status histogram, eligible count, config + source digests / per-status coverage with deterministic manual-check samples and layout/orientation histograms |
+| `reaction_classes/<shard>/<reaction_id>.json` | `data/interim/g1_truth/` | `g1 classify` | `schema_version="g1_p2_class_v1"`, `status`, `levels{l0..l3 cluster_id+signature}`, `family_labels`, `pathway_labels` (separate from structural clusters), center/context sizes, `flags` |
+| `g1_reaction_class_summary.parquet` | `data/interim/` | `g1 classify` | One row per P1 reaction: cluster ids per level, family labels, pathway labels, flags |
+| `g1_p2_manifest.json` / `g1_p2_coverage.json` / `g1_cluster_report.json` | `data/manifests/` | `g1 classify` | Status counts + digests / coverage fractions / per-level cluster statistics, size histograms, singleton fractions, family-label distributions, P1-status cross-tabs, cross-split cluster distribution (report only) |
+| `g1_gate.json` / `g2_eligible.json` | `data/manifests/` + `data/interim/` | `g1 gate` | Denominator, eligible count and fraction, exclusion breakdown, verification refusals / the pure reaction-id list G2 may consume |
 
 The two truth-bearing archives `B3LYPD3_TZVP.h5` and `B3LYPD3_TZVP_IRC.h5` are
 relocated out of the raw tree into `data/ground_truth/sources/` by
@@ -241,8 +255,9 @@ the reactants and products, so isolation is structural rather than advisory:
 3. **Single allow-listed accessor.** `pes2ts_core.g0.truth.truth_reader` is the
    only module that reads the quarantined artifacts. Every accessor requires
    `allow_truth=True` (otherwise it raises `PermissionError`) and appends an entry
-   to `truth_access_log.jsonl` on each successful read. `g0 truth-index` is the
-   audited CLI entry point.
+   to `truth_access_log.jsonl` on each successful read (bulk accessors
+   `load_ts_table` and `iter_irc_trajectories` record the calling module).
+   `g0 truth-index` is the audited CLI entry point.
 4. **Static AST guard.** `pes2ts_core.utils.truth_guard.assert_no_truth_access()`
    parses every `.py` under `pes2ts_core/` and `bin/` and fails if any module
    outside the allowlist contains a string constant with `ground_truth` or
@@ -250,7 +265,9 @@ the reactants and products, so isolation is structural rather than advisory:
    truth package or `truth_reader`, or uses `subprocess`/`importlib`/`eval`/`exec`
    (`DYNAMIC_EXEC_RISK`, flagged for review). The allowlist is
    `pes2ts_core/g0/truth_quarantine.py`, `pes2ts_core/g0/truth/truth_reader.py`,
-   and `pes2ts_core/utils/truth_guard.py`, plus `cli.py` **only** inside the
+   `pes2ts_core/utils/truth_guard.py`, and the single scoped P1 annotation module
+   `pes2ts_core/g1/p1_truth.py` (which reads exclusively through the audited
+   accessors), plus `cli.py` **only** inside the
    `truth_index` handler. The default test suite asserts the shipped package is
    clean.
 
@@ -383,7 +400,11 @@ AST guard covers the `pes2ts_core/g1/` modules like every other module.
 | `g1 build` | `--cohort {trial,stratified,all}`, `--limit N` | Build the per-reaction documents and write `g1_reaction_change_summary.parquet`, `g1_manifest.json`, `g1_coverage.json`. Default: every inventory row; `--cohort` restricts to a cohort file; `--limit` truncates the sorted cohort. |
 | `g1 sample` | `--category NAME`, `--n N` | Print per-category bond-change counts (formed/broken/order_changed/h_migration) plus index/pairing status from the summary parquet (documents are not opened); `--n` is the per-category sample size. |
 | `g1 strata` | — | Re-derive the authoritative strata and cohorts from a **full** build; write `g1_strata_manifest.json` and rewrite `strata_report.json` + both cohort files. |
-| `g1 verify` | — | Re-read every written document and reconcile counts and the summary checksum with the manifest. |
+| `g1 verify` | `--stage {build,p1,p2}` | Re-read every written document of the chosen tree and reconcile counts and the summary checksum with the manifest (default `build`, the classic G1 documents). |
+| `g1 join-audit` | `--allow-truth` | Write `g1_p1_join_audit.json`: the inventory/TS/IRC-index/G1-summary ID join with typed reason buckets and source digests. Refuses with exit 23 without `--allow-truth`. |
+| `g1 resolve-map` | `--allow-truth`, `--cohort {trial,stratified,all}`, `--limit N` | Build the truth-assisted P1 mapping documents (`interim/g1_truth/p1_mapping/`), `g1_p1_summary.parquet`, `g1_p1_manifest.json`, `g1_p1_coverage.json`, and the join audit; append typed ledger entries for non-eligible statuses. |
+| `g1 classify` | — | Classify the P1 documents into the hierarchical taxonomy; write `interim/g1_truth/reaction_classes/`, `g1_reaction_class_summary.parquet`, `g1_p2_manifest.json`, `g1_p2_coverage.json`, `g1_cluster_report.json`. |
+| `g1 gate` | — | Verify P1+P2, then write `g1_gate.json` and the `g2_eligible.json` id list (exit 22 on any verification problem). |
 
 ### G1 artifacts
 
@@ -414,6 +435,17 @@ A component index block contains `tag`, `index_base`, `n_atoms`,
 | `g1.neighborhood_shell` | `1` | Ring count added to the reaction-center core for `with_shell` (`0` = core only). |
 | `g1.sample_size` | `20` | Per-category deterministic manual-check sample size. |
 | `g1.sample_seed` | `42` | Sample seed; falls back to `split.seed` when unset (`seed_source` records which was used). |
+| `g1_truth.shard_size` | `1000` | Reactions per P1/P2 shard directory. |
+| `g1_truth.max_combinations` | `1024` | Candidate-combination cap per side; beyond it the status is `unresolved_truncated`. |
+| `g1_truth.rmsd_class_tolerance` | `0.05` | Width (Å) of the absolute Kabsch-RMSD buckets that fold equivalent candidates. |
+| `g1_truth.endpoint_rmsd_pass` / `.weak` | `1.0` / `3.0` | Branch-endpoint match quality thresholds (Å, aligned); the weak bound is calibrated on the real archive's IRC-vs-optimized conformer distances. |
+| `g1_truth.ts_frame_tolerance` | `1e-4` | Aligned RMSD below which an IRC frame is identified with the quarantined TS (the trajectory identity proof). |
+| `g1_truth.splice_factor` | `5.0` | A splice step must exceed this factor times the median consecutive-frame step. |
+| `g1_truth.bond_distance_tolerance` | `0.45` | Covalent-radius-sum tolerance for event bonded-range checks. |
+| `g1_truth.permutation_budget` | `64` | Search budget of the TS-row permutation fallback. |
+| `g1_truth.per_reaction_lookup_threshold` | `512` | Selection sizes at/below this fetch IRC frames per reaction; larger selections stream the archive once. |
+| `g1_class.taxonomy_version` | `"g1p2_taxonomy_v1"` | Version embedded in every P2 cluster id. |
+| `g1_class.canonical_budget` | `2000` | Individualization budget of the canonical labeler; exhaustion is flagged, never silent. |
 
 ### Authoritative strata
 
@@ -447,6 +479,109 @@ sentinel), cross-checks its own counts against the imported G0 preview
   `ambiguity.index` distinguish `unique` / `ambiguous` / `truncated` (likewise
   `ambiguity.pairing` for multiple same-skeleton components on one side).
 
+## G1 truth-assisted layers: P1 TS/IRC mapping and P2 reaction taxonomy
+
+The plan document `G1_TS_IRC_映射与反应归簇实现方案.md` extends G1 with two
+truth-assisted annotation layers. They are deliberately **separate** from the
+endpoint-only G1 build: every truth byte flows through the audited accessor,
+every truth-assisted artifact carries `truth_assisted=true` plus source
+digests, and the G2 path-generation inputs still exclude anything derived
+from TS/IRC coordinates or energies (the mapping, bond edits, and class
+labels are reaction metadata; geometry is not).
+
+### P1 — canonical TS/IRC atom mapping (`g1 resolve-map --allow-truth`)
+
+For every inventory reaction P1 solves the R/P ↔ TS/IRC atom correspondence,
+validates the mapped bond events against the IRC geometry, and freezes a
+versioned per-reaction document. The solver is anchored on two
+archive-invariants that are **re-verified per reaction, never assumed**:
+
+- TS/IRC atom rows follow the reaction map-number order (row `i` ↔ map
+  `i+1`); the identity proposal must pass the element-sequence hard check,
+  otherwise a budget-capped element-preserving permutation search runs and
+  ambiguous outcomes become `unresolved_reactive_center`.
+- The IRC trajectory is `[TS, branch_1 → end A, branch_2 → end B]` with the
+  two branches spliced where one consecutive-frame step is a
+  `splice_factor`-median outlier; the stored `ts_index=0` constant is
+  confirmed by locating the frame that matches the quarantined TS geometry
+  (rigid-aligned: a minority of trajectories live in a different Cartesian
+  frame). A trajectory with no TS frame is `ts_irc_endpoint_mismatch`.
+
+The R/P side assignment reuses the G1 candidate bijections — never a fresh
+"first graph match": every stored candidate combination, including
+permutations of identical-SMILES component geometries, is scored by the
+Kabsch residual of the TS geometry against the map-ordered side coordinates,
+folded into absolute RMSD buckets (`round(rmsd/tolerance)`, so input order
+can never change the classes), and the best bucket's lexicographic
+representative wins. Ties collapse to `resolved_symmetry_collapsed`;
+enumeration beyond `max_combinations` marks `unresolved_truncated`. Endpoint
+RMSDs are recorded as `pass|weak|fail` quality (IRC termini routinely sit
+1.5–3 Å from the optimized species — conformer differences), while the exact
+TS-frame equality is the identity proof. The branch-to-side **orientation**
+is decided by the mapped bond patterns at the two branch termini (at the
+R-side terminus the R bond set is fully satisfied while the P set misses
+exactly the reaction's edits): local pair distances are immune to the
+conformer noise that demonstrably mislabels a whole-molecule-RMSD decision,
+which survives only as the fallback for bond-set-identical (pure
+order-change) reactions — `orientation_basis` records which signal decided
+and `orientation_bond_scores` the pattern evidence. Every mapped bond event
+(formed/broken/order_changed/hydrogen_migration) is checked against its
+branch distance curve with a typed `support|weak|mismatch` verdict — and a
+`mismatch` requires a known orientation: under an unresolved one,
+contradiction verdicts are capped to `weak`. A single-frame distance never
+overrides the graph.
+
+Statuses (all typed, all persisted): `resolved_unique`,
+`resolved_symmetry_collapsed`, `unresolved_reactive_center`,
+`unresolved_truncated`, `ts_irc_endpoint_mismatch`,
+`atom_or_element_mismatch`, `missing_truth_join`, `source_structure_mismatch`.
+Only the first two are G2-eligible.
+
+### P2 — hierarchical reaction taxonomy (`g1 classify`)
+
+P2 reads **only** P1 artifacts (never truth geometry) and classifies every
+G2-eligible reaction into four levels: `l0_edit_family` (event-count
+composition), `l1_center_template` (labeled reaction-center graph),
+`l2_context_r1`/`l3_context_r2` (one/two-shell neighborhood templates).
+Cluster ids are `taxonomy_version + level + sha256(canonical signature)`
+where the signature comes from an individualization-refinement canonical
+labeling whose result is the lexicographic minimum of the template and its
+R↔P reversal — so map relabeling, component reordering, candidate
+reshuffling, or writing the reaction backwards can never split one
+transformation into two clusters (unit-locked). Rule-based multi-labels
+(`addition`, `substitution`, `elimination`, `rearrangement`, `ring_closure`,
+`ring_opening`, `fragmentation`, `h_transfer`, `other`) and the IRC-derived
+pathway labels (orientation, endpoint match, synchrony, support histogram)
+are stored as separate columns, never mixed into the structural cluster ids.
+A canonicalization budget exhaustion is flagged on the document, never
+silent. The cluster report adds per-level cluster counts, size histograms,
+singleton fractions, family-label distributions, P1-status cross-tabs, IRC
+evidence quality, representatives, and the frozen-G0-split cross
+distribution (reported only — the split is never reordered).
+
+### G2 eligibility gate (`g1 gate`)
+
+The gate re-runs both verifications (`g1 verify --stage p1`/`--stage p2`
+re-read every written document, recompute the P2 classifications, and
+reconcile counts and digests), refuses on any problem, and writes
+`g1_gate.json` (denominator, eligible count, eligible fraction, exclusion
+breakdown) plus `g2_eligible.json` — the pure reaction-id list G2 may
+consume. Every reaction is either eligible or carries an exclusion reason;
+nothing is dropped silently.
+
+### Truth-isolation exception
+
+`pes2ts_core/g1/p1_truth.py` is the **only** G1 module allowed to touch the
+quarantined truth (static guard allowlist), and it does so exclusively
+through the audited accessors — including two bulk accessors added for
+annotation runs: `load_ts_table` (one audited table read instead of 200k
+filtered reads) and `iter_irc_trajectories` (one streaming pass over the
+IRC archive, one audit line per reaction, with the calling module
+recorded). P1/P2 artifacts persist mappings, event verdicts, cluster ids,
+and audit digests — never TS/IRC coordinates or energy arrays (the P1
+verifier rejects any document containing them). CLI truth reads demand an
+explicit `--allow-truth` (exit 23 otherwise).
+
 ## Testing
 
 The default test suite requires **no network and no large data download**:
@@ -465,8 +600,16 @@ fixture pipeline run. The G1 suite adds synthetic fixtures for all seven change
 categories (including pure-formed/pure-broken/order-change-only, which are
 near-absent in the real inventory), component matching and index
 ambiguity/truncation, the preview cross-check, the typed rejection paths,
-document/summary determinism, and the authoritative strata re-export. Tally:
-**303 passed, 3 deselected**.
+document/summary determinism, and the authoritative strata re-export. The
+truth-layer suite adds join-audit reason fixtures, IRC layout detection
+(ts-first/ts-last/single-branch/rotated-trajectory/interior TS), the
+candidate solver (unique best, symmetric collapse, order invariance,
+identical-geometry permutations, truncation), per-event IRC verdicts
+(support/weak/mismatch, non-finite curves, synchrony), P2 invariance
+(map relabeling, direction reversal, component reordering, context
+splitting, budget exhaustion), the audited bulk truth accessors, and a
+synthetic end-to-end P1→P2→verify→gate pipeline with CLI contracts.
+Tally: **355 passed, 3 deselected**.
 
 Checks that need Zenodo or the ~12 GB download are marked `realdata` and excluded
 by default via `pytest.ini` (`addopts = -m "not realdata"`). List them with:
