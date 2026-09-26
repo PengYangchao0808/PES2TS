@@ -7,8 +7,12 @@ artifacts from Zenodo, turns them into a transition-state-free reactant/product
 inventory with a typed rejection ledger, quarantines all transition-state and IRC
 ground truth behind a single allow-listed accessor, adopts the authors' own
 reaction-level train/valid/test split with an independent DRFP near-duplicate
-audit, and emits deterministic trial and stratified cohort manifests. Every
-manifest is versioned and reproducible from a fixed seed.
+audit, and emits deterministic trial and stratified cohort manifests. Stage
+**G1** ("universal S0") then derives the reaction bond-change record for every
+inventory reaction — mapped-graph formed/broken/order-changed bonds and hydrogen
+migrations, the reaction center, and a unified map→local→global index table with
+explicit symmetric-ambiguity recording — from the transition-state-free
+inventory alone. Every manifest is versioned and reproducible from a fixed seed.
 
 ## Scope boundaries
 
@@ -19,11 +23,26 @@ does **not**:
   execution);
 - run any quantum-chemistry or QC validation work (no OptTS/frequency/IRC
   validation);
-- produce the authoritative G1 bond-change table — it only publishes a clearly
-  labelled `authoritative=false` preview (see *Strata preview*);
+- produce the authoritative G1 bond-change table — G0 only publishes a clearly
+  labelled `authoritative=false` preview (see *Strata preview*; the authoritative
+  table is G1's deliverable);
 - produce G2 path manifests, G3 labels, or oracle-gap data;
 - train any model;
 - interpret IRC energies as physics (the index records shapes only).
+
+G1 delivers **the universal S0 bond-change and index layer only**. It
+deliberately does **not**:
+
+- generate any reaction path (no GFN2-xTB, no `xtb`/`ORCA`/`Gaussian`/`crest`
+  execution);
+- run any quantum-chemistry or QC validation work (no OptTS/frequency/IRC
+  validation);
+- read anything but the transition-state-free inventory and cohort files (no
+  raw HDF5, no split CSVs);
+- touch the quarantined DFT/IRC truth — the G0 allow-listed accessor is not on
+  any G1 code path, and the static AST guard covers `pes2ts_core/g1/` too;
+- produce G2 path manifests, G3 labels, or oracle-gap data;
+- train any model.
 
 No record is ever dropped silently: every reaction that does not enter the
 inventory or the frozen split carries a typed `RejectionCode`, a stage, a detail,
@@ -135,6 +154,7 @@ forcing a transfer is `g0 fetch --force` on a fresh tree.
 | 9 | `EXIT_REMEDIATION_FAILED` | A requested remediation did not reach a clean audit; the pre-remediation state is restored. |
 | 20 | `EXIT_AUTHORITATIVE_STRATA_REQUIRED` | `cohorts.require_authoritative_strata=true` but only the non-authoritative preview exists. |
 | 21 | `EXIT_PIPELINE_FAILED` | `g0 run-all` did not complete every stage (the run report names the failing stage). |
+| 22 | `EXIT_G1_BUILD_FAILED` | A `g1` stage failed (e.g. a document that cannot be re-read by `g1 verify`, or an authoritative strata rebuild requested from a partial build). |
 
 ## Configuration keys
 
@@ -166,12 +186,17 @@ Defaults live in `config/defaults.yaml`; override any subset with `--config`.
 
 ## Artifact contracts
 
-All JSON manifests carry `schema_version = "g0_manifest_v1"` (except the JSONL
-logs, which are line records) and a `dataset_version` of the form
-`zenodo-18551029-rev1`. Determinism guarantee: two runs over the same inputs
-produce **byte-identical** artifacts after removing the volatile keys
-`VOLATILE_KEYS = {generated_at, downloaded_at, duration_seconds}`. Parquet
-artifacts are written with a stable column order; ledgers are append-only.
+All G0 JSON manifests carry `schema_version = "g0_manifest_v1"` (except the
+JSONL logs, which are line records), and every artifact carries a
+`dataset_version` of the form `zenodo-18551029-rev1`. The rewritten
+`strata_report.json` retains `g0_manifest_v1`; only the G1 reaction-change
+documents and G1 side manifests use their own `g1_change_v1` /
+`g1_manifest_v1` schema versions (see
+*G1 — universal S0: bond changes and unified index*). Determinism guarantee: two
+runs over the same inputs produce **byte-identical** artifacts after removing the
+volatile keys `VOLATILE_KEYS = {generated_at, downloaded_at, duration_seconds}`.
+Parquet artifacts are written with a stable column order; ledgers are
+append-only.
 
 | Artifact | Path | Produced by | Key fields / columns |
 | --- | --- | --- | --- |
@@ -266,6 +291,11 @@ deterministic: quotas use the largest-remainder method and members are ranked by
 stratified cohort. When `cohorts.require_authoritative_strata=true`, selection
 halts with exit code 20 until G1 supplies authoritative strata.
 
+`g1 strata` (after a full `g1 build`) performs this recomputation: it overwrites
+the report with `strata_source="g1_authoritative"` and `authoritative=true` (the
+`g1_obligation` key disappears) and re-exports both cohort files — see
+*Authoritative strata*.
+
 ## Split policy
 
 G0 **adopts the authors' official reaction-level split** from
@@ -302,6 +332,121 @@ an **O(N²) condensed distance matrix** (≈160 GB for the full 199,890-reaction
 inventory), so it is intended for fixtures/moderate sizes; on the full dataset the
 default excluded/rebuild decision must be made deliberately.
 
+## G1 — universal S0: bond changes and unified index
+
+Stage **G1** ("universal S0") turns every reaction in the TS-free inventory
+(199,217 real rows) into a versioned *bond-change record*. For each reaction it
+parses both sides with explicit hydrogens retained, diffs the mapped RDKit
+graphs, derives the hydrogen migrations and the reaction center, and matches
+every reactant/product component against the inventory components to build a
+unified **map → local → global index table**.
+
+- **Bond changes.** `formed`/`broken`/`order_changed` are computed on mapped
+  graph edges with `GetBondTypeAsDouble()` (aromatics stay un-kekulized at 1.5,
+  both sides parsed by the same code path); `hydrogen_migration` reports one
+  entry per mapped hydrogen whose bonded partner differs between the sides
+  (`from`/`to`, `null` = isolated). The three bond lists follow the G0 preview
+  semantics and are deliberately **not** mutually exclusive (one pair can be both
+  `broken` and `formed` when its bond order changes). Every detail count is
+  cross-checked against the imported G0 preview and recorded as `preview_match`.
+- **Reaction center.** `core` is every endpoint of the changed bonds;
+  `with_shell` adds `g1.neighborhood_shell` rings over the reactant∪product graph
+  union.
+- **Unified index.** Component matching is stereo-, bond-order- and
+  charge-insensitive (flattened-skeleton mol-vs-mol subgraph match, never a
+  SMILES round-trip). Each component block carries
+  `rows[{local_index,map,element,global_index}]`, the `element_check`
+  cross-validation (map `k` ↔ `atomic_numbers[k-1]`), the geometry annotation
+   (`geometry_check_ok` / `geometry_worst`), and the full ambiguity state: up to
+   `g1.max_candidates` stored `(map, local_index)` bijections, the first of
+   which fills `rows` (alternatives = `n_candidates − 1`), and `truncated`
+   marks a match that hit `g1.match_cap`.
+- **Typed failures.** Every rejected reaction still gets a document
+  (`validation.status="rejected"`, machine-readable `failure_code`, empty
+  `reactants`/`products` — no usable index table) plus one ledger entry with
+  `stage="g1_build"`. The codes are `G1_MAP_ERROR`, `G1_COMPONENT_MISMATCH`,
+  `G1_INDEX_MISMATCH`, `G1_BOND_GEOMETRY`, `G1_PREVIEW_CONFLICT`, and
+  `G1_NO_BOND_CHANGE`.
+- **Categories.** `categories` flags the seven change classes (`pure_formed`,
+  `pure_broken`, `both`, `order_change_only`, `has_order_change`, `h_migration`,
+  `multi_component`); `g1_coverage.json` reports per-category coverage plus the
+  deterministic manual-check sample used by `g1 sample`.
+
+G1 reads only the transition-state-free inventory and cohort files — it generates
+no path, runs no QC, and never reads the quarantined DFT/IRC truth; the static
+AST guard covers the `pes2ts_core/g1/` modules like every other module.
+
+### G1 CLI reference
+
+| Command | Extra arguments | What it does |
+| --- | --- | --- |
+| `g1 build` | `--cohort {trial,stratified,all}`, `--limit N` | Build the per-reaction documents and write `g1_reaction_change_summary.parquet`, `g1_manifest.json`, `g1_coverage.json`. Default: every inventory row; `--cohort` restricts to a cohort file; `--limit` truncates the sorted cohort. |
+| `g1 sample` | `--category NAME`, `--n N` | Print per-category bond-change counts (formed/broken/order_changed/h_migration) plus index/pairing status from the summary parquet (documents are not opened); `--n` is the per-category sample size. |
+| `g1 strata` | — | Re-derive the authoritative strata and cohorts from a **full** build; write `g1_strata_manifest.json` and rewrite `strata_report.json` + both cohort files. |
+| `g1 verify` | — | Re-read every written document and reconcile counts and the summary checksum with the manifest. |
+
+### G1 artifacts
+
+| Artifact | Path | Produced by | Key fields / columns |
+| --- | --- | --- | --- |
+| `reaction_change/<shard>/<reaction_id>.json` | `data/interim/g1/` | `g1 build` | One document per reaction, `schema_version="g1_change_v1"`: `mapping`, `bond_changes{formed,broken,order_changed,hydrogen_migration,preview_counters,preview_match}`, `reaction_center{core,with_shell}`, `categories`, `reactants[]`/`products[]` index blocks, `ambiguity`, `validation{status,failure_code,failure_detail}`. Shard = numeric id // `shard_size` (5-digit zero-padded). |
+| `g1_reaction_change_summary.parquet` | `data/interim/` | `g1 build` | One row per built reaction: id, seven category booleans, bond-change counts, `index_status`/`pairing_status`, atom counts. |
+| `g1_manifest.json` | `data/manifests/` | `g1 build` | `n_total`, `n_valid`, `n_rejected`, `by_code`, `n_files`, `summary_sha256`, config summary. |
+| `g1_coverage.json` | `data/manifests/` | `g1 build` | `overall`, per-category coverage, `index_status`/`pairing_status` histograms, `by_code`, and the deterministic `manual_sample` (`seed`, `seed_source`, `sample_size`). |
+| `g1_strata_manifest.json` | `data/manifests/` | `g1 strata` | `basis{n_inventory,n_built,n_valid,n_rejected,n_unbuilt,n_counter_agreements}`, `seed`, `seed_stratified`, `n_strata`, artifact paths. |
+| `strata_report.json` | `data/manifests/` | `g1 strata` | Rewritten with `strata_source="g1_authoritative"`, `authoritative=true`; `totals` and per-stratum counts come from the authoritative build. |
+| `cohort_trial.json` / `cohort_stratified.json` | `data/interim/` | `g1 strata` | Re-exported cohorts (`cohort`, `size`, `members`, `strata`); members stay identical to the preview for the same records and seed. |
+
+A component index block contains `tag`, `index_base`, `n_atoms`,
+`rows[{local_index,map,element,global_index}]`, `status`
+(`unique` / `symmetric_ambiguous` / `truncated`), `n_candidates`, `candidates`
+(capped `{local_index,map}` pairs), `element_check`, `geometry_check_ok`,
+`geometry_worst`, and `truncated`.
+
+### G1 configuration keys
+
+| Key | Default | Purpose |
+| --- | --- | --- |
+| `g1.shard_size` | `1000` | Reactions per `reaction_change` shard directory. |
+| `g1.match_cap` | `10000` | `GetSubstructMatches` `maxMatches` cap; hitting it sets `truncated`. |
+| `g1.max_candidates` | `64` | Up to N stored `(map, local_index)` bijections per component, the first of which fills `rows` (alternatives = `n_candidates − 1`). |
+| `g1.bond_tolerance` | `0.45` | Å tolerance over the Cordero covalent-radius sum for the geometry annotation. |
+| `g1.neighborhood_shell` | `1` | Ring count added to the reaction-center core for `with_shell` (`0` = core only). |
+| `g1.sample_size` | `20` | Per-category deterministic manual-check sample size. |
+| `g1.sample_seed` | `42` | Sample seed; falls back to `split.seed` when unset (`seed_source` records which was used). |
+
+### Authoritative strata
+
+`g1 strata` requires a **full** build (every inventory row must have been built);
+a partial build exits 22. It then replaces the `-1` preview counters with the
+authoritative detail counts from the summary (rejected/unbuilt rows keep the `-1`
+sentinel), cross-checks its own counts against the imported G0 preview
+(`basis.n_counter_agreements`) and refuses on any disagreement, writes
+`g1_strata_manifest.json` with the full `basis`, and rewrites
+`strata_report.json` + both cohort files as described above.
+
+### G1 residuals
+
+- **Constitutional mismatches ≈0.3–0.7% of reactions (probe bound; the exact
+  count is in `g1_manifest.json` by_code after a full build).** The reaction SMILES
+  and the
+  inventory components are occasionally genuinely different molecules (different
+  ring size or radical count). These become typed `G1_COMPONENT_MISMATCH`
+  rejections — never silent drops. One known sub-class is the radical-count blind
+  spot: the flattened skeletons are identical but one side carries unpaired
+  electrons the other does not (`RXN_0000100283`-class); the recipe deliberately
+  does not normalize radical electrons.
+- **Geometry is a soft annotation.** Isolated long next-valence bonds (S–O/P–O
+  2.2–2.7 Å) occur in the real components. `geometry_check_ok=false` with the
+  worst violation detail is recorded; only a component with more than half its
+  bonds outside `g1.bond_tolerance` (systematic corruption) is a hard
+  `G1_BOND_GEOMETRY` rejection.
+- **Symmetric ambiguity is recorded, not resolved.** The first RDKit isomorphism
+  (deterministic enumeration order) supplies `rows`; all further candidates up to
+  the cap are persisted, and the per-component `status` plus the per-reaction
+  `ambiguity.index` distinguish `unique` / `ambiguous` / `truncated` (likewise
+  `ambiguity.pairing` for multiple same-skeleton components on one side).
+
 ## Testing
 
 The default test suite requires **no network and no large data download**:
@@ -316,7 +461,12 @@ exact-duplicate and reverse detection, the DRFP audit including the budget abort
 official split adoption, split freeze plus both remediations and the leak halt,
 the strata preview and deterministic cohorts, the ground-truth guard (import/path
 /file/dynamic-exec detection, relocation, and the access log), and an end-to-end
-fixture pipeline run. Tally: **200 passed, 3 deselected**.
+fixture pipeline run. The G1 suite adds synthetic fixtures for all seven change
+categories (including pure-formed/pure-broken/order-change-only, which are
+near-absent in the real inventory), component matching and index
+ambiguity/truncation, the preview cross-check, the typed rejection paths,
+document/summary determinism, and the authoritative strata re-export. Tally:
+**303 passed, 3 deselected**.
 
 Checks that need Zenodo or the ~12 GB download are marked `realdata` and excluded
 by default via `pytest.ini` (`addopts = -m "not realdata"`). List them with:
@@ -336,4 +486,5 @@ the timestamp-valued `VOLATILE_KEYS` (`generated_at`, `downloaded_at`,
 tree skips every stage and rewrites only the run report.
 
 Per-todo command transcripts and outputs are recorded under
-`.omo/evidence/task-*-pes2ts-g0-data-entry-and-split.txt`.
+`.omo/evidence/task-*-pes2ts-g0-data-entry-and-split.txt` (G0) and
+`.omo/evidence/task-*-pes2ts-g1-general-s0.txt` (G1).
