@@ -24,6 +24,12 @@ cohorts from a full-build summary; ``verify`` re-reads the written tree
 demand an explicit ``--allow-truth`` and log every audited truth read);
 ``classify`` builds the P2 hierarchical reaction taxonomy; and ``gate``
 writes the G2 eligibility decision.
+
+Every ``g2`` subcommand is implemented as well. ``prepare`` assembles the
+deterministic endpoints for the selected reactions, ``run`` executes the
+GFN2-xTB PATH step and writes the per-reaction path artifacts, and ``verify``
+re-reads the whole G2 tree and reconciles it; infrastructure failures (missing
+inputs, a missing xTB executable, or verification problems) exit 24.
 ``--help`` works for every subcommand and exits 0.
 """
 
@@ -94,6 +100,15 @@ from pes2ts_core.g1.p2_verify import verify_p2
 from pes2ts_core.g1.strata_auth import rebuild_authoritative_strata
 from pes2ts_core.g1.truth_schema import EXIT_TRUTH_FLAG_REQUIRED
 from pes2ts_core.g1.verify import verify_g1
+from pes2ts_core.g2 import EXIT_G2_FAILED
+from pes2ts_core.g2.pipeline import (
+    InfrastructureError,
+    prepare_ids,
+    run_ids,
+    select_reaction_ids,
+)
+from pes2ts_core.g2.runner import XtbNotFoundError
+from pes2ts_core.g2.verify import verify_g2
 from pes2ts_core.logging_setup import setup_logging
 from pes2ts_core.utils.parquet_io import read_parquet
 from pes2ts_core.version import __version__
@@ -129,8 +144,12 @@ G1_SUBCOMMANDS: tuple[str, ...] = (
 #: ``g1 verify --stage`` choices.
 VERIFY_STAGES: tuple[str, ...] = ("build", "p1", "p2")
 
+#: Order is user-visible in ``g2 --help``.
+G2_SUBCOMMANDS: tuple[str, ...] = ("prepare", "run", "verify")
+
 G0Handler = Callable[[argparse.Namespace, dict[str, Any]], int]
 G1Handler = Callable[[argparse.Namespace, dict[str, Any]], int]
+G2Handler = Callable[[argparse.Namespace, dict[str, Any]], int]
 
 
 def _fetch_handler(args: argparse.Namespace, config: dict[str, Any]) -> int:
@@ -661,6 +680,82 @@ G1_SUBCOMMAND_HANDLERS: dict[str, G1Handler] = {
 }
 
 
+def _select_g2_ids(args: argparse.Namespace, config: dict[str, Any]) -> list[str]:
+    """Resolve the g2 prepare/run selection (cohort/limit/--reaction filters)."""
+    return select_reaction_ids(
+        config,
+        cohort=str(getattr(args, "cohort", "trial")),
+        limit=getattr(args, "limit", None),
+        reactions=tuple(getattr(args, "reaction", None) or ()),
+    )
+
+
+def _g2_prepare_handler(args: argparse.Namespace, config: dict[str, Any]) -> int:
+    """Assemble the endpoints for the selected reactions; exit 24 on infrastructure errors."""
+    logger = logging.getLogger(__name__)
+    try:
+        ids = _select_g2_ids(args, config)
+        report = prepare_ids(ids, config=config)
+    except (InfrastructureError, XtbNotFoundError) as exc:
+        logger.error("%s", exc)
+        return EXIT_G2_FAILED
+    logger.info(
+        "G2 prepare: %d selected, %d prepared, %d ledgered",
+        report.n_selected,
+        report.n_attempted,
+        report.n_skipped,
+    )
+    return 0
+
+
+def _g2_run_handler(args: argparse.Namespace, config: dict[str, Any]) -> int:
+    """Run the xTB PATH stage; batch completion is 0, infrastructure errors exit 24."""
+    logger = logging.getLogger(__name__)
+    try:
+        ids = _select_g2_ids(args, config)
+        report = run_ids(ids, config=config, force=bool(getattr(args, "force", False)))
+    except (InfrastructureError, XtbNotFoundError) as exc:
+        logger.error("%s", exc)
+        return EXIT_G2_FAILED
+    logger.info(
+        "G2 run: %d selected, %d attempted, %d skipped",
+        report.n_selected,
+        report.n_attempted,
+        report.n_skipped,
+    )
+    return 0
+
+
+def _g2_verify_handler(_args: argparse.Namespace, config: dict[str, Any]) -> int:
+    """Re-read the G2 tree; exit 24 on any problem or missing batch artifacts."""
+    logger = logging.getLogger(__name__)
+    try:
+        result = verify_g2(config=config)
+    except FileNotFoundError as exc:
+        logger.error("%s", exc)
+        return EXIT_G2_FAILED
+    if result.problems:
+        for problem in result.problems:
+            print(f"g2 verify: {problem}")
+        logger.error("G2 verify failed with %d problem(s)", len(result.problems))
+        return EXIT_G2_FAILED
+    logger.info(
+        "G2 verify OK: %d path(s), %d valid, %d failed",
+        result.n_total,
+        result.n_valid,
+        result.n_failed,
+    )
+    return 0
+
+
+#: The handler for every ``g2`` subcommand; all are implemented.
+G2_SUBCOMMAND_HANDLERS: dict[str, G2Handler] = {
+    "prepare": _g2_prepare_handler,
+    "run": _g2_run_handler,
+    "verify": _g2_verify_handler,
+}
+
+
 def _add_common_options(parser: argparse.ArgumentParser, *, suppress_defaults: bool) -> None:
     """Attach common options to *parser*.
 
@@ -858,6 +953,50 @@ def build_parser() -> argparse.ArgumentParser:
                     help="Truncate the sorted cohort to its first N ids",
                 )
         sub_parser.set_defaults(handler=G1_SUBCOMMAND_HANDLERS[name])
+
+    g2_parser = top_subparsers.add_parser(
+        "g2",
+        help="G2: GFN2-xTB reaction-path generation and verification",
+    )
+    _add_common_options(g2_parser, suppress_defaults=True)
+    g2_subparsers = g2_parser.add_subparsers(
+        dest="g2_command", required=True, metavar="SUBCOMMAND"
+    )
+    g2_help: dict[str, str] = {
+        "prepare": "assemble and persist the deterministic endpoints for the selection",
+        "run": "run the GFN2-xTB PATH step and write the per-reaction path artifacts",
+        "verify": "re-read the G2 tree and reconcile summary, manifest, and documents",
+    }
+    for name in G2_SUBCOMMANDS:
+        sub_parser = g2_subparsers.add_parser(name, help=g2_help[name])
+        _add_common_options(sub_parser, suppress_defaults=True)
+        if name in ("prepare", "run"):
+            sub_parser.add_argument(
+                "--reaction",
+                metavar="RXN_ID",
+                action="append",
+                default=None,
+                help="Restrict the batch to this reaction (repeatable)",
+            )
+            sub_parser.add_argument(
+                "--cohort",
+                choices=("trial", "stratified", "all"),
+                default="trial",
+                help="Reaction subset to select (default: trial cohort)",
+            )
+            sub_parser.add_argument(
+                "--limit",
+                type=int,
+                metavar="N",
+                default=None,
+                help="Truncate the sorted selection to its first N ids",
+            )
+            sub_parser.add_argument(
+                "--force",
+                action="store_true",
+                help="Re-run even when the terminal artifacts already exist",
+            )
+        sub_parser.set_defaults(handler=G2_SUBCOMMAND_HANDLERS[name])
     return parser
 
 
