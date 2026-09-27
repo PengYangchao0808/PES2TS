@@ -104,12 +104,12 @@ def test_g2_config_defaults_load_with_contract_values() -> None:
     assert g2["xtb"]["seed"] == 42
     assert g2["path"] == {
         "nrun": 1,
-        "npoint": 25,
+        "npoint": 50,
         "anopt": 10,
         "kpush": 0.003,
         "kpull": -0.015,
         "ppull": 0.05,
-        "alp": 1.2,
+        "alp": 0.5,
     }
     assert g2["assembly"] == {
         "min_anchor_maps": 3,
@@ -135,7 +135,7 @@ def test_user_config_deep_merges_over_g2_defaults(tmp_path: Path) -> None:
     override.write_text("g2:\n  xtb:\n    threads: 2\n", encoding="utf-8")
     g2 = load_config(override)["g2"]
     assert g2["xtb"]["threads"] == 2
-    assert g2["path"]["npoint"] == 25
+    assert g2["path"]["npoint"] == 50
 
 
 def test_g2_contract_modules_carry_no_truth_references() -> None:

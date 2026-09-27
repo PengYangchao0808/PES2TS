@@ -87,12 +87,12 @@ g2:
     seed: 42
   path:                          # path.inp $path block
     nrun: 1
-    npoint: 25
+    npoint: 50                   # task-15 pilot: 25 -> 50 (denser sampling)
     anopt: 10
     kpush: 0.003
     kpull: -0.015
     ppull: 0.05
-    alp: 1.2
+    alp: 0.5                     # task-15 pilot: 1.2 -> 0.5 (1.2 hard-fails real paths with "No product")
   assembly:
     min_anchor_maps: 3
     anchor_tolerance: 0.001      # Angstrom; second singular value threshold
