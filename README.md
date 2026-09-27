@@ -910,19 +910,36 @@ identical-geometry permutations, truncation), per-event IRC verdicts
 (support/weak/mismatch, non-finite curves, synchrony), P2 invariance
 (map relabeling, direction reversal, component reordering, context
 splitting, budget exhaustion), the audited bulk truth accessors, and a
-synthetic end-to-end P1→P2→verify→gate pipeline with CLI contracts.
-Tally: **355 passed, 3 deselected**.
+synthetic end-to-end P1→P2→verify→gate pipeline with CLI contracts. The
+G2 suite adds endpoint-assembly placement/separation/collision fixtures, the
+strict xTB output parser against real pinned PATH fixtures, frame metrics and
+validity predicates, the runner subprocess contract (fake binaries), and the
+reverse-retry direction normalization. Tally: **533 passed, 4 deselected**
+(the 4 deselected are the gated families below).
 
-Checks that need Zenodo or the ~12 GB download are marked `realdata` and excluded
-by default via `pytest.ini` (`addopts = -m "not realdata"`). List them with:
+Checks that need Zenodo or the ~12 GB download are marked `realdata`, and the
+one check that needs the real GFN2-xTB binary is marked `xtb`; both families
+are excluded by default via `pytest.ini`
+(`addopts = -m "not realdata and not xtb"`). List them with:
 
 ```bash
-conda run -n pes2ts python -m pytest -q -m realdata --collect-only
+conda run -n pes2ts python -m pytest -q -m "realdata or xtb" --collect-only
 ```
 
-Three gated tests exist: `test_fetch.py::test_realdata_manifest_and_no_redownload`,
-`test_dedup.py::test_real_inventory_full_pass_within_budget`, and
-`test_neardup.py::test_real_data_audit_completes`.
+Four gated tests exist: `test_fetch.py::test_realdata_manifest_and_no_redownload`,
+`test_dedup.py::test_real_inventory_full_pass_within_budget`,
+`test_neardup.py::test_real_data_audit_completes`, and
+`test_g2_xtb_smoke.py::test_real_xtb_path_smoke`. The xtb-gated smoke test
+drives `pes2ts_core.g2.runner.run_xtb_path` on the real binary against the
+small C7OH8 fixture (~10–30 s) and asserts a valid path verdict; it resolves
+the executable from the `PES2TS_XTB_EXECUTABLE` environment variable first,
+then `PATH` (`shutil.which("xtb")`), and **fails with an explicit
+`XtbNotFoundError`-style message when neither resolves — it never skips**, so a
+missing binary cannot masquerade as a pass. Run it with:
+
+```bash
+PES2TS_XTB_EXECUTABLE=/path/to/xtb conda run -n pes2ts python -m pytest -q -m xtb
+```
 
 Determinism philosophy: every JSON/Parquet artifact is reproducible from the
 inputs and `split.seed`; the only permitted variation across identical runs is
