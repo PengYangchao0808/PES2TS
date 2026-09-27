@@ -17,6 +17,12 @@ dynamic-execution primitives.  The allowlist is intentionally tiny:
   deliberate human-facing access point.  Every other part of ``cli.py`` is
   checked normally, and the handler itself must not use subprocess/importlib.
 
+A second, narrower list exempts modules from *only* the
+``DYNAMIC_EXEC_RISK`` findings: ``pes2ts_core/g2/runner.py`` must spawn the
+external GFN2-xTB binary via ``subprocess``, so its dynamic-execution
+primitives are sanctioned, but it is still scanned in full for quarantined
+path strings, truth-file names, and truth imports.
+
 Importing ``pes2ts_core.g0.truth_quarantine`` from elsewhere stays allowed: it
 returns relocation metadata, never trajectory data.  Importing the
 ``pes2ts_core.g0.truth`` package or ``truth_reader`` is flagged.
@@ -53,6 +59,15 @@ DEFAULT_ALLOWLIST: Final[tuple[str, ...]] = (
     # quarantined TS/IPC truth through the audited accessors; every other
     # g1/g2 module stays fully guarded.
     "pes2ts_core/g1/p1_truth.py",
+)
+
+#: Modules exempt ONLY from ``DYNAMIC_EXEC_RISK`` findings (project-relative).
+#: The g2 runner must spawn the external xTB binary via ``subprocess``, so
+#: its dynamic-execution primitives are sanctioned; every other check
+#: (quarantined-path strings, truth-file names, truth imports) still applies
+#: to these modules in full.
+DYNAMIC_EXEC_ALLOWLIST: Final[tuple[str, ...]] = (
+    "pes2ts_core/g2/runner.py",
 )
 
 TRUTH_PATH_MARKERS: Final[tuple[str, ...]] = ("ground_truth", "truth_sources")
@@ -227,8 +242,13 @@ def _scan_cli_module(module: ast.Module, file: str) -> list[Finding]:
     return findings
 
 
-def _scan_file(path: Path, root: Path, allowlist: Sequence[str]) -> list[Finding]:
-    """Scan one module, honoring the allowlist and the ``cli.py`` rule."""
+def _scan_file(
+    path: Path,
+    root: Path,
+    allowlist: Sequence[str],
+    dynamic_exec_allowlist: Sequence[str],
+) -> list[Finding]:
+    """Scan one module, honoring both allowlists and the ``cli.py`` rule."""
     file = str(path)
     try:
         source = path.read_text(encoding="utf-8")
@@ -241,35 +261,49 @@ def _scan_file(path: Path, root: Path, allowlist: Sequence[str]) -> list[Finding
         ]
     if path.name == CLI_FILENAME:
         return _scan_cli_module(module, file)
-    if _relative_module_path(path, root) in allowlist:
+    relative = _relative_module_path(path, root)
+    if relative in allowlist:
         return []
     findings: list[Finding] = []
     for node in ast.walk(module):
         findings.extend(_check_node(node, file))
+    if relative in dynamic_exec_allowlist:
+        return [finding for finding in findings if finding.kind != DYNAMIC_EXEC_RISK]
     return findings
 
 
 def scan_truth_access(
     package_root: str | Path = "pes2ts_core",
     allowlist: Sequence[str] = DEFAULT_ALLOWLIST,
+    dynamic_exec_allowlist: Sequence[str] = DYNAMIC_EXEC_ALLOWLIST,
 ) -> list[Finding]:
-    """Return every finding across the package and the project ``bin/`` tree."""
+    """Return every finding across the package and the project ``bin/`` tree.
+
+    Modules in *allowlist* are skipped entirely; modules in
+    *dynamic_exec_allowlist* are scanned in full except that their
+    ``DYNAMIC_EXEC_RISK`` findings are suppressed.
+    """
     root = _resolve_scan_root(package_root)
     findings: list[Finding] = []
     for module in _iter_modules(root):
-        findings.extend(_scan_file(module, root, allowlist))
+        findings.extend(_scan_file(module, root, allowlist, dynamic_exec_allowlist))
     bin_dir = root.parent / "bin"
     if bin_dir.is_dir():
         for module in _iter_modules(bin_dir):
-            findings.extend(_scan_file(module, root, allowlist))
+            findings.extend(
+                _scan_file(module, root, allowlist, dynamic_exec_allowlist)
+            )
         for script in _iter_scripts(bin_dir):
-            findings.extend(_scan_file(script, root, allowlist))
+            findings.extend(
+                _scan_file(script, root, allowlist, dynamic_exec_allowlist)
+            )
     return sorted(set(findings), key=lambda finding: (finding.file, finding.line, finding.kind))
 
 
 def assert_no_truth_access(
     package_root: str | Path = "pes2ts_core",
     allowlist: Sequence[str] = DEFAULT_ALLOWLIST,
+    dynamic_exec_allowlist: Sequence[str] = DYNAMIC_EXEC_ALLOWLIST,
 ) -> list[Finding]:
     """Raise :class:`TruthAccessViolation` on any finding, else return ``[]``.
 
@@ -277,7 +311,9 @@ def assert_no_truth_access(
     :attr:`TruthAccessViolation.findings` so callers can assert on kinds.
     """
     findings: Iterable[Finding] = scan_truth_access(
-        package_root=package_root, allowlist=allowlist
+        package_root=package_root,
+        allowlist=allowlist,
+        dynamic_exec_allowlist=dynamic_exec_allowlist,
     )
     collected = list(findings)
     if collected:
@@ -289,6 +325,7 @@ __all__ = [
     "CLI_FILENAME",
     "CLI_TRUTH_HANDLER_MARKER",
     "DEFAULT_ALLOWLIST",
+    "DYNAMIC_EXEC_ALLOWLIST",
     "DYNAMIC_EXEC_RISK",
     "TRUTH_FILE_REF",
     "TRUTH_IMPORT",

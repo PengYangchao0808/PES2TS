@@ -287,6 +287,99 @@ def test_cli_truth_index_handler_rejects_subprocess(tmp_path: Path) -> None:
     assert [finding.kind for finding in findings] == [DYNAMIC_EXEC_RISK]
 
 
+def test_g2_tree_is_clean_under_default_allowlists() -> None:
+    # Given: the shipped g2 subtree (skeleton today; runner.py joins in task 5)
+    g2_root = Path(__file__).resolve().parents[1] / "pes2ts_core" / "g2"
+    # When / Then: with the default allowlists the whole tree passes — the
+    # runner's dynamic-exec risk is exempt while its truth checks stay active
+    assert assert_no_truth_access(package_root=g2_root) == []
+
+
+def test_dynamic_exec_allowlist_suppresses_only_dynamic_exec(tmp_path: Path) -> None:
+    # Given: a module at the dynamic-exec allowlisted relative path using
+    # subprocess/importlib/eval — the sanctioned g2 runner shape
+    root = tmp_path / "pes2ts_core"
+    (root / "g2").mkdir(parents=True)
+    runner = root / "g2" / "runner.py"
+    runner.write_text(
+        "import subprocess\n"
+        "import importlib\n"
+        "VALUE = eval('1')\n"
+        "OTHER = getattr(importlib, '__import__')\n",
+        encoding="utf-8",
+    )
+
+    # When: scanned with the default allowlists
+    findings = scan_truth_access(package_root=root)
+
+    # Then: every dynamic-exec finding is exempt and nothing else fires
+    assert findings == []
+
+    # When: the scoped exemption is disabled explicitly
+    findings = scan_truth_access(package_root=root, dynamic_exec_allowlist=())
+
+    # Then: the same module is flagged again, exclusively as DYNAMIC_EXEC_RISK
+    assert {finding.kind for finding in findings} == {DYNAMIC_EXEC_RISK}
+    assert all(finding.file == str(runner) for finding in findings)
+
+
+def test_dynamic_exec_allowlist_module_still_reports_truth_refs(tmp_path: Path) -> None:
+    # Given: a module on the dynamic-exec allowlist that also embeds a
+    # quarantined-path string (the injection case)
+    root = tmp_path / "pes2ts_core"
+    (root / "g2").mkdir(parents=True)
+    runner = root / "g2" / "runner.py"
+    runner.write_text(
+        "import subprocess\n"
+        "TOKEN = 'data/ground_truth/ts.parquet'\n",
+        encoding="utf-8",
+    )
+
+    # When
+    findings = scan_truth_access(package_root=root)
+
+    # Then: the truth reference is still reported and the suppression does
+    # not leak to the truth checks
+    assert [(finding.kind, finding.file) for finding in findings] == [
+        (TRUTH_PATH_REF, str(runner))
+    ]
+    with pytest.raises(TruthAccessViolation):
+        assert_no_truth_access(package_root=root)
+
+
+@pytest.mark.parametrize("member", DEFAULT_ALLOWLIST)
+def test_default_allowlist_members_remain_fully_exempt(
+    tmp_path: Path, member: str
+) -> None:
+    # Given: a temp copy of each fully-exempt module containing truth strings
+    # AND dynamic-exec primitives
+    root = tmp_path / "pes2ts_core"
+    module = tmp_path / member
+    module.parent.mkdir(parents=True, exist_ok=True)
+    module.write_text(
+        "import subprocess\n"
+        "VALUE = eval('1')\n"
+        "PATH = 'data/ground_truth/ts.parquet'\n",
+        encoding="utf-8",
+    )
+
+    # When / Then: the full allowlist still exempts every check for its members
+    assert scan_truth_access(package_root=root) == []
+
+
+def test_real_g2_runner_when_present_is_fully_clean() -> None:
+    # Given: the real runner module (absent until task 5 lands it)
+    runner = (
+        Path(__file__).resolve().parents[1] / "pes2ts_core" / "g2" / "runner.py"
+    )
+    if not runner.is_file():
+        pytest.skip("pes2ts_core/g2/runner.py does not exist yet (task 5)")
+    # When
+    findings = [finding for finding in scan_truth_access() if finding.file == str(runner)]
+    # Then: dynamic exec is exempt and no truth reference is present
+    assert findings == []
+
+
 def test_quarantine_writes_artifacts_relocates_sources_and_is_idempotent(
     tmp_path: Path,
 ) -> None:

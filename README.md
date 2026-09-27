@@ -270,6 +270,14 @@ the reactants and products, so isolation is structural rather than advisory:
    accessors), plus `cli.py` **only** inside the
    `truth_index` handler. The default test suite asserts the shipped package is
    clean.
+5. **Scoped dynamic-exec exception.** Stage G2 runs the external GFN2-xTB
+   binary, so `pes2ts_core/g2/runner.py` inevitably uses `subprocess`. Modules
+   on the separate `DYNAMIC_EXEC_ALLOWLIST` (currently just the runner) are
+   exempt **only** from the `DYNAMIC_EXEC_RISK` findings (`subprocess`/`importlib`
+   imports and `eval`/`exec`/`__import__` usage); they are still scanned in full
+   for quarantined-path strings, truth-file names, and truth imports, so a truth
+   reference injected into the runner is still reported. No other module's
+   checks are weakened, and the full allowlist semantics are unchanged.
 
 ### Residual limits
 
