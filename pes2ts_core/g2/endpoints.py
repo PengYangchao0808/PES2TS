@@ -652,7 +652,6 @@ def _assemble_endpoints(
     groups = sorted(_connected_groups(node_list, shared_counts), key=lambda group: sorted(map(_node_sort_key, group)))
     maps = sorted({atom.map for atom in atoms_r})
     elements = {atom.map: atom.element for atom in atoms_r}
-    all_maps = {atom.map: atom for atom in atoms_r}
     candidate_records: list[dict[str, JSONValue]] = []
     scored: list[tuple[tuple[int, float, float, int], dict[str, JSONValue], dict[str, JSONValue], dict[Node, dict[int, Coordinate]]]] = []
     for index, anchor in enumerate(candidates):
