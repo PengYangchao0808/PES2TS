@@ -75,3 +75,40 @@ g1_class:
   canonical_budget: 2000
   sample_size: 20
   sample_seed: 42
+g2:
+  eligible_path: null            # null => <paths.interim>/g2_eligible.json
+  shard_size: 1000
+  keep_trials: false             # xtbpath_<n>.xyz segment files kept only when true
+  xtb:
+    executable: null             # null => shutil.which("xtb") => fallback_paths
+    fallback_paths: ["/opt/xtb/bin/xtb", "/usr/local/bin/xtb"]
+    threads: 4
+    timeout_seconds: 1800
+    seed: 42
+  path:                          # path.inp $path block
+    nrun: 1
+    npoint: 25
+    anopt: 10
+    kpush: 0.003
+    kpull: -0.015
+    ppull: 0.05
+    alp: 1.2
+  assembly:
+    min_anchor_maps: 3
+    anchor_tolerance: 0.001      # Angstrom; second singular value threshold
+    forming_min_distance: 2.0    # Angstrom
+    forming_target_distance: 3.0 # Angstrom
+    bond_tolerance: 0.45         # Angstrom
+  validity:
+    endpoint_rmsd_max: 0.5       # Angstrom
+    max_frame_step: 4.0          # Angstrom
+    min_frames: 8
+    collision_min_distance: 0.8  # Angstrom
+  reverse_retry:
+    enabled: true
+    trigger_codes:
+      - G2_ENDPOINT_NOT_REACHED
+      - G2_TOPOLOGY_DRIFT
+      - G2_ENERGY_INCOMPLETE
+      - G2_PATH_DISCONTINUOUS
+      - G2_COLLISION
