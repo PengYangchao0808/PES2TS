@@ -135,6 +135,14 @@ over `config/defaults.yaml`), `--log-level LEVEL` (default `INFO`), and
 | `g0 cohorts` | — | Stratification preview and deterministic cohorts; write `strata_report.json`, `cohort_trial.json`, `cohort_stratified.json`. |
 | `g0 run-all` | `--data-root PATH`, `--force`, `--skip-fetch`, `--remediation {none,exclude-leaky,rebuild}` | Run the whole idempotent pipeline; write `g0_run_report.json`. |
 | `g0 truth-index` | `--reaction-id RXN_ID` | Audited read of the quarantined IRC index (or one reaction's IRC frames). |
+| `g2 prepare` | `--reaction RXN_ID` (repeatable), `--cohort {trial,stratified,all}` (default `trial`), `--limit N`, `--force` | Assemble the deterministic R/P endpoints for the selected eligible reactions; write `endpoints.json`, `R.xyz`, `P.xyz`. |
+| `g2 run` | `--reaction RXN_ID` (repeatable), `--cohort {trial,stratified,all}` (default `trial`), `--limit N`, `--force` | Run the GFN2-xTB PATH step (with a swapped-side retry when triggered) and write the per-reaction path artifacts plus the summary, manifest, and coverage. |
+| `g2 verify` | — | Re-read the whole G2 tree and reconcile it against the summary and manifest; exit 24 on any inconsistency. |
+
+`g2 prepare` and `g2 run` default to the `trial` cohort; `--cohort all` is the
+explicit full-set switch. A completed G2 batch exits 0 even when individual
+reactions failed (each failure is typed into the ledger and the manifests);
+exit 24 is for infrastructure errors and `g2 verify` inconsistencies only.
 
 `g0 run-all --data-root PATH` re-roots every configured path under `PATH`
 (a fresh fixture tree, for example). `g0 run-all --force` re-runs every stage
@@ -161,6 +169,7 @@ forcing a transfer is `g0 fetch --force` on a fresh tree.
 | 21 | `EXIT_PIPELINE_FAILED` | `g0 run-all` did not complete every stage (the run report names the failing stage). |
 | 22 | `EXIT_G1_BUILD_FAILED` | A `g1` stage failed (e.g. a document that cannot be re-read by `g1 verify`, or an authoritative strata rebuild requested from a partial build). |
 | 23 | `EXIT_TRUTH_FLAG_REQUIRED` | A truth-assisted `g1` subcommand (`join-audit`, `resolve-map`) was invoked without the explicit `--allow-truth` flag, or the audited accessor refused the read. |
+| 24 | `EXIT_G2_FAILED` | A `g2` stage hit an infrastructure error (missing inventory/eligible/cohort/G1 inputs, missing xTB executable), or `g2 verify` found any inconsistency. |
 
 ## Configuration keys
 
@@ -589,6 +598,291 @@ recorded). P1/P2 artifacts persist mappings, event verdicts, cluster ids,
 and audit digests — never TS/IRC coordinates or energy arrays (the P1
 verifier rejects any document containing them). CLI truth reads demand an
 explicit `--allow-truth` (exit 23 otherwise).
+
+## G2: R/P endpoint assembly and cheap GFN2-xTB paths
+
+Stage **G2** turns the eligible reaction list (`g2_eligible.json`, 191,148 ids
+in the reference tree) into one versioned reaction path per reaction, entirely
+**truth-free**. It reads the transition-state-free inventory (component
+coordinates, charge, multiplicity), the cohort files, and the G1 change
+documents; it never opens the quarantined TS/IRC truth, and its inputs carry no
+TS-derived fields. Per reaction, G2 first **assembles the R/P endpoints** into
+a single map-ordered frame (rigid placement of multi-component sides plus
+cross-component clash separation), then runs the **GFN2-xTB PATH**
+metadynamics on the assembled `start.xyz`/`end.xyz`, parses the per-frame
+energies and geometries, and applies the validity predicates below. Every
+selected reaction ends with a terminal path document; failures carry a typed
+`failure_code` and one entry in the unified rejection ledger.
+
+### G2 inputs and artifacts
+
+Selection is a strict intersection of the eligible id list, the cohort (or the
+whole inventory for `--cohort all`), and any explicit `--reaction` ids; the
+result is sorted and truncated by `--limit`. An explicit `--reaction` does not
+bypass the cohort filter.
+
+Inputs: `data/interim/g2_eligible.json` (the id list written by `g1 gate`, or
+`g2.eligible_path` when set), `data/interim/inventory.parquet`,
+`data/interim/cohort_trial.json` / `cohort_stratified.json`, and the G1
+documents `data/interim/g1/reaction_change/<shard>/<reaction_id>.json`.
+
+| Artifact | Path | Produced by | Key fields / columns |
+| --- | --- | --- | --- |
+| `endpoints.json` | `data/interim/g2/paths/<shard>/<reaction_id>/` | `g2 prepare` | Assembly record: `groups`, `placements`, `separations`, `metrics`, `candidates`, the map-ordered atom tables, `multiplicity_basis`. |
+| `R.xyz` / `P.xyz` | same | `g2 prepare` | Map-ordered endpoint frames (`element x y z`, 6 decimals); the comment line carries the reaction id and the direction marker. |
+| `run/` | same | `g2 run` | `start.xyz`, `end.xyz`, `path.inp`, `xtb_path.log`, `xtbpath.xyz`, `xtbpath_ts.xyz`; the `xtbpath_<n>.xyz` trial segments are kept only when `g2.keep_trials=true`. A reverse retry lives in `run_reverse/` with the same layout. |
+| `frames.parquet` | same | `g2 run` | One row per path frame: `reaction_id`, `frame_index`, `energy_rel_kcal`, `energy_rel_kcal_raw`, `rmsd_to_start`, `rmsd_to_end`, `step_max`, `step_rmsd`, `min_nonbonded_distance`, `event_distances` (JSON string). |
+| `reaction_path.json` | same | `g2 run` | `schema_version="g2_path_v1"`: status, failure code, direction and `direction_recovered`, scalar frame summary, validity verdict, attempt history, and source digests. No coordinate or energy arrays. |
+| `g2_summary.parquet` | `data/interim/` | `g2 run` | One row per selected reaction: `reaction_id`, `status`, `failure_code`, `direction`, `direction_recovered`, `n_frames`, `n_attempts`, `energy_min`, `energy_max`. |
+| `g2_path_manifest.json` | `data/manifests/` | `g2 run` | `schema_version="g2_manifest_v1"`: `n_total`/`n_valid`/`n_failed`, `by_code`, `reverse_recovery_rate`, the `run` counter block (`n_selected`/`n_attempted`/`n_skipped`), `summary_sha256`, the xTB fingerprint (executable sha256, version line, `path.inp` text), `config_digest`, `generated_at`. |
+| `g2_coverage.json` | `data/manifests/` | `g2 run` | `schema_version="g2_coverage_v1"`: overall counts, the seven G1 change categories crossed with valid/failed, `current_by_code`, and `historical_failed_by_code` (every `stage="g2_path"` ledger entry, so `--force` re-runs keep earlier failures visible). |
+
+`<shard>` is the numeric reaction id divided by `g2.shard_size` (default
+`1000`), five-digit zero-padded, the same shard naming as the G1 documents.
+`g2 verify` re-reads the entire tree and reconciles schema, counts, `sha256`
+digests, frame row counts, and forbidden keys; it never reads the ledger, so a
+historical failure entry cannot fail verification.
+
+### Endpoint assembly
+
+Each side's atoms are ordered by reaction-global map and validated
+element-by-element against the inventory; only Q=0 / M=1 reactions are
+accepted (`multiplicity_basis="g1_valid_invariant"`). Because the reactant and
+product coordinates are stored in different Cartesian frames, multi-component
+assembly is rigid rather than a coordinate concatenation:
+
+- **Three deterministic candidates.** C1 anchors the largest reactant
+  component, C2 the second-largest reactant component (when the side has at
+  least two), C3 the largest product component (when the product side has at
+  least two). The anchor component keeps its stored coordinates and defines the
+  candidate frame.
+- **Cross-side bipartite BFS.** Components are nodes `(side, tag)`, edges are
+  shared reaction-global maps, and expansion is deterministic (shared-map count
+  descending, R before P, tag ascending). Each new component is placed with the
+  Kabsch transform onto the already-placed component it shares the most maps
+  with. The placement basis is tried in order: shared maps outside
+  `reaction_center.with_shell` (at least `g2.assembly.min_anchor_maps` = 3 and
+  non-degenerate), all shared maps (at least 3 and non-degenerate), then
+  translation only (shared-map centroid alignment). A set is non-degenerate
+  when the centered anchor points pass the rank gate (both singular values
+  above `g2.assembly.anchor_tolerance`, 1e-3 Å), which excludes collinear and
+  coincident sets.
+- **Disconnected spectator groups.** A bipartite component with no geometric
+  constraint to the candidate frame keeps its reactant stored coordinates for
+  both sides, is flagged `assembly_basis="stored_frame_per_group"` and
+  `frame_ambiguous=true`, and still has to pass the collision check; an
+  overlap is a terminal `G2_ASSEMBLY_COLLISION`, never a silent acceptance.
+- **Changed-pair separation.** On the R assembly every `formed` pair, and on
+  the P assembly every `broken` pair, whose two atoms sit in different placed
+  components closer than `max(2.0 Å, radius_sum + 0.45 Å)` is pushed apart to
+  `max(3.0 Å, radius_sum + 0.45 Å + 0.5)`. The element-aware threshold uses the
+  Cordero covalent radii; every evaluated pair is recorded
+  (`separation_evaluated`, `triggered`, `d_before`, `d_after` or `d_placed`).
+- **Scoring.** The candidates are ranked by the tuple `(n_severe_contacts,
+  -min_nonbonded_distance, formed_excess, candidate_index)`, smallest wins;
+  "nonbonded" means bonded in neither the R nor the P bond graph, and
+  `n_severe_contacts` counts nonbonded pairs below
+  `g2.validity.collision_min_distance`. All candidate scores are persisted in
+  `endpoints.json`. A chosen assembly that still has a nonbonded pair below
+  0.8 Å is a terminal `G2_ASSEMBLY_COLLISION`: no xTB run and no reverse retry.
+
+### Validity predicates and failure codes
+
+Each path is judged by the first violated predicate in this precedence order:
+
+1. `G2_XTB_FAILED`: xTB exited non-zero, timed out, or a key output
+   (`xtbpath.xyz`, `xtbpath_ts.xyz`, `xtb_path.log`) is missing or malformed.
+2. `G2_ENDPOINT_NOT_REACHED`: `first_vs_R > 0.5 Å` **or** `last_vs_P > 0.5 Å`
+   (OR semantics; equality passes).
+3. `G2_TOPOLOGY_DRIFT`: any event pair violates its PASS predicate (formed:
+   first frame at or beyond the covalent-radius sum + 0.45 Å and last frame
+   bonded; broken: the reverse; order_changed: bonded at both ends;
+   h_migration: the H-from contact bonded at the first frame and the H-to
+   contact bonded at the last).
+4. `G2_ENERGY_INCOMPLETE`: any frame energy is missing or non-finite.
+5. `G2_PATH_DISCONTINUOUS`: a single-atom step above 4.0 Å between adjacent
+   frames, or fewer than 8 frames.
+6. `G2_COLLISION`: any frame has a nonbonded pair closer than 0.8 Å.
+
+The four `g2.validity` scalars are `endpoint_rmsd_max=0.5`,
+`max_frame_step=4.0`, `min_frames=8`, and `collision_min_distance=0.8`; all
+four were retained after the two-reaction pilot
+(`.omo/evidence/task-15-g2-pilot-report.md`). **Order-change nuance:** G1 lists
+an order change under `formed`, `broken`, *and* `order_changed`; the formed and
+broken PASS predicates contradict each other on such a pair, so a pair present
+in `order_changed` is judged only by the order-changed predicate (bonded at
+both ends).
+
+| Code | Stage | Meaning |
+| --- | --- | --- |
+| `G2_NOT_ELIGIBLE` | prepare | The selected id is not in the eligible list. |
+| `G2_MISSING_G1_DOC` | prepare | The reaction's G1 change document is missing. |
+| `G2_G1_NOT_VALID` | prepare | The G1 document has `validation.status != "valid"`. |
+| `G2_ENDPOINT_MISMATCH` | prepare | Side validation failed (map set, element sequence, or charge/multiplicity invariant). |
+| `G2_ASSEMBLY_FAILED` | prepare | A malformed document, a missing component row, or a non-finite placement transform. |
+| `G2_ASSEMBLY_COLLISION` | prepare | The chosen assembly still has a nonbonded pair below 0.8 Å. |
+| `G2_XTB_FAILED` | run | xTB exited non-zero or timed out, or a key output is missing or malformed. Never reverse-retried. |
+| `G2_ENDPOINT_NOT_REACHED` | run | `first_vs_R` or `last_vs_P` exceeds 0.5 Å. |
+| `G2_TOPOLOGY_DRIFT` | run | An event pair violates its PASS predicate. |
+| `G2_ENERGY_INCOMPLETE` | run | A frame energy is missing or non-finite. |
+| `G2_PATH_DISCONTINUOUS` | run | A step above 4.0 Å, or fewer than 8 frames. |
+| `G2_COLLISION` | run | A frame has a nonbonded pair below 0.8 Å. |
+
+Every selected reaction ends with one terminal document and, if failed, one
+`stage="g2_path"` ledger record. Re-running the same failure adds no duplicate
+record (the ledger signature is idempotent), so the history stays append-only
+without growing on retries.
+
+### Reverse retry and direction normalization
+
+When a forward run terminates with a code in `g2.reverse_retry.trigger_codes`
+(the five validity codes above, and only when `g2.reverse_retry.enabled=true`),
+G2 retries once with the sides swapped (`start=P.xyz`, `end=R.xyz`) in
+`run_reverse/`. `G2_XTB_FAILED` is deliberately absent: an infrastructure
+failure is not retried. A successful reverse run is normalized back to R→P
+order before it is judged:
+
+- the frame sequence is reversed;
+- `energy_rel_kcal` is recalibrated so the new frame 0 (the R endpoint) is
+  zero, while the raw xTB values stay in `energy_rel_kcal_raw`;
+- the frame metrics are recomputed, and the document records
+  `direction="reverse"` with `direction_recovered=true`.
+
+The retry verdict is terminal: the pipeline does not compare forward and
+reverse endpoint quality, so a reaction whose retry fails is a failure even
+when the forward attempt was closer (both attempts remain in `attempts`). If
+both directions fail, `status="failed"` and `failure_code` is the reverse
+terminal code. A reaction with a terminal document is skipped on rerun unless
+`--force` is passed; a fully skipped batch makes zero xTB calls and leaves the
+terminal artifacts byte-identical.
+
+### Determinism boundaries
+
+- `g2 prepare` is byte-identical across runs on the same inputs (it always
+  rewrites; there is no prepare-side resume).
+- The derived `g2 run` artifacts (`reaction_path.json`, `frames.parquet`,
+  summary, manifest, coverage) are byte-identical given the same raw xTB
+  output.
+- The raw xTB PATH runs are **not** byte-reproducible (metadynamics). The
+  manifest records the full argv, the `OMP_NUM_THREADS` value, the executable
+  `sha256` and version line, and seed support; `g2.xtb.seed=42` is passed only
+  when the binary advertises a seed flag (xTB 6.7.1 does not, so
+  `seed_supported=false` is recorded).
+- `generated_at` is the only volatile JSON key. The `run` counter block varies
+  with the call (`n_selected`/`n_attempted`/`n_skipped`) and is excluded from
+  cross-call byte comparison. Parquet bytes depend on row order, so
+  determinism comparisons use identical row lists.
+
+### Truth isolation
+
+G2 modules carry no truth imports, no `ground_truth`/`truth_sources` strings,
+and no truth-file names; the static AST guard scans them like every other
+module. The single scoped exception is `pes2ts_core/g2/runner.py`, which must
+launch an external process: it is on the dynamic-exec allowlist, so
+`subprocess`/`importlib`/`eval`/`exec` findings are suppressed **for that file
+only**, while its quarantined-path, truth-file, and truth-import checks stay
+active (see *Ground-truth isolation*).
+
+### G2 configuration keys
+
+| Key | Default | Purpose |
+| --- | --- | --- |
+| `g2.eligible_path` | `null` | Eligible id list; `null` means `<paths.interim>/g2_eligible.json`. |
+| `g2.shard_size` | `1000` | Reactions per `paths/<shard>/` directory (same shard naming as G1). |
+| `g2.keep_trials` | `false` | Keep (and register) the `xtbpath_<n>.xyz` trial segment files; `xtbpath.xyz` stays the sole parsing authority. |
+| `g2.xtb.executable` | `null` | xTB binary; `null` means `shutil.which("xtb")`, then `g2.xtb.fallback_paths`. |
+| `g2.xtb.fallback_paths` | `["/opt/xtb/bin/xtb", "/usr/local/bin/xtb"]` | Executable search fallback order. |
+| `g2.xtb.threads` | `4` | `-P` value and `OMP_NUM_THREADS` for each run. |
+| `g2.xtb.timeout_seconds` | `1800` | Per-attempt wall-clock budget; a timeout kills the whole process group and records `timed_out=true`. |
+| `g2.xtb.seed` | `42` | Seed passed only when the binary advertises a seed flag; seed support is recorded either way. |
+| `g2.path.nrun` | `1` | `$path` block: number of PATH runs. |
+| `g2.path.npoint` | `50` | `$path` block: interpolation points (raised from 25 after the pilot). |
+| `g2.path.anopt` | `10` | `$path` block: anchor optimization cycles. |
+| `g2.path.kpush` | `0.003` | `$path` block: push force constant. |
+| `g2.path.kpull` | `-0.015` | `$path` block: pull force constant. |
+| `g2.path.ppull` | `0.05` | `$path` block: pull pressure. |
+| `g2.path.alp` | `0.5` | `$path` block: alpha (lowered from 1.2 after the pilot; 1.2 made real paths fail inside xTB with "No product"). |
+| `g2.assembly.min_anchor_maps` | `3` | Minimum shared maps for the anchor-map Kabsch basis. |
+| `g2.assembly.anchor_tolerance` | `0.001` | Å; singular-value threshold below which an anchor set is degenerate (collinear or coincident). |
+| `g2.assembly.forming_min_distance` | `2.0` | Å; separation floor for a cross-component formed/broken pair. |
+| `g2.assembly.forming_target_distance` | `3.0` | Å; separation target floor. |
+| `g2.assembly.bond_tolerance` | `0.45` | Å; Cordero-radius-sum tolerance for bonded/unbonded classification and the separation thresholds. |
+| `g2.validity.endpoint_rmsd_max` | `0.5` | Å; `first_vs_R`/`last_vs_P` bound (retained from the pilot). |
+| `g2.validity.max_frame_step` | `4.0` | Å; largest allowed single-atom step between adjacent frames. |
+| `g2.validity.min_frames` | `8` | Minimum parsed frame count. |
+| `g2.validity.collision_min_distance` | `0.8` | Å; nonbonded threshold used by the assembly collision check and `G2_COLLISION`. |
+| `g2.reverse_retry.enabled` | `true` | Try the swapped start/end once after a triggerable forward failure. |
+| `g2.reverse_retry.trigger_codes` | `G2_ENDPOINT_NOT_REACHED`, `G2_TOPOLOGY_DRIFT`, `G2_ENERGY_INCOMPLETE`, `G2_PATH_DISCONTINUOUS`, `G2_COLLISION` | Forward codes that trigger the swap; `G2_XTB_FAILED` is never retried. |
+
+### Scale-up runbook
+
+The full run is gated on the heavy tree, not on G2 itself. Restore the
+truth-free inputs first: `inventory.parquet`, the cohort files, and the
+**complete** G1 document tree (`g1 build` over the full inventory). The
+committed `g2_eligible.json` holds 191,148 ids, but a missing G1 document is a
+typed `G2_MISSING_G1_DOC` ledger entry, not an abort, so a partial document
+tree produces a batch of typed failures instead of a usable path set. On a
+tree that has not been quarantined yet, run `g0 quarantine` before any path
+generation: it physically relocates the two truth-bearing HDF5 archives out of
+the accessible raw tree. The pilot deliberately skipped that step, but a full
+setup should not.
+
+```bash
+conda run -n pes2ts python bin/pes2ts g2 prepare --cohort all
+conda run -n pes2ts python bin/pes2ts g2 run --cohort all
+conda run -n pes2ts python bin/pes2ts g2 verify
+```
+
+Failure classification: read `g2_coverage.json` for the current batch (overall
+counts, per-category valid/failed, `current_by_code`) together with
+`rejection_ledger.jsonl`, where every failed reaction has one
+`stage="g2_path"` record; `historical_failed_by_code` keeps earlier failures
+visible after a `--force` re-run, and `g2 verify` re-checks the tree
+independently (exit 24 on any inconsistency) without reading the ledger.
+
+Parallelism: **v1 is serial**. The CLI runs one reaction at a time; per-shard
+multiprocess execution is future work and does not exist today.
+
+Cost: the pilot measured about 10 s per xTB attempt on the 18-20-atom pilot
+systems (10.55 s for one forward run; 8.45 s + 9.61 s for a forward/reverse
+pair). A serial full run over 191,148 reactions is on the order of three weeks
+of wall time before retries, and larger reactions cost more; every triggered
+failure adds another attempt.
+
+### B97-3c: future optional layer (not implemented in this stage)
+
+B97-3c single points are a planned optional refinement layer. The intended
+shape, frozen for a later stage: a **stratified subset** of reactions gets a
+B97-3c energy for **every valid frame** of its path (not only candidate
+frames), computed with ORCA. The integration point is a nullable
+`energy_b973c` column added to `frames.parquet` plus the corresponding manifest
+field; the validity predicates and thresholds above stay unchanged. Nothing of
+this exists in the current stage: no `energy_b973c` column, no manifest field,
+and no ORCA invocation.
+
+### ReactionProfileHunter reference note
+
+The reference implementation for the xTB PATH step is the latest GitHub
+[`PengYangchao0808/ReactionProfileHunter`](https://github.com/PengYangchao0808/ReactionProfileHunter)
+**v4.0.1 (commit `3abbaec`)**. G2 follows the same command shape:
+
+```bash
+xtb start.xyz --path end.xyz --input path.inp -P <threads> --gfn 2 --chrg <q> --uhf <u>
+```
+
+([`rph_core/utils/xtb_runner.py` L859-L975](https://github.com/PengYangchao0808/ReactionProfileHunter/blob/3abbaecdd0b3c8cad6c4106c6e3ea07b6071e437/rph_core/utils/xtb_runner.py#L859-L975)).
+Two RPH interfaces are reference points for a later stage, not current G2
+features: the split of the multi-frame `xtbpath.xyz` into per-frame
+`path_frames/` files (`split_multixyz`,
+[`rph_core/utils/file_io.py` L158-L173](https://github.com/PengYangchao0808/ReactionProfileHunter/blob/3abbaecdd0b3c8cad6c4106c6e3ea07b6071e437/rph_core/utils/file_io.py#L158-L173)),
+and the `ts_guess.xyz` / `scan_profile.json` candidate dictionary
+(`{frame_index, xyz, confidence}`,
+[`rph_core/steps/step2_retro/path_selector.py` L630-L648](https://github.com/PengYangchao0808/ReactionProfileHunter/blob/3abbaecdd0b3c8cad6c4106c6e3ea07b6071e437/rph_core/steps/step2_retro/path_selector.py#L630-L648)).
+One deliberate difference: **G2 takes each frame energy from the path output's
+own comment** (relative kcal/mol in `xtbpath.xyz`) and does **not** recompute a
+single point per frame the way RPH does. All line references above are GitHub
+permalinks at the v4.0.1 commit; older v3.0.0 checkouts have different line
+numbers and are not the reference.
 
 ## Testing
 
