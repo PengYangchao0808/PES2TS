@@ -426,10 +426,12 @@ def separate_changed_pairs(
     and the placed distance is below ``max(forming_min_distance, radius_sum +
     bond_tolerance)``; the non-seed component then translates along the pair
     axis to ``max(forming_target_distance, radius_sum + bond_tolerance +
-    SEPARATION_CLEARANCE)``.  When neither component is its group's seed, the
-    component holding the larger map moves.  Returns the updated coordinates
-    (new dict, input untouched) and one deterministic record per evaluated
-    pair in ascending map order.
+    SEPARATION_CLEARANCE)``.  An exactly coincident pair (distance 0) has no
+    geometric axis, so the push goes along the fixed ``COINCIDENT_PAIR_AXIS``
+    (+x) and still lands on the target distance.  When neither component is
+    its group's seed, the component holding the larger map moves.  Returns
+    the updated coordinates (new dict, input untouched) and one deterministic
+    record per evaluated pair in ascending map order.
     """
     moved_coords = {map_: coord for map_, coord in coords.items()}
     records: list[dict[str, JSONValue]] = []
@@ -481,7 +483,16 @@ def _dist_coords(first: Coordinate, second: Coordinate) -> float:
     return math.dist(first, second)
 
 
+#: Push direction for a triggered pair at exactly coincident coordinates
+#: (``distance == 0``), where the geometric pair axis is undefined.  The fixed
+#: axis keeps the separation deterministic and the moved component still
+#: travels the full shift, so the pair lands exactly on its target distance.
+COINCIDENT_PAIR_AXIS: Final[Coordinate] = (1.0, 0.0, 0.0)
+
+
 def _unit_vector(moved: Coordinate, fixed: Coordinate, distance: float) -> Coordinate:
+    if distance == 0.0:
+        return COINCIDENT_PAIR_AXIS
     return tuple((moved[i] - fixed[i]) / distance for i in range(3))
 
 

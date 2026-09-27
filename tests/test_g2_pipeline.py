@@ -5,7 +5,8 @@ against a self-contained fake xTB binary (scenario-selected via an env var):
 the nine frozen scenarios (valid forward, forward-fail/reverse-success with
 energy renormalization, both-fail, ineligible ledger, idempotent resume,
 ``--force`` rerun, failure+force history, missing ``xtbpath.xyz``, and the
-no-retry-on-``G2_XTB_FAILED`` rule) plus the selection/prepare typed failures.
+no-retry-on-``G2_XTB_FAILED`` rule), the post-F-wave ``npath``-mismatch
+scenario, and the selection/prepare typed failures.
 All fixtures are synthetic and written under ``tmp_path`` roots.
 """
 
@@ -114,6 +115,8 @@ def main():
         handle.write("   forward barrier (kcal): 12.500000\\n")
         handle.write("   backward barrier (kcal): 12.500000\\n")
         handle.write("   reaction energy  (kcal): 25.000000\\n")
+        if scenario == "npath_mismatch":
+            handle.write("   npath: 99\\n")
     if scenario == "missing":
         return 0
     start, end = read_xyz("start.xyz"), read_xyz("end.xyz")
@@ -282,6 +285,11 @@ def test_run_valid_forward_produces_terminal_artifacts(tmp_path, monkeypatch):
     assert document["direction"] == "forward"
     assert document["direction_recovered"] is False
     assert document["failure_code"] is None
+    attempt = document["attempts"][0]
+    assert attempt["xtb_version_line"] == "* xtb version 6.7.1 (fake)"
+    assert attempt["seed_supported"] is False
+    assert attempt["seed"] is None
+    assert attempt["omp_num_threads"] == "4"
     rows, energies = _frame_energies(rxn_dir / "frames.parquet")
     assert len(rows) >= 8
     assert all(row["energy_rel_kcal_raw"] == pytest.approx(row["energy_rel_kcal"]) for row in rows)
@@ -291,6 +299,14 @@ def test_run_valid_forward_produces_terminal_artifacts(tmp_path, monkeypatch):
     assert (rxn_dir / "run/start.xyz").read_bytes() == (rxn_dir / "R.xyz").read_bytes()
     manifest = read_json(Path(config["paths"]["manifests"]) / "g2_path_manifest.json")
     assert manifest["run"] == {"n_selected": 1, "n_attempted": 1, "n_skipped": 0}
+    xtb = manifest["xtb"]
+    assert xtb["sha256"] == sha256_file(Path(config["g2"]["xtb"]["executable"]))
+    assert xtb["version"] == "* xtb version 6.7.1 (fake)"
+    assert xtb["argv"][0] == str(Path(config["g2"]["xtb"]["executable"]).resolve())
+    assert xtb["argv"][1:4] == ["start.xyz", "--path", "end.xyz"]
+    assert xtb["omp_num_threads"] == "4"
+    assert xtb["seed_supported"] is False
+    assert xtb["seed"] is None
     assert (Path(config["paths"]["manifests"]) / "g2_coverage.json").is_file()
 
 
@@ -364,6 +380,14 @@ def test_run_is_idempotent_without_force(tmp_path, monkeypatch):
     assert report.n_attempted == 0
     assert report.n_skipped == 1
     assert _counter_calls(tmp_path) == calls
+    manifest = read_json(Path(config["paths"]["manifests"]) / "g2_path_manifest.json")
+    assert manifest["run"] == {"n_selected": 1, "n_attempted": 0, "n_skipped": 1}
+    assert manifest["xtb"]["sha256"] == sha256_file(Path(config["g2"]["xtb"]["executable"]))
+    assert manifest["xtb"]["version"] is None
+    assert manifest["xtb"]["argv"] is None
+    assert manifest["xtb"]["omp_num_threads"] is None
+    assert manifest["xtb"]["seed_supported"] is None
+    assert manifest["xtb"]["seed"] is None
     after = {
         name: sha256_file(rxn_dir / name)
         for name in ("reaction_path.json", "frames.parquet", "run/xtb_path.log")
@@ -427,6 +451,20 @@ def test_xtb_failure_does_not_trigger_reverse(tmp_path, monkeypatch):
     config = _config(tmp_path, monkeypatch, scenario="missing")
     prepare_ids([REACTION_A], config=config)
     run_ids([REACTION_A], config=config)
+    assert not (_reaction_dir(config, REACTION_A) / "run_reverse").exists()
+
+
+def test_log_npath_mismatch_fails_typed_without_reverse(tmp_path, monkeypatch):
+    config = _config(tmp_path, monkeypatch, scenario="npath_mismatch")
+    manifests = Path(config["paths"]["manifests"])
+    prepare_ids([REACTION_A], config=config)
+    run_ids([REACTION_A], config=config)
+    document = read_json(_reaction_dir(config, REACTION_A) / "reaction_path.json")
+    assert document["status"] == "failed"
+    assert document["failure_code"] == RejectionCode.G2_XTB_FAILED.value
+    assert "npath" in document["failure_detail"]
+    entries = [e for e in _ledger_entries(manifests) if e["reaction_id"] == REACTION_A]
+    assert [entry["code"] for entry in entries] == [RejectionCode.G2_XTB_FAILED.value]
     assert not (_reaction_dir(config, REACTION_A) / "run_reverse").exists()
 
 

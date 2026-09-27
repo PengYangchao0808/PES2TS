@@ -270,8 +270,9 @@ def test_prepare_run_verify_end_to_end_exit_zero(tmp_path, monkeypatch) -> None:
 def test_run_batch_containing_failed_reaction_still_exits_zero(tmp_path, monkeypatch) -> None:
     # The "missing" scenario makes the fake xTB produce no path: a typed,
     # ledgered per-reaction failure -- the batch still completes.  (The
-    # frame-less failed directories are a verify problem by the task-10
-    # verifier contract; only the run batch completion is asserted here.)
+    # frame-less failed directories are consistent with the verifier
+    # contract since 5ee6187: frames.parquet is required only when the
+    # document declares frames.n_frames > 0.)
     config_path = _yaml_config(
         tmp_path, monkeypatch, scenario="missing",
         eligible_ids=(REACTION_A, REACTION_B),
@@ -333,6 +334,17 @@ def test_missing_xtb_executable_run_exits_24_without_traceback(
     assert _cli(config_path, "g2", "run") == 24
     err = capsys.readouterr().err
     assert "ERROR" in err
+    assert "Traceback" not in err
+
+
+def test_malformed_eligible_json_exits_24_without_traceback(
+    tmp_path, monkeypatch, capsys,
+) -> None:
+    config_path = _yaml_config(tmp_path, monkeypatch, scenario="good")
+    (tmp_path / "interim" / "g2_eligible.json").write_text("{broken json", encoding="utf-8")
+    assert _cli(config_path, "g2", "prepare") == 24
+    err = capsys.readouterr().err
+    assert "g2_eligible.json" in err
     assert "Traceback" not in err
 
 

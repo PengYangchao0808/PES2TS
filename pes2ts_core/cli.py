@@ -696,7 +696,7 @@ def _g2_prepare_handler(args: argparse.Namespace, config: dict[str, Any]) -> int
     try:
         ids = _select_g2_ids(args, config)
         report = prepare_ids(ids, config=config)
-    except (InfrastructureError, XtbNotFoundError) as exc:
+    except (InfrastructureError, XtbNotFoundError, ValueError) as exc:
         logger.error("%s", exc)
         return EXIT_G2_FAILED
     logger.info(
@@ -714,7 +714,7 @@ def _g2_run_handler(args: argparse.Namespace, config: dict[str, Any]) -> int:
     try:
         ids = _select_g2_ids(args, config)
         report = run_ids(ids, config=config, force=bool(getattr(args, "force", False)))
-    except (InfrastructureError, XtbNotFoundError) as exc:
+    except (InfrastructureError, XtbNotFoundError, ValueError) as exc:
         logger.error("%s", exc)
         return EXIT_G2_FAILED
     logger.info(

@@ -238,6 +238,37 @@ def test_stray_document_without_summary_row_is_caught(tmp_path: Path) -> None:
     assert any(STRAY_ID in problem and "stray" in problem for problem in problems)
 
 
+def test_corrupt_reaction_path_json_is_reported_not_raised(tmp_path: Path) -> None:
+    config, rxn_dir = _build_clean_tree(tmp_path)
+    (rxn_dir / "reaction_path.json").write_text("{not valid json", encoding="utf-8")
+    result = verify_g2(config=config)
+    assert any(
+        "reaction_path.json" in problem and "unparseable JSON" in problem
+        for problem in result.problems
+    )
+
+
+def test_corrupt_stray_document_is_reported_not_raised(tmp_path: Path) -> None:
+    config, _ = _build_clean_tree(tmp_path)
+    stray_dir = Path(config["paths"]["interim"]) / "g2" / "paths" / "00000" / STRAY_ID
+    stray_dir.mkdir(parents=True)
+    (stray_dir / "reaction_path.json").write_text("{not valid json", encoding="utf-8")
+    result = verify_g2(config=config)
+    assert any(
+        STRAY_ID in problem and "stray" in problem for problem in result.problems
+    )
+
+
+def test_corrupt_endpoints_json_is_reported_not_raised(tmp_path: Path) -> None:
+    config, rxn_dir = _build_clean_tree(tmp_path)
+    (rxn_dir / "endpoints.json").write_text("[truncated", encoding="utf-8")
+    result = verify_g2(config=config)
+    assert any(
+        "endpoints.json" in problem and "unparseable JSON" in problem
+        for problem in result.problems
+    )
+
+
 def test_manifest_count_tamper_is_caught(tmp_path: Path) -> None:
     config, _ = _build_clean_tree(tmp_path)
     _rewrite_manifest(config, lambda manifest: manifest.update(n_valid=manifest["n_valid"] + 1))

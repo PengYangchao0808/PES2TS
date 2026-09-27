@@ -142,8 +142,8 @@ def frame_metrics(
     frames: Sequence[Frame],
     *,
     reaction_id: str,
-    reactant_coords: Mapping[int, Any],
-    product_coords: Mapping[int, Any],
+    reactant_coords: Mapping[int, Sequence[float]],
+    product_coords: Mapping[int, Sequence[float]],
     elements: Mapping[int, str],
     r_pairs: Collection[Sequence[int]],
     p_pairs: Collection[Sequence[int]],
@@ -281,8 +281,8 @@ def evaluate_validity(
     frames: Sequence[Frame],
     *,
     reaction_id: str,
-    reactant_coords: Mapping[int, Any],
-    product_coords: Mapping[int, Any],
+    reactant_coords: Mapping[int, Sequence[float]],
+    product_coords: Mapping[int, Sequence[float]],
     elements: Mapping[int, str],
     r_pairs: Collection[Sequence[int]],
     p_pairs: Collection[Sequence[int]],
@@ -325,8 +325,6 @@ def evaluate_validity(
     first_vs_r = float(first["rmsd_to_start"])
     last_vs_p = float(last["rmsd_to_end"])
     violations: dict[RejectionCode, str] = {}
-    if xtb_failure is not None:
-        violations[RejectionCode.G2_XTB_FAILED] = str(xtb_failure)
     if first_vs_r > endpoint_max or last_vs_p > endpoint_max:
         violations[RejectionCode.G2_ENDPOINT_NOT_REACHED] = (
             f"first_vs_R={first_vs_r:.6f} last_vs_P={last_vs_p:.6f} "

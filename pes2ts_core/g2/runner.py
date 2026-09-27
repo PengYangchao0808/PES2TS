@@ -47,12 +47,12 @@ END_XYZ_FILENAME: Final[str] = "end.xyz"
 PATH_PARAM_DEFAULTS: Final[Mapping[str, Any]] = MappingProxyType(
     {
         "nrun": 1,
-        "npoint": 25,
+        "npoint": 50,
         "anopt": 10,
         "kpush": 0.003,
         "kpull": -0.015,
         "ppull": 0.05,
-        "alp": 1.2,
+        "alp": 0.5,
     }
 )
 PATH_PARAM_ORDER: Final[tuple[str, ...]] = (

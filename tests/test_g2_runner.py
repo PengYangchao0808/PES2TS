@@ -24,16 +24,16 @@ from pes2ts_core.g2.runner import (
 )
 from pes2ts_core.utils.hashing import sha256_file
 
-#: The exact ``$path`` block produced from the plan-default parameters.
+#: The exact ``$path`` block produced from the calibrated default parameters.
 DEFAULT_PATH_INP_LINES: list[str] = [
     "$path",
     "   nrun=1",
-    "   npoint=25",
+    "   npoint=50",
     "   anopt=10",
     "   kpush=0.003",
     "   kpull=-0.015",
     "   ppull=0.05",
-    "   alp=1.2",
+    "   alp=0.5",
     "$end",
 ]
 

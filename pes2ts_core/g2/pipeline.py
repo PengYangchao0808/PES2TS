@@ -79,6 +79,7 @@ from pes2ts_core.g2.status import (
 from pes2ts_core.g2.xtb_output import (
     Frame,
     XtbOutputError,
+    check_npath_consistency,
     enumerate_trial_segments,
     parse_path_log,
     parse_path_xyz,
@@ -188,7 +189,10 @@ def _load_eligible(config: Mapping[str, Any]) -> frozenset[str]:
     path = Path(str(configured)) if configured else interim_dir / ELIGIBLE_FILENAME
     if not path.is_file():
         raise InfrastructureError(f"Missing eligible list {path}; {ELIGIBLE_HINT}")
-    document = read_json(path)
+    try:
+        document = read_json(path)
+    except ValueError as error:
+        raise ValueError(f"eligible artifact {path} is not valid JSON: {error}") from None
     raw = document.get("reaction_ids") if isinstance(document, Mapping) else None
     if not isinstance(raw, list):
         raise ValueError(f"eligible artifact {path} has no reaction_ids list")
@@ -226,7 +230,10 @@ def select_reaction_ids(
         path = interim_dir / COHORT_FILENAMES[cohort]
         if not path.is_file():
             raise InfrastructureError(f"Missing cohort {path}; {COHORT_HINT}")
-        document = read_json(path)
+        try:
+            document = read_json(path)
+        except ValueError as error:
+            raise ValueError(f"cohort artifact {path} is not valid JSON: {error}") from None
         raw = document.get("members") if isinstance(document, Mapping) else None
         if not isinstance(raw, list):
             raise ValueError(f"cohort artifact {path} has no members list")
@@ -446,6 +453,10 @@ def _run_attempt(
         "timed_out": result.timed_out,
         "executable_sha256": result.executable_sha256,
         "argv": list(result.argv),
+        "xtb_version_line": result.xtb_version_line,
+        "seed_supported": result.seed_supported,
+        "seed": result.seed,
+        "omp_num_threads": result.env.get("OMP_NUM_THREADS"),
     }
     if result.returncode != 0 or result.timed_out:
         detail = (
@@ -457,6 +468,7 @@ def _run_attempt(
         frames = parse_path_xyz(run_dir / PATH_XYZ_FILENAME, start_path=run_dir / START_XYZ_FILENAME)
         ts_frame = parse_ts_xyz(run_dir / TS_XYZ_FILENAME)
         log = parse_path_log(run_dir / XTB_LOG_FILENAME)
+        check_npath_consistency(log, len(frames))
     except XtbOutputError as error:
         detail = f"unusable xTB output: {error}"
         attempt["failure_code"] = RejectionCode.G2_XTB_FAILED.value
@@ -582,7 +594,6 @@ def _execute_reaction(
             verdict = _judge(normalized, None, ctx)
             terminal_frames = normalized
         reverse_attempt["failure_code"] = _code_str(verdict.failure_code)
-    recovered = direction == DIRECTION_REVERSE and verdict.status == STATUS_VALID
     rows = None if terminal_frames is None else _metric_rows(ctx, terminal_frames, terminal_raw)
     digest = config_digest(
         ctx.config,
@@ -609,13 +620,43 @@ def _execute_reaction(
     )
 
 
-def _xtb_fingerprint(config: Mapping[str, Any]) -> dict[str, Any]:
+def _xtb_fingerprint(
+    config: Mapping[str, Any], last_attempt: Mapping[str, Any] | None
+) -> dict[str, Any]:
+    """Provenance block for the manifest ``xtb`` field.
+
+    ``version``/``argv``/``omp_num_threads``/``seed_supported``/``seed`` come
+    from the last attempt of the last attempted reaction in sorted selected
+    order (all ``None`` when the batch ran no attempt); ``sha256`` is the
+    executable digest recorded by that attempt, recomputed from the resolved
+    binary when no attempt ran; ``path_inp`` is always regenerated from the
+    config.  ``config_digest`` keeps consuming only ``sha256``/``path_inp``.
+    """
     executable = resolve_executable(config)
     with tempfile.TemporaryDirectory() as scratch:
         inp = Path(scratch) / PATH_INP_FILENAME
         write_path_inp(inp, config)
         path_inp = inp.read_text(encoding="utf-8")
-    return {"sha256": sha256_file(executable), "path_inp": path_inp}
+    if last_attempt is None:
+        return {
+            "sha256": sha256_file(executable),
+            "path_inp": path_inp,
+            "version": None,
+            "argv": None,
+            "omp_num_threads": None,
+            "seed_supported": None,
+            "seed": None,
+        }
+    argv = last_attempt.get("argv")
+    return {
+        "sha256": str(last_attempt["executable_sha256"]),
+        "path_inp": path_inp,
+        "version": last_attempt.get("xtb_version_line"),
+        "argv": list(argv) if argv is not None else None,
+        "omp_num_threads": last_attempt.get("omp_num_threads"),
+        "seed_supported": last_attempt.get("seed_supported"),
+        "seed": last_attempt.get("seed"),
+    }
 
 
 def _write_batch_artifacts(
@@ -636,7 +677,12 @@ def _write_batch_artifacts(
             summary_documents.append(document)
     summary_rows = build_summary(summary_documents)
     write_summary(interim_dir / SUMMARY_FILENAME, summary_rows)
-    fingerprint = _xtb_fingerprint(config)
+    last_attempt: Mapping[str, Any] | None = None
+    for reaction_id in selected:
+        attempts = (documents.get(reaction_id) or {}).get("attempts")
+        if attempts:
+            last_attempt = attempts[-1]
+    fingerprint = _xtb_fingerprint(config, last_attempt)
     write_manifest(
         manifests_dir / MANIFEST_FILENAME, summary_rows,
         run_counts=run_counts, xtb_fingerprint=fingerprint, config=config,

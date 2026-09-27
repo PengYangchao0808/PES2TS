@@ -145,7 +145,11 @@ def _reaction_problems(
     document_path = rxn_dir / _DOCUMENT_FILENAME
     if not document_path.is_file():
         return problems
-    document = read_json(document_path)
+    try:
+        document = read_json(document_path)
+    except ValueError as error:
+        problems.append(f"{document_path}: unparseable JSON ({error})")
+        return problems
     if not isinstance(document, Mapping):
         problems.append(f"{document_path}: document is not a JSON object")
         return problems
@@ -172,11 +176,15 @@ def _reaction_problems(
     problems.extend(_forbidden_key_problems(document_path, document))
     endpoints_path = rxn_dir / _ENDPOINTS_FILENAME
     if endpoints_path.is_file():
-        endpoints = read_json(endpoints_path)
-        if isinstance(endpoints, Mapping):
-            problems.extend(_forbidden_key_problems(endpoints_path, endpoints))
+        try:
+            endpoints = read_json(endpoints_path)
+        except ValueError as error:
+            problems.append(f"{endpoints_path}: unparseable JSON ({error})")
         else:
-            problems.append(f"{endpoints_path}: endpoints record is not a JSON object")
+            if isinstance(endpoints, Mapping):
+                problems.extend(_forbidden_key_problems(endpoints_path, endpoints))
+            else:
+                problems.append(f"{endpoints_path}: endpoints record is not a JSON object")
     problems.extend(_source_problems(document, interim_dir, rxn_dir, shard_size, document_path))
     return problems
 
@@ -237,7 +245,10 @@ def verify_g2(*, config: Mapping[str, Any]) -> G2Verification:
     paths_root = interim_dir / G2_DIRNAME / G2_PATHS_DIRNAME
     if paths_root.is_dir():
         for stray in sorted(paths_root.rglob(_DOCUMENT_FILENAME)):
-            document = read_json(stray)
+            try:
+                document = read_json(stray)
+            except ValueError:
+                document = None
             reaction_id = (
                 str(document.get("reaction_id")) if isinstance(document, Mapping) else stray.parent.name
             )

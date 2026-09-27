@@ -641,6 +641,23 @@ def test_separate_changed_pairs_uses_element_aware_thresholds() -> None:
     assert _pair_distance(moved_cp, 1, 2) == pytest.approx(records_cp[0]["target"])
 
 
+def test_separate_changed_pairs_coincident_pair_pushes_along_fixed_axis() -> None:
+    coords = {1: (1.5, 2.0, -0.5), 2: (1.5, 2.0, -0.5)}
+    moved, records = separate_changed_pairs(
+        [(1, 2)], side="R", kind="formed", coords=coords,
+        component_of_map={1: "A", 2: "B"}, group_seed_of_component={"A": "A", "B": "A"},
+        elements={1: "C", 2: "C"},
+    )
+    entry = records[0]
+    assert entry["triggered"] is True
+    assert entry["d_before"] == pytest.approx(0.0)
+    assert entry["d_after"] == pytest.approx(entry["target"])
+    assert moved[2] == pytest.approx(
+        (coords[2][0] + entry["target"], coords[2][1], coords[2][2])
+    )
+    assert moved[1] == coords[1]
+
+
 def test_assemble_disconnected_spectator_group_never_silently_overlaps() -> None:
     doc = _disconnected_doc(spectator_offset=(0.0, 0.0, 0.0))
     row = _disconnected_row(spectator_offset=(-9.7, 0.0, 0.0))
