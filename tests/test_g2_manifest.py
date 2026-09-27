@@ -48,6 +48,8 @@ def _frame_row(reaction_id: str, index: int, energy: float | None) -> dict[str, 
         "reaction_id": reaction_id,
         "frame_index": index,
         "energy_rel_kcal": energy,
+        # Forward rows keep raw == energy_rel_kcal (task 9 interface extension).
+        "energy_rel_kcal_raw": energy,
         "rmsd_to_start": 0.1 * index,
         "rmsd_to_end": 1.0 - 0.1 * index,
         "step_max": 0.05,
@@ -174,6 +176,7 @@ def test_write_frames_parquet_roundtrip_and_column_order(tmp_path: Path) -> None
     rows = table.to_pylist()
     assert [row["frame_index"] for row in rows] == [0, 1, 2]
     assert rows[1]["energy_rel_kcal"] == 1.0
+    assert rows[1]["energy_rel_kcal_raw"] == 1.0
     assert json.loads(rows[0]["event_distances"]) == {"formed:1-2": 2.5}
     assert rows[2]["min_nonbonded_distance"] == pytest.approx(1.22)
 

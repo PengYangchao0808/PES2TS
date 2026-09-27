@@ -21,9 +21,12 @@ from pes2ts_core.utils.hashing import JSONValue, sha256_bytes, stable_json_dumps
 from pes2ts_core.utils.jsonio import write_json
 from pes2ts_core.utils.parquet_io import write_parquet
 
-#: Frames-parquet columns, in the task-7 ``frame_metrics`` record order.
+#: Frames-parquet columns, in the task-7 ``frame_metrics`` record order plus
+#: the task-9 ``energy_rel_kcal_raw`` extension (raw == ``energy_rel_kcal`` on
+#: forward rows; the direction-renormalized value on reverse rows).
 FRAME_COLUMNS: Final[tuple[str, ...]] = (
-    "reaction_id", "frame_index", "energy_rel_kcal", "rmsd_to_start", "rmsd_to_end",
+    "reaction_id", "frame_index", "energy_rel_kcal", "energy_rel_kcal_raw",
+    "rmsd_to_start", "rmsd_to_end",
     "step_max", "step_rmsd", "min_nonbonded_distance", "event_distances",
 )
 #: Summary-parquet columns (the parquet writer stores them sorted by name).
@@ -37,7 +40,8 @@ FORBIDDEN_DOCUMENT_KEYS: Final[tuple[str, ...]] = ("coordinates", "EHG", "forces
 #: Explicit schema of the frames parquet (dict columns pre-serialized to JSON).
 _FRAME_SPEC: Final[tuple[tuple[str, pa.DataType], ...]] = (
     ("reaction_id", pa.string()), ("frame_index", pa.int64()),
-    ("energy_rel_kcal", pa.float64()), ("rmsd_to_start", pa.float64()),
+    ("energy_rel_kcal", pa.float64()), ("energy_rel_kcal_raw", pa.float64()),
+    ("rmsd_to_start", pa.float64()),
     ("rmsd_to_end", pa.float64()), ("step_max", pa.float64()),
     ("step_rmsd", pa.float64()), ("min_nonbonded_distance", pa.float64()),
     ("event_distances", pa.string()),
