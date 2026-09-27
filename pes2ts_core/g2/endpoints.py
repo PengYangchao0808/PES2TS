@@ -610,7 +610,7 @@ def _assemble_endpoints(
     atoms_r = build_side_atoms(document["reactants"], row["components"])
     atoms_p = build_side_atoms(document["products"], row["components"])
     validation = validate_sides(atoms_r, atoms_p, row)
-    r_pairs, p_pairs = side_bond_pairs(str(document["reaction_smiles"]))
+    r_pairs, p_pairs = side_bond_pairs(str(row["reaction_smiles"]))
     formed = sorted(p_pairs - r_pairs)
     broken = sorted(r_pairs - p_pairs)
 

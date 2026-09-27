@@ -667,9 +667,10 @@ def test_assemble_malformed_document_raises_assembly_failed() -> None:
     assert exc.value.code is RejectionCode.G2_ASSEMBLY_FAILED
 
     doc = _dissoc_doc()
-    doc["reaction_smiles"] = "this is not a reaction"
+    row = _row()
+    row["reaction_smiles"] = "this is not a reaction"
     with pytest.raises(EndpointError) as exc:
-        assemble_endpoints(doc, _row())
+        assemble_endpoints(doc, row)
     assert exc.value.code is RejectionCode.G2_ASSEMBLY_FAILED
 
     row = _row()

@@ -389,7 +389,7 @@ def _reaction_context(
             f"{reaction_id}: endpoint files hold {len(reactant.elements)}/{len(product.elements)} "
             f"atoms, expected {len(maps)}"
         )
-    r_pairs, p_pairs = side_bond_pairs(str(document["reaction_smiles"]))
+    r_pairs, p_pairs = side_bond_pairs(str(row["reaction_smiles"]))
     return _ReactionContext(
         reaction_id=reaction_id,
         rxn_dir=rxn_dir,
