@@ -14,6 +14,9 @@ Output/
 *.hdf5
 *.xyz
 *.log
+# G2 test fixtures are small, real xTB outputs and must be versioned:
+!tests/fixtures/g2/**/*.xyz
+!tests/fixtures/g2/**/*.log
 .omo/
 __pycache__/
 .pytest_cache/
