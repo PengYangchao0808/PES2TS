@@ -221,13 +221,26 @@ def _topology_violations(
 ) -> list[str]:
     """PASS-predicate violations per event; empty list = no drift.
 
+    G1 semantics list a bond-order change as ``formed`` + ``broken`` +
+    ``order_changed`` (the pair is absent from one side's bond list and carries
+    two different orders).  The formed/broken predicates are mutually
+    contradictory for such a pair (one demands ``first >= threshold``, the
+    other ``first < threshold``), so a pair present in ``order_changed`` is
+    judged only by the dedicated order-changed predicate (bonded throughout).
+
     Element-aware threshold = Cordero radius sum + ``bond_tolerance``.  A null
     h_migration partner makes that half vacuous (documented interpretation).
     """
     violations: list[str] = []
+    order_changed_pairs = {
+        tuple(sorted(int(value) for value in record["atoms"]))
+        for record in events.get("order_changed", ())
+    }
     for kind in ("formed", "broken", "order_changed"):
         for record in events.get(kind, ()):
             first, second = sorted(int(value) for value in record["atoms"])
+            if kind in ("formed", "broken") and (first, second) in order_changed_pairs:
+                continue  # an order change is judged by its own predicate only
             threshold = _radius(elements[first]) + _radius(elements[second]) + bond_tolerance
             key = f"{kind}:{first}-{second}"
             d_first, d_last = first_distances[key], last_distances[key]

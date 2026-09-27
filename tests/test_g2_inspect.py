@@ -165,6 +165,33 @@ def test_evaluate_validity_reports_topology_drift_when_broken_pair_still_bonded(
     assert "broken:1-2" in (verdict.detail or "")
 
 
+def test_evaluate_validity_skips_formed_broken_predicates_for_order_changed_pair():
+    # G1 lists a bond-order change as formed + broken + order_changed; the
+    # formed/broken predicates are contradictory for such a pair, so only the
+    # order-changed predicate (bonded throughout) applies.
+    events = {
+        "formed": [{"atoms": [1, 2], "order_r": None, "order_p": 2.0}],
+        "broken": [{"atoms": [1, 2], "order_r": 1.0, "order_p": None}],
+        "order_changed": [{"atoms": [1, 2], "order_r": 1.0, "order_p": 2.0}],
+        "hydrogen_migration": [],
+    }
+    verdict = _inspect(_frames(CONSTANT_XS), events=events)
+    assert verdict.status == "valid"
+    assert verdict.failure_code is None
+
+
+def test_evaluate_validity_reports_order_changed_predicate_when_pair_breaks():
+    events = {
+        "formed": [{"atoms": [1, 2], "order_r": None, "order_p": 2.0}],
+        "broken": [{"atoms": [1, 2], "order_r": 1.0, "order_p": None}],
+        "order_changed": [{"atoms": [1, 2], "order_r": 1.0, "order_p": 2.0}],
+        "hydrogen_migration": [],
+    }
+    verdict = _inspect(_frames(LINEAR_XS), events=events)
+    assert verdict.failure_code == RejectionCode.G2_TOPOLOGY_DRIFT
+    assert "order_changed:1-2" in (verdict.detail or "")
+
+
 def test_evaluate_validity_treats_null_h_migration_partner_as_vacuous():
     events = {
         "formed": EVENTS_FORMED["formed"],
