@@ -51,8 +51,12 @@ def _write_xyz(path: Path, text: str) -> None:
     path.write_text(text, encoding="utf-8")
 
 
-def _build_clean_tree(tmp_path: Path) -> tuple[dict[str, Any], Path]:
-    """One valid reaction with document, frames, endpoints, XYZ, summary, manifest."""
+def _build_clean_tree(tmp_path: Path, *, failed: bool = False) -> tuple[dict[str, Any], Path]:
+    """One reaction with document, frames, endpoints, XYZ, summary, manifest.
+
+    With ``failed=True`` the reaction is a terminal ``G2_XTB_FAILED`` failure
+    that produced no parseable frames, so no ``frames.parquet`` is written.
+    """
     config = _config(tmp_path)
     interim = Path(config["paths"]["interim"])
     manifests = Path(config["paths"]["manifests"])
@@ -64,8 +68,20 @@ def _build_clean_tree(tmp_path: Path) -> tuple[dict[str, Any], Path]:
     _write_xyz(rxn_dir / "R.xyz", "2\nRXN_0000000001 R\nC 0.0 0.0 0.0\nO 1.4 0.0 0.0\n")
     _write_xyz(rxn_dir / "P.xyz", "2\nRXN_0000000001 P\nC 0.0 0.0 0.0\nO 2.4 0.0 0.0\n")
     run_dir = rxn_dir / "run"
-    _write_xyz(run_dir / "xtbpath.xyz", "2\n energy: 0.000000\nC 0.0 0.0 0.0\nO 1.4 0.0 0.0\n")
-    (run_dir / "path.inp").write_text("$path\n  maxopt=3\n$end\n", encoding="utf-8")
+    sources = {
+        "g1_document": sha256_file(g1_path),
+        "R.xyz": sha256_file(rxn_dir / "R.xyz"),
+        "P.xyz": sha256_file(rxn_dir / "P.xyz"),
+        "path.inp": None,
+    }
+    if failed:
+        _write_xyz(run_dir / "path.inp", "$path\n  maxopt=3\n$end\n")
+        sources["path.inp"] = sha256_file(run_dir / "path.inp")
+    else:
+        _write_xyz(run_dir / "xtbpath.xyz", "2\n energy: 0.000000\nC 0.0 0.0 0.0\nO 1.4 0.0 0.0\n")
+        (run_dir / "path.inp").write_text("$path\n  maxopt=3\n$end\n", encoding="utf-8")
+        sources["path.inp"] = sha256_file(run_dir / "path.inp")
+        sources["xtbpath.xyz"] = sha256_file(run_dir / "xtbpath.xyz")
     endpoints = {
         "reaction_id": REACTION_ID,
         "multiplicity_basis": "g1_valid_invariant",
@@ -80,19 +96,16 @@ def _build_clean_tree(tmp_path: Path) -> tuple[dict[str, Any], Path]:
     }
     write_json(rxn_dir / "endpoints.json", endpoints)
 
-    rows = [_frame_row(REACTION_ID, 0), _frame_row(REACTION_ID, 1)]
-    write_frames_parquet(rxn_dir / "frames.parquet", rows)
+    rows = [] if failed else [_frame_row(REACTION_ID, 0), _frame_row(REACTION_ID, 1)]
+    if rows:
+        write_frames_parquet(rxn_dir / "frames.parquet", rows)
     document = reaction_document(
         reaction_id=REACTION_ID,
-        status="valid",
+        status="failed" if failed else "valid",
+        failure_code="G2_XTB_FAILED" if failed else None,
+        failure_detail="xtbpath.xyz missing" if failed else None,
         direction="forward",
-        sources={
-            "g1_document": sha256_file(g1_path),
-            "R.xyz": sha256_file(rxn_dir / "R.xyz"),
-            "P.xyz": sha256_file(rxn_dir / "P.xyz"),
-            "path.inp": sha256_file(run_dir / "path.inp"),
-            "xtbpath.xyz": sha256_file(run_dir / "xtbpath.xyz"),
-        },
+        sources=sources,
         endpoints={"multiplicity_basis": "g1_valid_invariant", "n_candidates": 0},
         frames=rows,
         config_digest="0" * 64,
@@ -144,6 +157,13 @@ def test_clean_tree_reports_no_problems(tmp_path: Path) -> None:
     assert isinstance(outcome, G2Verification)
     assert outcome.problems == ()
     assert (outcome.n_total, outcome.n_valid, outcome.n_failed) == (1, 1, 0)
+
+
+def test_failed_reaction_without_frames_parquet_is_consistent(tmp_path: Path) -> None:
+    config, _ = _build_clean_tree(tmp_path, failed=True)
+    outcome = verify_g2(config=config)
+    assert outcome.problems == ()
+    assert (outcome.n_total, outcome.n_valid, outcome.n_failed) == (1, 0, 1)
 
 
 def test_edited_r_xyz_digest_is_caught(tmp_path: Path) -> None:

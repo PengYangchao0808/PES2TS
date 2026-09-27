@@ -25,9 +25,12 @@ from pes2ts_core.utils.parquet_io import read_parquet
 #: The singular ``coordinate`` of endpoints.json atom records is allowed.
 FORBIDDEN_KEYS: tuple[str, ...] = ("coordinates", "EHG", "forces")
 
-#: Filenames every reaction directory must contain.
+#: Filenames every reaction directory must contain.  ``frames.parquet`` is
+#: deliberately absent: the pipeline writes no frame file when a failed run
+#: produced no parseable frames, so it is required only when the document
+#: declares ``frames.n_frames > 0``.
 _REACTION_DIR_FILES: tuple[str, ...] = (
-    "reaction_path.json", "frames.parquet", "endpoints.json", "R.xyz", "P.xyz",
+    "reaction_path.json", "endpoints.json", "R.xyz", "P.xyz",
 )
 _DOCUMENT_FILENAME = "reaction_path.json"
 _FRAMES_FILENAME = "frames.parquet"
@@ -154,16 +157,18 @@ def _reaction_problems(
         problems.append(f"{document_path}: unknown status {str(document.get('status'))!r}")
     problems.extend(_summary_agreement_problems(row, document, document_path))
     frames_path = rxn_dir / _FRAMES_FILENAME
+    frames_summary = document.get("frames")
+    n_frames = int(frames_summary.get("n_frames", -1)) if isinstance(frames_summary, Mapping) else -1
     if frames_path.is_file():
         frames = read_parquet(frames_path).to_pylist()
-        frames_summary = document.get("frames")
-        n_frames = int(frames_summary.get("n_frames", -1)) if isinstance(frames_summary, Mapping) else -1
         if len(frames) != n_frames:
             problems.append(
                 f"{frames_path}: {len(frames)} rows disagree with document frames.n_frames {n_frames}"
             )
         for foreign in sorted({str(frame.get("reaction_id")) for frame in frames} - {reaction_id}):
             problems.append(f"{frames_path}: frame reaction_id {foreign!r} does not match {reaction_id}")
+    elif n_frames > 0:
+        problems.append(f"summary row {reaction_id} has no {frames_path}")
     problems.extend(_forbidden_key_problems(document_path, document))
     endpoints_path = rxn_dir / _ENDPOINTS_FILENAME
     if endpoints_path.is_file():
