@@ -627,10 +627,12 @@ def _xtb_fingerprint(
 
     ``version``/``argv``/``omp_num_threads``/``seed_supported``/``seed`` come
     from the last attempt of the last attempted reaction in sorted selected
-    order (all ``None`` when the batch ran no attempt); ``sha256`` is the
-    executable digest recorded by that attempt, recomputed from the resolved
-    binary when no attempt ran; ``path_inp`` is always regenerated from the
-    config.  ``config_digest`` keeps consuming only ``sha256``/``path_inp``.
+    order — freshly run or resumed from the persisted terminal document, so
+    an idempotent re-run reproduces the fresh run's block (all ``None`` only
+    when the batch holds no attempt at all).  ``sha256`` is the executable
+    digest recorded by that attempt, recomputed from the resolved binary when
+    no attempt ran; ``path_inp`` is always regenerated from the config.
+    ``config_digest`` keeps consuming only ``sha256``/``path_inp``.
     """
     executable = resolve_executable(config)
     with tempfile.TemporaryDirectory() as scratch:
@@ -679,7 +681,10 @@ def _write_batch_artifacts(
     write_summary(interim_dir / SUMMARY_FILENAME, summary_rows)
     last_attempt: Mapping[str, Any] | None = None
     for reaction_id in selected:
-        attempts = (documents.get(reaction_id) or {}).get("attempts")
+        document = documents.get(reaction_id) or _terminal_document(
+            _rxn_dir(interim_dir, reaction_id, shard_size) / DOCUMENT_FILENAME
+        )
+        attempts = (document or {}).get("attempts")
         if attempts:
             last_attempt = attempts[-1]
     fingerprint = _xtb_fingerprint(config, last_attempt)

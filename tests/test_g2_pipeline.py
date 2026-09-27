@@ -376,18 +376,23 @@ def test_run_is_idempotent_without_force(tmp_path, monkeypatch):
         for name in ("reaction_path.json", "frames.parquet", "run/xtb_path.log")
     }
     calls = _counter_calls(tmp_path)
+    fresh_xtb = read_json(Path(config["paths"]["manifests"]) / "g2_path_manifest.json")["xtb"]
     report = run_ids([REACTION_A], config=config)
     assert report.n_attempted == 0
     assert report.n_skipped == 1
     assert _counter_calls(tmp_path) == calls
     manifest = read_json(Path(config["paths"]["manifests"]) / "g2_path_manifest.json")
     assert manifest["run"] == {"n_selected": 1, "n_attempted": 0, "n_skipped": 1}
-    assert manifest["xtb"]["sha256"] == sha256_file(Path(config["g2"]["xtb"]["executable"]))
-    assert manifest["xtb"]["version"] is None
-    assert manifest["xtb"]["argv"] is None
-    assert manifest["xtb"]["omp_num_threads"] is None
-    assert manifest["xtb"]["seed_supported"] is None
+    # Provenance is stable across an idempotent re-run: the skipped reaction's
+    # persisted terminal document still supplies the xtb block, byte-equal to
+    # the fresh run's (modulo the volatile keys, which the xtb block excludes).
+    assert manifest["xtb"] == fresh_xtb
+    assert manifest["xtb"]["version"] == "* xtb version 6.7.1 (fake)"
+    assert manifest["xtb"]["argv"][0] == str(Path(config["g2"]["xtb"]["executable"]).resolve())
+    assert manifest["xtb"]["omp_num_threads"] == "4"
+    assert manifest["xtb"]["seed_supported"] is False
     assert manifest["xtb"]["seed"] is None
+    assert manifest["xtb"]["sha256"] == sha256_file(Path(config["g2"]["xtb"]["executable"]))
     after = {
         name: sha256_file(rxn_dir / name)
         for name in ("reaction_path.json", "frames.parquet", "run/xtb_path.log")
