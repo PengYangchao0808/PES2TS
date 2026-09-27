@@ -288,11 +288,19 @@ def test_cli_truth_index_handler_rejects_subprocess(tmp_path: Path) -> None:
 
 
 def test_g2_tree_is_clean_under_default_allowlists() -> None:
-    # Given: the shipped g2 subtree (skeleton today; runner.py joins in task 5)
-    g2_root = Path(__file__).resolve().parents[1] / "pes2ts_core" / "g2"
-    # When / Then: with the default allowlists the whole tree passes — the
-    # runner's dynamic-exec risk is exempt while its truth checks stay active
-    assert assert_no_truth_access(package_root=g2_root) == []
+    # Given: the shipped g2 subtree, including the task-5 runner; scan-root
+    # relative paths are computed against the scan root's parent, so the
+    # scan must root at the package for the allowlist names to match
+    package_root = Path(__file__).resolve().parents[1] / "pes2ts_core"
+    g2_root = package_root / "g2"
+    # When
+    findings = [
+        finding
+        for finding in scan_truth_access(package_root=package_root)
+        if g2_root in Path(finding.file).parents
+    ]
+    # Then: dynamic exec is exempt and no truth reference is present
+    assert findings == []
 
 
 def test_dynamic_exec_allowlist_suppresses_only_dynamic_exec(tmp_path: Path) -> None:
