@@ -108,6 +108,29 @@ def test_evaluate_validity_reports_xtb_failure_when_xtb_failed():
     assert verdict.status == "failed"
     assert verdict.failure_code == RejectionCode.G2_XTB_FAILED
     assert verdict.detail == "xtb exited 3 (timeout)"
+    assert verdict.summary["n_frames"] == 8
+
+
+def test_evaluate_validity_short_circuits_xtb_failure_without_frames():
+    verdict = evaluate_validity(
+        (),
+        reaction_id="RXN_TEST",
+        reactant_coords={},
+        product_coords={},
+        elements=ELEMENTS,
+        r_pairs=R_PAIRS,
+        p_pairs=P_PAIRS,
+        events=EVENTS_FORMED,
+        xtb_failure="xtb exited 3",
+    )
+    assert verdict.status == "failed"
+    assert verdict.failure_code == RejectionCode.G2_XTB_FAILED
+    assert verdict.detail == "xtb exited 3"
+    assert verdict.summary == {
+        "reaction_id": "RXN_TEST",
+        "n_frames": 0,
+        "xtb_failure": "xtb exited 3",
+    }
 
 
 def test_evaluate_validity_reports_endpoint_not_reached_when_only_first_vs_r_exceeds():

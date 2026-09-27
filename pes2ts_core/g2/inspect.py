@@ -281,7 +281,21 @@ def evaluate_validity(
 
     The pipeline must normalize direction (reverse + recalibrate) BEFORE
     calling — this function accepts no reversed frames.
+    An xTB failure short-circuits everything: a crashed run (non-zero exit /
+    timeout / missing key artifacts) may have produced no parseable frames at
+    all, so the verdict is returned before any frame validation.
     """
+    if xtb_failure is not None:
+        return Verdict(
+            STATUS_FAILED,
+            RejectionCode.G2_XTB_FAILED,
+            str(xtb_failure),
+            {
+                "reaction_id": str(reaction_id),
+                "n_frames": len(frames),
+                "xtb_failure": str(xtb_failure),
+            },
+        )
     endpoint_max, max_step, min_frames, collision_min, bond_tolerance = _thresholds(config)
     metrics = frame_metrics(
         frames,
