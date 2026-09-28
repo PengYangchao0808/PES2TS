@@ -36,6 +36,7 @@ from numpy.typing import NDArray
 from pes2ts_core.g0.rejections import RejectionCode
 from pes2ts_core.g0.rp_checks import ELEMENT_SYMBOLS
 from pes2ts_core.g1.index_map import COVALENT_RADII
+from pes2ts_core.g2.endpoints import kabsch_transform
 from pes2ts_core.g2.status import FAILURE_PRECEDENCE, STATUS_FAILED, STATUS_VALID
 from pes2ts_core.g2.xtb_output import Frame
 from pes2ts_core.utils.hashing import JSONValue
@@ -277,6 +278,20 @@ def _topology_violations(
     return violations
 
 
+def _aligned_endpoint_rmsd(frame: Frame, keyed: Mapping[int, Sequence[float]]) -> float:
+    """Full-atom Kabsch RMSD of one frame against map-keyed endpoint coords.
+
+    Same map-order contract as :func:`frame_metrics`: frame atom ``i`` is the
+    ``i``-th smallest map.  ``kabsch_transform`` removes the centroids, fits
+    the optimal rotation via SVD (reflection-corrected), and returns the
+    residual RMSD — deterministic for identical inputs.
+    """
+    maps = tuple(sorted(keyed))
+    moving = np.array([frame.coordinates[i] for i in range(len(maps))], dtype=np.float64)
+    target = np.array([keyed[map_] for map_ in maps], dtype=np.float64)
+    return kabsch_transform(moving, target).rmsd
+
+
 def evaluate_validity(
     frames: Sequence[Frame],
     *,
@@ -297,6 +312,10 @@ def evaluate_validity(
     An xTB failure short-circuits everything: a crashed run (non-zero exit /
     timeout / missing key artifacts) may have produced no parseable frames at
     all, so the verdict is returned before any frame validation.
+    The endpoint verdicts are measured after optimal full-atom superposition
+    (frame 0 vs ``reactant_coords``, last frame vs ``product_coords``), so a
+    uniformly rigidly-offset path is not falsely rejected; the in-place
+    values are retained in the summary (and frames.parquet).
     """
     if xtb_failure is not None:
         return Verdict(
@@ -324,11 +343,14 @@ def evaluate_validity(
     first, last = metrics[0], metrics[-1]
     first_vs_r = float(first["rmsd_to_start"])
     last_vs_p = float(last["rmsd_to_end"])
+    first_vs_r_aligned = _aligned_endpoint_rmsd(frames[0], reactant_coords)
+    last_vs_p_aligned = _aligned_endpoint_rmsd(frames[-1], product_coords)
     violations: dict[RejectionCode, str] = {}
-    if first_vs_r > endpoint_max or last_vs_p > endpoint_max:
+    if first_vs_r_aligned > endpoint_max or last_vs_p_aligned > endpoint_max:
         violations[RejectionCode.G2_ENDPOINT_NOT_REACHED] = (
-            f"first_vs_R={first_vs_r:.6f} last_vs_P={last_vs_p:.6f} "
-            f"exceed endpoint_rmsd_max={endpoint_max:.6f}"
+            f"aligned endpoint RMSD exceeds endpoint_rmsd_max={endpoint_max:.6f}: "
+            f"first_vs_R={first_vs_r_aligned:.6f} last_vs_P={last_vs_p_aligned:.6f} "
+            f"(in-place: first_vs_R={first_vs_r:.6f} last_vs_P={last_vs_p:.6f})"
         )
     drift = _topology_violations(
         first["event_distances"], last["event_distances"], events, elements, bond_tolerance
@@ -376,6 +398,8 @@ def evaluate_validity(
         "n_frames": len(metrics),
         "first_vs_r_rmsd": first_vs_r,
         "last_vs_p_rmsd": last_vs_p,
+        "first_vs_r_rmsd_aligned": first_vs_r_aligned,
+        "last_vs_p_rmsd_aligned": last_vs_p_aligned,
         "worst_step_max": max(float(record["step_max"]) for record in metrics),
         "min_nonbonded_distance": min(nonbonded_values) if nonbonded_values else None,
         "event_distances": {
