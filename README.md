@@ -610,9 +610,13 @@ TS-derived fields. Per reaction, G2 first **assembles the R/P endpoints** into
 a single map-ordered frame (rigid placement of multi-component sides plus
 cross-component clash separation), then runs the **GFN2-xTB PATH**
 metadynamics on the assembled `start.xyz`/`end.xyz`, parses the per-frame
-energies and geometries, and applies the validity predicates below. Every
-selected reaction ends with a terminal path document; failures carry a typed
-`failure_code` and one entry in the unified rejection ledger.
+energies and geometries, and applies the validity predicates below. The
+endpoint-reach judgement is measured after optimal full-atom superposition:
+xTB's output frames drift as whole-molecule rigid rotations, and xTB's own
+`product-end path RMSD` (and RPH v4.0.1's product reference RMSD) are
+likewise superposed metrics. Every selected reaction ends with a terminal path
+document; failures carry a typed `failure_code` and one entry in the unified
+rejection ledger.
 
 ### G2 inputs and artifacts
 
@@ -692,8 +696,13 @@ Each path is judged by the first violated predicate in this precedence order:
 
 1. `G2_XTB_FAILED`: xTB exited non-zero, timed out, or a key output
    (`xtbpath.xyz`, `xtbpath_ts.xyz`, `xtb_path.log`) is missing or malformed.
-2. `G2_ENDPOINT_NOT_REACHED`: `first_vs_R > 0.5 Å` **or** `last_vs_P > 0.5 Å`
-   (OR semantics; equality passes).
+2. `G2_ENDPOINT_NOT_REACHED`: the frame-0-vs-reactant (`first_vs_R`) or
+   last-frame-vs-product (`last_vs_P`) RMSD **after optimal Kabsch
+   superposition** exceeds 0.5 Å (OR semantics; equality passes). The predicate
+   reads the superposed summary values `first_vs_r_rmsd_aligned` /
+   `last_vs_p_rmsd_aligned`; the raw audit values `first_vs_r_rmsd` /
+   `last_vs_p_rmsd` remain in the summary and the failure detail, and the
+   `frames.parquet` columns retain the raw in-place per-frame metrics.
 3. `G2_TOPOLOGY_DRIFT`: any event pair violates its PASS predicate (formed:
    first frame at or beyond the covalent-radius sum + 0.45 Å and last frame
    bonded; broken: the reverse; order_changed: bonded at both ends;
@@ -707,7 +716,9 @@ Each path is judged by the first violated predicate in this precedence order:
 The four `g2.validity` scalars are `endpoint_rmsd_max=0.5`,
 `max_frame_step=4.0`, `min_frames=8`, and `collision_min_distance=0.8`; all
 four were retained after the two-reaction pilot
-(`.omo/evidence/task-15-g2-pilot-report.md`). **Order-change nuance:** G1 lists
+(`.omo/evidence/task-15-g2-pilot-report.md`). `endpoint_rmsd_max=0.5` is
+applied to the superposed endpoint values and is retained unchanged.
+**Order-change nuance:** G1 lists
 an order change under `formed`, `broken`, *and* `order_changed`; the formed and
 broken PASS predicates contradict each other on such a pair, so a pair present
 in `order_changed` is judged only by the order-changed predicate (bonded at
@@ -722,7 +733,7 @@ both ends).
 | `G2_ASSEMBLY_FAILED` | prepare | A malformed document, a missing component row, or a non-finite placement transform. |
 | `G2_ASSEMBLY_COLLISION` | prepare | The chosen assembly still has a nonbonded pair below 0.8 Å. |
 | `G2_XTB_FAILED` | run | xTB exited non-zero or timed out, or a key output is missing or malformed. Never reverse-retried. |
-| `G2_ENDPOINT_NOT_REACHED` | run | `first_vs_R` or `last_vs_P` exceeds 0.5 Å. |
+| `G2_ENDPOINT_NOT_REACHED` | run | Aligned `first_vs_R` or `last_vs_P` exceeds 0.5 Å; the raw in-place values are carried alongside in the failure detail (the summary and `frames.parquet` retain them). |
 | `G2_TOPOLOGY_DRIFT` | run | An event pair violates its PASS predicate. |
 | `G2_ENERGY_INCOMPLETE` | run | A frame energy is missing or non-finite. |
 | `G2_PATH_DISCONTINUOUS` | run | A step above 4.0 Å, or fewer than 8 frames. |
@@ -807,7 +818,7 @@ active (see *Ground-truth isolation*).
 | `g2.assembly.forming_min_distance` | `2.0` | Å; separation floor for a cross-component formed/broken pair. |
 | `g2.assembly.forming_target_distance` | `3.0` | Å; separation target floor. |
 | `g2.assembly.bond_tolerance` | `0.45` | Å; Cordero-radius-sum tolerance for bonded/unbonded classification and the separation thresholds. |
-| `g2.validity.endpoint_rmsd_max` | `0.5` | Å; `first_vs_R`/`last_vs_P` bound (retained from the pilot). |
+| `g2.validity.endpoint_rmsd_max` | `0.5` | Å; bound on the superposed `first_vs_R`/`last_vs_P` endpoint RMSD (retained from the pilot). |
 | `g2.validity.max_frame_step` | `4.0` | Å; largest allowed single-atom step between adjacent frames. |
 | `g2.validity.min_frames` | `8` | Minimum parsed frame count. |
 | `g2.validity.collision_min_distance` | `0.8` | Å; nonbonded threshold used by the assembly collision check and `G2_COLLISION`. |
@@ -880,9 +891,10 @@ and the `ts_guess.xyz` / `scan_profile.json` candidate dictionary
 [`rph_core/steps/step2_retro/path_selector.py` L630-L648](https://github.com/PengYangchao0808/ReactionProfileHunter/blob/3abbaecdd0b3c8cad6c4106c6e3ea07b6071e437/rph_core/steps/step2_retro/path_selector.py#L630-L648)).
 One deliberate difference: **G2 takes each frame energy from the path output's
 own comment** (relative kcal/mol in `xtbpath.xyz`) and does **not** recompute a
-single point per frame the way RPH does. All line references above are GitHub
-permalinks at the v4.0.1 commit; older v3.0.0 checkouts have different line
-numbers and are not the reference.
+single point per frame the way RPH does. All product reference RMSDs compared
+in G2 (and in the RPH reference) are Kabsch-superposed. All line references
+above are GitHub permalinks at the v4.0.1 commit; older v3.0.0 checkouts have
+different line numbers and are not the reference.
 
 ## Testing
 
@@ -913,8 +925,9 @@ splitting, budget exhaustion), the audited bulk truth accessors, and a
 synthetic end-to-end P1→P2→verify→gate pipeline with CLI contracts. The
 G2 suite adds endpoint-assembly placement/separation/collision fixtures, the
 strict xTB output parser against real pinned PATH fixtures, frame metrics and
-validity predicates, the runner subprocess contract (fake binaries), and the
-reverse-retry direction normalization. Tally: **533 passed, 4 deselected**
+validity predicates (including the superposed-endpoint regression), the runner
+subprocess contract (fake binaries), and the reverse-retry direction
+normalization. Tally: **542 passed, 4 deselected**
 (the 4 deselected are the gated families below).
 
 Checks that need Zenodo or the ~12 GB download are marked `realdata`, and the
