@@ -9,6 +9,7 @@ pre-existing target is left untouched.
 
 from __future__ import annotations
 
+import errno
 import json
 import logging
 import os
@@ -44,10 +45,17 @@ def atomic_writer(path: str | Path) -> Iterator[BinaryIO]:
     _ensure_parent_dir(target)
     tmp = target.with_suffix(target.suffix + f".tmp-{os.getpid()}")
     try:
-        with tmp.open("wb") as handle:
-            yield handle
-            handle.flush()
-            os.fsync(handle.fileno())
+        try:
+            with tmp.open("wb") as handle:
+                yield handle
+                handle.flush()
+                os.fsync(handle.fileno())
+        except FileNotFoundError as exc:
+            # Windows reports ERROR_PATH_NOT_FOUND when a parent component is
+            # a regular file; POSIX reports ENOTDIR for the same condition.
+            if target.parent.is_file():
+                raise NotADirectoryError(errno.ENOTDIR, os.strerror(errno.ENOTDIR), str(tmp)) from exc
+            raise
         os.replace(tmp, target)
     finally:
         # A successful os.replace already consumed tmp.  tmp.exists() is False

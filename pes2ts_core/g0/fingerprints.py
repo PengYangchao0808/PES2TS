@@ -26,7 +26,6 @@ from pathlib import Path
 from typing import Any, Final
 
 import numpy as np
-from drfp import DrfpEncoder
 from numpy.typing import NDArray
 from rdkit import DataStructs
 from rdkit.DataStructs import ExplicitBitVect
@@ -159,6 +158,13 @@ def compute_fingerprints(config: Mapping[str, Any]) -> FingerprintResult:
         When a required column is absent, a stored split label is unknown, an
         assigned reaction is not in the inventory, or the inventory is empty.
     """
+    try:
+        from drfp import DrfpEncoder
+    except ImportError as exc:
+        raise ImportError(
+            "DRFP is required for `g0 audit` and `g0 freeze`; install project dependencies from requirements.txt"
+        ) from exc
+
     inventory_path = Path(config["paths"]["interim"]) / INVENTORY_PARQUET_FILENAME
     reaction_ids, smiles = _read_inventory(inventory_path)
     if not reaction_ids:

@@ -19,6 +19,7 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
+from pathlib import PurePosixPath, PureWindowsPath
 from typing import Any, Final
 
 from pes2ts_core.g0.pipeline_report import (
@@ -248,14 +249,18 @@ def with_data_root(config: Mapping[str, Any], data_root: str | Path) -> dict[str
     old_root = paths.get("data_root")
     new_root = str(data_root).rstrip("/") or str(data_root)
     if isinstance(old_root, str) and old_root:
-        prefix = old_root.rstrip("/") or old_root
+        windows_style = "\\" in old_root or bool(PureWindowsPath(old_root).drive)
+        root_type = PureWindowsPath if windows_style else PurePosixPath
+        prefix = root_type(old_root)
+        new_prefix = root_type(new_root)
         for key, value in paths.items():
             if not isinstance(value, str):
                 continue
-            if value == prefix:
-                paths[key] = new_root
-            elif value.startswith(f"{prefix}/"):
-                paths[key] = f"{new_root}{value[len(prefix):]}"
+            try:
+                relative = root_type(value).relative_to(prefix)
+            except ValueError:
+                continue
+            paths[key] = str(new_prefix / relative) if str(relative) != "." else str(new_prefix)
     paths["data_root"] = new_root
     return updated
 
