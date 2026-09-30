@@ -15,8 +15,8 @@ endpoint components), charges/spins, the exclusive edits, the aromatic
 regions, the reaction center, and the v2 classification -- with
 ``mapping_provenance="truth_assisted_p1"`` and **no** TS/IRC-derived fields
 (``ts_irc_index`` above all; the export verifier enforces the blacklist).
-G2 may choose its own scan method; it may not redefine which two atoms
-bond, break, or transfer hydrogen.
+G1 freezes the scan method and candidate plan per reaction; G2 executes
+it and may not redefine which two atoms bond, break, or transfer hydrogen.
 """
 
 from __future__ import annotations

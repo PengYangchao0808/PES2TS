@@ -1,0 +1,104 @@
+# task-2-pes-generation-graph-scan-strategy — 接口承诺 + 谱系登记 + 配置/pytest 标记基础
+# Plan: .omo/plans/pes-generation-graph-scan-strategy.md todo 2
+# Date: 2026-10-01
+# Env: conda pes2ts (python 3.12), cwd = PES2TS repo root
+
+## (a) config/defaults.yaml — scan_strategy policy section
+
+### Command
+conda run -n pes2ts python -c "import yaml,pathlib; d=yaml.safe_load(open('config/defaults.yaml')); assert 'scan_strategy' in d; print('scan_strategy keys:', sorted(d['scan_strategy'].keys())); print('context_radius:', d['scan_strategy']['context_radius']); print('max_scan_coordinates:', d['scan_strategy']['max_scan_coordinates']); print('schedule_budget:', d['scan_strategy']['schedule_budget']); print('direction_budget:', d['scan_strategy']['direction_budget']); print('special_domain_policy:', d['scan_strategy']['special_domain_policy']); print('existing g1/g2 keys intact:', 'g1' in d and 'g1_v2' in d and 'g2' in d); print('YAML_OK')"
+
+### Output
+scan_strategy keys: ['assembly_candidate_budget', 'context_radius', 'direction_budget', 'element_pair_bond_thresholds', 'jacobian_condition_number_max', 'max_scan_coordinates', 'max_step_by_kind', 'max_total_candidates', 'point_limits', 'schedule_budget', 'special_domain_policy']
+context_radius: 2
+max_scan_coordinates: 3
+schedule_budget: 3
+direction_budget: 2
+special_domain_policy: unsupported
+existing g1/g2 keys intact: True
+YAML_OK
+
+### Notes
+- New top-level `scan_strategy` section inserted between `g1_v2` and `g2`; all pre-existing keys preserved byte-for-byte (git diff shows additions only).
+- Threshold values encoded from design doc §6/§8/§9 (PES_GENERATION_图论扫描策略选择器设计_v1.md):
+  context_radius=2 (§4/line90), max_scan_coordinates=3 (§8/§9.1 ORCA native bound),
+  point_limits baseline=9 / max=101 (§8.3 n_points∈[3,101]),
+  schedule_budget=3 + direction_budget=2 (§8.1 first-version caps),
+  assembly_candidate_budget=2 + max_total_candidates scan=6/path_neb=1 (§8.3),
+  max_step_by_kind distance/angle/dihedral (§8.3 max_step_B/A/D, 待校准),
+  jacobian_condition_number_max=1.0e6 (§6.3 J=∂q/∂x conditioning gate),
+  element_pair_bond_thresholds.tolerance=0.45 (§6.3, matches existing g1/g2 bond_tolerance),
+  special_domain_policy=unsupported (§6.3/§9.1 — unknown/special domains not enabled).
+- Every numeric entry carries `# TODO: calibrate` (待校准) per task requirement.
+- No `scan_strategy`-prefix CLI commands invented (todo 4 scope).
+
+## (b) pytest.ini — acp/orca markers + addopts
+
+### Command
+conda run -n pes2ts python -m pytest --markers 2>&1 | grep -E "pytest.mark.(acp|orca|realdata|xtb)"
+
+### Output (full --markers listing, relevant lines)
+@pytest.mark.realdata: requires network and/or the ~12GB real download
+@pytest.mark.xtb: requires the real GFN2-xTB binary
+@pytest.mark.acp: requires PES2TS_ACP_ROOT and an ACP python interpreter
+@pytest.mark.orca: requires PES2TS_ORCA_EXECUTABLE
+
+### Notes
+- `realdata`/`xtb` marker definition lines unchanged; two new markers appended.
+- addopts now: -m "not realdata and not xtb and not acp and not orca"
+
+## (c) 7 old design docs — merge header note
+
+### Command
+grep -n "已并入图谱选择器 P0–P3" docs/design/G1_v2_补全实施总方案.md docs/design/G1_v2_L0到G2扫描策略设计.md docs/design/G1_v2_ORCA扫描模式识别与计划.md docs/design/G1_v2_一维优先与xTB二维成本策略.md docs/design/G1_v2_产物成键逆向扫描优先策略.md docs/design/G1_v2_方向无关成键锚点与双向扫描策略.md docs/design/G1_v2_多成键与少成键方向对比.md
+
+### Output (all 7 docs, line 3 = near-first, immediately after H1 title)
+docs/design/G1_v2_补全实施总方案.md:3:> 已并入图谱选择器 P0–P3 (见 docs/design/PES_GENERATION_图论扫描策略选择器设计_v1.md 与 .omo/plans/pes-generation-graph-scan-strategy.md)
+docs/design/G1_v2_L0到G2扫描策略设计.md:3:> 已并入图谱选择器 P0–P3 (见 docs/design/PES_GENERATION_图论扫描策略选择器设计_v1.md 与 .omo/plans/pes-generation-graph-scan-strategy.md)
+docs/design/G1_v2_ORCA扫描模式识别与计划.md:3:> 已并入图谱选择器 P0–P3 (见 docs/design/PES_GENERATION_图论扫描策略选择器设计_v1.md 与 .omo/plans/pes-generation-graph-scan-strategy.md)
+docs/design/G1_v2_一维优先与xTB二维成本策略.md:3:> 已并入图谱选择器 P0–P3 (见 docs/design/PES_GENERATION_图论扫描策略选择器设计_v1.md 与 .omo/plans/pes-generation-graph-scan-strategy.md)
+docs/design/G1_v2_产物成键逆向扫描优先策略.md:3:> 已并入图谱选择器 P0–P3 (见 docs/design/PES_GENERATION_图论扫描策略选择器设计_v1.md 与 .omo/plans/pes-generation-graph-scan-strategy.md)
+docs/design/G1_v2_方向无关成键锚点与双向扫描策略.md:3:> 已并入图谱选择器 P0–P3 (见 docs/design/PES_GENERATION_图论扫描策略选择器设计_v1.md 与 .omo/plans/pes-generation-graph-scan-strategy.md)
+docs/design/G1_v2_多成键与少成键方向对比.md:3:> 已并入图谱选择器 P0–P3 (见 docs/design/PES_GENERATION_图论扫描策略选择器设计_v1.md 与 .omo/plans/pes-generation-graph-scan-strategy.md)
+
+### Notes
+- One-line note inserted as first blockquote after each H1 title (near-first line); rest of each file unaltered.
+- Markdown-quote style matches each doc's existing header-note convention.
+
+## (d) pes2ts_core/g1/v2_gate.py — scan-method note
+
+### Command
+grep -n "choose its own scan method" pes2ts_core/g1/v2_gate.py
+
+### Output
+(no output; grep exit code 1 = empty = PASS)
+
+### New docstring lines (18-19)
+G1 freezes the scan method and candidate plan per reaction; G2 executes
+it and may not redefine which two atoms bond, break, or transfer hydrogen.
+
+### Notes
+- Docstring-only change; no behavior change to v2-gate code.
+- File style is English docstrings; wording kept in English.
+
+## Verification gates
+
+### Command
+conda run -n pes2ts python -m pytest -q --collect-only
+
+### Output
+666/670 tests collected (4 deselected) in 2.70s
+collect_exit=0
+
+### Notes
+- 4 deselected = the pre-existing gated families (realdata/xtb); no test currently uses acp/orca markers, so deselected count unchanged.
+- acp/orca tests (when added in later todos) will be deselected by default addopts.
+
+## Acceptance checklist
+- [x] python yaml import assert 'scan_strategy' in d -> YAML_OK (conda pes2ts)
+- [x] pytest --markers contains acp and orca (@pytest.mark.acp / @pytest.mark.orca)
+- [x] grep -n "choose its own scan method" pes2ts_core/g1/v2_gate.py -> empty
+- [x] All 7 old docs carry the merge header note at/near first line (line 3)
+- [x] pytest -q --collect-only exit 0, 666/670 collected, 4 deselected
+- [x] Evidence file: .omo/evidence/task-2-pes-generation-graph-scan-strategy.txt (force-add; .omo/ gitignored)
+- [x] Commit: chore(scan-strategy): add interface commitments, policy section, and gated markers

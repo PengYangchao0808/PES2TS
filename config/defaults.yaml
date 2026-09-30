@@ -84,6 +84,31 @@ g1_v2:
   sample_size: 20
   sample_seed: 42
 
+# G1 scan-strategy policy (P0–P3 graph selector). Thresholds are placeholders
+# pending calibration (待校准); see
+# docs/design/PES_GENERATION_图论扫描策略选择器设计_v1.md §6/§8/§9 and
+# .omo/plans/pes-generation-graph-scan-strategy.md (todo 2, Interface commitments).
+scan_strategy:
+  context_radius: 2               # TODO: calibrate — event-coupling neighborhood shell (设计 §4)
+  max_scan_coordinates: 3         # TODO: calibrate — ORCA 6.1 native B/A/D upper bound (设计 §8/§9.1)
+  point_limits:                   # TODO: calibrate — n_points contract bounds (设计 §8.3)
+    baseline: 9                   # coarse-path baseline; dev smoke only
+    max: 101                      # contract upper bound; backend may be stricter
+  schedule_budget: 3              # TODO: calibrate — max schedules per candidate (设计 §8.1)
+  direction_budget: 2             # TODO: calibrate — max directions per candidate (设计 §8.1)
+  assembly_candidate_budget: 2    # TODO: calibrate — endpoint assemblies per reaction (设计 §8.3)
+  max_total_candidates:           # TODO: calibrate — first-round development caps (设计 §8.3)
+    scan: 6                       # total Scan candidates across directions/assemblies/schedules
+    path_neb: 1                   # initial NEB candidate
+  max_step_by_kind:               # TODO: calibrate — per-method/coordinate-type step caps (设计 §8.3)
+    distance: 0.2                 # Angstrom placeholder
+    angle: 10.0                   # degrees placeholder
+    dihedral: 10.0                # degrees placeholder
+  jacobian_condition_number_max: 1.0e6  # TODO: calibrate — J=∂q/∂x rank/conditioning gate (设计 §6.3)
+  element_pair_bond_thresholds:   # TODO: calibrate — bonded/unbonded radius-sum tolerance (设计 §6.3)
+    tolerance: 0.45               # Angstrom; matches existing g1/g2 bond_tolerance placeholder
+  special_domain_policy: unsupported  # TODO: calibrate — special-domain handling (设计 §6.3/§9.1)
+
 g2:
   eligible_path: null            # null => <paths.interim>/g2_eligible.json
   shard_size: 1000
