@@ -1,0 +1,49 @@
+task-7 pes-generation-graph-scan-strategy — atom-level reaction edit graph ΔG
+date: 2026-10-01
+status: PASSED
+
+## Deliverables
+- pes2ts_core/g1/reaction_edit_graph.py (new; additive; no existing module modified)
+  - ReactionEdit / ReactionEditGraph frozen slots dataclasses + build_reaction_edit_graph(bundle, aromatic_regions=None)
+  - F/B/O mutually exclusive attribution per unordered map pair (v2 contract: raised order = ONE order_changed, never F+B)
+  - aromatic 1.5 semantics: 1.5 if edge.aromatic else bond_order (matches build_evidence.py graph() and v2_edits AROMATIC_ORDER)
+  - H partner changes surface naturally as broken/formed bond edits on (H,X)/(H,Y) pairs — no separate H path
+  - atom_events: every atom whose partner set OR attributes changed, independent of edge edits
+  - atom_attribute_changes: evidence byte-format {atom_map_id, R/P {formal_charge, radical_electrons, aromatic, chiral_tag}}
+  - edit_degree / center_atoms (degree >= 2 = CENTER_DEGREE)
+  - edit_components over F/B/O edges; connectivity_edit_components over F/B-only edges
+  - edit_cycle_rank = |E| - |V| + C over F/B/O edit graph
+  - deterministic: sorted pairs, components by min map (DFS port of build_evidence.py::components), atoms map-ascending
+  - aromatic_region carried through from caller-supplied regions (export shape {region_id: [[a,b],...]} or pair shape {(a,b): id}); grouping NOT computed here (todo 9)
+  - todo-8 seam: ReactionEdit.to_record() exposes exactly the six golden fields as a plain dict; distance/cross_component/support_path deliberately absent
+  - pure: no file I/O, no RDKit, no truth keys; SIZE_OK marker (288 pure LOC, task-specified single contract module, precedent endpoint_graph.py/graph_rebuild.py)
+- tests/test_reaction_edit_graph.py (new; 15 tests)
+  - F/B/O exclusivity: order-change-only input → NO F/B records (counts={'order_changed':1}, connectivity components empty)
+  - H migration → formed (1,3)+broken (2,3) on H map; heavy partners in atom_events
+  - attribute-only change → zero bond edits, one atom_attribute_change (charge 1→0), partner_set_changed=False
+  - hand-built component math: disjoint F bonds (2 comps, rank 0), O triangle (1 comp, rank 1), O-bridge F/B split (edit_cc merges, fb_cc splits), shared centre degree
+  - R/P swap: hand-built F/B pair exchange + SMILES reverse-direction property (O survives, F↔B mirror, r/p orders swap)
+  - aromatic region carry-through: export shape / pair shape / absent→null
+  - determinism: same input twice → identical stable_json_dumps(to_doc())
+  - todo-8 seam shape: edit_records() == six golden fields exactly
+  - purity: to_doc key scan vs FORBIDDEN_TRUTH_KEYS ∪ FORBIDDEN_EXPORT_KEYS = 0
+  - Demo24 evidence cross-check (data tree present → RAN, not skipped): re-derived from candidates CSV + export_contracts_v1 exports via graph_rebuild; edit_counts/edit_components/connectivity_edit_components/edit_cycle_rank/atom_attribute_changes + all edits[] six golden fields matched byte-field-for-byte on every available record (24 compared, ≥3 required)
+
+## Reference semantics ported
+- outputs/pes_generation_strategy_design_v1/build_evidence.py: graph() aromatic 1.5, diffs by pair order inequality, components() DFS, edit_counts=Counter(kind), cycle_rank=|E|-|V|+C, fb_cc over kind!='order_changed', atom attrs {formal_charge, radical_electrons, aromatic, chiral_tag}
+- pes2ts_core/g1/v2_edits.py + v2_schema.py: EDIT_FORMED/EDIT_BROKEN/EDIT_ORDER_CHANGED, AROMATIC_ORDER=1.5, multi-bond min() determinism
+- Input bundle: EndpointGraphBundle (todo 5) r_graph/p_graph edges as sorted map pairs + orders + aromatic flag + atom nodes
+
+## Gates
+- conda pes2ts python -m pytest -q tests/test_reaction_edit_graph.py → 15 passed
+- Full suite: 768 passed, 4 deselected (730 baseline + 15 todo-7 + 23 parallel todo-8 worker tests in tree), 0 failed
+- lsp_diagnostics error-level: clean on both new files
+- Pure LOC: module 288 (SIZE_OK marked), no existing module touched
+- No demo24 reaction ids hardcoded in production code; tests reference evidence file generically with skip-if-missing
+- data/ground_truth and g1_v2/edits never read
+
+## Evidence tree observed
+- outputs/pes_generation_strategy_design_v1/demo24_strategy_evidence.json present (24 records)
+- data/manifests/pes2ts_demo24_candidates_v1.csv present (24 rows, reaction_smiles column)
+- data/interim/g1_v2/export_contracts_v1/<shard>/<rid>.json present; evidence export_sha256 matches tree
+- Evidence aromatic_regions format: {region_id: [[a,b],...]}; edits carry matching region id on aromatic pairs only

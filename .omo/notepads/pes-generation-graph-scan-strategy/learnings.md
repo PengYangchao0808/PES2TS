@@ -96,3 +96,17 @@
 - 教训（给 todo 9/10）：(1) `_spectators` 返回 tuple-of-tuple（早期返回 tuple-of-list 被测试抓出）；(2) 双环夹桥 fixture 的双连通块含桥块 (6,7)——标准分解三块，勿期望仅两块；(3) shell 测试需稀疏 seeds（长链跨组分 fixture），密集 seeds 时 radius1 已覆盖全图；(4) bundle 组件编号按最小 map 排序，`component_of` 直接读 bundle.components 不重算，避免编号漂移。
 - 全量套件：`python -m pytest -q` → **753 passed, 4 deselected**（730 基线 + 本 todo 23；todo 7 模块/测试执行时仍未落地，全套件无 reaction_edit_graph import）。lsp error 级清零；truth_guard 全绿（模块无真值字符串）。
 - Evidence: `.omo/evidence/task-8-pes-generation-graph-scan-strategy.txt`；Commit: `feat(g1): add endpoint context graph`。
+
+## 2026-10-01 todo 7 — 原子级反应编辑图 ΔG — PASSED
+- 新建 `pes2ts_core/g1/reaction_edit_graph.py`（288 纯 LOC → SIZE_OK，先例 endpoint_graph.py/graph_rebuild.py）+ `tests/test_reaction_edit_graph.py`（15 tests 全绿）。现有模块零改动（只增）。
+- API：`build_reaction_edit_graph(bundle, aromatic_regions=None) -> ReactionEditGraph`；输入是 todo 5 的 `EndpointGraphBundle`（r_graph/p_graph 边为排序 map 对+bond_order+aromatic 标志）。F/B/O 互斥归属与 v2 合同一致：升键级只记一次 O，绝不同时计 F/B。
+- 芳香 1.5 语义：`1.5 if edge.aromatic else bond_order`（与 build_evidence.py graph()、v2_edits AROMATIC_ORDER 逐字一致）。H 伙伴变化自然以 broken/formed 出现在 (H,X)/(H,Y) 对上——无独立 H 路径。
+- `aromatic_region` 只透传调用方提供的区域映射（导出形 `{region_id: [[a,b],...]}` 或 pair 形 `{(a,b): id}`），未提供则 null；区域分组本身是 todo 9/v2_edits 领地，本模块绝不重算。`getattr(bundle, "aromatic_regions", None)` 回退允许扩展 bundle 自带区域。
+- 证据字节等价：`edit_counts` 用 `dict(Counter(kind))`（缺省 kind 不出现键，与证据 JSON 一致——如 RXN_0000109608 只有 formed/order_changed）；`atom_attribute_changes` 逐字段 `{atom_map_id, R/P {formal_charge, radical_electrons, aromatic, chiral_tag}}`（bundle 的 stereo 字段映射为证据键名 chiral_tag）。元素/同位素变化在有效 bundle 中不可能（上游守恒抛错），故属性集与 build_evidence.py 完全一致。
+- 分量算法：忠实移植 build_evidence.py `components()`——从最小未见顶点 DFS、邻居排序展开、分量按 min map 排序。`edit_cycle_rank = |E|-|V|+C` 只对 F/B/O 编辑图；`connectivity_edit_components` 只含 F/B 边（O 桥不计入——测试钉死：F(1,2)+O(2,3)+B(3,4) → edit_cc=[[1,2,3,4]] 但 fb_cc=[[1,2],[3,4]]）。
+- todo 8 接缝：`ReactionEdit.to_record()` 正好暴露 6 个金标字段的普通 dict，todo 8 复制后追加 distance_R_A/cross_component_*/support_path_* 即可；本模块刻意不算这些上下文字段。数据类设计允许后续加性扩展。
+- Demo24 交叉验证（数据树存在 → 实跑非 skip）：候选 CSV SMILES + export_contracts_v1 导出经 `graph_rebuild` 重建 bundle，`edit_counts`/`edit_components`/`connectivity_edit_components`/`edit_cycle_rank`/`atom_attribute_changes` + 全部 edits[] 六字段逐条字节等价（24 条全比对，门槛 ≥3）。证据 export_sha256 与 export_contracts_v1 树匹配。
+- R/P 交换性质：手-built 图 F/B 对调 + SMILES 反向书写双路验证——order_changed 方向不变（r/p 订单互换），F↔B 镜像，分量/cycle_rank 不变。注意测试断言方向：R 侧独有的键是 broken，P 侧独有是 formed（首版测试曾写反，已修正）。
+- 确定性：同输入两次 `stable_json_dumps(to_doc())` 字节相等；纯度：to_doc 键扫描 vs FORBIDDEN ∪ = 0。
+- 全量套件：**768 passed, 4 deselected**（730 基线 + 本 todo 15 + 并行 todo8 worker 的 23 个 context 测试——endpoint_context.py/test_context_graph.py 已由该 worker 提交）。lsp error 级清零。
+- 教训（给 todo 9/10）：(1) edit_counts 是 Counter 语义——缺省 kind 无键，golden 比对用 dict 相等即可，不要补零；(2) 芳香区域 id 从导出透传，todo 9 的区域分组必须产出同形 `{region_id: [[a,b],...]}` 才能无损对接；(3) todo 10 golden 可直接复用本模块的 to_doc()['edits'] 投影与 features 四字段；(4) 手-built bundle 测试 fixture 用 `_hand_bundle(r_specs, p_specs, ...)` 形态（边列表+可选 per-side 属性覆盖），比 SMILES 更精确控制分量拓扑。
