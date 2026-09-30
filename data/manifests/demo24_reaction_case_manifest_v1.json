@@ -1,0 +1,501 @@
+{
+  "schema_version": "demo24_reaction_case_manifest_v1",
+  "generated_at": "2026-09-30T09:42:38+00:00",
+  "status": "awaiting_manual_chemistry_review",
+  "information_boundary": "Only sanitized reactant/product endpoint exports and their per-component charge/multiplicity fields were used. No TS/IRC geometries, energies, labels, or barriers were read.",
+  "n_cases": 24,
+  "split_counts": {
+    "train": 16,
+    "valid": 8
+  },
+  "case_status_counts": {
+    "needs_review": 24
+  },
+  "sources": {
+    "candidate_csv_sha256": "63ac74ee55e3367f8f937c897620a5cf9993275df22b89e4ac9c2d48644e489c",
+    "endpoint_audit_schema": "demo24_endpoint_audit_v1",
+    "sanitized_exports": "data/interim/g1_v2/export_contracts_v1"
+  },
+  "records": [
+    {
+      "reaction_id": "RXN_0000007104",
+      "case_id": "case:8adad76224cd0280",
+      "split": "train",
+      "source_export_sha256": "6d5e7d8ea49539a090773d03eb40b25bc52f3b77e7cdbac80402afdf91dbc6ab",
+      "status": "needs_review",
+      "multiplicities": {
+        "reactant": 1,
+        "product": 1
+      },
+      "spin_resolution": {
+        "reactant": "resolved",
+        "product": "resolved"
+      },
+      "review_reasons": [
+        "endpoint reaction and atom mapping require manual chemistry review before acceptance"
+      ],
+      "relative_path": "train/RXN_0000007104.json",
+      "content_sha256": "a1cfd89b9e9a95693af7164502ef993aa30532e26d7aa65763fd9a017d7e412b"
+    },
+    {
+      "reaction_id": "RXN_0000161724",
+      "case_id": "case:2a339feb6774d080",
+      "split": "train",
+      "source_export_sha256": "1a746cd7bb8640c45ecedbe35e401ec21f157d1d9837596bc46c03ead5432589",
+      "status": "needs_review",
+      "multiplicities": {
+        "reactant": 1,
+        "product": 1
+      },
+      "spin_resolution": {
+        "reactant": "resolved",
+        "product": "resolved"
+      },
+      "review_reasons": [
+        "endpoint reaction and atom mapping require manual chemistry review before acceptance"
+      ],
+      "relative_path": "train/RXN_0000161724.json",
+      "content_sha256": "4b5f3087fe7c4edfeab5745a71e27e3c4b8b6c8ae1b3893eac079e4bd2a78bd9"
+    },
+    {
+      "reaction_id": "RXN_0000091050",
+      "case_id": "case:a8704cdaa75bd309",
+      "split": "valid",
+      "source_export_sha256": "204adb1ef7464e60f44db6465db788897ef204672ec381c6a4c16f79a9559c8f",
+      "status": "needs_review",
+      "multiplicities": {
+        "reactant": 1,
+        "product": 1
+      },
+      "spin_resolution": {
+        "reactant": "resolved",
+        "product": "resolved"
+      },
+      "review_reasons": [
+        "endpoint reaction and atom mapping require manual chemistry review before acceptance"
+      ],
+      "relative_path": "valid/RXN_0000091050.json",
+      "content_sha256": "3270d759d172504f7afeb9d7882893c1677eb39cbec8d10cff4657e642ce9103"
+    },
+    {
+      "reaction_id": "RXN_0000077619",
+      "case_id": "case:8f9cbd05f988b9ea",
+      "split": "train",
+      "source_export_sha256": "58451ef817e4a312eadcc9f9810607b009aaa4faa6fa00ef8baa34ca639b2016",
+      "status": "needs_review",
+      "multiplicities": {
+        "reactant": 1,
+        "product": 1
+      },
+      "spin_resolution": {
+        "reactant": "resolved",
+        "product": "resolved"
+      },
+      "review_reasons": [
+        "endpoint reaction and atom mapping require manual chemistry review before acceptance"
+      ],
+      "relative_path": "train/RXN_0000077619.json",
+      "content_sha256": "28ef2b0fef64b472d72d7ad4c20073e5fc407e6d7023041f9bfe1dcd67f043fa"
+    },
+    {
+      "reaction_id": "RXN_0000026256",
+      "case_id": "case:7884bf05845b8cc7",
+      "split": "train",
+      "source_export_sha256": "15f1732b2e4a33a80ea20ac5638ea2492637952744df67e24b3b9fd0f73b49eb",
+      "status": "needs_review",
+      "multiplicities": {
+        "reactant": 1,
+        "product": 1
+      },
+      "spin_resolution": {
+        "reactant": "resolved",
+        "product": "resolved"
+      },
+      "review_reasons": [
+        "endpoint reaction and atom mapping require manual chemistry review before acceptance"
+      ],
+      "relative_path": "train/RXN_0000026256.json",
+      "content_sha256": "81b05953d71d37337f1f697a4afd94120292cc9dc06ed3b84122a5d533bf5d17"
+    },
+    {
+      "reaction_id": "RXN_0000079731",
+      "case_id": "case:34e05d159b642f20",
+      "split": "valid",
+      "source_export_sha256": "02ddbbe764a8f70d3e09767f56ddc8a5f4874fef51a57a93031a8f019072ab13",
+      "status": "needs_review",
+      "multiplicities": {
+        "reactant": 1,
+        "product": 1
+      },
+      "spin_resolution": {
+        "reactant": "resolved",
+        "product": "resolved"
+      },
+      "review_reasons": [
+        "endpoint reaction and atom mapping require manual chemistry review before acceptance"
+      ],
+      "relative_path": "valid/RXN_0000079731.json",
+      "content_sha256": "cca678c07641133a76c1b033392134f460a095a172098288bdf632742bb25bfd"
+    },
+    {
+      "reaction_id": "RXN_0000053132",
+      "case_id": "case:8741c99c8d0799f2",
+      "split": "train",
+      "source_export_sha256": "ea4ec1dfb91dd4647287d3ca8f663b5013ce9a12a242bfc9ab1b533dfd82fe7a",
+      "status": "needs_review",
+      "multiplicities": {
+        "reactant": 1,
+        "product": 1
+      },
+      "spin_resolution": {
+        "reactant": "resolved",
+        "product": "resolved"
+      },
+      "review_reasons": [
+        "endpoint reaction and atom mapping require manual chemistry review before acceptance"
+      ],
+      "relative_path": "train/RXN_0000053132.json",
+      "content_sha256": "7f0080e6da5a013e1fca85540e2cce1ae08333d67048a8e48c2848fe54ff2f7b"
+    },
+    {
+      "reaction_id": "RXN_0000155302",
+      "case_id": "case:913b59ae1c1dbb6e",
+      "split": "train",
+      "source_export_sha256": "6f34f1174643f6d49f84f6ef52fb8d8d6c4736cfd6f8b05c3f0aefa60ab43768",
+      "status": "needs_review",
+      "multiplicities": {
+        "reactant": 1,
+        "product": 1
+      },
+      "spin_resolution": {
+        "reactant": "resolved",
+        "product": "resolved"
+      },
+      "review_reasons": [
+        "endpoint reaction and atom mapping require manual chemistry review before acceptance"
+      ],
+      "relative_path": "train/RXN_0000155302.json",
+      "content_sha256": "3610516828bf169148fc3eb2a1020f612f8aac0292cb877af88912b1e4d6197d"
+    },
+    {
+      "reaction_id": "RXN_0000171675",
+      "case_id": "case:5d2b4f1979805dae",
+      "split": "valid",
+      "source_export_sha256": "fe7cdf74ed5bcbbdeef6291347e4c698c0a8f5b2b3238f1a8540e646addc6ae7",
+      "status": "needs_review",
+      "multiplicities": {
+        "reactant": 1,
+        "product": 1
+      },
+      "spin_resolution": {
+        "reactant": "resolved",
+        "product": "resolved"
+      },
+      "review_reasons": [
+        "endpoint reaction and atom mapping require manual chemistry review before acceptance"
+      ],
+      "relative_path": "valid/RXN_0000171675.json",
+      "content_sha256": "55b9a9f54a202498df11846b6550e1c31832c7d831ca8f02ddae8290b4f9e2b6"
+    },
+    {
+      "reaction_id": "RXN_0000100071",
+      "case_id": "case:ddb31b08cda86cdb",
+      "split": "train",
+      "source_export_sha256": "c47b4ac0634642501adb2b607e498fa6d41faa0026d99dece82b38d83882f48f",
+      "status": "needs_review",
+      "multiplicities": {
+        "reactant": 1,
+        "product": 1
+      },
+      "spin_resolution": {
+        "reactant": "resolved",
+        "product": "resolved"
+      },
+      "review_reasons": [
+        "endpoint reaction and atom mapping require manual chemistry review before acceptance"
+      ],
+      "relative_path": "train/RXN_0000100071.json",
+      "content_sha256": "1d43e9b9f0007dcc9e8508025162fbdcdf0c0f093721230b48d3d8bbdbee0d5b"
+    },
+    {
+      "reaction_id": "RXN_0000132222",
+      "case_id": "case:b9fa45991542c524",
+      "split": "train",
+      "source_export_sha256": "e25cbb9e4ce2fe01a7b8c04520815e4f44bbd98d0e4d19147009678b243dc681",
+      "status": "needs_review",
+      "multiplicities": {
+        "reactant": 1,
+        "product": 1
+      },
+      "spin_resolution": {
+        "reactant": "resolved",
+        "product": "resolved"
+      },
+      "review_reasons": [
+        "endpoint reaction and atom mapping require manual chemistry review before acceptance"
+      ],
+      "relative_path": "train/RXN_0000132222.json",
+      "content_sha256": "13e27311c50714d3d0b9a47623aca5cef90042080986e2d12e00071177021ad4"
+    },
+    {
+      "reaction_id": "RXN_0000102998",
+      "case_id": "case:af2090e49c8bd526",
+      "split": "valid",
+      "source_export_sha256": "f73e5bb0c6d2883507ea8efd88b6177a0ac2dc66de5b02452488f1b77dcd8154",
+      "status": "needs_review",
+      "multiplicities": {
+        "reactant": 1,
+        "product": 1
+      },
+      "spin_resolution": {
+        "reactant": "resolved",
+        "product": "resolved"
+      },
+      "review_reasons": [
+        "endpoint reaction and atom mapping require manual chemistry review before acceptance"
+      ],
+      "relative_path": "valid/RXN_0000102998.json",
+      "content_sha256": "0c5f1abc0289e367ec9416d0f0f99e3773ebac989102874d211f81706edcb8d5"
+    },
+    {
+      "reaction_id": "RXN_0000059834",
+      "case_id": "case:3554c905d2ad4c84",
+      "split": "train",
+      "source_export_sha256": "0d42c69637f8ea1c915dae2a72a7ed80eb51a930a6d90a7bdc464b68047ce493",
+      "status": "needs_review",
+      "multiplicities": {
+        "reactant": 1,
+        "product": 1
+      },
+      "spin_resolution": {
+        "reactant": "resolved",
+        "product": "resolved"
+      },
+      "review_reasons": [
+        "endpoint reaction and atom mapping require manual chemistry review before acceptance"
+      ],
+      "relative_path": "train/RXN_0000059834.json",
+      "content_sha256": "a0af765a4a5ffa83430720b8eee1c10ce41689c0323a9f0d483b6efc8e38ceb0"
+    },
+    {
+      "reaction_id": "RXN_0000094438",
+      "case_id": "case:7887745681a33927",
+      "split": "train",
+      "source_export_sha256": "928406ba2a33d71647c7e44694e02300b2f192054db50beab5ac0ee709b465f4",
+      "status": "needs_review",
+      "multiplicities": {
+        "reactant": 1,
+        "product": 1
+      },
+      "spin_resolution": {
+        "reactant": "resolved",
+        "product": "resolved"
+      },
+      "review_reasons": [
+        "endpoint reaction and atom mapping require manual chemistry review before acceptance"
+      ],
+      "relative_path": "train/RXN_0000094438.json",
+      "content_sha256": "ef6cef4429c3b40be3cbafd268813034d4d59647967ee3e9ea437683b29050e5"
+    },
+    {
+      "reaction_id": "RXN_0000187964",
+      "case_id": "case:2991dc898c8f1599",
+      "split": "valid",
+      "source_export_sha256": "85dc9179148bc84e106d71e7fc63de59c736e280d4a1234f2653b4606d1f33ea",
+      "status": "needs_review",
+      "multiplicities": {
+        "reactant": 1,
+        "product": 1
+      },
+      "spin_resolution": {
+        "reactant": "resolved",
+        "product": "resolved"
+      },
+      "review_reasons": [
+        "endpoint reaction and atom mapping require manual chemistry review before acceptance"
+      ],
+      "relative_path": "valid/RXN_0000187964.json",
+      "content_sha256": "a8e3d8e638b1b20d38258bd565b3d1df2c1f61c6d6cdb499b87da261df4097fb"
+    },
+    {
+      "reaction_id": "RXN_0000100736",
+      "case_id": "case:747e45d9f6e0671b",
+      "split": "train",
+      "source_export_sha256": "f730d237f24d58f9bebf736b940cac7a4534362663eebda546b229377b7954b3",
+      "status": "needs_review",
+      "multiplicities": {
+        "reactant": 1,
+        "product": 1
+      },
+      "spin_resolution": {
+        "reactant": "resolved",
+        "product": "resolved"
+      },
+      "review_reasons": [
+        "endpoint reaction and atom mapping require manual chemistry review before acceptance"
+      ],
+      "relative_path": "train/RXN_0000100736.json",
+      "content_sha256": "799b032c7b25793ed1f58f45bdf29ca8fc811f65dbfa51a9f6c74702eb1e7766"
+    },
+    {
+      "reaction_id": "RXN_0000149368",
+      "case_id": "case:7bd3ee83bffe6387",
+      "split": "train",
+      "source_export_sha256": "78f30ccd827b8f1408288451dac60ce60452546e4c379391e1ac2fcbd82f850b",
+      "status": "needs_review",
+      "multiplicities": {
+        "reactant": 1,
+        "product": 1
+      },
+      "spin_resolution": {
+        "reactant": "resolved",
+        "product": "resolved"
+      },
+      "review_reasons": [
+        "endpoint reaction and atom mapping require manual chemistry review before acceptance"
+      ],
+      "relative_path": "train/RXN_0000149368.json",
+      "content_sha256": "9ec1d0807eeb1c86a7a829f2d6d1bbf8e82b48d4e8ff5a23d86655f7cb41b0f4"
+    },
+    {
+      "reaction_id": "RXN_0000017762",
+      "case_id": "case:d201edc20c3389e9",
+      "split": "valid",
+      "source_export_sha256": "df42ec429f1e4cb228be3d9e55a1cfc0d12b5cacc61c07efcab6617382e1d421",
+      "status": "needs_review",
+      "multiplicities": {
+        "reactant": 1,
+        "product": 1
+      },
+      "spin_resolution": {
+        "reactant": "resolved",
+        "product": "resolved"
+      },
+      "review_reasons": [
+        "endpoint reaction and atom mapping require manual chemistry review before acceptance"
+      ],
+      "relative_path": "valid/RXN_0000017762.json",
+      "content_sha256": "f1e6bed33994a934d505a6b93f5b689ea3d2e296736abf8349fe09021712ae22"
+    },
+    {
+      "reaction_id": "RXN_0000138453",
+      "case_id": "case:fb8641ed94266d37",
+      "split": "train",
+      "source_export_sha256": "1ddb7f7f1b044de645e0804cbc018c110fab30d90eaff0455e1d9308344bcfcf",
+      "status": "needs_review",
+      "multiplicities": {
+        "reactant": 1,
+        "product": 1
+      },
+      "spin_resolution": {
+        "reactant": "resolved",
+        "product": "resolved"
+      },
+      "review_reasons": [
+        "endpoint reaction and atom mapping require manual chemistry review before acceptance"
+      ],
+      "relative_path": "train/RXN_0000138453.json",
+      "content_sha256": "001ca7aee45e7256031504562eed7c0705a6cf34552c934fcc8ab97eb06cffed"
+    },
+    {
+      "reaction_id": "RXN_0000110869",
+      "case_id": "case:88af6351b3572eec",
+      "split": "train",
+      "source_export_sha256": "e1a93081d52a6aa3b6c8d2c6682e72b58919f0724c417ae6f3701f76118d5281",
+      "status": "needs_review",
+      "multiplicities": {
+        "reactant": 1,
+        "product": 1
+      },
+      "spin_resolution": {
+        "reactant": "resolved",
+        "product": "resolved"
+      },
+      "review_reasons": [
+        "endpoint reaction and atom mapping require manual chemistry review before acceptance"
+      ],
+      "relative_path": "train/RXN_0000110869.json",
+      "content_sha256": "3fbaad580b6d4fb6a6696a76503e4697805ddd57b8cc2d6efe641a9693178f03"
+    },
+    {
+      "reaction_id": "RXN_0000047010",
+      "case_id": "case:6c73959669f8d7e6",
+      "split": "valid",
+      "source_export_sha256": "6b6401b9412496a658ffae75f84dd22729a84caf4f796fab4a636ddad20455fb",
+      "status": "needs_review",
+      "multiplicities": {
+        "reactant": 1,
+        "product": 1
+      },
+      "spin_resolution": {
+        "reactant": "resolved",
+        "product": "resolved"
+      },
+      "review_reasons": [
+        "endpoint reaction and atom mapping require manual chemistry review before acceptance"
+      ],
+      "relative_path": "valid/RXN_0000047010.json",
+      "content_sha256": "87302669b35a5b9a85e53a0ca5772a62a8dc350675efd6f97862402bbfc0e187"
+    },
+    {
+      "reaction_id": "RXN_0000194484",
+      "case_id": "case:e3f25f0ce5fcc58d",
+      "split": "train",
+      "source_export_sha256": "f86727ac6f9979af4484daa560c2e12ba1e58b3145ce986c904e0851dc280741",
+      "status": "needs_review",
+      "multiplicities": {
+        "reactant": 1,
+        "product": 1
+      },
+      "spin_resolution": {
+        "reactant": "resolved",
+        "product": "resolved"
+      },
+      "review_reasons": [
+        "endpoint reaction and atom mapping require manual chemistry review before acceptance"
+      ],
+      "relative_path": "train/RXN_0000194484.json",
+      "content_sha256": "8c8ca10c9e81a77746ef4071512d6504c4c3da5e70f811383a715a702fff3130"
+    },
+    {
+      "reaction_id": "RXN_0000074997",
+      "case_id": "case:fc51e9669e2bd25f",
+      "split": "train",
+      "source_export_sha256": "e7464fa660f8a0d9b49fe2474641c4f7fc6ca86a41cf966f2afb9c2e85568bda",
+      "status": "needs_review",
+      "multiplicities": {
+        "reactant": 1,
+        "product": 1
+      },
+      "spin_resolution": {
+        "reactant": "resolved",
+        "product": "resolved"
+      },
+      "review_reasons": [
+        "endpoint reaction and atom mapping require manual chemistry review before acceptance"
+      ],
+      "relative_path": "train/RXN_0000074997.json",
+      "content_sha256": "7150f8b144a511a7e56227f8329333335a5b30fd546c9337ed274fe0d74d85fa"
+    },
+    {
+      "reaction_id": "RXN_0000109608",
+      "case_id": "case:f135fb941acdd20b",
+      "split": "valid",
+      "source_export_sha256": "78e869f0135774928fc859bb0258ffef4f8b0238865dc3d10eb7a678e99de17d",
+      "status": "needs_review",
+      "multiplicities": {
+        "reactant": 1,
+        "product": 1
+      },
+      "spin_resolution": {
+        "reactant": "resolved",
+        "product": "resolved"
+      },
+      "review_reasons": [
+        "endpoint reaction and atom mapping require manual chemistry review before acceptance"
+      ],
+      "relative_path": "valid/RXN_0000109608.json",
+      "content_sha256": "ace2522dcfe1fc4a732ba3c742c94ab8b1ebe10ae4ef371886de963d5858a08d"
+    }
+  ]
+}

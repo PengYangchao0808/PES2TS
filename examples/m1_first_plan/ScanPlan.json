@@ -1,0 +1,104 @@
+{
+  "atom_map_ids": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12
+  ],
+  "candidate_strategy": "single_bond_linear_endpoint_interpolation_v1",
+  "candidates": [
+    {
+      "budget": {
+        "max_attempts": 1,
+        "max_cpu_hours": 8.0,
+        "max_wall_seconds": 14400
+      },
+      "candidate_id": "plan-470565586efd:c001",
+      "coordinates": [
+        {
+          "atom_indices": [
+            2,
+            10
+          ],
+          "atom_map_ids": [
+            3,
+            11
+          ],
+          "coordinate_id": "driver-01",
+          "direction": "stretch",
+          "points": [
+            1.006052,
+            1.208665,
+            1.411278,
+            1.61389,
+            1.816503,
+            2.019116,
+            2.221729,
+            2.424341,
+            2.626954
+          ],
+          "role": "driver",
+          "unit": "angstrom"
+        }
+      ],
+      "direction": "P_to_R",
+      "fallback_candidate_ids": [],
+      "method": {
+        "basis": null,
+        "engine": "xtb",
+        "engine_version": null,
+        "method": "GFN2-xTB",
+        "parameter_sha256": null,
+        "solvent": null
+      },
+      "observer_pairs_map": [
+        [
+          1,
+          2
+        ],
+        [
+          1,
+          11
+        ]
+      ],
+      "rank": 1,
+      "request_id": "plan-470565586efd:c001:attempt1",
+      "retry_policy": {
+        "failure_policy": "retry_previous",
+        "optimizer_retries": 1,
+        "reuse_previous_geometry": true,
+        "scan_retry_count": 1
+      },
+      "start_endpoint": "product"
+    }
+  ],
+  "case_id": "case:8adad76224cd0280",
+  "content_sha256": "2209a4950c3cf4a32be3c36adcc8c090dbc2c5fc62fbe4e15fdcba22152f264c",
+  "created_at": "2026-09-29T16:04:41+00:00",
+  "dataset_version": "zenodo-18551029-rev1",
+  "experiment_id": "pes2ts-m1-synthetic-interface-v1",
+  "input_refs": [],
+  "n_atoms": 12,
+  "object_id": "plan-470565586efd",
+  "plan_frozen": true,
+  "plan_id": "plan-470565586efd",
+  "plan_version": 1,
+  "producer": {
+    "name": "pes2ts",
+    "version": "0.1"
+  },
+  "reaction_id": "RXN_0000007104",
+  "schema_name": "ScanPlan",
+  "schema_version": "pes2ts_contracts_v1",
+  "source_case_sha256": "43b046bd96574bac7feca2562dcc9860141e1499b40027007ad21a988025c842",
+  "split": "train",
+  "status": "ready"
+}

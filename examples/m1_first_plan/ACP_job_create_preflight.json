@@ -1,0 +1,76 @@
+{
+  "execution_mode": "local",
+  "input": {
+    "coordinate": {
+      "atoms": [
+        2,
+        10
+      ],
+      "end": 2.626954,
+      "kind": "distance",
+      "n_points": 9,
+      "start": 1.006052,
+      "unit": "angstrom"
+    },
+    "protocol": {
+      "name": "pes2ts_scan_plan_v1",
+      "scan_driver": {
+        "failure_policy": "retry_previous",
+        "mode": "relaxed_scan",
+        "software": "orca"
+      },
+      "scan_optimizer": {
+        "method": "GFN2-xTB"
+      },
+      "scan_type": "bond_length",
+      "single_point": {
+        "enabled": false
+      }
+    },
+    "source": {
+      "charge": 0,
+      "multiplicity": 1,
+      "source_type": "xyz_text",
+      "xyz_text": "12\nPES2TS plan-470565586efd plan-470565586efd:c001\nN 3.7661368847 -0.7335929871 -0.0000090000\nC 2.6550669670 -0.1501529962 -0.0000090000\nN 1.3997410536 -0.7365429997 -0.0000090000\nC 0.4700230062 0.2620429993 -0.0000090000\nC -1.0041259527 -0.0089149997 -0.0000090000\nCl -1.9509880543 1.4977240562 -0.0001640000\nCl -1.3985090256 -0.9923499823 1.4766889811\nCl -1.3985509872 -0.9926620126 -1.4765009880\nN 0.9887340069 1.4382699728 -0.0000090000\nO 2.3910279274 1.2126189470 -0.0000090000\nH 1.2360919714 -1.7291959524 -0.0000090000\nH 4.5444388390 -0.0826290026 -0.0000090000\n"
+    }
+  },
+  "method": {
+    "levels": {
+      "scan_coordinate": {
+        "scan_bond_type": "auto",
+        "scan_coordinate_end": 2.626954,
+        "scan_coordinate_kind": "distance",
+        "scan_coordinate_points": 9,
+        "scan_coordinate_start": 1.006052
+      },
+      "scan_driver": {
+        "scan_failure_policy": "retry_previous",
+        "scan_mode": "relaxed_scan",
+        "scan_retry_count": 1,
+        "scan_reuse_previous_geometry": true
+      },
+      "scan_optimizer": {
+        "scan_optimizer_method": "GFN2-xTB",
+        "scan_optimizer_retries": 1
+      }
+    },
+    "mode": "bond_length_scan",
+    "schema_id": "pes_scan"
+  },
+  "molecule_name": "RXN_0000007104",
+  "name": "PES2TS RXN_0000007104 plan-470565586efd-c001",
+  "remark": "{\"pes2ts\":{\"atom_map_ids\":[1,2,3,4,5,6,7,8,9,10,11,12],\"budget\":{\"max_attempts\":1,\"max_cpu_hours\":8.0,\"max_wall_seconds\":14400},\"candidate_id\":\"plan-470565586efd:c001\",\"case_id\":\"case:8adad76224cd0280\",\"elements\":[\"N\",\"C\",\"N\",\"C\",\"C\",\"Cl\",\"Cl\",\"Cl\",\"N\",\"O\",\"H\",\"H\"],\"experiment_id\":\"pes2ts-m1-synthetic-interface-v1\",\"plan_id\":\"plan-470565586efd\",\"reaction_id\":\"RXN_0000007104\",\"request_id\":\"plan-470565586efd:c001:attempt1\",\"retry_policy\":{\"failure_policy\":\"retry_previous\",\"optimizer_retries\":1,\"reuse_previous_geometry\":true,\"scan_retry_count\":1}}}",
+  "resources": {
+    "mem_gb": 4,
+    "nproc": 2
+  },
+  "tags": [
+    "PES2TS",
+    "pes2ts-m1-synthetic-interface-v1",
+    "RXN_0000007104",
+    "plan-470565586efd",
+    "plan-470565586efd:c001"
+  ],
+  "task_name": "PES2TS RXN_0000007104 plan-470565586efd-c001",
+  "workflow": "PESsearch"
+}

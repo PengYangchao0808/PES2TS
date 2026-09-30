@@ -1,0 +1,861 @@
+{
+  "schema_version": "demo24_endpoint_audit_v1",
+  "generated_at": "2026-09-29T17:13:02+00:00",
+  "audit_status": "consistent_pending_human_review",
+  "information_boundary": "Endpoint-only structural consistency checks. No TS/IRC fields, geometries, energies, or labels were read. This is not a chemical plausibility review or acceptance.",
+  "sources": {
+    "candidate_list": "data/manifests/pes2ts_demo24_candidates_v1.csv",
+    "review_queue": "data/manifests/demo24_review_queue_v1.json",
+    "official_split_id_columns_only": [
+      "data/raw/reaction_qm/B3LYP-RXN_train.csv",
+      "data/raw/reaction_qm/B3LYP-RXN_valid.csv"
+    ],
+    "sanitized_endpoint_exports": "data/interim/g1_v2/export_contracts_v1",
+    "rdkit_version": "2026.03.3"
+  },
+  "grain": "one row per reaction_id",
+  "n_candidates": 24,
+  "n_unique_reaction_ids": 24,
+  "split_counts": {
+    "train": 16,
+    "valid": 8
+  },
+  "review_status_counts": {
+    "pending": 24
+  },
+  "checks_passed_for_all_candidates": {
+    "atom_identity_match": 24,
+    "charge_and_radical_summaries_match": 24,
+    "component_counts_match": 24,
+    "edit_counts_match": 24,
+    "endpoint_geometry_valid": 24,
+    "hydrogen_event_counts_match": 24,
+    "mapped_bond_edits_match": 24,
+    "mapping_status_resolved": 24,
+    "no_forbidden_truth_fields": 24,
+    "official_split_match": 24,
+    "reaction_smiles_parse_and_map_match": 24,
+    "review_queue_match": 24,
+    "sanitized_export_present": 24
+  },
+  "n_issue_rows": 0,
+  "collection_issues": [],
+  "records": [
+    {
+      "reaction_id": "RXN_0000007104",
+      "split": "train",
+      "stratum": "A_H_transfer",
+      "n_atoms": 12,
+      "mapping_status": "resolved_unique",
+      "endpoint_minimum_distances_angstrom": {
+        "reactant": {
+          "minimum_pair_distance_angstrom": 1.005516,
+          "no_severe_overlap_at_0_45_angstrom": true
+        },
+        "product": {
+          "minimum_pair_distance_angstrom": 1.006052,
+          "no_severe_overlap_at_0_45_angstrom": true
+        }
+      },
+      "checks": {
+        "official_split_match": true,
+        "sanitized_export_present": true,
+        "no_forbidden_truth_fields": true,
+        "atom_identity_match": true,
+        "endpoint_geometry_valid": true,
+        "reaction_smiles_parse_and_map_match": true,
+        "mapped_bond_edits_match": true,
+        "component_counts_match": true,
+        "charge_and_radical_summaries_match": true,
+        "hydrogen_event_counts_match": true,
+        "edit_counts_match": true,
+        "review_queue_match": true,
+        "mapping_status_resolved": true
+      },
+      "issues": [],
+      "human_review_status": "pending"
+    },
+    {
+      "reaction_id": "RXN_0000161724",
+      "split": "train",
+      "stratum": "A_H_transfer",
+      "n_atoms": 14,
+      "mapping_status": "resolved_unique",
+      "endpoint_minimum_distances_angstrom": {
+        "reactant": {
+          "minimum_pair_distance_angstrom": 0.965664,
+          "no_severe_overlap_at_0_45_angstrom": true
+        },
+        "product": {
+          "minimum_pair_distance_angstrom": 1.016877,
+          "no_severe_overlap_at_0_45_angstrom": true
+        }
+      },
+      "checks": {
+        "official_split_match": true,
+        "sanitized_export_present": true,
+        "no_forbidden_truth_fields": true,
+        "atom_identity_match": true,
+        "endpoint_geometry_valid": true,
+        "reaction_smiles_parse_and_map_match": true,
+        "mapped_bond_edits_match": true,
+        "component_counts_match": true,
+        "charge_and_radical_summaries_match": true,
+        "hydrogen_event_counts_match": true,
+        "edit_counts_match": true,
+        "review_queue_match": true,
+        "mapping_status_resolved": true
+      },
+      "issues": [],
+      "human_review_status": "pending"
+    },
+    {
+      "reaction_id": "RXN_0000091050",
+      "split": "valid",
+      "stratum": "A_H_transfer",
+      "n_atoms": 13,
+      "mapping_status": "resolved_unique",
+      "endpoint_minimum_distances_angstrom": {
+        "reactant": {
+          "minimum_pair_distance_angstrom": 1.079897,
+          "no_severe_overlap_at_0_45_angstrom": true
+        },
+        "product": {
+          "minimum_pair_distance_angstrom": 1.02052,
+          "no_severe_overlap_at_0_45_angstrom": true
+        }
+      },
+      "checks": {
+        "official_split_match": true,
+        "sanitized_export_present": true,
+        "no_forbidden_truth_fields": true,
+        "atom_identity_match": true,
+        "endpoint_geometry_valid": true,
+        "reaction_smiles_parse_and_map_match": true,
+        "mapped_bond_edits_match": true,
+        "component_counts_match": true,
+        "charge_and_radical_summaries_match": true,
+        "hydrogen_event_counts_match": true,
+        "edit_counts_match": true,
+        "review_queue_match": true,
+        "mapping_status_resolved": true
+      },
+      "issues": [],
+      "human_review_status": "pending"
+    },
+    {
+      "reaction_id": "RXN_0000077619",
+      "split": "train",
+      "stratum": "B_one_bond",
+      "n_atoms": 16,
+      "mapping_status": "resolved_unique",
+      "endpoint_minimum_distances_angstrom": {
+        "reactant": {
+          "minimum_pair_distance_angstrom": 1.011832,
+          "no_severe_overlap_at_0_45_angstrom": true
+        },
+        "product": {
+          "minimum_pair_distance_angstrom": 1.013343,
+          "no_severe_overlap_at_0_45_angstrom": true
+        }
+      },
+      "checks": {
+        "official_split_match": true,
+        "sanitized_export_present": true,
+        "no_forbidden_truth_fields": true,
+        "atom_identity_match": true,
+        "endpoint_geometry_valid": true,
+        "reaction_smiles_parse_and_map_match": true,
+        "mapped_bond_edits_match": true,
+        "component_counts_match": true,
+        "charge_and_radical_summaries_match": true,
+        "hydrogen_event_counts_match": true,
+        "edit_counts_match": true,
+        "review_queue_match": true,
+        "mapping_status_resolved": true
+      },
+      "issues": [],
+      "human_review_status": "pending"
+    },
+    {
+      "reaction_id": "RXN_0000026256",
+      "split": "train",
+      "stratum": "B_one_bond",
+      "n_atoms": 15,
+      "mapping_status": "resolved_unique",
+      "endpoint_minimum_distances_angstrom": {
+        "reactant": {
+          "minimum_pair_distance_angstrom": 0.965974,
+          "no_severe_overlap_at_0_45_angstrom": true
+        },
+        "product": {
+          "minimum_pair_distance_angstrom": 0.963709,
+          "no_severe_overlap_at_0_45_angstrom": true
+        }
+      },
+      "checks": {
+        "official_split_match": true,
+        "sanitized_export_present": true,
+        "no_forbidden_truth_fields": true,
+        "atom_identity_match": true,
+        "endpoint_geometry_valid": true,
+        "reaction_smiles_parse_and_map_match": true,
+        "mapped_bond_edits_match": true,
+        "component_counts_match": true,
+        "charge_and_radical_summaries_match": true,
+        "hydrogen_event_counts_match": true,
+        "edit_counts_match": true,
+        "review_queue_match": true,
+        "mapping_status_resolved": true
+      },
+      "issues": [],
+      "human_review_status": "pending"
+    },
+    {
+      "reaction_id": "RXN_0000079731",
+      "split": "valid",
+      "stratum": "B_one_bond",
+      "n_atoms": 16,
+      "mapping_status": "resolved_symmetry_collapsed",
+      "endpoint_minimum_distances_angstrom": {
+        "reactant": {
+          "minimum_pair_distance_angstrom": 1.018455,
+          "no_severe_overlap_at_0_45_angstrom": true
+        },
+        "product": {
+          "minimum_pair_distance_angstrom": 1.007194,
+          "no_severe_overlap_at_0_45_angstrom": true
+        }
+      },
+      "checks": {
+        "official_split_match": true,
+        "sanitized_export_present": true,
+        "no_forbidden_truth_fields": true,
+        "atom_identity_match": true,
+        "endpoint_geometry_valid": true,
+        "reaction_smiles_parse_and_map_match": true,
+        "mapped_bond_edits_match": true,
+        "component_counts_match": true,
+        "charge_and_radical_summaries_match": true,
+        "hydrogen_event_counts_match": true,
+        "edit_counts_match": true,
+        "review_queue_match": true,
+        "mapping_status_resolved": true
+      },
+      "issues": [],
+      "human_review_status": "pending"
+    },
+    {
+      "reaction_id": "RXN_0000053132",
+      "split": "train",
+      "stratum": "C_substitution",
+      "n_atoms": 17,
+      "mapping_status": "resolved_unique",
+      "endpoint_minimum_distances_angstrom": {
+        "reactant": {
+          "minimum_pair_distance_angstrom": 0.965009,
+          "no_severe_overlap_at_0_45_angstrom": true
+        },
+        "product": {
+          "minimum_pair_distance_angstrom": 0.965948,
+          "no_severe_overlap_at_0_45_angstrom": true
+        }
+      },
+      "checks": {
+        "official_split_match": true,
+        "sanitized_export_present": true,
+        "no_forbidden_truth_fields": true,
+        "atom_identity_match": true,
+        "endpoint_geometry_valid": true,
+        "reaction_smiles_parse_and_map_match": true,
+        "mapped_bond_edits_match": true,
+        "component_counts_match": true,
+        "charge_and_radical_summaries_match": true,
+        "hydrogen_event_counts_match": true,
+        "edit_counts_match": true,
+        "review_queue_match": true,
+        "mapping_status_resolved": true
+      },
+      "issues": [],
+      "human_review_status": "pending"
+    },
+    {
+      "reaction_id": "RXN_0000155302",
+      "split": "train",
+      "stratum": "C_substitution",
+      "n_atoms": 12,
+      "mapping_status": "resolved_unique",
+      "endpoint_minimum_distances_angstrom": {
+        "reactant": {
+          "minimum_pair_distance_angstrom": 0.534526,
+          "no_severe_overlap_at_0_45_angstrom": true
+        },
+        "product": {
+          "minimum_pair_distance_angstrom": 0.660185,
+          "no_severe_overlap_at_0_45_angstrom": true
+        }
+      },
+      "checks": {
+        "official_split_match": true,
+        "sanitized_export_present": true,
+        "no_forbidden_truth_fields": true,
+        "atom_identity_match": true,
+        "endpoint_geometry_valid": true,
+        "reaction_smiles_parse_and_map_match": true,
+        "mapped_bond_edits_match": true,
+        "component_counts_match": true,
+        "charge_and_radical_summaries_match": true,
+        "hydrogen_event_counts_match": true,
+        "edit_counts_match": true,
+        "review_queue_match": true,
+        "mapping_status_resolved": true
+      },
+      "issues": [],
+      "human_review_status": "pending"
+    },
+    {
+      "reaction_id": "RXN_0000171675",
+      "split": "valid",
+      "stratum": "C_substitution",
+      "n_atoms": 17,
+      "mapping_status": "resolved_unique",
+      "endpoint_minimum_distances_angstrom": {
+        "reactant": {
+          "minimum_pair_distance_angstrom": 1.011067,
+          "no_severe_overlap_at_0_45_angstrom": true
+        },
+        "product": {
+          "minimum_pair_distance_angstrom": 1.013522,
+          "no_severe_overlap_at_0_45_angstrom": true
+        }
+      },
+      "checks": {
+        "official_split_match": true,
+        "sanitized_export_present": true,
+        "no_forbidden_truth_fields": true,
+        "atom_identity_match": true,
+        "endpoint_geometry_valid": true,
+        "reaction_smiles_parse_and_map_match": true,
+        "mapped_bond_edits_match": true,
+        "component_counts_match": true,
+        "charge_and_radical_summaries_match": true,
+        "hydrogen_event_counts_match": true,
+        "edit_counts_match": true,
+        "review_queue_match": true,
+        "mapping_status_resolved": true
+      },
+      "issues": [],
+      "human_review_status": "pending"
+    },
+    {
+      "reaction_id": "RXN_0000100071",
+      "split": "train",
+      "stratum": "D_two_bond_coupled",
+      "n_atoms": 15,
+      "mapping_status": "resolved_unique",
+      "endpoint_minimum_distances_angstrom": {
+        "reactant": {
+          "minimum_pair_distance_angstrom": 0.965048,
+          "no_severe_overlap_at_0_45_angstrom": true
+        },
+        "product": {
+          "minimum_pair_distance_angstrom": 0.966308,
+          "no_severe_overlap_at_0_45_angstrom": true
+        }
+      },
+      "checks": {
+        "official_split_match": true,
+        "sanitized_export_present": true,
+        "no_forbidden_truth_fields": true,
+        "atom_identity_match": true,
+        "endpoint_geometry_valid": true,
+        "reaction_smiles_parse_and_map_match": true,
+        "mapped_bond_edits_match": true,
+        "component_counts_match": true,
+        "charge_and_radical_summaries_match": true,
+        "hydrogen_event_counts_match": true,
+        "edit_counts_match": true,
+        "review_queue_match": true,
+        "mapping_status_resolved": true
+      },
+      "issues": [],
+      "human_review_status": "pending"
+    },
+    {
+      "reaction_id": "RXN_0000132222",
+      "split": "train",
+      "stratum": "D_two_bond_coupled",
+      "n_atoms": 16,
+      "mapping_status": "resolved_unique",
+      "endpoint_minimum_distances_angstrom": {
+        "reactant": {
+          "minimum_pair_distance_angstrom": 0.970442,
+          "no_severe_overlap_at_0_45_angstrom": true
+        },
+        "product": {
+          "minimum_pair_distance_angstrom": 0.96627,
+          "no_severe_overlap_at_0_45_angstrom": true
+        }
+      },
+      "checks": {
+        "official_split_match": true,
+        "sanitized_export_present": true,
+        "no_forbidden_truth_fields": true,
+        "atom_identity_match": true,
+        "endpoint_geometry_valid": true,
+        "reaction_smiles_parse_and_map_match": true,
+        "mapped_bond_edits_match": true,
+        "component_counts_match": true,
+        "charge_and_radical_summaries_match": true,
+        "hydrogen_event_counts_match": true,
+        "edit_counts_match": true,
+        "review_queue_match": true,
+        "mapping_status_resolved": true
+      },
+      "issues": [],
+      "human_review_status": "pending"
+    },
+    {
+      "reaction_id": "RXN_0000102998",
+      "split": "valid",
+      "stratum": "D_two_bond_coupled",
+      "n_atoms": 11,
+      "mapping_status": "resolved_unique",
+      "endpoint_minimum_distances_angstrom": {
+        "reactant": {
+          "minimum_pair_distance_angstrom": 1.006239,
+          "no_severe_overlap_at_0_45_angstrom": true
+        },
+        "product": {
+          "minimum_pair_distance_angstrom": 1.006805,
+          "no_severe_overlap_at_0_45_angstrom": true
+        }
+      },
+      "checks": {
+        "official_split_match": true,
+        "sanitized_export_present": true,
+        "no_forbidden_truth_fields": true,
+        "atom_identity_match": true,
+        "endpoint_geometry_valid": true,
+        "reaction_smiles_parse_and_map_match": true,
+        "mapped_bond_edits_match": true,
+        "component_counts_match": true,
+        "charge_and_radical_summaries_match": true,
+        "hydrogen_event_counts_match": true,
+        "edit_counts_match": true,
+        "review_queue_match": true,
+        "mapping_status_resolved": true
+      },
+      "issues": [],
+      "human_review_status": "pending"
+    },
+    {
+      "reaction_id": "RXN_0000059834",
+      "split": "train",
+      "stratum": "E_three_bond_coupled",
+      "n_atoms": 20,
+      "mapping_status": "resolved_unique",
+      "endpoint_minimum_distances_angstrom": {
+        "reactant": {
+          "minimum_pair_distance_angstrom": 1.005937,
+          "no_severe_overlap_at_0_45_angstrom": true
+        },
+        "product": {
+          "minimum_pair_distance_angstrom": 1.015503,
+          "no_severe_overlap_at_0_45_angstrom": true
+        }
+      },
+      "checks": {
+        "official_split_match": true,
+        "sanitized_export_present": true,
+        "no_forbidden_truth_fields": true,
+        "atom_identity_match": true,
+        "endpoint_geometry_valid": true,
+        "reaction_smiles_parse_and_map_match": true,
+        "mapped_bond_edits_match": true,
+        "component_counts_match": true,
+        "charge_and_radical_summaries_match": true,
+        "hydrogen_event_counts_match": true,
+        "edit_counts_match": true,
+        "review_queue_match": true,
+        "mapping_status_resolved": true
+      },
+      "issues": [],
+      "human_review_status": "pending"
+    },
+    {
+      "reaction_id": "RXN_0000094438",
+      "split": "train",
+      "stratum": "E_three_bond_coupled",
+      "n_atoms": 11,
+      "mapping_status": "resolved_unique",
+      "endpoint_minimum_distances_angstrom": {
+        "reactant": {
+          "minimum_pair_distance_angstrom": 1.012502,
+          "no_severe_overlap_at_0_45_angstrom": true
+        },
+        "product": {
+          "minimum_pair_distance_angstrom": 1.016865,
+          "no_severe_overlap_at_0_45_angstrom": true
+        }
+      },
+      "checks": {
+        "official_split_match": true,
+        "sanitized_export_present": true,
+        "no_forbidden_truth_fields": true,
+        "atom_identity_match": true,
+        "endpoint_geometry_valid": true,
+        "reaction_smiles_parse_and_map_match": true,
+        "mapped_bond_edits_match": true,
+        "component_counts_match": true,
+        "charge_and_radical_summaries_match": true,
+        "hydrogen_event_counts_match": true,
+        "edit_counts_match": true,
+        "review_queue_match": true,
+        "mapping_status_resolved": true
+      },
+      "issues": [],
+      "human_review_status": "pending"
+    },
+    {
+      "reaction_id": "RXN_0000187964",
+      "split": "valid",
+      "stratum": "E_three_bond_coupled",
+      "n_atoms": 16,
+      "mapping_status": "resolved_unique",
+      "endpoint_minimum_distances_angstrom": {
+        "reactant": {
+          "minimum_pair_distance_angstrom": 1.009728,
+          "no_severe_overlap_at_0_45_angstrom": true
+        },
+        "product": {
+          "minimum_pair_distance_angstrom": 1.009948,
+          "no_severe_overlap_at_0_45_angstrom": true
+        }
+      },
+      "checks": {
+        "official_split_match": true,
+        "sanitized_export_present": true,
+        "no_forbidden_truth_fields": true,
+        "atom_identity_match": true,
+        "endpoint_geometry_valid": true,
+        "reaction_smiles_parse_and_map_match": true,
+        "mapped_bond_edits_match": true,
+        "component_counts_match": true,
+        "charge_and_radical_summaries_match": true,
+        "hydrogen_event_counts_match": true,
+        "edit_counts_match": true,
+        "review_queue_match": true,
+        "mapping_status_resolved": true
+      },
+      "issues": [],
+      "human_review_status": "pending"
+    },
+    {
+      "reaction_id": "RXN_0000100736",
+      "split": "train",
+      "stratum": "F_H2_event",
+      "n_atoms": 14,
+      "mapping_status": "resolved_unique",
+      "endpoint_minimum_distances_angstrom": {
+        "reactant": {
+          "minimum_pair_distance_angstrom": 0.667933,
+          "no_severe_overlap_at_0_45_angstrom": true
+        },
+        "product": {
+          "minimum_pair_distance_angstrom": 1.00479,
+          "no_severe_overlap_at_0_45_angstrom": true
+        }
+      },
+      "checks": {
+        "official_split_match": true,
+        "sanitized_export_present": true,
+        "no_forbidden_truth_fields": true,
+        "atom_identity_match": true,
+        "endpoint_geometry_valid": true,
+        "reaction_smiles_parse_and_map_match": true,
+        "mapped_bond_edits_match": true,
+        "component_counts_match": true,
+        "charge_and_radical_summaries_match": true,
+        "hydrogen_event_counts_match": true,
+        "edit_counts_match": true,
+        "review_queue_match": true,
+        "mapping_status_resolved": true
+      },
+      "issues": [],
+      "human_review_status": "pending"
+    },
+    {
+      "reaction_id": "RXN_0000149368",
+      "split": "train",
+      "stratum": "F_H2_event",
+      "n_atoms": 19,
+      "mapping_status": "resolved_unique",
+      "endpoint_minimum_distances_angstrom": {
+        "reactant": {
+          "minimum_pair_distance_angstrom": 0.963476,
+          "no_severe_overlap_at_0_45_angstrom": true
+        },
+        "product": {
+          "minimum_pair_distance_angstrom": 0.743954,
+          "no_severe_overlap_at_0_45_angstrom": true
+        }
+      },
+      "checks": {
+        "official_split_match": true,
+        "sanitized_export_present": true,
+        "no_forbidden_truth_fields": true,
+        "atom_identity_match": true,
+        "endpoint_geometry_valid": true,
+        "reaction_smiles_parse_and_map_match": true,
+        "mapped_bond_edits_match": true,
+        "component_counts_match": true,
+        "charge_and_radical_summaries_match": true,
+        "hydrogen_event_counts_match": true,
+        "edit_counts_match": true,
+        "review_queue_match": true,
+        "mapping_status_resolved": true
+      },
+      "issues": [],
+      "human_review_status": "pending"
+    },
+    {
+      "reaction_id": "RXN_0000017762",
+      "split": "valid",
+      "stratum": "F_H2_event",
+      "n_atoms": 12,
+      "mapping_status": "resolved_unique",
+      "endpoint_minimum_distances_angstrom": {
+        "reactant": {
+          "minimum_pair_distance_angstrom": 0.743954,
+          "no_severe_overlap_at_0_45_angstrom": true
+        },
+        "product": {
+          "minimum_pair_distance_angstrom": 1.086671,
+          "no_severe_overlap_at_0_45_angstrom": true
+        }
+      },
+      "checks": {
+        "official_split_match": true,
+        "sanitized_export_present": true,
+        "no_forbidden_truth_fields": true,
+        "atom_identity_match": true,
+        "endpoint_geometry_valid": true,
+        "reaction_smiles_parse_and_map_match": true,
+        "mapped_bond_edits_match": true,
+        "component_counts_match": true,
+        "charge_and_radical_summaries_match": true,
+        "hydrogen_event_counts_match": true,
+        "edit_counts_match": true,
+        "review_queue_match": true,
+        "mapping_status_resolved": true
+      },
+      "issues": [],
+      "human_review_status": "pending"
+    },
+    {
+      "reaction_id": "RXN_0000138453",
+      "split": "train",
+      "stratum": "G_aromatic_order",
+      "n_atoms": 12,
+      "mapping_status": "resolved_unique",
+      "endpoint_minimum_distances_angstrom": {
+        "reactant": {
+          "minimum_pair_distance_angstrom": 1.019493,
+          "no_severe_overlap_at_0_45_angstrom": true
+        },
+        "product": {
+          "minimum_pair_distance_angstrom": 1.015278,
+          "no_severe_overlap_at_0_45_angstrom": true
+        }
+      },
+      "checks": {
+        "official_split_match": true,
+        "sanitized_export_present": true,
+        "no_forbidden_truth_fields": true,
+        "atom_identity_match": true,
+        "endpoint_geometry_valid": true,
+        "reaction_smiles_parse_and_map_match": true,
+        "mapped_bond_edits_match": true,
+        "component_counts_match": true,
+        "charge_and_radical_summaries_match": true,
+        "hydrogen_event_counts_match": true,
+        "edit_counts_match": true,
+        "review_queue_match": true,
+        "mapping_status_resolved": true
+      },
+      "issues": [],
+      "human_review_status": "pending"
+    },
+    {
+      "reaction_id": "RXN_0000110869",
+      "split": "train",
+      "stratum": "G_aromatic_order",
+      "n_atoms": 14,
+      "mapping_status": "resolved_unique",
+      "endpoint_minimum_distances_angstrom": {
+        "reactant": {
+          "minimum_pair_distance_angstrom": 1.07826,
+          "no_severe_overlap_at_0_45_angstrom": true
+        },
+        "product": {
+          "minimum_pair_distance_angstrom": 1.081252,
+          "no_severe_overlap_at_0_45_angstrom": true
+        }
+      },
+      "checks": {
+        "official_split_match": true,
+        "sanitized_export_present": true,
+        "no_forbidden_truth_fields": true,
+        "atom_identity_match": true,
+        "endpoint_geometry_valid": true,
+        "reaction_smiles_parse_and_map_match": true,
+        "mapped_bond_edits_match": true,
+        "component_counts_match": true,
+        "charge_and_radical_summaries_match": true,
+        "hydrogen_event_counts_match": true,
+        "edit_counts_match": true,
+        "review_queue_match": true,
+        "mapping_status_resolved": true
+      },
+      "issues": [],
+      "human_review_status": "pending"
+    },
+    {
+      "reaction_id": "RXN_0000047010",
+      "split": "valid",
+      "stratum": "G_aromatic_order",
+      "n_atoms": 13,
+      "mapping_status": "resolved_unique",
+      "endpoint_minimum_distances_angstrom": {
+        "reactant": {
+          "minimum_pair_distance_angstrom": 1.018119,
+          "no_severe_overlap_at_0_45_angstrom": true
+        },
+        "product": {
+          "minimum_pair_distance_angstrom": 1.016185,
+          "no_severe_overlap_at_0_45_angstrom": true
+        }
+      },
+      "checks": {
+        "official_split_match": true,
+        "sanitized_export_present": true,
+        "no_forbidden_truth_fields": true,
+        "atom_identity_match": true,
+        "endpoint_geometry_valid": true,
+        "reaction_smiles_parse_and_map_match": true,
+        "mapped_bond_edits_match": true,
+        "component_counts_match": true,
+        "charge_and_radical_summaries_match": true,
+        "hydrogen_event_counts_match": true,
+        "edit_counts_match": true,
+        "review_queue_match": true,
+        "mapping_status_resolved": true
+      },
+      "issues": [],
+      "human_review_status": "pending"
+    },
+    {
+      "reaction_id": "RXN_0000194484",
+      "split": "train",
+      "stratum": "H_high_edit_fallback",
+      "n_atoms": 20,
+      "mapping_status": "resolved_unique",
+      "endpoint_minimum_distances_angstrom": {
+        "reactant": {
+          "minimum_pair_distance_angstrom": 1.082162,
+          "no_severe_overlap_at_0_45_angstrom": true
+        },
+        "product": {
+          "minimum_pair_distance_angstrom": 1.085503,
+          "no_severe_overlap_at_0_45_angstrom": true
+        }
+      },
+      "checks": {
+        "official_split_match": true,
+        "sanitized_export_present": true,
+        "no_forbidden_truth_fields": true,
+        "atom_identity_match": true,
+        "endpoint_geometry_valid": true,
+        "reaction_smiles_parse_and_map_match": true,
+        "mapped_bond_edits_match": true,
+        "component_counts_match": true,
+        "charge_and_radical_summaries_match": true,
+        "hydrogen_event_counts_match": true,
+        "edit_counts_match": true,
+        "review_queue_match": true,
+        "mapping_status_resolved": true
+      },
+      "issues": [],
+      "human_review_status": "pending"
+    },
+    {
+      "reaction_id": "RXN_0000074997",
+      "split": "train",
+      "stratum": "H_high_edit_fallback",
+      "n_atoms": 16,
+      "mapping_status": "resolved_unique",
+      "endpoint_minimum_distances_angstrom": {
+        "reactant": {
+          "minimum_pair_distance_angstrom": 1.081318,
+          "no_severe_overlap_at_0_45_angstrom": true
+        },
+        "product": {
+          "minimum_pair_distance_angstrom": 1.089317,
+          "no_severe_overlap_at_0_45_angstrom": true
+        }
+      },
+      "checks": {
+        "official_split_match": true,
+        "sanitized_export_present": true,
+        "no_forbidden_truth_fields": true,
+        "atom_identity_match": true,
+        "endpoint_geometry_valid": true,
+        "reaction_smiles_parse_and_map_match": true,
+        "mapped_bond_edits_match": true,
+        "component_counts_match": true,
+        "charge_and_radical_summaries_match": true,
+        "hydrogen_event_counts_match": true,
+        "edit_counts_match": true,
+        "review_queue_match": true,
+        "mapping_status_resolved": true
+      },
+      "issues": [],
+      "human_review_status": "pending"
+    },
+    {
+      "reaction_id": "RXN_0000109608",
+      "split": "valid",
+      "stratum": "H_high_edit_fallback",
+      "n_atoms": 10,
+      "mapping_status": "resolved_unique",
+      "endpoint_minimum_distances_angstrom": {
+        "reactant": {
+          "minimum_pair_distance_angstrom": 0.97441,
+          "no_severe_overlap_at_0_45_angstrom": true
+        },
+        "product": {
+          "minimum_pair_distance_angstrom": 1.07084,
+          "no_severe_overlap_at_0_45_angstrom": true
+        }
+      },
+      "checks": {
+        "official_split_match": true,
+        "sanitized_export_present": true,
+        "no_forbidden_truth_fields": true,
+        "atom_identity_match": true,
+        "endpoint_geometry_valid": true,
+        "reaction_smiles_parse_and_map_match": true,
+        "mapped_bond_edits_match": true,
+        "component_counts_match": true,
+        "charge_and_radical_summaries_match": true,
+        "hydrogen_event_counts_match": true,
+        "edit_counts_match": true,
+        "review_queue_match": true,
+        "mapping_status_resolved": true
+      },
+      "issues": [],
+      "human_review_status": "pending"
+    }
+  ]
+}
