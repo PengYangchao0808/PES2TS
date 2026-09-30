@@ -60,3 +60,15 @@
 - Evidence: `.omo/evidence/task-5-pes-generation-graph-scan-strategy.txt`；Commit: `feat(g1): add EndpointGraphBundle and representation normalization`。
 - 教训（给 todo 6-9）：下游只从 `g1.endpoint_graph` import（re-export 全部 codes/EndpointGraphError，与 materials 同一类对象）；材料适配（demo24 CSV + export 快照 → map 键 {element,coordinates}）是后续 todo 的职责；bundle 不存原始坐标（只存 geometry_ref SHA256）。
 
+## 2026-10-01 todo 6 — R/P 完整键图重建（白名单输入）— PASSED
+- 新建 `pes2ts_core/scan_strategy/graph_rebuild.py`（284 纯 LOC，SIZE_OK）+ `tests/test_graph_rebuild.py`（21 tests 全绿，纯合成 fixture 零读 data/）。现有模块零改动（含 scan_strategy/__init__.py —— MUST NOT 改既有模块，下游直接 import 子模块）。
+- API：`rebuild_endpoint_graphs(smiles, materials) -> RebuiltEndpointGraphBundle`（is-a EndpointGraphBundle）——materials 经 `endpoint_materials.normalize_side_materials` 校验归一后委托 `endpoint_graph.build_endpoint_graph_bundle`（todo 5）；provenance 块绑定三哈希：`reaction_smiles_sha256`（字面串）、`endpoint_materials_sha256`（canonical sorted (side,map,element,coords) 行）、`graph_payload_sha256`（`graph_payload.py` map-space payload 的 string-key 投影）——graph_payload/parse 为 import 复用非拷贝。
+- 教训（slots dataclass 子类）：`@dataclass(frozen=True, slots=True)` 子类里零参 `super().to_doc()` 报 `TypeError: obj must be an instance or subtype of type`——decorator 重建类对象、孤儿化方法的 `__class__` cell；必须显式 `EndpointGraphBundle.to_doc(self)` 并留注释。
+- 语义分层（测试钉死）：`content_sha256` = 化学身份（模板原子序/刚体平移不变）；provenance 材料哈希 = 字面源绑定（平移后改变）；SMILES 哈希 = 字面串（shuffled 模板后改变）。
+- Loader：`load_endpoint_materials_from_export(doc)` schema 通用（maps + r/p_coordinates + atom_rows|elements 回退），只读白名单字段、忽略 doc 其余键；类型化 `EXPORT_SCHEMA_INVALID`。真实 doc 冒烟：export_contracts_v1/00000/RXN_0000000001.json（12 maps）loader 通过（手工终端冒烟，非测试——测试禁读 data/）。
+- 零读保证：模块源静态断言无内部数据树引用字符串；测试 monkeypatch `Path.open`+`builtins.open`（路径含内部数据树段则抛）跑全量重建 + 注入探针证伪守卫已武装。
+- 纯度：递归扫描 to_doc()+dataclass 字段名 vs FORBIDDEN_TRUTH_KEYS∪FORBIDDEN_EXPORT_KEYS 及具名 {endpoint_match,orientation,irc_evidence} = 0 命中。
+- 全量套件：`python -m pytest -q` → **730 passed, 4 deselected**（700 基线 + 本 todo 21 + 并行 todo4 worker 的 9 个 cli 测试——cli.py/scan_strategy/cli.py/test_scan_strategy_cli.py/config/defaults.yaml 属 todo 4，未入本提交）。
+- Evidence: `.omo/evidence/task-6-pes-generation-graph-scan-strategy.txt`；Commit: `feat(scan-strategy): rebuild full R/P bond graph from whitelisted SMILES`。
+- 教训（给 todo 7-9）：直接 `from pes2ts_core.scan_strategy.graph_rebuild import rebuild_endpoint_graphs`（不改 __init__）；demo24 全量冒烟推迟到 todo 10 golden（API 已 batch-capable，测试 21 证明）；下游消费 bundle.r_graph/p_graph/conservation/content_sha256，provenance 只在 to_doc() 文档层。
+

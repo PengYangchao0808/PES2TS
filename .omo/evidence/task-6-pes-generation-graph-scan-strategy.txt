@@ -1,0 +1,92 @@
+task-6 pes-generation-graph-scan-strategy — R/P complete bond-graph rebuild (whitelisted inputs)
+=============================================================================================
+
+Plan: .omo/plans/pes-generation-graph-scan-strategy.md todo 6
+Interface commitments row 全图来源: rebuild R/P graphs from whitelisted inputs
+(endpoint components + mapped reaction SMILES) inside scan_strategy, reusing
+g1/graph_payload.py + g1/parse.py; do NOT extend the frozen v2 export; do NOT
+read the internal v2 data tree.
+
+Deliverables
+------------
+- pes2ts_core/scan_strategy/graph_rebuild.py (new, 284 pure LOC, # noqa: SIZE_OK)
+  * rebuild_endpoint_graphs(reaction_smiles, endpoint_materials)
+      -> RebuiltEndpointGraphBundle (is-a EndpointGraphBundle)
+      - validates/normalizes materials via g1/endpoint_materials
+        (normalize_side_materials; MATERIALS_TOP_KEYS whitelist; typed
+        EndpointGraphError on schema/bijection violations)
+      - delegates graph construction to g1/endpoint_graph
+        .build_endpoint_graph_bundle (todo 5 API; strict both-sides
+        removeHs=False parse via g1/parse.parse_reaction; aromatic 1.5;
+        element/isotope conservation; explicit-H inventory; geometry SHA256)
+      - import reuse (no copy): g1/graph_payload.graph_payload for the
+        map-space payload digest; g1/parse.ReactionParseError surface via
+        the payload contract; provenance binds three source hashes into the
+        bundle doc's provenance block:
+        reaction_smiles_sha256 (literal string),
+        endpoint_materials_sha256 (canonical sorted (side,map,element,coords)
+        rows of the normalized materials),
+        graph_payload_sha256 (canonical string-keyed map-space payload)
+      - zero filesystem access; module source contains NO reference to the
+        internal v2 data tree (static test asserts "edits" absent)
+  * load_endpoint_materials_from_export(export_doc) -> materials mapping
+      {side: {map: {element, coordinates}}} accepted by
+      build_endpoint_graph_bundle; schema-generic over any parsed
+      export-contract doc (maps + r/p_coordinates + atom_rows|elements);
+      ignores all other keys; typed RebuildInputError EXPORT_SCHEMA_INVALID
+- tests/test_graph_rebuild.py (new, 21 tests, all synthetic in-memory; NO
+  reads of the real data/ tree)
+
+Verification
+------------
+1. Red-first: pytest before module existed -> ModuleNotFoundError (right reason).
+2. New suite:  conda python -m pytest -q tests/test_graph_rebuild.py
+   -> 21 passed
+   Coverage: conservation + stable content_sha256; provenance exact-digest
+   bindings; template-atom-order invariance (content/payload/materials equal,
+   SMILES digest differs by literal string); raw-coordinate materials digest
+   sensitivity; recursive output purity vs
+   FORBIDDEN_TRUTH_KEYS ∪ FORBIDDEN_EXPORT_KEYS and named
+   {endpoint_match, orientation, irc_evidence}; module-source zero-reference
+   check; zero-read guard (monkeypatch Path.open + builtins.open raise when
+   'edits' in path; full rebuild succeeds; injected probe open fails loudly);
+   loader roundtrip (synthetic export-like doc -> materials -> rebuild equals
+   fixture-materials rebuild, same content + materials digest); elements-list
+   fallback; 9 parametrized malformed-doc rejections; unparseable-SMILES typed
+   error; unknown-materials-top-key typed error; batch API capability
+   (two distinct reactions -> two stable conserved bundles).
+3. Real-doc loader smoke (manual, terminal only, not part of the test suite):
+   parsed data/interim/g1_v2/export_contracts_v1/00000/RXN_0000000001.json
+   (12 maps) -> load_endpoint_materials_from_export -> r/p materials with
+   map-ascending coords + atom_rows elements match the doc exactly.
+   Loader reads only whitelisted fields; the export doc's own reaction-record
+   field is ignored by construction.
+4. Full default suite:  python -m pytest -q
+   -> 730 passed, 4 deselected (baseline 700 + this todo 21 + parallel
+   todo-4 worker's 9 cli tests present in the shared tree; all green).
+5. LSP diagnostics (error severity): clean on graph_rebuild.py + test file.
+6. Static scans: grep for edits|ground_truth|truth_sources|subprocess|
+   importlib|eval(|exec( on graph_rebuild.py -> zero matches (truth_guard safe).
+7. Size: 284 pure LOC -> SIZE_OK (task-specified single module owning the
+   whitelisted-input rebuild boundary; precedent endpoint_graph.py).
+
+Decisions / notes
+-----------------
+- RebuiltEndpointGraphBundle subclasses the frozen slots dataclass and
+  overrides to_doc() to append the provenance block; zero-arg super() is
+  unreliable inside slots=True dataclass subclasses (decorator recreates the
+  class object) -> explicit EndpointGraphBundle.to_doc(self) call, with an
+  inline note.
+- content_sha256 stays the chemistry identity from todo 5 (translation- and
+  template-order-invariant); provenance digests bind the literal sources
+  (SMILES string, raw coordinates) — both semantics are test-pinned.
+- scan_strategy/__init__.py intentionally NOT modified (MUST NOT touch
+  existing modules; downstream todos import graph_rebuild directly).
+- cli.py / scan_strategy/cli.py / test_scan_strategy_cli.py /
+  config/defaults.yaml belong to parallel todo 4 — not staged, not committed.
+- Optional demo24 smoke deliberately deferred: API is batch-capable (test 21);
+  actual 24-reaction validation needs the todo-10 frozen golden fixtures and
+  must not read the real data tree from the default suite.
+
+Commit: feat(scan-strategy): rebuild full R/P bond graph from whitelisted SMILES
+Evidence written: .omo/evidence/task-6-pes-generation-graph-scan-strategy.txt
