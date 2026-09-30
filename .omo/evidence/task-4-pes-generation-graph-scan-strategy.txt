@@ -1,0 +1,63 @@
+task-4 pes-generation-graph-scan-strategy — CLI + artifact tree skeleton (v2-scan-plan/verify/freeze)
+date: 2026-10-01
+env: conda pes2ts (/root/miniforge3/envs/pes2ts), python 3.12.14
+
+WHAT LANDED
+- pes2ts_core/scan_strategy/cli.py (new): scan_plan_proposals / verify_scan_proposals /
+  freeze_scan_plans + ScanArtifactPaths/ScanProposalResult/ScanVerifyResult/ScanFreezeResult.
+  Artifact paths resolved from config scan_strategy.{proposals_dir,plans_dir,
+  proposal_summary,plan_summary,proposal_manifest,plan_manifest,freeze_manifest}
+  against paths.interim / paths.manifests (g1_v2 dirname idiom). Empty-input plan
+  writes proposals-tree skeleton + empty summary parquet + manifest (n_total=0,
+  n_files=0, summary_sha256) via stable_json_dumps/write_json — deterministic
+  except generated_at. Verify re-reads the tree (sorted rglob), validates each doc
+  via contracts_v2.validate_v2_document + seal_document digest re-seal, and
+  reconciles manifest n_total/n_files/summary_sha256; clean -> exit 0 problems=0,
+  dirty -> exit 22 (EXIT_G1_BUILD_FAILED) listing capped problems. Freeze runs
+  verification first; gate = verification clean AND >=1 execution-eligible
+  proposal. Empty/ineligible -> plan_gate_pass=false + typed reason
+  NO_ELIGIBLE_PROPOSALS (and VERIFICATION_FAILED when dirty); freeze manifest
+  written; scan_plans/ gets only the empty dir skeleton, ZERO json files, no plan
+  manifest/summary (gate discipline). Gate-pass export path raises
+  NotImplementedError (arrives with todo 23) because contracts_v2 forces
+  execution_eligible=False on every proposal — the refusal path is the correct
+  empty-input behavior, not a stub.
+- config/defaults.yaml: scan_strategy section extended additively with the seven
+  artifact-path keys (relative; resolve under paths.interim/manifests). Existing
+  keys byte-identical.
+- pes2ts_core/cli.py: 5-place registration — G1_SUBCOMMANDS += v2-scan-plan/
+  v2-scan-verify/v2-scan-freeze (after v2-sanitize-exports); three lazy-import
+  handlers _g1_v2_scan_{plan,verify,freeze}_handler (int returns, no module-level
+  scan_strategy import); G1_SUBCOMMAND_HANDLERS + g1_help entries. Existing
+  v2-* handlers/behavior untouched. bin/pes2ts unchanged (g1 already falls through).
+- tests/test_scan_strategy_cli.py (new, 9 tests): --help exit 0 x3 (argparse
+  SystemExit); g1 --help lists the three alongside v2-gate/v2-sanitize-exports;
+  empty-run determinism (manifest minus generated_at equal + summary parquet
+  byte-stable across two runs); verify on skeleton exit 0 problems=0; verify on
+  dirty tree (injected invalid doc) exit 22 problems=3 (doc validation + n_total
+  + n_files mismatches); freeze refusal exit 22, plan_gate_pass=false,
+  NO_ELIGIBLE_PROPOSALS, plans_dir empty of json, no plan manifest; freeze on
+  dirty tree adds VERIFICATION_FAILED. tmp_path config re-rooting per test_g2_cli.py
+  pattern (load_config + paths override + yaml dump + main --config).
+
+ACCEPTANCE EVIDENCE
+- conda run -n pes2ts python bin/pes2ts g1 v2-scan-plan --help -> exit 0 (likewise verify/freeze)
+- g1 --help lists: v2-scan-plan / v2-scan-verify / v2-scan-freeze alongside v2-gate, v2-sanitize-exports
+- Live empty run: v2-scan-plan exit 0, writes data/interim/g1_v2/scan_proposals/ (empty),
+  data/interim/g1_v2_scan_proposal_summary.parquet, data/manifests/g1_v2_scan_proposal_manifest.json
+  (n_total=0, n_files=0). Second run: manifest minus generated_at hash identical,
+  summary parquet sha256 identical (volatile-stable True / byte-stable True).
+- v2-scan-verify -> exit 0, "total=0 clean=0 problems=0"
+- v2-scan-freeze -> exit 22, freeze manifest plan_gate_pass=false reasons=[NO_ELIGIBLE_PROPOSALS],
+  n_plans=0; scan_plans/ dir exists with zero json files; no g1_v2_scan_plan_manifest.json
+- Full suite: 730 passed, 4 deselected (baseline 700 + 9 new + 21 parallel todo-6 worker)
+- lsp_diagnostics error-level: clean on scan_strategy/cli.py and test_scan_strategy_cli.py
+- SIZE: scan_strategy/cli.py 267 pure LOC -> # allow: SIZE_OK marker (plan-named single
+  CLI-stage module, g2/pipeline.py idiom; todo 23 extends freeze here)
+
+NOT DONE / BOUNDARIES
+- planning.py / adapter.py / contracts.py untouched; no scan_strategy-prefix top-level
+  commands; no data/ artifacts committed (tmp_path tests only; live-run manifests are
+  gitignored tree state)
+- Gate-pass freeze export (frozen g1_generation_plan_v2 docs + plan manifest + plan
+  summary) is todo 23; todo-4 freeze correctly always refuses on empty inputs

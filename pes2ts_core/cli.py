@@ -133,6 +133,9 @@ G1_SUBCOMMANDS: tuple[str, ...] = (
     "v2-verify",
     "v2-gate",
     "v2-sanitize-exports",
+    "v2-scan-plan",
+    "v2-scan-verify",
+    "v2-scan-freeze",
 )
 
 #: ``g1 verify --stage`` choices.
@@ -756,6 +759,55 @@ def _g1_v2_sanitize_exports_handler(args: argparse.Namespace, config: dict[str, 
     return 0
 
 
+def _g1_v2_scan_plan_handler(_args: argparse.Namespace, config: dict[str, Any]) -> int:
+    """Write the scan-proposal tree skeleton, summary, and manifest."""
+    from pes2ts_core.scan_strategy.cli import scan_plan_proposals
+
+    result = scan_plan_proposals(config)
+    print(
+        f"v2-scan-plan: proposals={result.n_total} written={result.n_written} "
+        f"summary={result.summary_path} manifest={result.manifest_path}"
+    )
+    return 0
+
+
+def _g1_v2_scan_verify_handler(_args: argparse.Namespace, config: dict[str, Any]) -> int:
+    """Re-read the scan-proposal tree; exit 22 on any verification problem."""
+    from pes2ts_core.scan_strategy.cli import verify_scan_proposals
+
+    result = verify_scan_proposals(config)
+    if result.problems:
+        for problem in result.problems[:10]:
+            logging.getLogger(__name__).error("v2-scan-verify: %s", problem)
+        print(
+            f"v2-scan-verify: total={result.n_total} clean={result.n_clean} "
+            f"problems={len(result.problems)}"
+        )
+        return EXIT_G1_BUILD_FAILED
+    print(
+        f"v2-scan-verify: total={result.n_total} clean={result.n_clean} problems=0"
+    )
+    return 0
+
+
+def _g1_v2_scan_freeze_handler(_args: argparse.Namespace, config: dict[str, Any]) -> int:
+    """Gate scan proposals into frozen plans; refuse without consumable exports."""
+    from pes2ts_core.scan_strategy.cli import freeze_scan_plans
+
+    result = freeze_scan_plans(config)
+    if not result.plan_gate_pass:
+        print(
+            f"v2-scan-freeze: plan_gate_pass=false reasons={list(result.reasons)} "
+            f"manifest={result.freeze_manifest_path}"
+        )
+        return EXIT_G1_BUILD_FAILED
+    print(
+        f"v2-scan-freeze: plan_gate_pass=true plans={result.n_plans} "
+        f"manifest={result.freeze_manifest_path}"
+    )
+    return 0
+
+
 #: The handler for every ``g0`` subcommand; all are implemented.
 SUBCOMMAND_HANDLERS: dict[str, G0Handler] = {
     "fetch": _fetch_handler,
@@ -785,6 +837,9 @@ G1_SUBCOMMAND_HANDLERS: dict[str, G1Handler] = {
     "v2-verify": _g1_v2_verify_handler,
     "v2-gate": _g1_v2_gate_handler,
     "v2-sanitize-exports": _g1_v2_sanitize_exports_handler,
+    "v2-scan-plan": _g1_v2_scan_plan_handler,
+    "v2-scan-verify": _g1_v2_scan_verify_handler,
+    "v2-scan-freeze": _g1_v2_scan_freeze_handler,
 }
 
 
@@ -1112,6 +1167,9 @@ def build_parser() -> argparse.ArgumentParser:
         "v2-verify": "recompute the v2 edit/class trees and the export whitelist",
         "v2-gate": "write scan_ready/needs_review/excluded manifests and the G2 export",
         "v2-sanitize-exports": "write a separate truth-clean copy of legacy G2 exports",
+        "v2-scan-plan": "write the scan-strategy proposal tree, summary, and manifest",
+        "v2-scan-verify": "re-read the scan-proposal tree and reconcile it with the manifest",
+        "v2-scan-freeze": "gate scan proposals into frozen plans (refuses without eligible proposals)",
     }
     for name in G1_SUBCOMMANDS:
         sub_parser = g1_subparsers.add_parser(name, help=g1_help[name])
