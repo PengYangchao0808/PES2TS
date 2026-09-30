@@ -1,0 +1,5841 @@
+{
+  "schema_name": "Demo24ScanStrategyDesignEvidence",
+  "schema_version": 1,
+  "status": "design_only",
+  "date": "2026-09-30",
+  "rdkit_version": "2026.03.3",
+  "source_csv_sha256": "63ac74ee55e3367f8f937c897620a5cf9993275df22b89e4ac9c2d48644e489c",
+  "source_manifest_sha256": "81922e28ab5c1748c203d467e07e0adfb3653eed4088c77044951e81596d9fd3",
+  "builder_sha256": "43537d5f00aa411f47bf0f8b7eef161854957740ebf6415a74bdaa29685179be",
+  "information_boundary": "Endpoint CSV, sanitized R/P exports and review cases only; no TS/IRC/energies read. Existing mapping provenance is truth_assisted_p1.",
+  "proposal_provenance": "Manually specified design hypotheses in PROPOSALS; this script does not implement strategy selection.",
+  "counts": {
+    "records": 24,
+    "case_status": {
+      "needs_review": 24
+    },
+    "modes": {
+      "SINGLE_1D": 6,
+      "COUPLED_1D": 15,
+      "PATH_REQUIRED": 3
+    },
+    "splits": {
+      "train": 16,
+      "valid": 8
+    }
+  },
+  "records": [
+    {
+      "reaction_id": "RXN_0000007104",
+      "stratum": "A_H_transfer",
+      "split": "train",
+      "proposal_status": "design_hypothesis",
+      "execution_eligible": false,
+      "case_status": "needs_review",
+      "case_sha256": "a1cfd89b9e9a95693af7164502ef993aa30532e26d7aa65763fd9a017d7e412b",
+      "export_sha256": "6d5e7d8ea49539a090773d03eb40b25bc52f3b77e7cdbac80402afdf91dbc6ab",
+      "case_path": "data/interim/g1_v2/reaction_cases_review_v1/train/RXN_0000007104.json",
+      "mapping_status": "resolved_unique",
+      "mapping_provenance": "truth_assisted_p1",
+      "features": {
+        "edit_components": [
+          [
+            1,
+            2,
+            3,
+            11
+          ]
+        ],
+        "edit_cycle_rank": 0,
+        "connectivity_edit_components": [
+          [
+            1,
+            3,
+            11
+          ]
+        ],
+        "edit_counts": {
+          "order_changed": 1,
+          "broken": 1,
+          "formed": 1
+        },
+        "endpoints": {
+          "reactant": {
+            "n_components": 1,
+            "cycle_rank": 1,
+            "charge": 0,
+            "multiplicity": 1,
+            "rdkit_formal_charge_sum": 0,
+            "rdkit_charged_atom_count": 0,
+            "rdkit_radical_electron_count": 0
+          },
+          "product": {
+            "n_components": 1,
+            "cycle_rank": 1,
+            "charge": 0,
+            "multiplicity": 1,
+            "rdkit_formal_charge_sum": 0,
+            "rdkit_charged_atom_count": 0,
+            "rdkit_radical_electron_count": 0
+          }
+        },
+        "atom_attribute_changes": [],
+        "hydrogen_events": [
+          {
+            "from": 1,
+            "from_state": "heavy",
+            "h": 11,
+            "kind": "transfer",
+            "to": 3,
+            "to_state": "heavy"
+          }
+        ],
+        "aromatic_regions": {}
+      },
+      "edits": [
+        {
+          "aromatic_region": null,
+          "edit_kind": "order_changed",
+          "elements": [
+            "N",
+            "C"
+          ],
+          "p_bond_order": 2.0,
+          "pair": [
+            1,
+            2
+          ],
+          "r_bond_order": 1.0,
+          "distance_R_A": 1.345034,
+          "distance_P_A": 1.254942,
+          "cross_component_R": false,
+          "cross_component_P": false
+        },
+        {
+          "aromatic_region": null,
+          "edit_kind": "broken",
+          "elements": [
+            "N",
+            "H"
+          ],
+          "p_bond_order": null,
+          "pair": [
+            1,
+            11
+          ],
+          "r_bond_order": 1.0,
+          "distance_R_A": 1.005583,
+          "distance_P_A": 2.718888,
+          "cross_component_R": false,
+          "cross_component_P": false,
+          "support_path_P": [
+            1,
+            2,
+            3,
+            11
+          ]
+        },
+        {
+          "aromatic_region": null,
+          "edit_kind": "formed",
+          "elements": [
+            "N",
+            "H"
+          ],
+          "p_bond_order": 1.0,
+          "pair": [
+            3,
+            11
+          ],
+          "r_bond_order": null,
+          "distance_R_A": 2.626954,
+          "distance_P_A": 1.006052,
+          "cross_component_R": false,
+          "cross_component_P": false,
+          "support_path_R": [
+            3,
+            2,
+            1,
+            11
+          ]
+        }
+      ],
+      "proposal": {
+        "family": "H_TRANSFER",
+        "mode": "SINGLE_1D",
+        "drivers_map": [
+          [
+            3,
+            11
+          ]
+        ],
+        "observers_map": [
+          [
+            1,
+            2
+          ],
+          [
+            1,
+            11
+          ]
+        ],
+        "direction": "P_to_R",
+        "interpretation": "N1–H11→N3；1–2 键级变化是伴随电子重排。",
+        "fallback": "双 B：1–11、3–11；再比较反向。",
+        "risk": "邻接芳香骨架；不能把 1–2 的键级变化硬编码为独立成键。",
+        "auxiliary_monitor_policy": "H: donor-acceptor distance and D-H-A angle; rings/aromatics: regional geometry, stereo and non-target contacts",
+        "required_before_execution": [
+          "manual_chemistry_review",
+          "endpoint_geometry_and_assembly_check",
+          "backend_capability_check",
+          "frozen_schedule_and_budget"
+        ]
+      }
+    },
+    {
+      "reaction_id": "RXN_0000161724",
+      "stratum": "A_H_transfer",
+      "split": "train",
+      "proposal_status": "design_hypothesis",
+      "execution_eligible": false,
+      "case_status": "needs_review",
+      "case_sha256": "4b5f3087fe7c4edfeab5745a71e27e3c4b8b6c8ae1b3893eac079e4bd2a78bd9",
+      "export_sha256": "1a746cd7bb8640c45ecedbe35e401ec21f157d1d9837596bc46c03ead5432589",
+      "case_path": "data/interim/g1_v2/reaction_cases_review_v1/train/RXN_0000161724.json",
+      "mapping_status": "resolved_unique",
+      "mapping_provenance": "truth_assisted_p1",
+      "features": {
+        "edit_components": [
+          [
+            4,
+            5,
+            13
+          ]
+        ],
+        "edit_cycle_rank": 0,
+        "connectivity_edit_components": [
+          [
+            4,
+            5,
+            13
+          ]
+        ],
+        "edit_counts": {
+          "broken": 1,
+          "formed": 1
+        },
+        "endpoints": {
+          "reactant": {
+            "n_components": 1,
+            "cycle_rank": 0,
+            "charge": 0,
+            "multiplicity": 1,
+            "rdkit_formal_charge_sum": 0,
+            "rdkit_charged_atom_count": 2,
+            "rdkit_radical_electron_count": 0
+          },
+          "product": {
+            "n_components": 1,
+            "cycle_rank": 0,
+            "charge": 0,
+            "multiplicity": 1,
+            "rdkit_formal_charge_sum": 0,
+            "rdkit_charged_atom_count": 0,
+            "rdkit_radical_electron_count": 0
+          }
+        },
+        "atom_attribute_changes": [
+          {
+            "atom_map_id": 4,
+            "R": {
+              "formal_charge": 1,
+              "radical_electrons": 0,
+              "aromatic": false,
+              "chiral_tag": "CHI_UNSPECIFIED"
+            },
+            "P": {
+              "formal_charge": 0,
+              "radical_electrons": 0,
+              "aromatic": false,
+              "chiral_tag": "CHI_UNSPECIFIED"
+            }
+          },
+          {
+            "atom_map_id": 5,
+            "R": {
+              "formal_charge": -1,
+              "radical_electrons": 0,
+              "aromatic": false,
+              "chiral_tag": "CHI_UNSPECIFIED"
+            },
+            "P": {
+              "formal_charge": 0,
+              "radical_electrons": 0,
+              "aromatic": false,
+              "chiral_tag": "CHI_UNSPECIFIED"
+            }
+          }
+        ],
+        "hydrogen_events": [
+          {
+            "from": 4,
+            "from_state": "heavy",
+            "h": 13,
+            "kind": "transfer",
+            "to": 5,
+            "to_state": "heavy"
+          }
+        ],
+        "aromatic_regions": {}
+      },
+      "edits": [
+        {
+          "aromatic_region": null,
+          "edit_kind": "broken",
+          "elements": [
+            "O",
+            "H"
+          ],
+          "p_bond_order": null,
+          "pair": [
+            4,
+            13
+          ],
+          "r_bond_order": 1.0,
+          "distance_R_A": 0.965664,
+          "distance_P_A": 1.956962,
+          "cross_component_R": false,
+          "cross_component_P": false,
+          "support_path_P": [
+            4,
+            5,
+            13
+          ]
+        },
+        {
+          "aromatic_region": null,
+          "edit_kind": "formed",
+          "elements": [
+            "N",
+            "H"
+          ],
+          "p_bond_order": 1.0,
+          "pair": [
+            5,
+            13
+          ],
+          "r_bond_order": null,
+          "distance_R_A": 2.011318,
+          "distance_P_A": 1.016893,
+          "cross_component_R": false,
+          "cross_component_P": false,
+          "support_path_R": [
+            5,
+            4,
+            13
+          ]
+        }
+      ],
+      "proposal": {
+        "family": "H_TRANSFER",
+        "mode": "SINGLE_1D",
+        "drivers_map": [
+          [
+            5,
+            13
+          ]
+        ],
+        "observers_map": [
+          [
+            4,
+            13
+          ]
+        ],
+        "direction": "P_to_R",
+        "interpretation": "O4–H13→N5，O+/N− 形式电荷消失。",
+        "fallback": "双 B：4–13、5–13；R→P 复核。",
+        "risk": "总电荷不变；形式电荷变化不能直接判断电子转移或自旋。",
+        "auxiliary_monitor_policy": "H: donor-acceptor distance and D-H-A angle; rings/aromatics: regional geometry, stereo and non-target contacts",
+        "required_before_execution": [
+          "manual_chemistry_review",
+          "endpoint_geometry_and_assembly_check",
+          "backend_capability_check",
+          "frozen_schedule_and_budget"
+        ]
+      }
+    },
+    {
+      "reaction_id": "RXN_0000091050",
+      "stratum": "A_H_transfer",
+      "split": "valid",
+      "proposal_status": "design_hypothesis",
+      "execution_eligible": false,
+      "case_status": "needs_review",
+      "case_sha256": "3270d759d172504f7afeb9d7882893c1677eb39cbec8d10cff4657e642ce9103",
+      "export_sha256": "204adb1ef7464e60f44db6465db788897ef204672ec381c6a4c16f79a9559c8f",
+      "case_path": "data/interim/g1_v2/reaction_cases_review_v1/valid/RXN_0000091050.json",
+      "mapping_status": "resolved_unique",
+      "mapping_provenance": "truth_assisted_p1",
+      "features": {
+        "edit_components": [
+          [
+            1,
+            7,
+            9
+          ]
+        ],
+        "edit_cycle_rank": 0,
+        "connectivity_edit_components": [
+          [
+            1,
+            7,
+            9
+          ]
+        ],
+        "edit_counts": {
+          "broken": 1,
+          "formed": 1
+        },
+        "endpoints": {
+          "reactant": {
+            "n_components": 1,
+            "cycle_rank": 1,
+            "charge": 0,
+            "multiplicity": 1,
+            "rdkit_formal_charge_sum": 0,
+            "rdkit_charged_atom_count": 0,
+            "rdkit_radical_electron_count": 0
+          },
+          "product": {
+            "n_components": 1,
+            "cycle_rank": 1,
+            "charge": 0,
+            "multiplicity": 1,
+            "rdkit_formal_charge_sum": 0,
+            "rdkit_charged_atom_count": 2,
+            "rdkit_radical_electron_count": 0
+          }
+        },
+        "atom_attribute_changes": [
+          {
+            "atom_map_id": 1,
+            "R": {
+              "formal_charge": 0,
+              "radical_electrons": 0,
+              "aromatic": false,
+              "chiral_tag": "CHI_UNSPECIFIED"
+            },
+            "P": {
+              "formal_charge": -1,
+              "radical_electrons": 0,
+              "aromatic": false,
+              "chiral_tag": "CHI_UNSPECIFIED"
+            }
+          },
+          {
+            "atom_map_id": 7,
+            "R": {
+              "formal_charge": 0,
+              "radical_electrons": 0,
+              "aromatic": false,
+              "chiral_tag": "CHI_UNSPECIFIED"
+            },
+            "P": {
+              "formal_charge": 1,
+              "radical_electrons": 0,
+              "aromatic": false,
+              "chiral_tag": "CHI_TETRAHEDRAL_CCW"
+            }
+          }
+        ],
+        "hydrogen_events": [
+          {
+            "from": 1,
+            "from_state": "heavy",
+            "h": 9,
+            "kind": "transfer",
+            "to": 7,
+            "to_state": "heavy"
+          }
+        ],
+        "aromatic_regions": {}
+      },
+      "edits": [
+        {
+          "aromatic_region": null,
+          "edit_kind": "broken",
+          "elements": [
+            "C",
+            "H"
+          ],
+          "p_bond_order": null,
+          "pair": [
+            1,
+            9
+          ],
+          "r_bond_order": 1.0,
+          "distance_R_A": 1.080575,
+          "distance_P_A": 2.787076,
+          "cross_component_R": false,
+          "cross_component_P": false,
+          "support_path_P": [
+            1,
+            2,
+            7,
+            9
+          ]
+        },
+        {
+          "aromatic_region": null,
+          "edit_kind": "formed",
+          "elements": [
+            "N",
+            "H"
+          ],
+          "p_bond_order": 1.0,
+          "pair": [
+            7,
+            9
+          ],
+          "r_bond_order": null,
+          "distance_R_A": 2.815428,
+          "distance_P_A": 1.02052,
+          "cross_component_R": false,
+          "cross_component_P": false,
+          "support_path_R": [
+            7,
+            2,
+            1,
+            9
+          ]
+        }
+      ],
+      "proposal": {
+        "family": "H_TRANSFER",
+        "mode": "SINGLE_1D",
+        "drivers_map": [
+          [
+            7,
+            9
+          ]
+        ],
+        "observers_map": [
+          [
+            1,
+            9
+          ]
+        ],
+        "direction": "P_to_R",
+        "interpretation": "C1–H9→N7，产物形成 C−/N+。",
+        "fallback": "双 B：1–9、7–9；R→P 复核。",
+        "risk": "电荷分离、产物 N7 立体结构和供受体取向需复核。",
+        "auxiliary_monitor_policy": "H: donor-acceptor distance and D-H-A angle; rings/aromatics: regional geometry, stereo and non-target contacts",
+        "required_before_execution": [
+          "manual_chemistry_review",
+          "endpoint_geometry_and_assembly_check",
+          "backend_capability_check",
+          "frozen_schedule_and_budget"
+        ]
+      }
+    },
+    {
+      "reaction_id": "RXN_0000077619",
+      "stratum": "B_one_bond",
+      "split": "train",
+      "proposal_status": "design_hypothesis",
+      "execution_eligible": false,
+      "case_status": "needs_review",
+      "case_sha256": "28ef2b0fef64b472d72d7ad4c20073e5fc407e6d7023041f9bfe1dcd67f043fa",
+      "export_sha256": "58451ef817e4a312eadcc9f9810607b009aaa4faa6fa00ef8baa34ca639b2016",
+      "case_path": "data/interim/g1_v2/reaction_cases_review_v1/train/RXN_0000077619.json",
+      "mapping_status": "resolved_unique",
+      "mapping_provenance": "truth_assisted_p1",
+      "features": {
+        "edit_components": [
+          [
+            2,
+            5
+          ]
+        ],
+        "edit_cycle_rank": 0,
+        "connectivity_edit_components": [
+          [
+            2,
+            5
+          ]
+        ],
+        "edit_counts": {
+          "formed": 1
+        },
+        "endpoints": {
+          "reactant": {
+            "n_components": 1,
+            "cycle_rank": 0,
+            "charge": 0,
+            "multiplicity": 1,
+            "rdkit_formal_charge_sum": 0,
+            "rdkit_charged_atom_count": 0,
+            "rdkit_radical_electron_count": 2
+          },
+          "product": {
+            "n_components": 1,
+            "cycle_rank": 1,
+            "charge": 0,
+            "multiplicity": 1,
+            "rdkit_formal_charge_sum": 0,
+            "rdkit_charged_atom_count": 0,
+            "rdkit_radical_electron_count": 0
+          }
+        },
+        "atom_attribute_changes": [
+          {
+            "atom_map_id": 2,
+            "R": {
+              "formal_charge": 0,
+              "radical_electrons": 1,
+              "aromatic": false,
+              "chiral_tag": "CHI_UNSPECIFIED"
+            },
+            "P": {
+              "formal_charge": 0,
+              "radical_electrons": 0,
+              "aromatic": false,
+              "chiral_tag": "CHI_TETRAHEDRAL_CW"
+            }
+          },
+          {
+            "atom_map_id": 5,
+            "R": {
+              "formal_charge": 0,
+              "radical_electrons": 1,
+              "aromatic": false,
+              "chiral_tag": "CHI_UNSPECIFIED"
+            },
+            "P": {
+              "formal_charge": 0,
+              "radical_electrons": 0,
+              "aromatic": false,
+              "chiral_tag": "CHI_TETRAHEDRAL_CW"
+            }
+          }
+        ],
+        "hydrogen_events": [],
+        "aromatic_regions": {}
+      },
+      "edits": [
+        {
+          "aromatic_region": null,
+          "edit_kind": "formed",
+          "elements": [
+            "C",
+            "C"
+          ],
+          "p_bond_order": 1.0,
+          "pair": [
+            2,
+            5
+          ],
+          "r_bond_order": null,
+          "distance_R_A": 3.053272,
+          "distance_P_A": 1.541183,
+          "cross_component_R": false,
+          "cross_component_P": false,
+          "support_path_R": [
+            2,
+            8,
+            7,
+            5
+          ]
+        }
+      ],
+      "proposal": {
+        "family": "LOCAL_CONNECTIVITY",
+        "mode": "SINGLE_1D",
+        "drivers_map": [
+          [
+            2,
+            5
+          ]
+        ],
+        "observers_map": [],
+        "direction": "P_to_R",
+        "interpretation": "C2–C5 成键闭环；从产物已成键几何拉伸。",
+        "fallback": "R→P，必要时经同骨架 D 预组织后重建计划。",
+        "risk": "环张力和新立体中心；保持目标构型。",
+        "auxiliary_monitor_policy": "H: donor-acceptor distance and D-H-A angle; rings/aromatics: regional geometry, stereo and non-target contacts",
+        "required_before_execution": [
+          "manual_chemistry_review",
+          "endpoint_geometry_and_assembly_check",
+          "backend_capability_check",
+          "frozen_schedule_and_budget"
+        ]
+      }
+    },
+    {
+      "reaction_id": "RXN_0000026256",
+      "stratum": "B_one_bond",
+      "split": "train",
+      "proposal_status": "design_hypothesis",
+      "execution_eligible": false,
+      "case_status": "needs_review",
+      "case_sha256": "81b05953d71d37337f1f697a4afd94120292cc9dc06ed3b84122a5d533bf5d17",
+      "export_sha256": "15f1732b2e4a33a80ea20ac5638ea2492637952744df67e24b3b9fd0f73b49eb",
+      "case_path": "data/interim/g1_v2/reaction_cases_review_v1/train/RXN_0000026256.json",
+      "mapping_status": "resolved_unique",
+      "mapping_provenance": "truth_assisted_p1",
+      "features": {
+        "edit_components": [
+          [
+            3,
+            7
+          ]
+        ],
+        "edit_cycle_rank": 0,
+        "connectivity_edit_components": [
+          [
+            3,
+            7
+          ]
+        ],
+        "edit_counts": {
+          "broken": 1
+        },
+        "endpoints": {
+          "reactant": {
+            "n_components": 1,
+            "cycle_rank": 2,
+            "charge": 0,
+            "multiplicity": 1,
+            "rdkit_formal_charge_sum": 0,
+            "rdkit_charged_atom_count": 0,
+            "rdkit_radical_electron_count": 0
+          },
+          "product": {
+            "n_components": 1,
+            "cycle_rank": 1,
+            "charge": 0,
+            "multiplicity": 1,
+            "rdkit_formal_charge_sum": 0,
+            "rdkit_charged_atom_count": 0,
+            "rdkit_radical_electron_count": 2
+          }
+        },
+        "atom_attribute_changes": [
+          {
+            "atom_map_id": 3,
+            "R": {
+              "formal_charge": 0,
+              "radical_electrons": 0,
+              "aromatic": false,
+              "chiral_tag": "CHI_TETRAHEDRAL_CW"
+            },
+            "P": {
+              "formal_charge": 0,
+              "radical_electrons": 1,
+              "aromatic": false,
+              "chiral_tag": "CHI_UNSPECIFIED"
+            }
+          },
+          {
+            "atom_map_id": 7,
+            "R": {
+              "formal_charge": 0,
+              "radical_electrons": 0,
+              "aromatic": false,
+              "chiral_tag": "CHI_TETRAHEDRAL_CW"
+            },
+            "P": {
+              "formal_charge": 0,
+              "radical_electrons": 1,
+              "aromatic": false,
+              "chiral_tag": "CHI_UNSPECIFIED"
+            }
+          }
+        ],
+        "hydrogen_events": [],
+        "aromatic_regions": {}
+      },
+      "edits": [
+        {
+          "aromatic_region": null,
+          "edit_kind": "broken",
+          "elements": [
+            "C",
+            "C"
+          ],
+          "p_bond_order": null,
+          "pair": [
+            3,
+            7
+          ],
+          "r_bond_order": 1.0,
+          "distance_R_A": 1.480805,
+          "distance_P_A": 2.572922,
+          "cross_component_R": false,
+          "cross_component_P": false,
+          "support_path_P": [
+            3,
+            6,
+            7
+          ]
+        }
+      ],
+      "proposal": {
+        "family": "LOCAL_CONNECTIVITY",
+        "mode": "SINGLE_1D",
+        "drivers_map": [
+          [
+            3,
+            7
+          ]
+        ],
+        "observers_map": [],
+        "direction": "R_to_P",
+        "interpretation": "C3–C7 断键开环。",
+        "fallback": "P→R；若重闭环失败转 NEB。",
+        "risk": "小环开裂电子态和非目标骨架断裂。",
+        "auxiliary_monitor_policy": "H: donor-acceptor distance and D-H-A angle; rings/aromatics: regional geometry, stereo and non-target contacts",
+        "required_before_execution": [
+          "manual_chemistry_review",
+          "endpoint_geometry_and_assembly_check",
+          "backend_capability_check",
+          "frozen_schedule_and_budget"
+        ]
+      }
+    },
+    {
+      "reaction_id": "RXN_0000079731",
+      "stratum": "B_one_bond",
+      "split": "valid",
+      "proposal_status": "design_hypothesis",
+      "execution_eligible": false,
+      "case_status": "needs_review",
+      "case_sha256": "cca678c07641133a76c1b033392134f460a095a172098288bdf632742bb25bfd",
+      "export_sha256": "02ddbbe764a8f70d3e09767f56ddc8a5f4874fef51a57a93031a8f019072ab13",
+      "case_path": "data/interim/g1_v2/reaction_cases_review_v1/valid/RXN_0000079731.json",
+      "mapping_status": "resolved_symmetry_collapsed",
+      "mapping_provenance": "truth_assisted_p1",
+      "features": {
+        "edit_components": [
+          [
+            6,
+            7,
+            8
+          ]
+        ],
+        "edit_cycle_rank": 0,
+        "connectivity_edit_components": [
+          [
+            6,
+            8
+          ]
+        ],
+        "edit_counts": {
+          "order_changed": 1,
+          "broken": 1
+        },
+        "endpoints": {
+          "reactant": {
+            "n_components": 1,
+            "cycle_rank": 2,
+            "charge": 0,
+            "multiplicity": 1,
+            "rdkit_formal_charge_sum": 0,
+            "rdkit_charged_atom_count": 2,
+            "rdkit_radical_electron_count": 0
+          },
+          "product": {
+            "n_components": 1,
+            "cycle_rank": 1,
+            "charge": 0,
+            "multiplicity": 1,
+            "rdkit_formal_charge_sum": 0,
+            "rdkit_charged_atom_count": 0,
+            "rdkit_radical_electron_count": 0
+          }
+        },
+        "atom_attribute_changes": [
+          {
+            "atom_map_id": 7,
+            "R": {
+              "formal_charge": -1,
+              "radical_electrons": 0,
+              "aromatic": false,
+              "chiral_tag": "CHI_UNSPECIFIED"
+            },
+            "P": {
+              "formal_charge": 0,
+              "radical_electrons": 0,
+              "aromatic": false,
+              "chiral_tag": "CHI_UNSPECIFIED"
+            }
+          },
+          {
+            "atom_map_id": 8,
+            "R": {
+              "formal_charge": 1,
+              "radical_electrons": 0,
+              "aromatic": false,
+              "chiral_tag": "CHI_UNSPECIFIED"
+            },
+            "P": {
+              "formal_charge": 0,
+              "radical_electrons": 0,
+              "aromatic": false,
+              "chiral_tag": "CHI_UNSPECIFIED"
+            }
+          }
+        ],
+        "hydrogen_events": [],
+        "aromatic_regions": {}
+      },
+      "edits": [
+        {
+          "aromatic_region": null,
+          "edit_kind": "order_changed",
+          "elements": [
+            "N",
+            "N"
+          ],
+          "p_bond_order": 2.0,
+          "pair": [
+            6,
+            7
+          ],
+          "r_bond_order": 1.0,
+          "distance_R_A": 1.472975,
+          "distance_P_A": 1.244222,
+          "cross_component_R": false,
+          "cross_component_P": false
+        },
+        {
+          "aromatic_region": null,
+          "edit_kind": "broken",
+          "elements": [
+            "N",
+            "N"
+          ],
+          "p_bond_order": null,
+          "pair": [
+            6,
+            8
+          ],
+          "r_bond_order": 1.0,
+          "distance_R_A": 1.452743,
+          "distance_P_A": 2.171959,
+          "cross_component_R": false,
+          "cross_component_P": false,
+          "support_path_P": [
+            6,
+            7,
+            8
+          ]
+        }
+      ],
+      "proposal": {
+        "family": "LOCAL_CONNECTIVITY",
+        "mode": "SINGLE_1D",
+        "drivers_map": [
+          [
+            6,
+            8
+          ]
+        ],
+        "observers_map": [
+          [
+            6,
+            7
+          ]
+        ],
+        "direction": "R_to_P",
+        "interpretation": "N6–N8 断裂，N6–N7 单键变双键。",
+        "fallback": "P→R；必要时 NEB。",
+        "risk": "resolved_symmetry_collapsed；等价映射必须对驱动键及立体目标不产生歧义。",
+        "auxiliary_monitor_policy": "H: donor-acceptor distance and D-H-A angle; rings/aromatics: regional geometry, stereo and non-target contacts",
+        "required_before_execution": [
+          "manual_chemistry_review",
+          "endpoint_geometry_and_assembly_check",
+          "backend_capability_check",
+          "frozen_schedule_and_budget"
+        ]
+      }
+    },
+    {
+      "reaction_id": "RXN_0000053132",
+      "stratum": "C_substitution",
+      "split": "train",
+      "proposal_status": "design_hypothesis",
+      "execution_eligible": false,
+      "case_status": "needs_review",
+      "case_sha256": "7f0080e6da5a013e1fca85540e2cce1ae08333d67048a8e48c2848fe54ff2f7b",
+      "export_sha256": "ea4ec1dfb91dd4647287d3ca8f663b5013ce9a12a242bfc9ab1b533dfd82fe7a",
+      "case_path": "data/interim/g1_v2/reaction_cases_review_v1/train/RXN_0000053132.json",
+      "mapping_status": "resolved_unique",
+      "mapping_provenance": "truth_assisted_p1",
+      "features": {
+        "edit_components": [
+          [
+            5,
+            6,
+            7,
+            8
+          ]
+        ],
+        "edit_cycle_rank": 1,
+        "connectivity_edit_components": [
+          [
+            5,
+            6,
+            8
+          ]
+        ],
+        "edit_counts": {
+          "formed": 1,
+          "order_changed": 2,
+          "broken": 1
+        },
+        "endpoints": {
+          "reactant": {
+            "n_components": 1,
+            "cycle_rank": 0,
+            "charge": 0,
+            "multiplicity": 1,
+            "rdkit_formal_charge_sum": 0,
+            "rdkit_charged_atom_count": 0,
+            "rdkit_radical_electron_count": 0
+          },
+          "product": {
+            "n_components": 1,
+            "cycle_rank": 0,
+            "charge": 0,
+            "multiplicity": 1,
+            "rdkit_formal_charge_sum": 0,
+            "rdkit_charged_atom_count": 0,
+            "rdkit_radical_electron_count": 0
+          }
+        },
+        "atom_attribute_changes": [
+          {
+            "atom_map_id": 5,
+            "R": {
+              "formal_charge": 0,
+              "radical_electrons": 0,
+              "aromatic": false,
+              "chiral_tag": "CHI_UNSPECIFIED"
+            },
+            "P": {
+              "formal_charge": 0,
+              "radical_electrons": 0,
+              "aromatic": false,
+              "chiral_tag": "CHI_TETRAHEDRAL_CCW"
+            }
+          }
+        ],
+        "hydrogen_events": [],
+        "aromatic_regions": {}
+      },
+      "edits": [
+        {
+          "aromatic_region": null,
+          "edit_kind": "formed",
+          "elements": [
+            "C",
+            "O"
+          ],
+          "p_bond_order": 1.0,
+          "pair": [
+            5,
+            6
+          ],
+          "r_bond_order": null,
+          "distance_R_A": 3.430957,
+          "distance_P_A": 1.411751,
+          "cross_component_R": false,
+          "cross_component_P": false,
+          "support_path_R": [
+            5,
+            7,
+            8,
+            6
+          ]
+        },
+        {
+          "aromatic_region": null,
+          "edit_kind": "order_changed",
+          "elements": [
+            "C",
+            "C"
+          ],
+          "p_bond_order": 1.0,
+          "pair": [
+            5,
+            7
+          ],
+          "r_bond_order": 2.0,
+          "distance_R_A": 1.303916,
+          "distance_P_A": 1.479714,
+          "cross_component_R": false,
+          "cross_component_P": false
+        },
+        {
+          "aromatic_region": null,
+          "edit_kind": "broken",
+          "elements": [
+            "O",
+            "N"
+          ],
+          "p_bond_order": null,
+          "pair": [
+            6,
+            8
+          ],
+          "r_bond_order": 1.0,
+          "distance_R_A": 1.430594,
+          "distance_P_A": 3.39542,
+          "cross_component_R": false,
+          "cross_component_P": false,
+          "support_path_P": [
+            6,
+            5,
+            7,
+            8
+          ]
+        },
+        {
+          "aromatic_region": null,
+          "edit_kind": "order_changed",
+          "elements": [
+            "C",
+            "N"
+          ],
+          "p_bond_order": 3.0,
+          "pair": [
+            7,
+            8
+          ],
+          "r_bond_order": 2.0,
+          "distance_R_A": 1.228892,
+          "distance_P_A": 1.15129,
+          "cross_component_R": false,
+          "cross_component_P": false
+        }
+      ],
+      "proposal": {
+        "family": "CONNECTIVITY_EXCHANGE",
+        "mode": "COUPLED_1D",
+        "drivers_map": [
+          [
+            5,
+            6
+          ],
+          [
+            6,
+            8
+          ]
+        ],
+        "observers_map": [
+          [
+            5,
+            7
+          ],
+          [
+            7,
+            8
+          ]
+        ],
+        "direction": "P_to_R",
+        "interpretation": "O6 从 N8 转接 C5；经 C5–C7–N8 的键级重排耦合。",
+        "fallback": "R→P；O6 转接偏早/偏晚时间表；NEB。",
+        "risk": "共有原子是迁移的 O6；不能仅凭 F/B 共享原子命名为 SN2。",
+        "auxiliary_monitor_policy": "H: donor-acceptor distance and D-H-A angle; rings/aromatics: regional geometry, stereo and non-target contacts",
+        "required_before_execution": [
+          "manual_chemistry_review",
+          "endpoint_geometry_and_assembly_check",
+          "backend_capability_check",
+          "frozen_schedule_and_budget"
+        ]
+      }
+    },
+    {
+      "reaction_id": "RXN_0000155302",
+      "stratum": "C_substitution",
+      "split": "train",
+      "proposal_status": "design_hypothesis",
+      "execution_eligible": false,
+      "case_status": "needs_review",
+      "case_sha256": "3610516828bf169148fc3eb2a1020f612f8aac0292cb877af88912b1e4d6197d",
+      "export_sha256": "6f34f1174643f6d49f84f6ef52fb8d8d6c4736cfd6f8b05c3f0aefa60ab43768",
+      "case_path": "data/interim/g1_v2/reaction_cases_review_v1/train/RXN_0000155302.json",
+      "mapping_status": "resolved_unique",
+      "mapping_provenance": "truth_assisted_p1",
+      "features": {
+        "edit_components": [
+          [
+            1,
+            2,
+            4,
+            5
+          ]
+        ],
+        "edit_cycle_rank": 1,
+        "connectivity_edit_components": [
+          [
+            1,
+            2,
+            5
+          ]
+        ],
+        "edit_counts": {
+          "formed": 1,
+          "broken": 1,
+          "order_changed": 2
+        },
+        "endpoints": {
+          "reactant": {
+            "n_components": 2,
+            "cycle_rank": 0,
+            "charge": 0,
+            "multiplicity": 1,
+            "rdkit_formal_charge_sum": 0,
+            "rdkit_charged_atom_count": 0,
+            "rdkit_radical_electron_count": 0
+          },
+          "product": {
+            "n_components": 2,
+            "cycle_rank": 0,
+            "charge": 0,
+            "multiplicity": 1,
+            "rdkit_formal_charge_sum": 0,
+            "rdkit_charged_atom_count": 0,
+            "rdkit_radical_electron_count": 0
+          }
+        },
+        "atom_attribute_changes": [],
+        "hydrogen_events": [],
+        "aromatic_regions": {}
+      },
+      "edits": [
+        {
+          "aromatic_region": null,
+          "edit_kind": "formed",
+          "elements": [
+            "C",
+            "C"
+          ],
+          "p_bond_order": 1.0,
+          "pair": [
+            1,
+            2
+          ],
+          "r_bond_order": null,
+          "distance_R_A": 3.611467,
+          "distance_P_A": 1.50467,
+          "cross_component_R": false,
+          "cross_component_P": false,
+          "support_path_R": [
+            1,
+            5,
+            4,
+            2
+          ]
+        },
+        {
+          "aromatic_region": null,
+          "edit_kind": "broken",
+          "elements": [
+            "C",
+            "C"
+          ],
+          "p_bond_order": null,
+          "pair": [
+            1,
+            5
+          ],
+          "r_bond_order": 1.0,
+          "distance_R_A": 1.513451,
+          "distance_P_A": 3.30738,
+          "cross_component_R": false,
+          "cross_component_P": false,
+          "support_path_P": [
+            1,
+            2,
+            4,
+            5
+          ]
+        },
+        {
+          "aromatic_region": null,
+          "edit_kind": "order_changed",
+          "elements": [
+            "C",
+            "N"
+          ],
+          "p_bond_order": 1.0,
+          "pair": [
+            2,
+            4
+          ],
+          "r_bond_order": 2.0,
+          "distance_R_A": 1.20868,
+          "distance_P_A": 1.422404,
+          "cross_component_R": false,
+          "cross_component_P": false
+        },
+        {
+          "aromatic_region": null,
+          "edit_kind": "order_changed",
+          "elements": [
+            "N",
+            "C"
+          ],
+          "p_bond_order": 2.0,
+          "pair": [
+            4,
+            5
+          ],
+          "r_bond_order": 1.0,
+          "distance_R_A": 1.40174,
+          "distance_P_A": 1.234531,
+          "cross_component_R": false,
+          "cross_component_P": false
+        }
+      ],
+      "proposal": {
+        "family": "CONNECTIVITY_EXCHANGE",
+        "mode": "COUPLED_1D",
+        "drivers_map": [
+          [
+            1,
+            2
+          ],
+          [
+            1,
+            5
+          ]
+        ],
+        "observers_map": [
+          [
+            2,
+            4
+          ],
+          [
+            4,
+            5
+          ]
+        ],
+        "direction": "P_to_R",
+        "interpretation": "C1 从 C5 转接 C2；C2–N4–C5 键级重排；HCl 为图上不变组分。",
+        "fallback": "装配合格后 R→P；两种转接时间表；NEB。",
+        "risk": "2→2 组分；HCl 可能参与相互作用，不能擅自删除或永久冻结。",
+        "auxiliary_monitor_policy": "H: donor-acceptor distance and D-H-A angle; rings/aromatics: regional geometry, stereo and non-target contacts",
+        "required_before_execution": [
+          "manual_chemistry_review",
+          "endpoint_geometry_and_assembly_check",
+          "backend_capability_check",
+          "frozen_schedule_and_budget"
+        ]
+      }
+    },
+    {
+      "reaction_id": "RXN_0000171675",
+      "stratum": "C_substitution",
+      "split": "valid",
+      "proposal_status": "design_hypothesis",
+      "execution_eligible": false,
+      "case_status": "needs_review",
+      "case_sha256": "55b9a9f54a202498df11846b6550e1c31832c7d831ca8f02ddae8290b4f9e2b6",
+      "export_sha256": "fe7cdf74ed5bcbbdeef6291347e4c698c0a8f5b2b3238f1a8540e646addc6ae7",
+      "case_path": "data/interim/g1_v2/reaction_cases_review_v1/valid/RXN_0000171675.json",
+      "mapping_status": "resolved_unique",
+      "mapping_provenance": "truth_assisted_p1",
+      "features": {
+        "edit_components": [
+          [
+            1,
+            2,
+            4,
+            5,
+            7
+          ]
+        ],
+        "edit_cycle_rank": 0,
+        "connectivity_edit_components": [
+          [
+            1,
+            2,
+            5
+          ]
+        ],
+        "edit_counts": {
+          "formed": 1,
+          "broken": 1,
+          "order_changed": 2
+        },
+        "endpoints": {
+          "reactant": {
+            "n_components": 1,
+            "cycle_rank": 0,
+            "charge": 0,
+            "multiplicity": 1,
+            "rdkit_formal_charge_sum": 0,
+            "rdkit_charged_atom_count": 0,
+            "rdkit_radical_electron_count": 0
+          },
+          "product": {
+            "n_components": 1,
+            "cycle_rank": 0,
+            "charge": 0,
+            "multiplicity": 1,
+            "rdkit_formal_charge_sum": 0,
+            "rdkit_charged_atom_count": 2,
+            "rdkit_radical_electron_count": 0
+          }
+        },
+        "atom_attribute_changes": [
+          {
+            "atom_map_id": 4,
+            "R": {
+              "formal_charge": 0,
+              "radical_electrons": 0,
+              "aromatic": false,
+              "chiral_tag": "CHI_UNSPECIFIED"
+            },
+            "P": {
+              "formal_charge": 1,
+              "radical_electrons": 0,
+              "aromatic": false,
+              "chiral_tag": "CHI_UNSPECIFIED"
+            }
+          },
+          {
+            "atom_map_id": 7,
+            "R": {
+              "formal_charge": 0,
+              "radical_electrons": 0,
+              "aromatic": false,
+              "chiral_tag": "CHI_UNSPECIFIED"
+            },
+            "P": {
+              "formal_charge": -1,
+              "radical_electrons": 0,
+              "aromatic": false,
+              "chiral_tag": "CHI_UNSPECIFIED"
+            }
+          }
+        ],
+        "hydrogen_events": [],
+        "aromatic_regions": {}
+      },
+      "edits": [
+        {
+          "aromatic_region": null,
+          "edit_kind": "formed",
+          "elements": [
+            "C",
+            "C"
+          ],
+          "p_bond_order": 1.0,
+          "pair": [
+            1,
+            2
+          ],
+          "r_bond_order": null,
+          "distance_R_A": 3.441412,
+          "distance_P_A": 1.53573,
+          "cross_component_R": false,
+          "cross_component_P": false,
+          "support_path_R": [
+            1,
+            5,
+            4,
+            3,
+            2
+          ]
+        },
+        {
+          "aromatic_region": null,
+          "edit_kind": "broken",
+          "elements": [
+            "C",
+            "C"
+          ],
+          "p_bond_order": null,
+          "pair": [
+            1,
+            5
+          ],
+          "r_bond_order": 1.0,
+          "distance_R_A": 1.551376,
+          "distance_P_A": 3.912854,
+          "cross_component_R": false,
+          "cross_component_P": false,
+          "support_path_P": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ]
+        },
+        {
+          "aromatic_region": null,
+          "edit_kind": "order_changed",
+          "elements": [
+            "C",
+            "N"
+          ],
+          "p_bond_order": 1.0,
+          "pair": [
+            2,
+            7
+          ],
+          "r_bond_order": 2.0,
+          "distance_R_A": 1.263799,
+          "distance_P_A": 1.362131,
+          "cross_component_R": false,
+          "cross_component_P": false
+        },
+        {
+          "aromatic_region": null,
+          "edit_kind": "order_changed",
+          "elements": [
+            "N",
+            "C"
+          ],
+          "p_bond_order": 2.0,
+          "pair": [
+            4,
+            5
+          ],
+          "r_bond_order": 1.0,
+          "distance_R_A": 1.445996,
+          "distance_P_A": 1.311109,
+          "cross_component_R": false,
+          "cross_component_P": false
+        }
+      ],
+      "proposal": {
+        "family": "CONNECTIVITY_EXCHANGE",
+        "mode": "COUPLED_1D",
+        "drivers_map": [
+          [
+            1,
+            2
+          ],
+          [
+            1,
+            5
+          ]
+        ],
+        "observers_map": [
+          [
+            2,
+            7
+          ],
+          [
+            4,
+            5
+          ]
+        ],
+        "direction": "P_to_R",
+        "interpretation": "C1 从 C5 转接 C2，另有两处 C–N 键级改变。",
+        "fallback": "R→P；转接偏早/偏晚；NEB。",
+        "risk": "电荷分离和含 N 骨架耦合；共享 C1 不等于已知取代机理。",
+        "auxiliary_monitor_policy": "H: donor-acceptor distance and D-H-A angle; rings/aromatics: regional geometry, stereo and non-target contacts",
+        "required_before_execution": [
+          "manual_chemistry_review",
+          "endpoint_geometry_and_assembly_check",
+          "backend_capability_check",
+          "frozen_schedule_and_budget"
+        ]
+      }
+    },
+    {
+      "reaction_id": "RXN_0000100071",
+      "stratum": "D_two_bond_coupled",
+      "split": "train",
+      "proposal_status": "design_hypothesis",
+      "execution_eligible": false,
+      "case_status": "needs_review",
+      "case_sha256": "1d43e9b9f0007dcc9e8508025162fbdcdf0c0f093721230b48d3d8bbdbee0d5b",
+      "export_sha256": "c47b4ac0634642501adb2b607e498fa6d41faa0026d99dece82b38d83882f48f",
+      "case_path": "data/interim/g1_v2/reaction_cases_review_v1/train/RXN_0000100071.json",
+      "mapping_status": "resolved_unique",
+      "mapping_provenance": "truth_assisted_p1",
+      "features": {
+        "edit_components": [
+          [
+            1,
+            2,
+            3,
+            4
+          ]
+        ],
+        "edit_cycle_rank": 1,
+        "connectivity_edit_components": [
+          [
+            1,
+            2,
+            3,
+            4
+          ]
+        ],
+        "edit_counts": {
+          "order_changed": 1,
+          "formed": 2,
+          "broken": 1
+        },
+        "endpoints": {
+          "reactant": {
+            "n_components": 1,
+            "cycle_rank": 1,
+            "charge": 0,
+            "multiplicity": 1,
+            "rdkit_formal_charge_sum": 0,
+            "rdkit_charged_atom_count": 0,
+            "rdkit_radical_electron_count": 0
+          },
+          "product": {
+            "n_components": 1,
+            "cycle_rank": 2,
+            "charge": 0,
+            "multiplicity": 1,
+            "rdkit_formal_charge_sum": 0,
+            "rdkit_charged_atom_count": 0,
+            "rdkit_radical_electron_count": 0
+          }
+        },
+        "atom_attribute_changes": [
+          {
+            "atom_map_id": 2,
+            "R": {
+              "formal_charge": 0,
+              "radical_electrons": 0,
+              "aromatic": false,
+              "chiral_tag": "CHI_UNSPECIFIED"
+            },
+            "P": {
+              "formal_charge": 0,
+              "radical_electrons": 0,
+              "aromatic": false,
+              "chiral_tag": "CHI_TETRAHEDRAL_CW"
+            }
+          }
+        ],
+        "hydrogen_events": [],
+        "aromatic_regions": {}
+      },
+      "edits": [
+        {
+          "aromatic_region": null,
+          "edit_kind": "order_changed",
+          "elements": [
+            "O",
+            "C"
+          ],
+          "p_bond_order": 1.0,
+          "pair": [
+            1,
+            2
+          ],
+          "r_bond_order": 2.0,
+          "distance_R_A": 1.219266,
+          "distance_P_A": 1.423653,
+          "cross_component_R": false,
+          "cross_component_P": false
+        },
+        {
+          "aromatic_region": null,
+          "edit_kind": "formed",
+          "elements": [
+            "O",
+            "C"
+          ],
+          "p_bond_order": 1.0,
+          "pair": [
+            1,
+            3
+          ],
+          "r_bond_order": null,
+          "distance_R_A": 2.382744,
+          "distance_P_A": 1.467291,
+          "cross_component_R": false,
+          "cross_component_P": false,
+          "support_path_R": [
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "aromatic_region": null,
+          "edit_kind": "formed",
+          "elements": [
+            "C",
+            "O"
+          ],
+          "p_bond_order": 1.0,
+          "pair": [
+            2,
+            4
+          ],
+          "r_bond_order": null,
+          "distance_R_A": 2.504331,
+          "distance_P_A": 1.389713,
+          "cross_component_R": false,
+          "cross_component_P": false,
+          "support_path_R": [
+            2,
+            3,
+            4
+          ]
+        },
+        {
+          "aromatic_region": null,
+          "edit_kind": "broken",
+          "elements": [
+            "C",
+            "O"
+          ],
+          "p_bond_order": null,
+          "pair": [
+            3,
+            4
+          ],
+          "r_bond_order": 1.0,
+          "distance_R_A": 1.433025,
+          "distance_P_A": 2.449783,
+          "cross_component_R": false,
+          "cross_component_P": false,
+          "support_path_P": [
+            3,
+            2,
+            4
+          ]
+        }
+      ],
+      "proposal": {
+        "family": "RING_COUPLED",
+        "mode": "COUPLED_1D",
+        "drivers_map": [
+          [
+            1,
+            3
+          ],
+          [
+            2,
+            4
+          ]
+        ],
+        "observers_map": [
+          [
+            1,
+            2
+          ],
+          [
+            3,
+            4
+          ]
+        ],
+        "direction": "P_to_R",
+        "interpretation": "两根 O–C 成键与 C3–O4 断裂、O1–C2 降键级耦合。",
+        "fallback": "若 3–4 不回成键，三 B 加入 3–4；再反向/NEB。",
+        "risk": "多环变化；第三根键作为监测量有待试点证明。",
+        "auxiliary_monitor_policy": "H: donor-acceptor distance and D-H-A angle; rings/aromatics: regional geometry, stereo and non-target contacts",
+        "required_before_execution": [
+          "manual_chemistry_review",
+          "endpoint_geometry_and_assembly_check",
+          "backend_capability_check",
+          "frozen_schedule_and_budget"
+        ]
+      }
+    },
+    {
+      "reaction_id": "RXN_0000132222",
+      "stratum": "D_two_bond_coupled",
+      "split": "train",
+      "proposal_status": "design_hypothesis",
+      "execution_eligible": false,
+      "case_status": "needs_review",
+      "case_sha256": "13e27311c50714d3d0b9a47623aca5cef90042080986e2d12e00071177021ad4",
+      "export_sha256": "e25cbb9e4ce2fe01a7b8c04520815e4f44bbd98d0e4d19147009678b243dc681",
+      "case_path": "data/interim/g1_v2/reaction_cases_review_v1/train/RXN_0000132222.json",
+      "mapping_status": "resolved_unique",
+      "mapping_provenance": "truth_assisted_p1",
+      "features": {
+        "edit_components": [
+          [
+            3,
+            4,
+            5,
+            16
+          ]
+        ],
+        "edit_cycle_rank": 1,
+        "connectivity_edit_components": [
+          [
+            3,
+            4,
+            5,
+            16
+          ]
+        ],
+        "edit_counts": {
+          "formed": 2,
+          "broken": 1,
+          "order_changed": 1
+        },
+        "endpoints": {
+          "reactant": {
+            "n_components": 1,
+            "cycle_rank": 1,
+            "charge": 0,
+            "multiplicity": 1,
+            "rdkit_formal_charge_sum": 0,
+            "rdkit_charged_atom_count": 0,
+            "rdkit_radical_electron_count": 0
+          },
+          "product": {
+            "n_components": 1,
+            "cycle_rank": 2,
+            "charge": 0,
+            "multiplicity": 1,
+            "rdkit_formal_charge_sum": 0,
+            "rdkit_charged_atom_count": 0,
+            "rdkit_radical_electron_count": 0
+          }
+        },
+        "atom_attribute_changes": [],
+        "hydrogen_events": [
+          {
+            "from": 3,
+            "from_state": "heavy",
+            "h": 16,
+            "kind": "transfer",
+            "to": 5,
+            "to_state": "heavy"
+          }
+        ],
+        "aromatic_regions": {}
+      },
+      "edits": [
+        {
+          "aromatic_region": null,
+          "edit_kind": "formed",
+          "elements": [
+            "O",
+            "C"
+          ],
+          "p_bond_order": 1.0,
+          "pair": [
+            3,
+            4
+          ],
+          "r_bond_order": null,
+          "distance_R_A": 3.353838,
+          "distance_P_A": 1.42213,
+          "cross_component_R": false,
+          "cross_component_P": false,
+          "support_path_R": [
+            3,
+            2,
+            8,
+            6,
+            4
+          ]
+        },
+        {
+          "aromatic_region": null,
+          "edit_kind": "broken",
+          "elements": [
+            "O",
+            "H"
+          ],
+          "p_bond_order": null,
+          "pair": [
+            3,
+            16
+          ],
+          "r_bond_order": 1.0,
+          "distance_R_A": 0.970442,
+          "distance_P_A": 2.323916,
+          "cross_component_R": false,
+          "cross_component_P": false,
+          "support_path_P": [
+            3,
+            4,
+            5,
+            16
+          ]
+        },
+        {
+          "aromatic_region": null,
+          "edit_kind": "order_changed",
+          "elements": [
+            "C",
+            "O"
+          ],
+          "p_bond_order": 1.0,
+          "pair": [
+            4,
+            5
+          ],
+          "r_bond_order": 2.0,
+          "distance_R_A": 1.209333,
+          "distance_P_A": 1.392146,
+          "cross_component_R": false,
+          "cross_component_P": false
+        },
+        {
+          "aromatic_region": null,
+          "edit_kind": "formed",
+          "elements": [
+            "O",
+            "H"
+          ],
+          "p_bond_order": 1.0,
+          "pair": [
+            5,
+            16
+          ],
+          "r_bond_order": null,
+          "distance_R_A": 1.942145,
+          "distance_P_A": 0.96627,
+          "cross_component_R": false,
+          "cross_component_P": false,
+          "support_path_R": [
+            5,
+            4,
+            6,
+            8,
+            2,
+            3,
+            16
+          ]
+        }
+      ],
+      "proposal": {
+        "family": "H_TRANSFER_COUPLED",
+        "mode": "COUPLED_1D",
+        "drivers_map": [
+          [
+            3,
+            4
+          ],
+          [
+            5,
+            16
+          ]
+        ],
+        "observers_map": [
+          [
+            3,
+            16
+          ],
+          [
+            4,
+            5
+          ]
+        ],
+        "direction": "P_to_R",
+        "interpretation": "O3–C4 闭环并伴 H16 从 O3 转移到 O5。",
+        "fallback": "三 B 加入 3–16；H 转移偏早/偏晚；NEB。",
+        "risk": "H 与重原子事件的时序未知；不能因同一编辑环就断言同步。",
+        "auxiliary_monitor_policy": "H: donor-acceptor distance and D-H-A angle; rings/aromatics: regional geometry, stereo and non-target contacts",
+        "required_before_execution": [
+          "manual_chemistry_review",
+          "endpoint_geometry_and_assembly_check",
+          "backend_capability_check",
+          "frozen_schedule_and_budget"
+        ]
+      }
+    },
+    {
+      "reaction_id": "RXN_0000102998",
+      "stratum": "D_two_bond_coupled",
+      "split": "valid",
+      "proposal_status": "design_hypothesis",
+      "execution_eligible": false,
+      "case_status": "needs_review",
+      "case_sha256": "0c5f1abc0289e367ec9416d0f0f99e3773ebac989102874d211f81706edcb8d5",
+      "export_sha256": "f73e5bb0c6d2883507ea8efd88b6177a0ac2dc66de5b02452488f1b77dcd8154",
+      "case_path": "data/interim/g1_v2/reaction_cases_review_v1/valid/RXN_0000102998.json",
+      "mapping_status": "resolved_unique",
+      "mapping_provenance": "truth_assisted_p1",
+      "features": {
+        "edit_components": [
+          [
+            2,
+            4,
+            7,
+            8
+          ]
+        ],
+        "edit_cycle_rank": 1,
+        "connectivity_edit_components": [
+          [
+            2,
+            4,
+            7,
+            8
+          ]
+        ],
+        "edit_counts": {
+          "broken": 1,
+          "formed": 2,
+          "order_changed": 1
+        },
+        "endpoints": {
+          "reactant": {
+            "n_components": 1,
+            "cycle_rank": 0,
+            "charge": 0,
+            "multiplicity": 1,
+            "rdkit_formal_charge_sum": 0,
+            "rdkit_charged_atom_count": 0,
+            "rdkit_radical_electron_count": 0
+          },
+          "product": {
+            "n_components": 1,
+            "cycle_rank": 1,
+            "charge": 0,
+            "multiplicity": 1,
+            "rdkit_formal_charge_sum": 0,
+            "rdkit_charged_atom_count": 0,
+            "rdkit_radical_electron_count": 0
+          }
+        },
+        "atom_attribute_changes": [
+          {
+            "atom_map_id": 7,
+            "R": {
+              "formal_charge": 0,
+              "radical_electrons": 0,
+              "aromatic": false,
+              "chiral_tag": "CHI_UNSPECIFIED"
+            },
+            "P": {
+              "formal_charge": 0,
+              "radical_electrons": 0,
+              "aromatic": false,
+              "chiral_tag": "CHI_TETRAHEDRAL_CCW"
+            }
+          }
+        ],
+        "hydrogen_events": [],
+        "aromatic_regions": {}
+      },
+      "edits": [
+        {
+          "aromatic_region": null,
+          "edit_kind": "broken",
+          "elements": [
+            "C",
+            "C"
+          ],
+          "p_bond_order": null,
+          "pair": [
+            2,
+            4
+          ],
+          "r_bond_order": 1.0,
+          "distance_R_A": 1.548913,
+          "distance_P_A": 2.600689,
+          "cross_component_R": false,
+          "cross_component_P": false,
+          "support_path_P": [
+            2,
+            7,
+            4
+          ]
+        },
+        {
+          "aromatic_region": null,
+          "edit_kind": "formed",
+          "elements": [
+            "C",
+            "C"
+          ],
+          "p_bond_order": 1.0,
+          "pair": [
+            2,
+            7
+          ],
+          "r_bond_order": null,
+          "distance_R_A": 2.536958,
+          "distance_P_A": 1.512286,
+          "cross_component_R": false,
+          "cross_component_P": false,
+          "support_path_R": [
+            2,
+            4,
+            7
+          ]
+        },
+        {
+          "aromatic_region": null,
+          "edit_kind": "formed",
+          "elements": [
+            "C",
+            "O"
+          ],
+          "p_bond_order": 1.0,
+          "pair": [
+            4,
+            8
+          ],
+          "r_bond_order": null,
+          "distance_R_A": 2.409028,
+          "distance_P_A": 1.357885,
+          "cross_component_R": false,
+          "cross_component_P": false,
+          "support_path_R": [
+            4,
+            7,
+            8
+          ]
+        },
+        {
+          "aromatic_region": null,
+          "edit_kind": "order_changed",
+          "elements": [
+            "C",
+            "O"
+          ],
+          "p_bond_order": 1.0,
+          "pair": [
+            7,
+            8
+          ],
+          "r_bond_order": 2.0,
+          "distance_R_A": 1.195627,
+          "distance_P_A": 1.495368,
+          "cross_component_R": false,
+          "cross_component_P": false
+        }
+      ],
+      "proposal": {
+        "family": "RING_COUPLED",
+        "mode": "COUPLED_1D",
+        "drivers_map": [
+          [
+            2,
+            7
+          ],
+          [
+            4,
+            8
+          ]
+        ],
+        "observers_map": [
+          [
+            2,
+            4
+          ],
+          [
+            7,
+            8
+          ]
+        ],
+        "direction": "P_to_R",
+        "interpretation": "C2–C7、C4–O8 成键；C2–C4 断裂；C7–O8 降键级。",
+        "fallback": "三 B 加入 2–4；再反向/NEB。",
+        "risk": "环应变及未驱动 2–4 的完成情况。",
+        "auxiliary_monitor_policy": "H: donor-acceptor distance and D-H-A angle; rings/aromatics: regional geometry, stereo and non-target contacts",
+        "required_before_execution": [
+          "manual_chemistry_review",
+          "endpoint_geometry_and_assembly_check",
+          "backend_capability_check",
+          "frozen_schedule_and_budget"
+        ]
+      }
+    },
+    {
+      "reaction_id": "RXN_0000059834",
+      "stratum": "E_three_bond_coupled",
+      "split": "train",
+      "proposal_status": "design_hypothesis",
+      "execution_eligible": false,
+      "case_status": "needs_review",
+      "case_sha256": "a0af765a4a5ffa83430720b8eee1c10ce41689c0323a9f0d483b6efc8e38ceb0",
+      "export_sha256": "0d42c69637f8ea1c915dae2a72a7ed80eb51a930a6d90a7bdc464b68047ce493",
+      "case_path": "data/interim/g1_v2/reaction_cases_review_v1/train/RXN_0000059834.json",
+      "mapping_status": "resolved_unique",
+      "mapping_provenance": "truth_assisted_p1",
+      "features": {
+        "edit_components": [
+          [
+            1,
+            2,
+            3,
+            6,
+            10
+          ]
+        ],
+        "edit_cycle_rank": 2,
+        "connectivity_edit_components": [
+          [
+            1,
+            2,
+            3,
+            6,
+            10
+          ]
+        ],
+        "edit_counts": {
+          "broken": 2,
+          "formed": 3,
+          "order_changed": 1
+        },
+        "endpoints": {
+          "reactant": {
+            "n_components": 1,
+            "cycle_rank": 1,
+            "charge": 0,
+            "multiplicity": 1,
+            "rdkit_formal_charge_sum": 0,
+            "rdkit_charged_atom_count": 0,
+            "rdkit_radical_electron_count": 2
+          },
+          "product": {
+            "n_components": 1,
+            "cycle_rank": 2,
+            "charge": 0,
+            "multiplicity": 1,
+            "rdkit_formal_charge_sum": 0,
+            "rdkit_charged_atom_count": 0,
+            "rdkit_radical_electron_count": 2
+          }
+        },
+        "atom_attribute_changes": [
+          {
+            "atom_map_id": 1,
+            "R": {
+              "formal_charge": 0,
+              "radical_electrons": 0,
+              "aromatic": false,
+              "chiral_tag": "CHI_TETRAHEDRAL_CCW"
+            },
+            "P": {
+              "formal_charge": 0,
+              "radical_electrons": 0,
+              "aromatic": false,
+              "chiral_tag": "CHI_TETRAHEDRAL_CW"
+            }
+          },
+          {
+            "atom_map_id": 2,
+            "R": {
+              "formal_charge": 0,
+              "radical_electrons": 0,
+              "aromatic": false,
+              "chiral_tag": "CHI_UNSPECIFIED"
+            },
+            "P": {
+              "formal_charge": 0,
+              "radical_electrons": 0,
+              "aromatic": false,
+              "chiral_tag": "CHI_TETRAHEDRAL_CW"
+            }
+          },
+          {
+            "atom_map_id": 3,
+            "R": {
+              "formal_charge": 0,
+              "radical_electrons": 0,
+              "aromatic": false,
+              "chiral_tag": "CHI_UNSPECIFIED"
+            },
+            "P": {
+              "formal_charge": 0,
+              "radical_electrons": 0,
+              "aromatic": false,
+              "chiral_tag": "CHI_TETRAHEDRAL_CW"
+            }
+          },
+          {
+            "atom_map_id": 6,
+            "R": {
+              "formal_charge": 0,
+              "radical_electrons": 0,
+              "aromatic": false,
+              "chiral_tag": "CHI_TETRAHEDRAL_CCW"
+            },
+            "P": {
+              "formal_charge": 0,
+              "radical_electrons": 0,
+              "aromatic": false,
+              "chiral_tag": "CHI_TETRAHEDRAL_CW"
+            }
+          }
+        ],
+        "hydrogen_events": [],
+        "aromatic_regions": {}
+      },
+      "edits": [
+        {
+          "aromatic_region": null,
+          "edit_kind": "broken",
+          "elements": [
+            "C",
+            "C"
+          ],
+          "p_bond_order": null,
+          "pair": [
+            1,
+            6
+          ],
+          "r_bond_order": 1.0,
+          "distance_R_A": 1.53704,
+          "distance_P_A": 2.640415,
+          "cross_component_R": false,
+          "cross_component_P": false,
+          "support_path_P": [
+            1,
+            2,
+            6
+          ]
+        },
+        {
+          "aromatic_region": null,
+          "edit_kind": "formed",
+          "elements": [
+            "C",
+            "Cl"
+          ],
+          "p_bond_order": 1.0,
+          "pair": [
+            1,
+            10
+          ],
+          "r_bond_order": null,
+          "distance_R_A": 2.763361,
+          "distance_P_A": 1.856365,
+          "cross_component_R": false,
+          "cross_component_P": false,
+          "support_path_R": [
+            1,
+            6,
+            10
+          ]
+        },
+        {
+          "aromatic_region": null,
+          "edit_kind": "order_changed",
+          "elements": [
+            "C",
+            "C"
+          ],
+          "p_bond_order": 1.0,
+          "pair": [
+            2,
+            3
+          ],
+          "r_bond_order": 2.0,
+          "distance_R_A": 1.342762,
+          "distance_P_A": 1.513914,
+          "cross_component_R": false,
+          "cross_component_P": false
+        },
+        {
+          "aromatic_region": null,
+          "edit_kind": "formed",
+          "elements": [
+            "C",
+            "C"
+          ],
+          "p_bond_order": 1.0,
+          "pair": [
+            2,
+            6
+          ],
+          "r_bond_order": null,
+          "distance_R_A": 2.505268,
+          "distance_P_A": 1.501206,
+          "cross_component_R": false,
+          "cross_component_P": false,
+          "support_path_R": [
+            2,
+            1,
+            6
+          ]
+        },
+        {
+          "aromatic_region": null,
+          "edit_kind": "formed",
+          "elements": [
+            "C",
+            "C"
+          ],
+          "p_bond_order": 1.0,
+          "pair": [
+            3,
+            6
+          ],
+          "r_bond_order": null,
+          "distance_R_A": 2.789325,
+          "distance_P_A": 1.525858,
+          "cross_component_R": false,
+          "cross_component_P": false,
+          "support_path_R": [
+            3,
+            2,
+            1,
+            6
+          ]
+        },
+        {
+          "aromatic_region": null,
+          "edit_kind": "broken",
+          "elements": [
+            "C",
+            "Cl"
+          ],
+          "p_bond_order": null,
+          "pair": [
+            6,
+            10
+          ],
+          "r_bond_order": 1.0,
+          "distance_R_A": 1.835628,
+          "distance_P_A": 3.492561,
+          "cross_component_R": false,
+          "cross_component_P": false,
+          "support_path_P": [
+            6,
+            2,
+            1,
+            10
+          ]
+        }
+      ],
+      "proposal": {
+        "family": "MULTI_EVENT_CONNECTED",
+        "mode": "COUPLED_1D",
+        "drivers_map": [
+          [
+            1,
+            10
+          ],
+          [
+            2,
+            6
+          ],
+          [
+            3,
+            6
+          ]
+        ],
+        "observers_map": [
+          [
+            1,
+            6
+          ],
+          [
+            2,
+            3
+          ],
+          [
+            6,
+            10
+          ]
+        ],
+        "direction": "P_to_R",
+        "interpretation": "Cl10 转接 C1，C6 同时与 C2/C3 成键；多事件共中心 C6。",
+        "fallback": "NEB 优先回退；只在预冻结预算内比较分组时间表。",
+        "risk": "5 条连接编辑；3 个驱动仅是降维假设，两个断键都需监测。",
+        "auxiliary_monitor_policy": "H: donor-acceptor distance and D-H-A angle; rings/aromatics: regional geometry, stereo and non-target contacts",
+        "required_before_execution": [
+          "manual_chemistry_review",
+          "endpoint_geometry_and_assembly_check",
+          "backend_capability_check",
+          "frozen_schedule_and_budget"
+        ]
+      }
+    },
+    {
+      "reaction_id": "RXN_0000094438",
+      "stratum": "E_three_bond_coupled",
+      "split": "train",
+      "proposal_status": "design_hypothesis",
+      "execution_eligible": false,
+      "case_status": "needs_review",
+      "case_sha256": "ef6cef4429c3b40be3cbafd268813034d4d59647967ee3e9ea437683b29050e5",
+      "export_sha256": "928406ba2a33d71647c7e44694e02300b2f192054db50beab5ac0ee709b465f4",
+      "case_path": "data/interim/g1_v2/reaction_cases_review_v1/train/RXN_0000094438.json",
+      "mapping_status": "resolved_unique",
+      "mapping_provenance": "truth_assisted_p1",
+      "features": {
+        "edit_components": [
+          [
+            1,
+            2,
+            3,
+            4,
+            7,
+            8
+          ]
+        ],
+        "edit_cycle_rank": 1,
+        "connectivity_edit_components": [
+          [
+            1,
+            2,
+            7,
+            8
+          ],
+          [
+            3,
+            4
+          ]
+        ],
+        "edit_counts": {
+          "order_changed": 2,
+          "formed": 3,
+          "broken": 1
+        },
+        "endpoints": {
+          "reactant": {
+            "n_components": 1,
+            "cycle_rank": 0,
+            "charge": 0,
+            "multiplicity": 1,
+            "rdkit_formal_charge_sum": 0,
+            "rdkit_charged_atom_count": 0,
+            "rdkit_radical_electron_count": 0
+          },
+          "product": {
+            "n_components": 1,
+            "cycle_rank": 2,
+            "charge": 0,
+            "multiplicity": 1,
+            "rdkit_formal_charge_sum": 0,
+            "rdkit_charged_atom_count": 0,
+            "rdkit_radical_electron_count": 0
+          }
+        },
+        "atom_attribute_changes": [],
+        "hydrogen_events": [
+          {
+            "from": 2,
+            "from_state": "heavy",
+            "h": 8,
+            "kind": "transfer",
+            "to": 1,
+            "to_state": "heavy"
+          }
+        ],
+        "aromatic_regions": {}
+      },
+      "edits": [
+        {
+          "aromatic_region": null,
+          "edit_kind": "order_changed",
+          "elements": [
+            "C",
+            "N"
+          ],
+          "p_bond_order": 1.0,
+          "pair": [
+            1,
+            4
+          ],
+          "r_bond_order": 2.0,
+          "distance_R_A": 1.266508,
+          "distance_P_A": 1.470433,
+          "cross_component_R": false,
+          "cross_component_P": false
+        },
+        {
+          "aromatic_region": null,
+          "edit_kind": "formed",
+          "elements": [
+            "C",
+            "H"
+          ],
+          "p_bond_order": 1.0,
+          "pair": [
+            1,
+            8
+          ],
+          "r_bond_order": null,
+          "distance_R_A": 2.034505,
+          "distance_P_A": 1.094472,
+          "cross_component_R": false,
+          "cross_component_P": false,
+          "support_path_R": [
+            1,
+            2,
+            8
+          ]
+        },
+        {
+          "aromatic_region": null,
+          "edit_kind": "formed",
+          "elements": [
+            "N",
+            "O"
+          ],
+          "p_bond_order": 1.0,
+          "pair": [
+            2,
+            7
+          ],
+          "r_bond_order": null,
+          "distance_R_A": 2.300513,
+          "distance_P_A": 1.507537,
+          "cross_component_R": false,
+          "cross_component_P": false,
+          "support_path_R": [
+            2,
+            3,
+            7
+          ]
+        },
+        {
+          "aromatic_region": null,
+          "edit_kind": "broken",
+          "elements": [
+            "N",
+            "H"
+          ],
+          "p_bond_order": null,
+          "pair": [
+            2,
+            8
+          ],
+          "r_bond_order": 1.0,
+          "distance_R_A": 1.012502,
+          "distance_P_A": 2.139222,
+          "cross_component_R": false,
+          "cross_component_P": false,
+          "support_path_P": [
+            2,
+            1,
+            8
+          ]
+        },
+        {
+          "aromatic_region": null,
+          "edit_kind": "formed",
+          "elements": [
+            "C",
+            "N"
+          ],
+          "p_bond_order": 1.0,
+          "pair": [
+            3,
+            4
+          ],
+          "r_bond_order": null,
+          "distance_R_A": 3.574284,
+          "distance_P_A": 1.439557,
+          "cross_component_R": false,
+          "cross_component_P": false,
+          "support_path_R": [
+            3,
+            2,
+            1,
+            4
+          ]
+        },
+        {
+          "aromatic_region": null,
+          "edit_kind": "order_changed",
+          "elements": [
+            "C",
+            "O"
+          ],
+          "p_bond_order": 1.0,
+          "pair": [
+            3,
+            7
+          ],
+          "r_bond_order": 2.0,
+          "distance_R_A": 1.209443,
+          "distance_P_A": 1.395321,
+          "cross_component_R": false,
+          "cross_component_P": false
+        }
+      ],
+      "proposal": {
+        "family": "MULTI_EVENT_CONNECTED",
+        "mode": "COUPLED_1D",
+        "drivers_map": [
+          [
+            1,
+            8
+          ],
+          [
+            2,
+            7
+          ],
+          [
+            3,
+            4
+          ]
+        ],
+        "observers_map": [
+          [
+            1,
+            4
+          ],
+          [
+            2,
+            8
+          ],
+          [
+            3,
+            7
+          ]
+        ],
+        "direction": "P_to_R",
+        "interpretation": "H8 转移与 N2–O7、C3–N4 两处闭环耦合。",
+        "fallback": "NEB；若发现稳定中间体再提交分阶段新版计划。",
+        "risk": "完整 H 双距离再加两成键需 4 B，不能塞入原生 Simul_Scan。",
+        "auxiliary_monitor_policy": "H: donor-acceptor distance and D-H-A angle; rings/aromatics: regional geometry, stereo and non-target contacts",
+        "required_before_execution": [
+          "manual_chemistry_review",
+          "endpoint_geometry_and_assembly_check",
+          "backend_capability_check",
+          "frozen_schedule_and_budget"
+        ]
+      }
+    },
+    {
+      "reaction_id": "RXN_0000187964",
+      "stratum": "E_three_bond_coupled",
+      "split": "valid",
+      "proposal_status": "design_hypothesis",
+      "execution_eligible": false,
+      "case_status": "needs_review",
+      "case_sha256": "a8e3d8e638b1b20d38258bd565b3d1df2c1f61c6d6cdb499b87da261df4097fb",
+      "export_sha256": "85dc9179148bc84e106d71e7fc63de59c736e280d4a1234f2653b4606d1f33ea",
+      "case_path": "data/interim/g1_v2/reaction_cases_review_v1/valid/RXN_0000187964.json",
+      "mapping_status": "resolved_unique",
+      "mapping_provenance": "truth_assisted_p1",
+      "features": {
+        "edit_components": [
+          [
+            2,
+            3,
+            4,
+            7,
+            8,
+            9
+          ]
+        ],
+        "edit_cycle_rank": 1,
+        "connectivity_edit_components": [
+          [
+            2,
+            3,
+            4,
+            7,
+            8,
+            9
+          ]
+        ],
+        "edit_counts": {
+          "order_changed": 1,
+          "formed": 3,
+          "broken": 2
+        },
+        "endpoints": {
+          "reactant": {
+            "n_components": 1,
+            "cycle_rank": 1,
+            "charge": 0,
+            "multiplicity": 1,
+            "rdkit_formal_charge_sum": 0,
+            "rdkit_charged_atom_count": 0,
+            "rdkit_radical_electron_count": 0
+          },
+          "product": {
+            "n_components": 1,
+            "cycle_rank": 2,
+            "charge": 0,
+            "multiplicity": 1,
+            "rdkit_formal_charge_sum": 0,
+            "rdkit_charged_atom_count": 0,
+            "rdkit_radical_electron_count": 0
+          }
+        },
+        "atom_attribute_changes": [
+          {
+            "atom_map_id": 2,
+            "R": {
+              "formal_charge": 0,
+              "radical_electrons": 0,
+              "aromatic": false,
+              "chiral_tag": "CHI_UNSPECIFIED"
+            },
+            "P": {
+              "formal_charge": 0,
+              "radical_electrons": 0,
+              "aromatic": false,
+              "chiral_tag": "CHI_TETRAHEDRAL_CCW"
+            }
+          },
+          {
+            "atom_map_id": 3,
+            "R": {
+              "formal_charge": 0,
+              "radical_electrons": 0,
+              "aromatic": false,
+              "chiral_tag": "CHI_UNSPECIFIED"
+            },
+            "P": {
+              "formal_charge": 0,
+              "radical_electrons": 0,
+              "aromatic": false,
+              "chiral_tag": "CHI_TETRAHEDRAL_CCW"
+            }
+          },
+          {
+            "atom_map_id": 6,
+            "R": {
+              "formal_charge": 0,
+              "radical_electrons": 0,
+              "aromatic": false,
+              "chiral_tag": "CHI_UNSPECIFIED"
+            },
+            "P": {
+              "formal_charge": 0,
+              "radical_electrons": 0,
+              "aromatic": false,
+              "chiral_tag": "CHI_TETRAHEDRAL_CW"
+            }
+          }
+        ],
+        "hydrogen_events": [],
+        "aromatic_regions": {}
+      },
+      "edits": [
+        {
+          "aromatic_region": null,
+          "edit_kind": "order_changed",
+          "elements": [
+            "C",
+            "O"
+          ],
+          "p_bond_order": 1.0,
+          "pair": [
+            2,
+            4
+          ],
+          "r_bond_order": 2.0,
+          "distance_R_A": 1.21214,
+          "distance_P_A": 1.398469,
+          "cross_component_R": false,
+          "cross_component_P": false
+        },
+        {
+          "aromatic_region": null,
+          "edit_kind": "formed",
+          "elements": [
+            "C",
+            "F"
+          ],
+          "p_bond_order": 1.0,
+          "pair": [
+            2,
+            9
+          ],
+          "r_bond_order": null,
+          "distance_R_A": 3.257139,
+          "distance_P_A": 1.367127,
+          "cross_component_R": false,
+          "cross_component_P": false,
+          "support_path_R": [
+            2,
+            3,
+            6,
+            8,
+            9
+          ]
+        },
+        {
+          "aromatic_region": null,
+          "edit_kind": "formed",
+          "elements": [
+            "C",
+            "O"
+          ],
+          "p_bond_order": 1.0,
+          "pair": [
+            3,
+            4
+          ],
+          "r_bond_order": null,
+          "distance_R_A": 2.369059,
+          "distance_P_A": 1.45504,
+          "cross_component_R": false,
+          "cross_component_P": false,
+          "support_path_R": [
+            3,
+            2,
+            4
+          ]
+        },
+        {
+          "aromatic_region": null,
+          "edit_kind": "broken",
+          "elements": [
+            "C",
+            "O"
+          ],
+          "p_bond_order": null,
+          "pair": [
+            3,
+            7
+          ],
+          "r_bond_order": 1.0,
+          "distance_R_A": 1.444715,
+          "distance_P_A": 2.437354,
+          "cross_component_R": false,
+          "cross_component_P": false,
+          "support_path_P": [
+            3,
+            6,
+            7
+          ]
+        },
+        {
+          "aromatic_region": null,
+          "edit_kind": "formed",
+          "elements": [
+            "O",
+            "N"
+          ],
+          "p_bond_order": 1.0,
+          "pair": [
+            7,
+            8
+          ],
+          "r_bond_order": null,
+          "distance_R_A": 2.351751,
+          "distance_P_A": 1.503934,
+          "cross_component_R": false,
+          "cross_component_P": false,
+          "support_path_R": [
+            7,
+            6,
+            8
+          ]
+        },
+        {
+          "aromatic_region": null,
+          "edit_kind": "broken",
+          "elements": [
+            "N",
+            "F"
+          ],
+          "p_bond_order": null,
+          "pair": [
+            8,
+            9
+          ],
+          "r_bond_order": 1.0,
+          "distance_R_A": 1.437867,
+          "distance_P_A": 3.8468,
+          "cross_component_R": false,
+          "cross_component_P": false,
+          "support_path_P": [
+            8,
+            6,
+            3,
+            2,
+            9
+          ]
+        }
+      ],
+      "proposal": {
+        "family": "MULTI_EVENT_CONNECTED",
+        "mode": "COUPLED_1D",
+        "drivers_map": [
+          [
+            2,
+            9
+          ],
+          [
+            3,
+            4
+          ],
+          [
+            7,
+            8
+          ]
+        ],
+        "observers_map": [
+          [
+            2,
+            4
+          ],
+          [
+            3,
+            7
+          ],
+          [
+            8,
+            9
+          ]
+        ],
+        "direction": "P_to_R",
+        "interpretation": "F9 转接、含氧环重组与 C2–O4 降键级形成相连编辑网络。",
+        "fallback": "NEB；或有几何依据的有限时序变体。",
+        "risk": "5 条连接编辑；三个成键距离不能证明两个断键会随动。",
+        "auxiliary_monitor_policy": "H: donor-acceptor distance and D-H-A angle; rings/aromatics: regional geometry, stereo and non-target contacts",
+        "required_before_execution": [
+          "manual_chemistry_review",
+          "endpoint_geometry_and_assembly_check",
+          "backend_capability_check",
+          "frozen_schedule_and_budget"
+        ]
+      }
+    },
+    {
+      "reaction_id": "RXN_0000100736",
+      "stratum": "F_H2_event",
+      "split": "train",
+      "proposal_status": "design_hypothesis",
+      "execution_eligible": false,
+      "case_status": "needs_review",
+      "case_sha256": "799b032c7b25793ed1f58f45bdf29ca8fc811f65dbfa51a9f6c74702eb1e7766",
+      "export_sha256": "f730d237f24d58f9bebf736b940cac7a4534362663eebda546b229377b7954b3",
+      "case_path": "data/interim/g1_v2/reaction_cases_review_v1/train/RXN_0000100736.json",
+      "mapping_status": "resolved_unique",
+      "mapping_provenance": "truth_assisted_p1",
+      "features": {
+        "edit_components": [
+          [
+            1,
+            2,
+            5,
+            12,
+            13
+          ]
+        ],
+        "edit_cycle_rank": 1,
+        "connectivity_edit_components": [
+          [
+            1,
+            5,
+            12,
+            13
+          ]
+        ],
+        "edit_counts": {
+          "order_changed": 1,
+          "broken": 2,
+          "formed": 2
+        },
+        "endpoints": {
+          "reactant": {
+            "n_components": 2,
+            "cycle_rank": 1,
+            "charge": 0,
+            "multiplicity": 1,
+            "rdkit_formal_charge_sum": 0,
+            "rdkit_charged_atom_count": 0,
+            "rdkit_radical_electron_count": 2
+          },
+          "product": {
+            "n_components": 1,
+            "cycle_rank": 0,
+            "charge": 0,
+            "multiplicity": 1,
+            "rdkit_formal_charge_sum": 0,
+            "rdkit_charged_atom_count": 0,
+            "rdkit_radical_electron_count": 0
+          }
+        },
+        "atom_attribute_changes": [
+          {
+            "atom_map_id": 2,
+            "R": {
+              "formal_charge": 0,
+              "radical_electrons": 1,
+              "aromatic": false,
+              "chiral_tag": "CHI_UNSPECIFIED"
+            },
+            "P": {
+              "formal_charge": 0,
+              "radical_electrons": 0,
+              "aromatic": false,
+              "chiral_tag": "CHI_UNSPECIFIED"
+            }
+          },
+          {
+            "atom_map_id": 5,
+            "R": {
+              "formal_charge": 0,
+              "radical_electrons": 1,
+              "aromatic": false,
+              "chiral_tag": "CHI_UNSPECIFIED"
+            },
+            "P": {
+              "formal_charge": 0,
+              "radical_electrons": 0,
+              "aromatic": false,
+              "chiral_tag": "CHI_UNSPECIFIED"
+            }
+          }
+        ],
+        "hydrogen_events": [
+          {
+            "from": 13,
+            "from_state": "hh",
+            "h": 12,
+            "kind": "from_hh",
+            "to": 5,
+            "to_state": "heavy"
+          },
+          {
+            "from": 12,
+            "from_state": "hh",
+            "h": 13,
+            "kind": "from_hh",
+            "to": 5,
+            "to_state": "heavy"
+          }
+        ],
+        "aromatic_regions": {}
+      },
+      "edits": [
+        {
+          "aromatic_region": null,
+          "edit_kind": "order_changed",
+          "elements": [
+            "N",
+            "C"
+          ],
+          "p_bond_order": 2.0,
+          "pair": [
+            1,
+            2
+          ],
+          "r_bond_order": 1.0,
+          "distance_R_A": 1.325754,
+          "distance_P_A": 1.277866,
+          "cross_component_R": false,
+          "cross_component_P": false
+        },
+        {
+          "aromatic_region": null,
+          "edit_kind": "broken",
+          "elements": [
+            "N",
+            "C"
+          ],
+          "p_bond_order": null,
+          "pair": [
+            1,
+            5
+          ],
+          "r_bond_order": 1.0,
+          "distance_R_A": 1.500181,
+          "distance_P_A": 2.645335,
+          "cross_component_R": false,
+          "cross_component_P": false,
+          "support_path_P": [
+            1,
+            2,
+            4,
+            5
+          ]
+        },
+        {
+          "aromatic_region": null,
+          "edit_kind": "formed",
+          "elements": [
+            "C",
+            "H"
+          ],
+          "p_bond_order": 1.0,
+          "pair": [
+            5,
+            12
+          ],
+          "r_bond_order": null,
+          "distance_R_A": 1.828596,
+          "distance_P_A": 1.088212,
+          "cross_component_R": true,
+          "cross_component_P": false,
+          "support_path_R": null
+        },
+        {
+          "aromatic_region": null,
+          "edit_kind": "formed",
+          "elements": [
+            "C",
+            "H"
+          ],
+          "p_bond_order": 1.0,
+          "pair": [
+            5,
+            13
+          ],
+          "r_bond_order": null,
+          "distance_R_A": 1.908851,
+          "distance_P_A": 1.088605,
+          "cross_component_R": true,
+          "cross_component_P": false,
+          "support_path_R": null
+        },
+        {
+          "aromatic_region": null,
+          "edit_kind": "broken",
+          "elements": [
+            "H",
+            "H"
+          ],
+          "p_bond_order": null,
+          "pair": [
+            12,
+            13
+          ],
+          "r_bond_order": 1.0,
+          "distance_R_A": 0.743954,
+          "distance_P_A": 1.781069,
+          "cross_component_R": false,
+          "cross_component_P": false,
+          "support_path_P": [
+            12,
+            5,
+            13
+          ]
+        }
+      ],
+      "proposal": {
+        "family": "H2_EVENT",
+        "mode": "COUPLED_1D",
+        "drivers_map": [
+          [
+            5,
+            12
+          ],
+          [
+            5,
+            13
+          ],
+          [
+            12,
+            13
+          ]
+        ],
+        "observers_map": [
+          [
+            1,
+            2
+          ],
+          [
+            1,
+            5
+          ]
+        ],
+        "direction": "P_to_R",
+        "interpretation": "H2 加到同一 C5，同时 N1–C5 开环及 N1–C2 升键级。",
+        "fallback": "NEB；只有证实环事件可随动才保留三 B 候选。",
+        "risk": "R 为 2 组分，先装配；H–H 事件去重；三距离须满足三角不等式。",
+        "auxiliary_monitor_policy": "H: donor-acceptor distance and D-H-A angle; rings/aromatics: regional geometry, stereo and non-target contacts",
+        "required_before_execution": [
+          "manual_chemistry_review",
+          "endpoint_geometry_and_assembly_check",
+          "backend_capability_check",
+          "frozen_schedule_and_budget"
+        ]
+      }
+    },
+    {
+      "reaction_id": "RXN_0000149368",
+      "stratum": "F_H2_event",
+      "split": "train",
+      "proposal_status": "design_hypothesis",
+      "execution_eligible": false,
+      "case_status": "needs_review",
+      "case_sha256": "9ec1d0807eeb1c86a7a829f2d6d1bbf8e82b48d4e8ff5a23d86655f7cb41b0f4",
+      "export_sha256": "78f30ccd827b8f1408288451dac60ce60452546e4c379391e1ac2fcbd82f850b",
+      "case_path": "data/interim/g1_v2/reaction_cases_review_v1/train/RXN_0000149368.json",
+      "mapping_status": "resolved_unique",
+      "mapping_provenance": "truth_assisted_p1",
+      "features": {
+        "edit_components": [
+          [
+            1,
+            2,
+            3,
+            4,
+            10,
+            13
+          ]
+        ],
+        "edit_cycle_rank": 1,
+        "connectivity_edit_components": [
+          [
+            1,
+            3,
+            10,
+            13
+          ],
+          [
+            2,
+            4
+          ]
+        ],
+        "edit_counts": {
+          "order_changed": 2,
+          "broken": 3,
+          "formed": 1
+        },
+        "endpoints": {
+          "reactant": {
+            "n_components": 1,
+            "cycle_rank": 1,
+            "charge": 0,
+            "multiplicity": 1,
+            "rdkit_formal_charge_sum": 0,
+            "rdkit_charged_atom_count": 0,
+            "rdkit_radical_electron_count": 0
+          },
+          "product": {
+            "n_components": 2,
+            "cycle_rank": 0,
+            "charge": 0,
+            "multiplicity": 1,
+            "rdkit_formal_charge_sum": 0,
+            "rdkit_charged_atom_count": 0,
+            "rdkit_radical_electron_count": 0
+          }
+        },
+        "atom_attribute_changes": [
+          {
+            "atom_map_id": 2,
+            "R": {
+              "formal_charge": 0,
+              "radical_electrons": 0,
+              "aromatic": false,
+              "chiral_tag": "CHI_TETRAHEDRAL_CCW"
+            },
+            "P": {
+              "formal_charge": 0,
+              "radical_electrons": 0,
+              "aromatic": false,
+              "chiral_tag": "CHI_UNSPECIFIED"
+            }
+          },
+          {
+            "atom_map_id": 3,
+            "R": {
+              "formal_charge": 0,
+              "radical_electrons": 0,
+              "aromatic": false,
+              "chiral_tag": "CHI_TETRAHEDRAL_CCW"
+            },
+            "P": {
+              "formal_charge": 0,
+              "radical_electrons": 0,
+              "aromatic": false,
+              "chiral_tag": "CHI_UNSPECIFIED"
+            }
+          }
+        ],
+        "hydrogen_events": [
+          {
+            "from": 1,
+            "from_state": "heavy",
+            "h": 10,
+            "kind": "to_hh",
+            "to": 13,
+            "to_state": "hh"
+          },
+          {
+            "from": 3,
+            "from_state": "heavy",
+            "h": 13,
+            "kind": "to_hh",
+            "to": 10,
+            "to_state": "hh"
+          }
+        ],
+        "aromatic_regions": {}
+      },
+      "edits": [
+        {
+          "aromatic_region": null,
+          "edit_kind": "order_changed",
+          "elements": [
+            "C",
+            "C"
+          ],
+          "p_bond_order": 2.0,
+          "pair": [
+            1,
+            2
+          ],
+          "r_bond_order": 1.0,
+          "distance_R_A": 1.505635,
+          "distance_P_A": 1.332561,
+          "cross_component_R": false,
+          "cross_component_P": false
+        },
+        {
+          "aromatic_region": null,
+          "edit_kind": "broken",
+          "elements": [
+            "C",
+            "H"
+          ],
+          "p_bond_order": null,
+          "pair": [
+            1,
+            10
+          ],
+          "r_bond_order": 1.0,
+          "distance_R_A": 1.088151,
+          "distance_P_A": 2.495545,
+          "cross_component_R": false,
+          "cross_component_P": true,
+          "support_path_P": null
+        },
+        {
+          "aromatic_region": null,
+          "edit_kind": "broken",
+          "elements": [
+            "C",
+            "N"
+          ],
+          "p_bond_order": null,
+          "pair": [
+            2,
+            4
+          ],
+          "r_bond_order": 1.0,
+          "distance_R_A": 1.470602,
+          "distance_P_A": 2.426245,
+          "cross_component_R": false,
+          "cross_component_P": false,
+          "support_path_P": [
+            2,
+            3,
+            4
+          ]
+        },
+        {
+          "aromatic_region": null,
+          "edit_kind": "order_changed",
+          "elements": [
+            "C",
+            "N"
+          ],
+          "p_bond_order": 2.0,
+          "pair": [
+            3,
+            4
+          ],
+          "r_bond_order": 1.0,
+          "distance_R_A": 1.48096,
+          "distance_P_A": 1.290488,
+          "cross_component_R": false,
+          "cross_component_P": false
+        },
+        {
+          "aromatic_region": null,
+          "edit_kind": "broken",
+          "elements": [
+            "C",
+            "H"
+          ],
+          "p_bond_order": null,
+          "pair": [
+            3,
+            13
+          ],
+          "r_bond_order": 1.0,
+          "distance_R_A": 1.083837,
+          "distance_P_A": 0.754086,
+          "cross_component_R": false,
+          "cross_component_P": true,
+          "support_path_P": null
+        },
+        {
+          "aromatic_region": null,
+          "edit_kind": "formed",
+          "elements": [
+            "H",
+            "H"
+          ],
+          "p_bond_order": 1.0,
+          "pair": [
+            10,
+            13
+          ],
+          "r_bond_order": null,
+          "distance_R_A": 2.479772,
+          "distance_P_A": 0.743954,
+          "cross_component_R": false,
+          "cross_component_P": false,
+          "support_path_R": [
+            10,
+            1,
+            2,
+            3,
+            13
+          ]
+        }
+      ],
+      "proposal": {
+        "family": "H2_EVENT",
+        "mode": "COUPLED_1D",
+        "drivers_map": [
+          [
+            1,
+            10
+          ],
+          [
+            3,
+            13
+          ],
+          [
+            10,
+            13
+          ]
+        ],
+        "observers_map": [
+          [
+            1,
+            2
+          ],
+          [
+            2,
+            4
+          ],
+          [
+            3,
+            4
+          ]
+        ],
+        "direction": "R_to_P",
+        "interpretation": "C1–H10、C3–H13 断裂生成 H2，另伴 N4–C2 开环。",
+        "fallback": "重新装配 P 后再生成数值时间表；NEB。",
+        "risk": "P 中已断开的 C3–H13 只有约 0.754 Å，禁止直接插值；现有跨组分摆放需修复。",
+        "auxiliary_monitor_policy": "H: donor-acceptor distance and D-H-A angle; rings/aromatics: regional geometry, stereo and non-target contacts",
+        "required_before_execution": [
+          "manual_chemistry_review",
+          "endpoint_geometry_and_assembly_check",
+          "backend_capability_check",
+          "frozen_schedule_and_budget"
+        ]
+      }
+    },
+    {
+      "reaction_id": "RXN_0000017762",
+      "stratum": "F_H2_event",
+      "split": "valid",
+      "proposal_status": "design_hypothesis",
+      "execution_eligible": false,
+      "case_status": "needs_review",
+      "case_sha256": "f1e6bed33994a934d505a6b93f5b689ea3d2e296736abf8349fe09021712ae22",
+      "export_sha256": "df42ec429f1e4cb228be3d9e55a1cfc0d12b5cacc61c07efcab6617382e1d421",
+      "case_path": "data/interim/g1_v2/reaction_cases_review_v1/valid/RXN_0000017762.json",
+      "mapping_status": "resolved_unique",
+      "mapping_provenance": "truth_assisted_p1",
+      "features": {
+        "edit_components": [
+          [
+            2,
+            5,
+            7,
+            8,
+            9,
+            12
+          ]
+        ],
+        "edit_cycle_rank": 1,
+        "connectivity_edit_components": [
+          [
+            2,
+            5,
+            9,
+            12
+          ],
+          [
+            7,
+            8
+          ]
+        ],
+        "edit_counts": {
+          "order_changed": 2,
+          "formed": 3,
+          "broken": 1
+        },
+        "endpoints": {
+          "reactant": {
+            "n_components": 2,
+            "cycle_rank": 0,
+            "charge": 0,
+            "multiplicity": 1,
+            "rdkit_formal_charge_sum": 0,
+            "rdkit_charged_atom_count": 0,
+            "rdkit_radical_electron_count": 0
+          },
+          "product": {
+            "n_components": 1,
+            "cycle_rank": 1,
+            "charge": 0,
+            "multiplicity": 1,
+            "rdkit_formal_charge_sum": 0,
+            "rdkit_charged_atom_count": 0,
+            "rdkit_radical_electron_count": 0
+          }
+        },
+        "atom_attribute_changes": [],
+        "hydrogen_events": [
+          {
+            "from": 12,
+            "from_state": "hh",
+            "h": 9,
+            "kind": "from_hh",
+            "to": 2,
+            "to_state": "heavy"
+          },
+          {
+            "from": 9,
+            "from_state": "hh",
+            "h": 12,
+            "kind": "from_hh",
+            "to": 5,
+            "to_state": "heavy"
+          }
+        ],
+        "aromatic_regions": {}
+      },
+      "edits": [
+        {
+          "aromatic_region": null,
+          "edit_kind": "order_changed",
+          "elements": [
+            "C",
+            "O"
+          ],
+          "p_bond_order": 1.0,
+          "pair": [
+            2,
+            8
+          ],
+          "r_bond_order": 2.0,
+          "distance_R_A": 1.186384,
+          "distance_P_A": 1.391985,
+          "cross_component_R": false,
+          "cross_component_P": false
+        },
+        {
+          "aromatic_region": null,
+          "edit_kind": "formed",
+          "elements": [
+            "C",
+            "H"
+          ],
+          "p_bond_order": 1.0,
+          "pair": [
+            2,
+            9
+          ],
+          "r_bond_order": null,
+          "distance_R_A": 1.498762,
+          "distance_P_A": 1.086671,
+          "cross_component_R": true,
+          "cross_component_P": false,
+          "support_path_R": null
+        },
+        {
+          "aromatic_region": null,
+          "edit_kind": "order_changed",
+          "elements": [
+            "C",
+            "O"
+          ],
+          "p_bond_order": 1.0,
+          "pair": [
+            5,
+            7
+          ],
+          "r_bond_order": 2.0,
+          "distance_R_A": 1.176702,
+          "distance_P_A": 1.428409,
+          "cross_component_R": false,
+          "cross_component_P": false
+        },
+        {
+          "aromatic_region": null,
+          "edit_kind": "formed",
+          "elements": [
+            "C",
+            "H"
+          ],
+          "p_bond_order": 1.0,
+          "pair": [
+            5,
+            12
+          ],
+          "r_bond_order": null,
+          "distance_R_A": 1.498409,
+          "distance_P_A": 1.089808,
+          "cross_component_R": true,
+          "cross_component_P": false,
+          "support_path_R": null
+        },
+        {
+          "aromatic_region": null,
+          "edit_kind": "formed",
+          "elements": [
+            "O",
+            "O"
+          ],
+          "p_bond_order": 1.0,
+          "pair": [
+            7,
+            8
+          ],
+          "r_bond_order": null,
+          "distance_R_A": 3.248024,
+          "distance_P_A": 1.466051,
+          "cross_component_R": false,
+          "cross_component_P": false,
+          "support_path_R": [
+            7,
+            5,
+            4,
+            3,
+            2,
+            8
+          ]
+        },
+        {
+          "aromatic_region": null,
+          "edit_kind": "broken",
+          "elements": [
+            "H",
+            "H"
+          ],
+          "p_bond_order": null,
+          "pair": [
+            9,
+            12
+          ],
+          "r_bond_order": 1.0,
+          "distance_R_A": 0.743954,
+          "distance_P_A": 3.825152,
+          "cross_component_R": false,
+          "cross_component_P": false,
+          "support_path_P": [
+            9,
+            2,
+            3,
+            4,
+            5,
+            12
+          ]
+        }
+      ],
+      "proposal": {
+        "family": "H2_EVENT",
+        "mode": "COUPLED_1D",
+        "drivers_map": [
+          [
+            2,
+            9
+          ],
+          [
+            5,
+            12
+          ],
+          [
+            9,
+            12
+          ]
+        ],
+        "observers_map": [
+          [
+            2,
+            8
+          ],
+          [
+            5,
+            7
+          ],
+          [
+            7,
+            8
+          ]
+        ],
+        "direction": "P_to_R",
+        "interpretation": "H2 消耗到 C2/C5，另形成 O7–O8 并改变两个羰基键级。",
+        "fallback": "若 O7–O8 不随动，转 NEB；不静默加第四个 Scan。",
+        "risk": "R 为 2 组分；H2 朝向、O–O 成键及多中心时序均需检查。",
+        "auxiliary_monitor_policy": "H: donor-acceptor distance and D-H-A angle; rings/aromatics: regional geometry, stereo and non-target contacts",
+        "required_before_execution": [
+          "manual_chemistry_review",
+          "endpoint_geometry_and_assembly_check",
+          "backend_capability_check",
+          "frozen_schedule_and_budget"
+        ]
+      }
+    },
+    {
+      "reaction_id": "RXN_0000138453",
+      "stratum": "G_aromatic_order",
+      "split": "train",
+      "proposal_status": "design_hypothesis",
+      "execution_eligible": false,
+      "case_status": "needs_review",
+      "case_sha256": "001ca7aee45e7256031504562eed7c0705a6cf34552c934fcc8ab97eb06cffed",
+      "export_sha256": "1ddb7f7f1b044de645e0804cbc018c110fab30d90eaff0455e1d9308344bcfcf",
+      "case_path": "data/interim/g1_v2/reaction_cases_review_v1/train/RXN_0000138453.json",
+      "mapping_status": "resolved_unique",
+      "mapping_provenance": "truth_assisted_p1",
+      "features": {
+        "edit_components": [
+          [
+            2,
+            4,
+            5,
+            6,
+            7,
+            8
+          ]
+        ],
+        "edit_cycle_rank": 3,
+        "connectivity_edit_components": [
+          [
+            2,
+            4,
+            6
+          ],
+          [
+            5,
+            7
+          ]
+        ],
+        "edit_counts": {
+          "formed": 1,
+          "broken": 2,
+          "order_changed": 5
+        },
+        "endpoints": {
+          "reactant": {
+            "n_components": 1,
+            "cycle_rank": 2,
+            "charge": 0,
+            "multiplicity": 1,
+            "rdkit_formal_charge_sum": 0,
+            "rdkit_charged_atom_count": 0,
+            "rdkit_radical_electron_count": 0
+          },
+          "product": {
+            "n_components": 1,
+            "cycle_rank": 1,
+            "charge": 0,
+            "multiplicity": 1,
+            "rdkit_formal_charge_sum": 0,
+            "rdkit_charged_atom_count": 0,
+            "rdkit_radical_electron_count": 0
+          }
+        },
+        "atom_attribute_changes": [
+          {
+            "atom_map_id": 4,
+            "R": {
+              "formal_charge": 0,
+              "radical_electrons": 0,
+              "aromatic": false,
+              "chiral_tag": "CHI_UNSPECIFIED"
+            },
+            "P": {
+              "formal_charge": 0,
+              "radical_electrons": 0,
+              "aromatic": true,
+              "chiral_tag": "CHI_UNSPECIFIED"
+            }
+          },
+          {
+            "atom_map_id": 5,
+            "R": {
+              "formal_charge": 0,
+              "radical_electrons": 0,
+              "aromatic": false,
+              "chiral_tag": "CHI_TETRAHEDRAL_CW"
+            },
+            "P": {
+              "formal_charge": 0,
+              "radical_electrons": 0,
+              "aromatic": true,
+              "chiral_tag": "CHI_UNSPECIFIED"
+            }
+          },
+          {
+            "atom_map_id": 6,
+            "R": {
+              "formal_charge": 0,
+              "radical_electrons": 0,
+              "aromatic": false,
+              "chiral_tag": "CHI_UNSPECIFIED"
+            },
+            "P": {
+              "formal_charge": 0,
+              "radical_electrons": 0,
+              "aromatic": true,
+              "chiral_tag": "CHI_UNSPECIFIED"
+            }
+          },
+          {
+            "atom_map_id": 7,
+            "R": {
+              "formal_charge": 0,
+              "radical_electrons": 0,
+              "aromatic": false,
+              "chiral_tag": "CHI_TETRAHEDRAL_CW"
+            },
+            "P": {
+              "formal_charge": 0,
+              "radical_electrons": 0,
+              "aromatic": true,
+              "chiral_tag": "CHI_UNSPECIFIED"
+            }
+          },
+          {
+            "atom_map_id": 8,
+            "R": {
+              "formal_charge": 0,
+              "radical_electrons": 0,
+              "aromatic": false,
+              "chiral_tag": "CHI_UNSPECIFIED"
+            },
+            "P": {
+              "formal_charge": 0,
+              "radical_electrons": 0,
+              "aromatic": true,
+              "chiral_tag": "CHI_UNSPECIFIED"
+            }
+          }
+        ],
+        "hydrogen_events": [],
+        "aromatic_regions": {
+          "96a77a848c0b": [
+            [
+              4,
+              5
+            ],
+            [
+              4,
+              8
+            ],
+            [
+              5,
+              6
+            ],
+            [
+              6,
+              7
+            ],
+            [
+              7,
+              8
+            ]
+          ]
+        }
+      },
+      "edits": [
+        {
+          "aromatic_region": null,
+          "edit_kind": "formed",
+          "elements": [
+            "C",
+            "N"
+          ],
+          "p_bond_order": 1.0,
+          "pair": [
+            2,
+            4
+          ],
+          "r_bond_order": null,
+          "distance_R_A": 2.95803,
+          "distance_P_A": 1.39457,
+          "cross_component_R": false,
+          "cross_component_P": false,
+          "support_path_R": [
+            2,
+            6,
+            5,
+            4
+          ]
+        },
+        {
+          "aromatic_region": null,
+          "edit_kind": "broken",
+          "elements": [
+            "C",
+            "C"
+          ],
+          "p_bond_order": null,
+          "pair": [
+            2,
+            6
+          ],
+          "r_bond_order": 1.0,
+          "distance_R_A": 1.483616,
+          "distance_P_A": 3.545443,
+          "cross_component_R": false,
+          "cross_component_P": false,
+          "support_path_P": [
+            2,
+            4,
+            5,
+            6
+          ]
+        },
+        {
+          "aromatic_region": "96a77a848c0b",
+          "edit_kind": "order_changed",
+          "elements": [
+            "N",
+            "C"
+          ],
+          "p_bond_order": 1.5,
+          "pair": [
+            4,
+            5
+          ],
+          "r_bond_order": 1.0,
+          "distance_R_A": 1.505283,
+          "distance_P_A": 1.374737,
+          "cross_component_R": false,
+          "cross_component_P": false
+        },
+        {
+          "aromatic_region": "96a77a848c0b",
+          "edit_kind": "order_changed",
+          "elements": [
+            "N",
+            "N"
+          ],
+          "p_bond_order": 1.5,
+          "pair": [
+            4,
+            8
+          ],
+          "r_bond_order": 2.0,
+          "distance_R_A": 1.257105,
+          "distance_P_A": 1.365226,
+          "cross_component_R": false,
+          "cross_component_P": false
+        },
+        {
+          "aromatic_region": "96a77a848c0b",
+          "edit_kind": "order_changed",
+          "elements": [
+            "C",
+            "C"
+          ],
+          "p_bond_order": 1.5,
+          "pair": [
+            5,
+            6
+          ],
+          "r_bond_order": 1.0,
+          "distance_R_A": 1.504482,
+          "distance_P_A": 1.364904,
+          "cross_component_R": false,
+          "cross_component_P": false
+        },
+        {
+          "aromatic_region": null,
+          "edit_kind": "broken",
+          "elements": [
+            "C",
+            "C"
+          ],
+          "p_bond_order": null,
+          "pair": [
+            5,
+            7
+          ],
+          "r_bond_order": 1.0,
+          "distance_R_A": 1.502157,
+          "distance_P_A": 2.209998,
+          "cross_component_R": false,
+          "cross_component_P": false,
+          "support_path_P": [
+            5,
+            6,
+            7
+          ]
+        },
+        {
+          "aromatic_region": "96a77a848c0b",
+          "edit_kind": "order_changed",
+          "elements": [
+            "C",
+            "C"
+          ],
+          "p_bond_order": 1.5,
+          "pair": [
+            6,
+            7
+          ],
+          "r_bond_order": 1.0,
+          "distance_R_A": 1.517637,
+          "distance_P_A": 1.421071,
+          "cross_component_R": false,
+          "cross_component_P": false
+        },
+        {
+          "aromatic_region": "96a77a848c0b",
+          "edit_kind": "order_changed",
+          "elements": [
+            "C",
+            "N"
+          ],
+          "p_bond_order": 1.5,
+          "pair": [
+            7,
+            8
+          ],
+          "r_bond_order": 1.0,
+          "distance_R_A": 1.499308,
+          "distance_P_A": 1.316782,
+          "cross_component_R": false,
+          "cross_component_P": false
+        }
+      ],
+      "proposal": {
+        "family": "AROMATIC_COUPLED",
+        "mode": "COUPLED_1D",
+        "drivers_map": [
+          [
+            2,
+            4
+          ],
+          [
+            2,
+            6
+          ],
+          [
+            5,
+            7
+          ]
+        ],
+        "observers_map": [
+          [
+            4,
+            5
+          ],
+          [
+            4,
+            8
+          ],
+          [
+            5,
+            6
+          ],
+          [
+            6,
+            7
+          ],
+          [
+            7,
+            8
+          ]
+        ],
+        "direction": "R_to_P",
+        "interpretation": "C2 转接 N4、C5–C7 开裂伴五元环芳香化。",
+        "fallback": "P→R；NEB。",
+        "risk": "5 个芳香键级变化按区域监测；不是 5 根扫描键，也不全是表示噪声。",
+        "auxiliary_monitor_policy": "H: donor-acceptor distance and D-H-A angle; rings/aromatics: regional geometry, stereo and non-target contacts",
+        "required_before_execution": [
+          "manual_chemistry_review",
+          "endpoint_geometry_and_assembly_check",
+          "backend_capability_check",
+          "frozen_schedule_and_budget"
+        ]
+      }
+    },
+    {
+      "reaction_id": "RXN_0000110869",
+      "stratum": "G_aromatic_order",
+      "split": "train",
+      "proposal_status": "design_hypothesis",
+      "execution_eligible": false,
+      "case_status": "needs_review",
+      "case_sha256": "3fbaad580b6d4fb6a6696a76503e4697805ddd57b8cc2d6efe641a9693178f03",
+      "export_sha256": "e1a93081d52a6aa3b6c8d2c6682e72b58919f0724c417ae6f3701f76118d5281",
+      "case_path": "data/interim/g1_v2/reaction_cases_review_v1/train/RXN_0000110869.json",
+      "mapping_status": "resolved_unique",
+      "mapping_provenance": "truth_assisted_p1",
+      "features": {
+        "edit_components": [
+          [
+            2,
+            3,
+            4,
+            5,
+            6,
+            8,
+            9
+          ]
+        ],
+        "edit_cycle_rank": 2,
+        "connectivity_edit_components": [
+          [
+            5,
+            8,
+            9
+          ]
+        ],
+        "edit_counts": {
+          "order_changed": 6,
+          "broken": 1,
+          "formed": 1
+        },
+        "endpoints": {
+          "reactant": {
+            "n_components": 1,
+            "cycle_rank": 1,
+            "charge": 0,
+            "multiplicity": 1,
+            "rdkit_formal_charge_sum": 0,
+            "rdkit_charged_atom_count": 0,
+            "rdkit_radical_electron_count": 0
+          },
+          "product": {
+            "n_components": 1,
+            "cycle_rank": 1,
+            "charge": 0,
+            "multiplicity": 1,
+            "rdkit_formal_charge_sum": 0,
+            "rdkit_charged_atom_count": 0,
+            "rdkit_radical_electron_count": 0
+          }
+        },
+        "atom_attribute_changes": [
+          {
+            "atom_map_id": 2,
+            "R": {
+              "formal_charge": 0,
+              "radical_electrons": 0,
+              "aromatic": false,
+              "chiral_tag": "CHI_UNSPECIFIED"
+            },
+            "P": {
+              "formal_charge": 0,
+              "radical_electrons": 0,
+              "aromatic": true,
+              "chiral_tag": "CHI_UNSPECIFIED"
+            }
+          },
+          {
+            "atom_map_id": 3,
+            "R": {
+              "formal_charge": 0,
+              "radical_electrons": 0,
+              "aromatic": false,
+              "chiral_tag": "CHI_UNSPECIFIED"
+            },
+            "P": {
+              "formal_charge": 0,
+              "radical_electrons": 0,
+              "aromatic": true,
+              "chiral_tag": "CHI_UNSPECIFIED"
+            }
+          },
+          {
+            "atom_map_id": 4,
+            "R": {
+              "formal_charge": 0,
+              "radical_electrons": 0,
+              "aromatic": false,
+              "chiral_tag": "CHI_UNSPECIFIED"
+            },
+            "P": {
+              "formal_charge": 0,
+              "radical_electrons": 0,
+              "aromatic": true,
+              "chiral_tag": "CHI_UNSPECIFIED"
+            }
+          },
+          {
+            "atom_map_id": 5,
+            "R": {
+              "formal_charge": 0,
+              "radical_electrons": 0,
+              "aromatic": false,
+              "chiral_tag": "CHI_UNSPECIFIED"
+            },
+            "P": {
+              "formal_charge": 0,
+              "radical_electrons": 0,
+              "aromatic": true,
+              "chiral_tag": "CHI_UNSPECIFIED"
+            }
+          },
+          {
+            "atom_map_id": 6,
+            "R": {
+              "formal_charge": 0,
+              "radical_electrons": 0,
+              "aromatic": false,
+              "chiral_tag": "CHI_UNSPECIFIED"
+            },
+            "P": {
+              "formal_charge": 0,
+              "radical_electrons": 0,
+              "aromatic": true,
+              "chiral_tag": "CHI_UNSPECIFIED"
+            }
+          },
+          {
+            "atom_map_id": 9,
+            "R": {
+              "formal_charge": 0,
+              "radical_electrons": 0,
+              "aromatic": false,
+              "chiral_tag": "CHI_UNSPECIFIED"
+            },
+            "P": {
+              "formal_charge": 0,
+              "radical_electrons": 0,
+              "aromatic": true,
+              "chiral_tag": "CHI_UNSPECIFIED"
+            }
+          }
+        ],
+        "hydrogen_events": [],
+        "aromatic_regions": {
+          "8ae527b02fcc": [
+            [
+              2,
+              3
+            ],
+            [
+              2,
+              9
+            ],
+            [
+              3,
+              4
+            ],
+            [
+              4,
+              5
+            ],
+            [
+              5,
+              6
+            ],
+            [
+              6,
+              9
+            ]
+          ]
+        }
+      },
+      "edits": [
+        {
+          "aromatic_region": "8ae527b02fcc",
+          "edit_kind": "order_changed",
+          "elements": [
+            "C",
+            "C"
+          ],
+          "p_bond_order": 1.5,
+          "pair": [
+            2,
+            3
+          ],
+          "r_bond_order": 1.0,
+          "distance_R_A": 1.395576,
+          "distance_P_A": 1.382438,
+          "cross_component_R": false,
+          "cross_component_P": false
+        },
+        {
+          "aromatic_region": "8ae527b02fcc",
+          "edit_kind": "order_changed",
+          "elements": [
+            "C",
+            "C"
+          ],
+          "p_bond_order": 1.5,
+          "pair": [
+            2,
+            9
+          ],
+          "r_bond_order": 2.0,
+          "distance_R_A": 1.37514,
+          "distance_P_A": 1.390221,
+          "cross_component_R": false,
+          "cross_component_P": false
+        },
+        {
+          "aromatic_region": "8ae527b02fcc",
+          "edit_kind": "order_changed",
+          "elements": [
+            "C",
+            "C"
+          ],
+          "p_bond_order": 1.5,
+          "pair": [
+            3,
+            4
+          ],
+          "r_bond_order": 2.0,
+          "distance_R_A": 1.374396,
+          "distance_P_A": 1.388482,
+          "cross_component_R": false,
+          "cross_component_P": false
+        },
+        {
+          "aromatic_region": "8ae527b02fcc",
+          "edit_kind": "order_changed",
+          "elements": [
+            "C",
+            "N"
+          ],
+          "p_bond_order": 1.5,
+          "pair": [
+            4,
+            5
+          ],
+          "r_bond_order": 1.0,
+          "distance_R_A": 1.349612,
+          "distance_P_A": 1.331419,
+          "cross_component_R": false,
+          "cross_component_P": false
+        },
+        {
+          "aromatic_region": "8ae527b02fcc",
+          "edit_kind": "order_changed",
+          "elements": [
+            "N",
+            "C"
+          ],
+          "p_bond_order": 1.5,
+          "pair": [
+            5,
+            6
+          ],
+          "r_bond_order": 1.0,
+          "distance_R_A": 1.37747,
+          "distance_P_A": 1.335753,
+          "cross_component_R": false,
+          "cross_component_P": false
+        },
+        {
+          "aromatic_region": null,
+          "edit_kind": "broken",
+          "elements": [
+            "N",
+            "Cl"
+          ],
+          "p_bond_order": null,
+          "pair": [
+            5,
+            8
+          ],
+          "r_bond_order": 1.0,
+          "distance_R_A": 1.831046,
+          "distance_P_A": 4.007876,
+          "cross_component_R": false,
+          "cross_component_P": false,
+          "support_path_P": [
+            5,
+            6,
+            9,
+            8
+          ]
+        },
+        {
+          "aromatic_region": "8ae527b02fcc",
+          "edit_kind": "order_changed",
+          "elements": [
+            "C",
+            "C"
+          ],
+          "p_bond_order": 1.5,
+          "pair": [
+            6,
+            9
+          ],
+          "r_bond_order": 2.0,
+          "distance_R_A": 1.372191,
+          "distance_P_A": 1.401509,
+          "cross_component_R": false,
+          "cross_component_P": false
+        },
+        {
+          "aromatic_region": null,
+          "edit_kind": "formed",
+          "elements": [
+            "Cl",
+            "C"
+          ],
+          "p_bond_order": 1.0,
+          "pair": [
+            8,
+            9
+          ],
+          "r_bond_order": null,
+          "distance_R_A": 4.068293,
+          "distance_P_A": 1.746745,
+          "cross_component_R": false,
+          "cross_component_P": false,
+          "support_path_R": [
+            8,
+            5,
+            6,
+            9
+          ]
+        }
+      ],
+      "proposal": {
+        "family": "AROMATIC_COUPLED",
+        "mode": "COUPLED_1D",
+        "drivers_map": [
+          [
+            5,
+            8
+          ],
+          [
+            8,
+            9
+          ]
+        ],
+        "observers_map": [
+          [
+            2,
+            3
+          ],
+          [
+            2,
+            9
+          ],
+          [
+            3,
+            4
+          ],
+          [
+            4,
+            5
+          ],
+          [
+            5,
+            6
+          ],
+          [
+            6,
+            9
+          ]
+        ],
+        "direction": "P_to_R",
+        "interpretation": "Cl8 从 N5 转到 C9，六元区域芳香化。",
+        "fallback": "R→P；Cl 转接早/晚；NEB。",
+        "risk": "6 项环键级变化压成一个区域观察对象，保留各键证据。",
+        "auxiliary_monitor_policy": "H: donor-acceptor distance and D-H-A angle; rings/aromatics: regional geometry, stereo and non-target contacts",
+        "required_before_execution": [
+          "manual_chemistry_review",
+          "endpoint_geometry_and_assembly_check",
+          "backend_capability_check",
+          "frozen_schedule_and_budget"
+        ]
+      }
+    },
+    {
+      "reaction_id": "RXN_0000047010",
+      "stratum": "G_aromatic_order",
+      "split": "valid",
+      "proposal_status": "design_hypothesis",
+      "execution_eligible": false,
+      "case_status": "needs_review",
+      "case_sha256": "87302669b35a5b9a85e53a0ca5772a62a8dc350675efd6f97862402bbfc0e187",
+      "export_sha256": "6b6401b9412496a658ffae75f84dd22729a84caf4f796fab4a636ddad20455fb",
+      "case_path": "data/interim/g1_v2/reaction_cases_review_v1/valid/RXN_0000047010.json",
+      "mapping_status": "resolved_unique",
+      "mapping_provenance": "truth_assisted_p1",
+      "features": {
+        "edit_components": [
+          [
+            2,
+            3,
+            4,
+            5,
+            6,
+            7
+          ]
+        ],
+        "edit_cycle_rank": 2,
+        "connectivity_edit_components": [
+          [
+            2,
+            3
+          ],
+          [
+            5,
+            6
+          ]
+        ],
+        "edit_counts": {
+          "broken": 1,
+          "order_changed": 5,
+          "formed": 1
+        },
+        "endpoints": {
+          "reactant": {
+            "n_components": 1,
+            "cycle_rank": 1,
+            "charge": 0,
+            "multiplicity": 1,
+            "rdkit_formal_charge_sum": 0,
+            "rdkit_charged_atom_count": 0,
+            "rdkit_radical_electron_count": 0
+          },
+          "product": {
+            "n_components": 1,
+            "cycle_rank": 1,
+            "charge": 0,
+            "multiplicity": 1,
+            "rdkit_formal_charge_sum": 0,
+            "rdkit_charged_atom_count": 0,
+            "rdkit_radical_electron_count": 0
+          }
+        },
+        "atom_attribute_changes": [
+          {
+            "atom_map_id": 2,
+            "R": {
+              "formal_charge": 0,
+              "radical_electrons": 0,
+              "aromatic": false,
+              "chiral_tag": "CHI_TETRAHEDRAL_CW"
+            },
+            "P": {
+              "formal_charge": 0,
+              "radical_electrons": 0,
+              "aromatic": true,
+              "chiral_tag": "CHI_UNSPECIFIED"
+            }
+          },
+          {
+            "atom_map_id": 4,
+            "R": {
+              "formal_charge": 0,
+              "radical_electrons": 0,
+              "aromatic": false,
+              "chiral_tag": "CHI_UNSPECIFIED"
+            },
+            "P": {
+              "formal_charge": 0,
+              "radical_electrons": 0,
+              "aromatic": true,
+              "chiral_tag": "CHI_UNSPECIFIED"
+            }
+          },
+          {
+            "atom_map_id": 5,
+            "R": {
+              "formal_charge": 0,
+              "radical_electrons": 0,
+              "aromatic": false,
+              "chiral_tag": "CHI_UNSPECIFIED"
+            },
+            "P": {
+              "formal_charge": 0,
+              "radical_electrons": 0,
+              "aromatic": true,
+              "chiral_tag": "CHI_UNSPECIFIED"
+            }
+          },
+          {
+            "atom_map_id": 6,
+            "R": {
+              "formal_charge": 0,
+              "radical_electrons": 0,
+              "aromatic": false,
+              "chiral_tag": "CHI_UNSPECIFIED"
+            },
+            "P": {
+              "formal_charge": 0,
+              "radical_electrons": 0,
+              "aromatic": true,
+              "chiral_tag": "CHI_UNSPECIFIED"
+            }
+          },
+          {
+            "atom_map_id": 7,
+            "R": {
+              "formal_charge": 0,
+              "radical_electrons": 0,
+              "aromatic": false,
+              "chiral_tag": "CHI_UNSPECIFIED"
+            },
+            "P": {
+              "formal_charge": 0,
+              "radical_electrons": 0,
+              "aromatic": true,
+              "chiral_tag": "CHI_UNSPECIFIED"
+            }
+          }
+        ],
+        "hydrogen_events": [],
+        "aromatic_regions": {
+          "c50e64a0a715": [
+            [
+              2,
+              4
+            ],
+            [
+              2,
+              7
+            ],
+            [
+              4,
+              5
+            ],
+            [
+              5,
+              6
+            ],
+            [
+              6,
+              7
+            ]
+          ]
+        }
+      },
+      "edits": [
+        {
+          "aromatic_region": null,
+          "edit_kind": "broken",
+          "elements": [
+            "C",
+            "N"
+          ],
+          "p_bond_order": null,
+          "pair": [
+            2,
+            3
+          ],
+          "r_bond_order": 1.0,
+          "distance_R_A": 1.509886,
+          "distance_P_A": 2.452844,
+          "cross_component_R": false,
+          "cross_component_P": false,
+          "support_path_P": [
+            2,
+            4,
+            3
+          ]
+        },
+        {
+          "aromatic_region": "c50e64a0a715",
+          "edit_kind": "order_changed",
+          "elements": [
+            "C",
+            "C"
+          ],
+          "p_bond_order": 1.5,
+          "pair": [
+            2,
+            4
+          ],
+          "r_bond_order": 1.0,
+          "distance_R_A": 1.507138,
+          "distance_P_A": 1.457817,
+          "cross_component_R": false,
+          "cross_component_P": false
+        },
+        {
+          "aromatic_region": "c50e64a0a715",
+          "edit_kind": "order_changed",
+          "elements": [
+            "C",
+            "C"
+          ],
+          "p_bond_order": 1.5,
+          "pair": [
+            2,
+            7
+          ],
+          "r_bond_order": 1.0,
+          "distance_R_A": 1.489608,
+          "distance_P_A": 1.343017,
+          "cross_component_R": false,
+          "cross_component_P": false
+        },
+        {
+          "aromatic_region": null,
+          "edit_kind": "order_changed",
+          "elements": [
+            "N",
+            "C"
+          ],
+          "p_bond_order": 2.0,
+          "pair": [
+            3,
+            4
+          ],
+          "r_bond_order": 1.0,
+          "distance_R_A": 1.345421,
+          "distance_P_A": 1.261615,
+          "cross_component_R": false,
+          "cross_component_P": false
+        },
+        {
+          "aromatic_region": "c50e64a0a715",
+          "edit_kind": "order_changed",
+          "elements": [
+            "C",
+            "O"
+          ],
+          "p_bond_order": 1.5,
+          "pair": [
+            4,
+            5
+          ],
+          "r_bond_order": 2.0,
+          "distance_R_A": 1.190219,
+          "distance_P_A": 1.400399,
+          "cross_component_R": false,
+          "cross_component_P": false
+        },
+        {
+          "aromatic_region": "c50e64a0a715",
+          "edit_kind": "formed",
+          "elements": [
+            "O",
+            "N"
+          ],
+          "p_bond_order": 1.5,
+          "pair": [
+            5,
+            6
+          ],
+          "r_bond_order": null,
+          "distance_R_A": 3.830805,
+          "distance_P_A": 1.43011,
+          "cross_component_R": false,
+          "cross_component_P": false,
+          "support_path_R": [
+            5,
+            4,
+            2,
+            7,
+            6
+          ]
+        },
+        {
+          "aromatic_region": "c50e64a0a715",
+          "edit_kind": "order_changed",
+          "elements": [
+            "N",
+            "C"
+          ],
+          "p_bond_order": 1.5,
+          "pair": [
+            6,
+            7
+          ],
+          "r_bond_order": 2.0,
+          "distance_R_A": 1.265899,
+          "distance_P_A": 1.385743,
+          "cross_component_R": false,
+          "cross_component_P": false
+        }
+      ],
+      "proposal": {
+        "family": "AROMATIC_COUPLED",
+        "mode": "COUPLED_1D",
+        "drivers_map": [
+          [
+            2,
+            3
+          ],
+          [
+            5,
+            6
+          ]
+        ],
+        "observers_map": [
+          [
+            2,
+            4
+          ],
+          [
+            2,
+            7
+          ],
+          [
+            3,
+            4
+          ],
+          [
+            4,
+            5
+          ],
+          [
+            6,
+            7
+          ]
+        ],
+        "direction": "P_to_R",
+        "interpretation": "C2–N3 断裂、O5–N6 成键使环骨架扩展并芳香化。",
+        "fallback": "R→P；NEB。",
+        "risk": "5–6 是真实新增连接（产物键级 1.5），不能被芳香归一化删除。",
+        "auxiliary_monitor_policy": "H: donor-acceptor distance and D-H-A angle; rings/aromatics: regional geometry, stereo and non-target contacts",
+        "required_before_execution": [
+          "manual_chemistry_review",
+          "endpoint_geometry_and_assembly_check",
+          "backend_capability_check",
+          "frozen_schedule_and_budget"
+        ]
+      }
+    },
+    {
+      "reaction_id": "RXN_0000194484",
+      "stratum": "H_high_edit_fallback",
+      "split": "train",
+      "proposal_status": "design_hypothesis",
+      "execution_eligible": false,
+      "case_status": "needs_review",
+      "case_sha256": "8c8ca10c9e81a77746ef4071512d6504c4c3da5e70f811383a715a702fff3130",
+      "export_sha256": "f86727ac6f9979af4484daa560c2e12ba1e58b3145ce986c904e0851dc280741",
+      "case_path": "data/interim/g1_v2/reaction_cases_review_v1/train/RXN_0000194484.json",
+      "mapping_status": "resolved_unique",
+      "mapping_provenance": "truth_assisted_p1",
+      "features": {
+        "edit_components": [
+          [
+            1,
+            2,
+            3,
+            4,
+            8,
+            9,
+            10
+          ]
+        ],
+        "edit_cycle_rank": 2,
+        "connectivity_edit_components": [
+          [
+            1,
+            2,
+            9,
+            10
+          ],
+          [
+            3,
+            4,
+            8
+          ]
+        ],
+        "edit_counts": {
+          "order_changed": 3,
+          "formed": 4,
+          "broken": 1
+        },
+        "endpoints": {
+          "reactant": {
+            "n_components": 1,
+            "cycle_rank": 0,
+            "charge": 0,
+            "multiplicity": 1,
+            "rdkit_formal_charge_sum": 0,
+            "rdkit_charged_atom_count": 0,
+            "rdkit_radical_electron_count": 0
+          },
+          "product": {
+            "n_components": 1,
+            "cycle_rank": 3,
+            "charge": 0,
+            "multiplicity": 1,
+            "rdkit_formal_charge_sum": 0,
+            "rdkit_charged_atom_count": 0,
+            "rdkit_radical_electron_count": 0
+          }
+        },
+        "atom_attribute_changes": [
+          {
+            "atom_map_id": 3,
+            "R": {
+              "formal_charge": 0,
+              "radical_electrons": 0,
+              "aromatic": false,
+              "chiral_tag": "CHI_UNSPECIFIED"
+            },
+            "P": {
+              "formal_charge": 0,
+              "radical_electrons": 0,
+              "aromatic": false,
+              "chiral_tag": "CHI_TETRAHEDRAL_CW"
+            }
+          },
+          {
+            "atom_map_id": 4,
+            "R": {
+              "formal_charge": 0,
+              "radical_electrons": 0,
+              "aromatic": false,
+              "chiral_tag": "CHI_UNSPECIFIED"
+            },
+            "P": {
+              "formal_charge": 0,
+              "radical_electrons": 0,
+              "aromatic": false,
+              "chiral_tag": "CHI_TETRAHEDRAL_CW"
+            }
+          },
+          {
+            "atom_map_id": 8,
+            "R": {
+              "formal_charge": 0,
+              "radical_electrons": 0,
+              "aromatic": false,
+              "chiral_tag": "CHI_UNSPECIFIED"
+            },
+            "P": {
+              "formal_charge": 0,
+              "radical_electrons": 0,
+              "aromatic": false,
+              "chiral_tag": "CHI_TETRAHEDRAL_CCW"
+            }
+          }
+        ],
+        "hydrogen_events": [
+          {
+            "from": 1,
+            "from_state": "heavy",
+            "h": 10,
+            "kind": "transfer",
+            "to": 2,
+            "to_state": "heavy"
+          }
+        ],
+        "aromatic_regions": {}
+      },
+      "edits": [
+        {
+          "aromatic_region": null,
+          "edit_kind": "order_changed",
+          "elements": [
+            "C",
+            "C"
+          ],
+          "p_bond_order": 1.0,
+          "pair": [
+            1,
+            2
+          ],
+          "r_bond_order": 2.0,
+          "distance_R_A": 1.336002,
+          "distance_P_A": 1.531369,
+          "cross_component_R": false,
+          "cross_component_P": false
+        },
+        {
+          "aromatic_region": null,
+          "edit_kind": "formed",
+          "elements": [
+            "C",
+            "N"
+          ],
+          "p_bond_order": 2.0,
+          "pair": [
+            1,
+            9
+          ],
+          "r_bond_order": null,
+          "distance_R_A": 3.898836,
+          "distance_P_A": 1.272541,
+          "cross_component_R": false,
+          "cross_component_P": false,
+          "support_path_R": [
+            1,
+            2,
+            3,
+            7,
+            8,
+            9
+          ]
+        },
+        {
+          "aromatic_region": null,
+          "edit_kind": "broken",
+          "elements": [
+            "C",
+            "H"
+          ],
+          "p_bond_order": null,
+          "pair": [
+            1,
+            10
+          ],
+          "r_bond_order": 1.0,
+          "distance_R_A": 1.082648,
+          "distance_P_A": 2.176177,
+          "cross_component_R": false,
+          "cross_component_P": false,
+          "support_path_P": [
+            1,
+            2,
+            10
+          ]
+        },
+        {
+          "aromatic_region": null,
+          "edit_kind": "formed",
+          "elements": [
+            "C",
+            "H"
+          ],
+          "p_bond_order": 1.0,
+          "pair": [
+            2,
+            10
+          ],
+          "r_bond_order": null,
+          "distance_R_A": 2.131527,
+          "distance_P_A": 1.093853,
+          "cross_component_R": false,
+          "cross_component_P": false,
+          "support_path_R": [
+            2,
+            1,
+            10
+          ]
+        },
+        {
+          "aromatic_region": null,
+          "edit_kind": "order_changed",
+          "elements": [
+            "C",
+            "C"
+          ],
+          "p_bond_order": 1.0,
+          "pair": [
+            3,
+            4
+          ],
+          "r_bond_order": 2.0,
+          "distance_R_A": 1.343674,
+          "distance_P_A": 1.517853,
+          "cross_component_R": false,
+          "cross_component_P": false
+        },
+        {
+          "aromatic_region": null,
+          "edit_kind": "formed",
+          "elements": [
+            "C",
+            "C"
+          ],
+          "p_bond_order": 1.0,
+          "pair": [
+            3,
+            8
+          ],
+          "r_bond_order": null,
+          "distance_R_A": 2.497349,
+          "distance_P_A": 1.59099,
+          "cross_component_R": false,
+          "cross_component_P": false,
+          "support_path_R": [
+            3,
+            7,
+            8
+          ]
+        },
+        {
+          "aromatic_region": null,
+          "edit_kind": "formed",
+          "elements": [
+            "C",
+            "C"
+          ],
+          "p_bond_order": 1.0,
+          "pair": [
+            4,
+            8
+          ],
+          "r_bond_order": null,
+          "distance_R_A": 3.432729,
+          "distance_P_A": 1.497564,
+          "cross_component_R": false,
+          "cross_component_P": false,
+          "support_path_R": [
+            4,
+            3,
+            7,
+            8
+          ]
+        },
+        {
+          "aromatic_region": null,
+          "edit_kind": "order_changed",
+          "elements": [
+            "C",
+            "N"
+          ],
+          "p_bond_order": 1.0,
+          "pair": [
+            8,
+            9
+          ],
+          "r_bond_order": 3.0,
+          "distance_R_A": 1.15113,
+          "distance_P_A": 1.441805,
+          "cross_component_R": false,
+          "cross_component_P": false
+        }
+      ],
+      "proposal": {
+        "family": "NETWORK_PATH",
+        "mode": "PATH_REQUIRED",
+        "drivers_map": [],
+        "observers_map": [
+          [
+            1,
+            2
+          ],
+          [
+            1,
+            9
+          ],
+          [
+            1,
+            10
+          ],
+          [
+            2,
+            10
+          ],
+          [
+            3,
+            4
+          ],
+          [
+            3,
+            8
+          ],
+          [
+            4,
+            8
+          ],
+          [
+            8,
+            9
+          ]
+        ],
+        "direction": "R_to_P",
+        "interpretation": "H10 转移、三根重原子成键、三个键级变化形成密集环重组。",
+        "fallback": "双端 NEB；稳定中间体确认后分阶段。",
+        "risk": "H 双距离加三根重原子新键需 5 B；选任意 3 根没有充分事件覆盖依据。",
+        "auxiliary_monitor_policy": "H: donor-acceptor distance and D-H-A angle; rings/aromatics: regional geometry, stereo and non-target contacts",
+        "required_before_execution": [
+          "manual_chemistry_review",
+          "endpoint_geometry_and_assembly_check",
+          "backend_capability_check",
+          "frozen_schedule_and_budget"
+        ]
+      }
+    },
+    {
+      "reaction_id": "RXN_0000074997",
+      "stratum": "H_high_edit_fallback",
+      "split": "train",
+      "proposal_status": "design_hypothesis",
+      "execution_eligible": false,
+      "case_status": "needs_review",
+      "case_sha256": "7150f8b144a511a7e56227f8329333335a5b30fd546c9337ed274fe0d74d85fa",
+      "export_sha256": "e7464fa660f8a0d9b49fe2474641c4f7fc6ca86a41cf966f2afb9c2e85568bda",
+      "case_path": "data/interim/g1_v2/reaction_cases_review_v1/train/RXN_0000074997.json",
+      "mapping_status": "resolved_unique",
+      "mapping_provenance": "truth_assisted_p1",
+      "features": {
+        "edit_components": [
+          [
+            1,
+            2,
+            3,
+            5,
+            6,
+            8,
+            9,
+            10
+          ]
+        ],
+        "edit_cycle_rank": 1,
+        "connectivity_edit_components": [
+          [
+            1,
+            6
+          ],
+          [
+            2,
+            10
+          ],
+          [
+            3,
+            5,
+            8,
+            9
+          ]
+        ],
+        "edit_counts": {
+          "order_changed": 3,
+          "broken": 4,
+          "formed": 1
+        },
+        "endpoints": {
+          "reactant": {
+            "n_components": 1,
+            "cycle_rank": 4,
+            "charge": 0,
+            "multiplicity": 1,
+            "rdkit_formal_charge_sum": 0,
+            "rdkit_charged_atom_count": 0,
+            "rdkit_radical_electron_count": 0
+          },
+          "product": {
+            "n_components": 1,
+            "cycle_rank": 1,
+            "charge": 0,
+            "multiplicity": 1,
+            "rdkit_formal_charge_sum": 0,
+            "rdkit_charged_atom_count": 0,
+            "rdkit_radical_electron_count": 0
+          }
+        },
+        "atom_attribute_changes": [
+          {
+            "atom_map_id": 5,
+            "R": {
+              "formal_charge": 0,
+              "radical_electrons": 0,
+              "aromatic": false,
+              "chiral_tag": "CHI_TETRAHEDRAL_CW"
+            },
+            "P": {
+              "formal_charge": 0,
+              "radical_electrons": 0,
+              "aromatic": false,
+              "chiral_tag": "CHI_UNSPECIFIED"
+            }
+          },
+          {
+            "atom_map_id": 8,
+            "R": {
+              "formal_charge": 0,
+              "radical_electrons": 0,
+              "aromatic": false,
+              "chiral_tag": "CHI_TETRAHEDRAL_CW"
+            },
+            "P": {
+              "formal_charge": 0,
+              "radical_electrons": 0,
+              "aromatic": false,
+              "chiral_tag": "CHI_TETRAHEDRAL_CCW"
+            }
+          },
+          {
+            "atom_map_id": 9,
+            "R": {
+              "formal_charge": 0,
+              "radical_electrons": 0,
+              "aromatic": false,
+              "chiral_tag": "CHI_TETRAHEDRAL_CCW"
+            },
+            "P": {
+              "formal_charge": 0,
+              "radical_electrons": 0,
+              "aromatic": false,
+              "chiral_tag": "CHI_UNSPECIFIED"
+            }
+          }
+        ],
+        "hydrogen_events": [],
+        "aromatic_regions": {}
+      },
+      "edits": [
+        {
+          "aromatic_region": null,
+          "edit_kind": "order_changed",
+          "elements": [
+            "N",
+            "C"
+          ],
+          "p_bond_order": 3.0,
+          "pair": [
+            1,
+            2
+          ],
+          "r_bond_order": 2.0,
+          "distance_R_A": 1.288418,
+          "distance_P_A": 1.159812,
+          "cross_component_R": false,
+          "cross_component_P": false
+        },
+        {
+          "aromatic_region": null,
+          "edit_kind": "broken",
+          "elements": [
+            "N",
+            "O"
+          ],
+          "p_bond_order": null,
+          "pair": [
+            1,
+            6
+          ],
+          "r_bond_order": 1.0,
+          "distance_R_A": 1.506584,
+          "distance_P_A": 5.862448,
+          "cross_component_R": false,
+          "cross_component_P": false,
+          "support_path_P": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ]
+        },
+        {
+          "aromatic_region": null,
+          "edit_kind": "broken",
+          "elements": [
+            "C",
+            "O"
+          ],
+          "p_bond_order": null,
+          "pair": [
+            2,
+            10
+          ],
+          "r_bond_order": 1.0,
+          "distance_R_A": 1.418003,
+          "distance_P_A": 4.287345,
+          "cross_component_R": false,
+          "cross_component_P": false,
+          "support_path_P": [
+            2,
+            3,
+            8,
+            9,
+            10
+          ]
+        },
+        {
+          "aromatic_region": null,
+          "edit_kind": "formed",
+          "elements": [
+            "N",
+            "C"
+          ],
+          "p_bond_order": 1.0,
+          "pair": [
+            3,
+            8
+          ],
+          "r_bond_order": null,
+          "distance_R_A": 2.375539,
+          "distance_P_A": 1.480196,
+          "cross_component_R": false,
+          "cross_component_P": false,
+          "support_path_R": [
+            3,
+            9,
+            8
+          ]
+        },
+        {
+          "aromatic_region": null,
+          "edit_kind": "broken",
+          "elements": [
+            "N",
+            "C"
+          ],
+          "p_bond_order": null,
+          "pair": [
+            3,
+            9
+          ],
+          "r_bond_order": 1.0,
+          "distance_R_A": 1.502301,
+          "distance_P_A": 2.47559,
+          "cross_component_R": false,
+          "cross_component_P": false,
+          "support_path_P": [
+            3,
+            8,
+            9
+          ]
+        },
+        {
+          "aromatic_region": null,
+          "edit_kind": "order_changed",
+          "elements": [
+            "C",
+            "O"
+          ],
+          "p_bond_order": 2.0,
+          "pair": [
+            5,
+            6
+          ],
+          "r_bond_order": 1.0,
+          "distance_R_A": 1.41045,
+          "distance_P_A": 1.199338,
+          "cross_component_R": false,
+          "cross_component_P": false
+        },
+        {
+          "aromatic_region": null,
+          "edit_kind": "broken",
+          "elements": [
+            "C",
+            "C"
+          ],
+          "p_bond_order": null,
+          "pair": [
+            5,
+            8
+          ],
+          "r_bond_order": 1.0,
+          "distance_R_A": 1.524834,
+          "distance_P_A": 2.42709,
+          "cross_component_R": false,
+          "cross_component_P": false,
+          "support_path_P": [
+            5,
+            7,
+            8
+          ]
+        },
+        {
+          "aromatic_region": null,
+          "edit_kind": "order_changed",
+          "elements": [
+            "C",
+            "O"
+          ],
+          "p_bond_order": 2.0,
+          "pair": [
+            9,
+            10
+          ],
+          "r_bond_order": 1.0,
+          "distance_R_A": 1.481606,
+          "distance_P_A": 1.201795,
+          "cross_component_R": false,
+          "cross_component_P": false
+        }
+      ],
+      "proposal": {
+        "family": "NETWORK_PATH",
+        "mode": "PATH_REQUIRED",
+        "drivers_map": [],
+        "observers_map": [
+          [
+            1,
+            2
+          ],
+          [
+            1,
+            6
+          ],
+          [
+            2,
+            10
+          ],
+          [
+            3,
+            8
+          ],
+          [
+            3,
+            9
+          ],
+          [
+            5,
+            6
+          ],
+          [
+            5,
+            8
+          ],
+          [
+            9,
+            10
+          ]
+        ],
+        "direction": "R_to_P",
+        "interpretation": "四根断键、一根成键与三个升键级分布在相连多环骨架。",
+        "fallback": "双端 NEB；有中间体证据后拆为多个基元段。",
+        "risk": "不能因 F=1 就只扫描 3–8；1–6 原始距离变化达约 4.36 Å，构象变化显著。",
+        "auxiliary_monitor_policy": "H: donor-acceptor distance and D-H-A angle; rings/aromatics: regional geometry, stereo and non-target contacts",
+        "required_before_execution": [
+          "manual_chemistry_review",
+          "endpoint_geometry_and_assembly_check",
+          "backend_capability_check",
+          "frozen_schedule_and_budget"
+        ]
+      }
+    },
+    {
+      "reaction_id": "RXN_0000109608",
+      "stratum": "H_high_edit_fallback",
+      "split": "valid",
+      "proposal_status": "design_hypothesis",
+      "execution_eligible": false,
+      "case_status": "needs_review",
+      "case_sha256": "ace2522dcfe1fc4a732ba3c742c94ab8b1ebe10ae4ef371886de963d5858a08d",
+      "export_sha256": "78e869f0135774928fc859bb0258ffef4f8b0238865dc3d10eb7a678e99de17d",
+      "case_path": "data/interim/g1_v2/reaction_cases_review_v1/valid/RXN_0000109608.json",
+      "mapping_status": "resolved_unique",
+      "mapping_provenance": "truth_assisted_p1",
+      "features": {
+        "edit_components": [
+          [
+            3,
+            4,
+            5,
+            6
+          ]
+        ],
+        "edit_cycle_rank": 3,
+        "connectivity_edit_components": [
+          [
+            3,
+            4,
+            5,
+            6
+          ]
+        ],
+        "edit_counts": {
+          "formed": 4,
+          "order_changed": 2
+        },
+        "endpoints": {
+          "reactant": {
+            "n_components": 2,
+            "cycle_rank": 0,
+            "charge": 0,
+            "multiplicity": 1,
+            "rdkit_formal_charge_sum": 0,
+            "rdkit_charged_atom_count": 0,
+            "rdkit_radical_electron_count": 0
+          },
+          "product": {
+            "n_components": 1,
+            "cycle_rank": 3,
+            "charge": 0,
+            "multiplicity": 1,
+            "rdkit_formal_charge_sum": 0,
+            "rdkit_charged_atom_count": 0,
+            "rdkit_radical_electron_count": 0
+          }
+        },
+        "atom_attribute_changes": [
+          {
+            "atom_map_id": 5,
+            "R": {
+              "formal_charge": 0,
+              "radical_electrons": 0,
+              "aromatic": false,
+              "chiral_tag": "CHI_UNSPECIFIED"
+            },
+            "P": {
+              "formal_charge": 0,
+              "radical_electrons": 0,
+              "aromatic": false,
+              "chiral_tag": "CHI_TETRAHEDRAL_CW"
+            }
+          },
+          {
+            "atom_map_id": 6,
+            "R": {
+              "formal_charge": 0,
+              "radical_electrons": 0,
+              "aromatic": false,
+              "chiral_tag": "CHI_UNSPECIFIED"
+            },
+            "P": {
+              "formal_charge": 0,
+              "radical_electrons": 0,
+              "aromatic": false,
+              "chiral_tag": "CHI_TETRAHEDRAL_CCW"
+            }
+          }
+        ],
+        "hydrogen_events": [],
+        "aromatic_regions": {}
+      },
+      "edits": [
+        {
+          "aromatic_region": null,
+          "edit_kind": "formed",
+          "elements": [
+            "C",
+            "N"
+          ],
+          "p_bond_order": 1.0,
+          "pair": [
+            3,
+            4
+          ],
+          "r_bond_order": null,
+          "distance_R_A": 1.423584,
+          "distance_P_A": 1.492994,
+          "cross_component_R": true,
+          "cross_component_P": false,
+          "support_path_R": null
+        },
+        {
+          "aromatic_region": null,
+          "edit_kind": "formed",
+          "elements": [
+            "C",
+            "C"
+          ],
+          "p_bond_order": 1.0,
+          "pair": [
+            3,
+            5
+          ],
+          "r_bond_order": null,
+          "distance_R_A": 1.360599,
+          "distance_P_A": 1.439308,
+          "cross_component_R": true,
+          "cross_component_P": false,
+          "support_path_R": null
+        },
+        {
+          "aromatic_region": null,
+          "edit_kind": "order_changed",
+          "elements": [
+            "C",
+            "C"
+          ],
+          "p_bond_order": 1.0,
+          "pair": [
+            3,
+            6
+          ],
+          "r_bond_order": 3.0,
+          "distance_R_A": 1.199831,
+          "distance_P_A": 1.439381,
+          "cross_component_R": false,
+          "cross_component_P": false
+        },
+        {
+          "aromatic_region": null,
+          "edit_kind": "order_changed",
+          "elements": [
+            "N",
+            "C"
+          ],
+          "p_bond_order": 1.0,
+          "pair": [
+            4,
+            5
+          ],
+          "r_bond_order": 3.0,
+          "distance_R_A": 1.1476,
+          "distance_P_A": 1.488309,
+          "cross_component_R": false,
+          "cross_component_P": false
+        },
+        {
+          "aromatic_region": null,
+          "edit_kind": "formed",
+          "elements": [
+            "N",
+            "C"
+          ],
+          "p_bond_order": 1.0,
+          "pair": [
+            4,
+            6
+          ],
+          "r_bond_order": null,
+          "distance_R_A": 2.443718,
+          "distance_P_A": 1.488305,
+          "cross_component_R": true,
+          "cross_component_P": false,
+          "support_path_R": null
+        },
+        {
+          "aromatic_region": null,
+          "edit_kind": "formed",
+          "elements": [
+            "C",
+            "C"
+          ],
+          "p_bond_order": 1.0,
+          "pair": [
+            5,
+            6
+          ],
+          "r_bond_order": null,
+          "distance_R_A": 2.407653,
+          "distance_P_A": 1.448189,
+          "cross_component_R": true,
+          "cross_component_P": false,
+          "support_path_R": null
+        }
+      ],
+      "proposal": {
+        "family": "NETWORK_PATH",
+        "mode": "PATH_REQUIRED",
+        "drivers_map": [],
+        "observers_map": [
+          [
+            3,
+            4
+          ],
+          [
+            3,
+            5
+          ],
+          [
+            3,
+            6
+          ],
+          [
+            4,
+            5
+          ],
+          [
+            4,
+            6
+          ],
+          [
+            5,
+            6
+          ]
+        ],
+        "direction": "P_to_R",
+        "interpretation": "两组三键片段形成四条交叉连接，得到紧密四原子网络。",
+        "fallback": "重建 R 侧组分装配后 NEB；有可靠中间体再分段。",
+        "risk": "R 中未来成键 3–4、3–5 已比 P 更短；原始跨组分距离不可作形成窗口。",
+        "auxiliary_monitor_policy": "H: donor-acceptor distance and D-H-A angle; rings/aromatics: regional geometry, stereo and non-target contacts",
+        "required_before_execution": [
+          "manual_chemistry_review",
+          "endpoint_geometry_and_assembly_check",
+          "backend_capability_check",
+          "frozen_schedule_and_budget"
+        ]
+      }
+    }
+  ]
+}

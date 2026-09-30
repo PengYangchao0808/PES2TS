@@ -9,6 +9,8 @@ data/manifests/*
 !data/interim/
 data/interim/*
 !data/interim/g2_eligible.json
+!data/interim/g2_scan_ready.json
+!data/interim/g2_needs_review.json
 Output/
 *.h5
 *.hdf5
@@ -21,3 +23,18 @@ Output/
 __pycache__/
 .pytest_cache/
 .venv/
+.pytest-*/
+
+# Session scratch and check-evidence directories never belong in the repo; the
+# versioned evidence is archived under outputs/checks/:
+/.*-check-*/
+
+# outputs/ holds local run artifacts; only the review deliverables and the
+# design-time strategy evidence are versioned:
+outputs/*
+!outputs/01a0ed78-73eb-7833-b3c1-4a6c0733a397/
+outputs/01a0ed78-73eb-7833-b3c1-4a6c0733a397/*
+!outputs/01a0ed78-73eb-7833-b3c1-4a6c0733a397/Demo24_双人化学复核.xlsx
+!outputs/01a0ed78-73eb-7833-b3c1-4a6c0733a397/build_demo24_review_workbook.mjs
+!outputs/demo24_review_images/
+!outputs/pes_generation_strategy_design_v1/

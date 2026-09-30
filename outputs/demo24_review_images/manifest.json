@@ -1,0 +1,654 @@
+[
+  {
+    "reaction_id": "RXN_0000007104",
+    "image": "RXN_0000007104.png",
+    "sha256": "92ade3f96ecdb530cd8478319c6b6d8d2aaec748e031095f565b2d991e0e0170",
+    "mapping_exact": true,
+    "mapped_atom_count_R": 12,
+    "mapped_atom_count_P": 12,
+    "formed_bonds": [
+      "3–11"
+    ],
+    "broken_bonds": [
+      "1–11"
+    ],
+    "bond_order_changes": [
+      "1–2"
+    ],
+    "charge_changes": [],
+    "hydrogen_moves": [
+      [
+        11,
+        [
+          1
+        ],
+        [
+          3
+        ]
+      ]
+    ]
+  },
+  {
+    "reaction_id": "RXN_0000161724",
+    "image": "RXN_0000161724.png",
+    "sha256": "6d80f5099dec1db641d52b0c84c41e2e94e9137ffe6fd7aeceeb0976b099d18b",
+    "mapping_exact": true,
+    "mapped_atom_count_R": 14,
+    "mapped_atom_count_P": 14,
+    "formed_bonds": [
+      "5–13"
+    ],
+    "broken_bonds": [
+      "4–13"
+    ],
+    "bond_order_changes": [],
+    "charge_changes": [
+      [
+        4,
+        1,
+        0
+      ],
+      [
+        5,
+        -1,
+        0
+      ]
+    ],
+    "hydrogen_moves": [
+      [
+        13,
+        [
+          4
+        ],
+        [
+          5
+        ]
+      ]
+    ]
+  },
+  {
+    "reaction_id": "RXN_0000091050",
+    "image": "RXN_0000091050.png",
+    "sha256": "19660cdee7e2d23dc3fac13c5ec2a5453835bbf25c1829058bb7e3a26c057d3e",
+    "mapping_exact": true,
+    "mapped_atom_count_R": 13,
+    "mapped_atom_count_P": 13,
+    "formed_bonds": [
+      "7–9"
+    ],
+    "broken_bonds": [
+      "1–9"
+    ],
+    "bond_order_changes": [],
+    "charge_changes": [
+      [
+        1,
+        0,
+        -1
+      ],
+      [
+        7,
+        0,
+        1
+      ]
+    ],
+    "hydrogen_moves": [
+      [
+        9,
+        [
+          1
+        ],
+        [
+          7
+        ]
+      ]
+    ]
+  },
+  {
+    "reaction_id": "RXN_0000077619",
+    "image": "RXN_0000077619.png",
+    "sha256": "a6ebe1d1815136b2e22109aaea3a5700d6bad5c0fb3d920281f28eb70a841da9",
+    "mapping_exact": true,
+    "mapped_atom_count_R": 16,
+    "mapped_atom_count_P": 16,
+    "formed_bonds": [
+      "2–5"
+    ],
+    "broken_bonds": [],
+    "bond_order_changes": [],
+    "charge_changes": [],
+    "hydrogen_moves": []
+  },
+  {
+    "reaction_id": "RXN_0000026256",
+    "image": "RXN_0000026256.png",
+    "sha256": "9561b712c12fe405cf401886f9073bec66ae1193f80f81f73c9ff2e6519162fc",
+    "mapping_exact": true,
+    "mapped_atom_count_R": 15,
+    "mapped_atom_count_P": 15,
+    "formed_bonds": [],
+    "broken_bonds": [
+      "3–7"
+    ],
+    "bond_order_changes": [],
+    "charge_changes": [],
+    "hydrogen_moves": []
+  },
+  {
+    "reaction_id": "RXN_0000079731",
+    "image": "RXN_0000079731.png",
+    "sha256": "a9c23153c43ecf6055422252cf13d05e2206e6132958874f6ff3ac0fc85cd93d",
+    "mapping_exact": true,
+    "mapped_atom_count_R": 16,
+    "mapped_atom_count_P": 16,
+    "formed_bonds": [],
+    "broken_bonds": [
+      "6–8"
+    ],
+    "bond_order_changes": [
+      "6–7"
+    ],
+    "charge_changes": [
+      [
+        7,
+        -1,
+        0
+      ],
+      [
+        8,
+        1,
+        0
+      ]
+    ],
+    "hydrogen_moves": []
+  },
+  {
+    "reaction_id": "RXN_0000053132",
+    "image": "RXN_0000053132.png",
+    "sha256": "77334ec90eb146a410117d4f0ac87fb2b1199c02c7b8dbeb1af713eb36517ed9",
+    "mapping_exact": true,
+    "mapped_atom_count_R": 17,
+    "mapped_atom_count_P": 17,
+    "formed_bonds": [
+      "5–6"
+    ],
+    "broken_bonds": [
+      "6–8"
+    ],
+    "bond_order_changes": [
+      "5–7",
+      "7–8"
+    ],
+    "charge_changes": [],
+    "hydrogen_moves": []
+  },
+  {
+    "reaction_id": "RXN_0000155302",
+    "image": "RXN_0000155302.png",
+    "sha256": "f319feabe9d7d3b48424629340dad2bfdb6c47a1a28b1d6ca07f9147162719ef",
+    "mapping_exact": true,
+    "mapped_atom_count_R": 12,
+    "mapped_atom_count_P": 12,
+    "formed_bonds": [
+      "1–2"
+    ],
+    "broken_bonds": [
+      "1–5"
+    ],
+    "bond_order_changes": [
+      "2–4",
+      "4–5"
+    ],
+    "charge_changes": [],
+    "hydrogen_moves": []
+  },
+  {
+    "reaction_id": "RXN_0000171675",
+    "image": "RXN_0000171675.png",
+    "sha256": "614d3ec279ef546576d6aeb52872a7869085471e195ae3c9fccaaf914a9c64c7",
+    "mapping_exact": true,
+    "mapped_atom_count_R": 17,
+    "mapped_atom_count_P": 17,
+    "formed_bonds": [
+      "1–2"
+    ],
+    "broken_bonds": [
+      "1–5"
+    ],
+    "bond_order_changes": [
+      "2–7",
+      "4–5"
+    ],
+    "charge_changes": [
+      [
+        4,
+        0,
+        1
+      ],
+      [
+        7,
+        0,
+        -1
+      ]
+    ],
+    "hydrogen_moves": []
+  },
+  {
+    "reaction_id": "RXN_0000100071",
+    "image": "RXN_0000100071.png",
+    "sha256": "acfcf7fc1a29eaaa889d3ad81827330952fade6a0adc6e5478efb66a4ff2eb2d",
+    "mapping_exact": true,
+    "mapped_atom_count_R": 15,
+    "mapped_atom_count_P": 15,
+    "formed_bonds": [
+      "1–3",
+      "2–4"
+    ],
+    "broken_bonds": [
+      "3–4"
+    ],
+    "bond_order_changes": [
+      "1–2"
+    ],
+    "charge_changes": [],
+    "hydrogen_moves": []
+  },
+  {
+    "reaction_id": "RXN_0000132222",
+    "image": "RXN_0000132222.png",
+    "sha256": "5f7386b9981ed40eb2da391e6f1c16ad1202544c65fd7a0082c283355745f7e2",
+    "mapping_exact": true,
+    "mapped_atom_count_R": 16,
+    "mapped_atom_count_P": 16,
+    "formed_bonds": [
+      "3–4",
+      "5–16"
+    ],
+    "broken_bonds": [
+      "3–16"
+    ],
+    "bond_order_changes": [
+      "4–5"
+    ],
+    "charge_changes": [],
+    "hydrogen_moves": [
+      [
+        16,
+        [
+          3
+        ],
+        [
+          5
+        ]
+      ]
+    ]
+  },
+  {
+    "reaction_id": "RXN_0000102998",
+    "image": "RXN_0000102998.png",
+    "sha256": "7ce7fbd480c85b467e99f25c5b1c5bc9bfd3d1a26f6e5acff8778bc705223f5d",
+    "mapping_exact": true,
+    "mapped_atom_count_R": 11,
+    "mapped_atom_count_P": 11,
+    "formed_bonds": [
+      "2–7",
+      "4–8"
+    ],
+    "broken_bonds": [
+      "2–4"
+    ],
+    "bond_order_changes": [
+      "7–8"
+    ],
+    "charge_changes": [],
+    "hydrogen_moves": []
+  },
+  {
+    "reaction_id": "RXN_0000059834",
+    "image": "RXN_0000059834.png",
+    "sha256": "d2ed7508203c6ba2b8d317607c83ff49d023c984ea00d30fcd3f01a4bf60b325",
+    "mapping_exact": true,
+    "mapped_atom_count_R": 20,
+    "mapped_atom_count_P": 20,
+    "formed_bonds": [
+      "1–10",
+      "2–6",
+      "3–6"
+    ],
+    "broken_bonds": [
+      "1–6",
+      "6–10"
+    ],
+    "bond_order_changes": [
+      "2–3"
+    ],
+    "charge_changes": [],
+    "hydrogen_moves": []
+  },
+  {
+    "reaction_id": "RXN_0000094438",
+    "image": "RXN_0000094438.png",
+    "sha256": "bdcd127045eea12f4c3c2a616e53d600de89bdd028a3978a301363e48dd45452",
+    "mapping_exact": true,
+    "mapped_atom_count_R": 11,
+    "mapped_atom_count_P": 11,
+    "formed_bonds": [
+      "1–8",
+      "2–7",
+      "3–4"
+    ],
+    "broken_bonds": [
+      "2–8"
+    ],
+    "bond_order_changes": [
+      "1–4",
+      "3–7"
+    ],
+    "charge_changes": [],
+    "hydrogen_moves": [
+      [
+        8,
+        [
+          2
+        ],
+        [
+          1
+        ]
+      ]
+    ]
+  },
+  {
+    "reaction_id": "RXN_0000187964",
+    "image": "RXN_0000187964.png",
+    "sha256": "af408f60d4b71243d4050f8b54d21f61d54e05e33ea6fa454faeafe5039efb6b",
+    "mapping_exact": true,
+    "mapped_atom_count_R": 16,
+    "mapped_atom_count_P": 16,
+    "formed_bonds": [
+      "2–9",
+      "3–4",
+      "7–8"
+    ],
+    "broken_bonds": [
+      "3–7",
+      "8–9"
+    ],
+    "bond_order_changes": [
+      "2–4"
+    ],
+    "charge_changes": [],
+    "hydrogen_moves": []
+  },
+  {
+    "reaction_id": "RXN_0000100736",
+    "image": "RXN_0000100736.png",
+    "sha256": "842d1793e3991f14d0ee169d0ae0249ce78d635e506a6ad3bb3d0bc07fc3d568",
+    "mapping_exact": true,
+    "mapped_atom_count_R": 14,
+    "mapped_atom_count_P": 14,
+    "formed_bonds": [
+      "5–12",
+      "5–13"
+    ],
+    "broken_bonds": [
+      "1–5",
+      "12–13"
+    ],
+    "bond_order_changes": [
+      "1–2"
+    ],
+    "charge_changes": [],
+    "hydrogen_moves": [
+      [
+        12,
+        [
+          13
+        ],
+        [
+          5
+        ]
+      ],
+      [
+        13,
+        [
+          12
+        ],
+        [
+          5
+        ]
+      ]
+    ]
+  },
+  {
+    "reaction_id": "RXN_0000149368",
+    "image": "RXN_0000149368.png",
+    "sha256": "79d42b40ab6b8644f3f5d5199f4069e20656b9e43bc1a728d3bf3dd846004806",
+    "mapping_exact": true,
+    "mapped_atom_count_R": 19,
+    "mapped_atom_count_P": 19,
+    "formed_bonds": [
+      "10–13"
+    ],
+    "broken_bonds": [
+      "1–10",
+      "2–4",
+      "3–13"
+    ],
+    "bond_order_changes": [
+      "1–2",
+      "3–4"
+    ],
+    "charge_changes": [],
+    "hydrogen_moves": [
+      [
+        10,
+        [
+          1
+        ],
+        [
+          13
+        ]
+      ],
+      [
+        13,
+        [
+          3
+        ],
+        [
+          10
+        ]
+      ]
+    ]
+  },
+  {
+    "reaction_id": "RXN_0000017762",
+    "image": "RXN_0000017762.png",
+    "sha256": "b7c5fd99de765aa76607dd1c78b071639cfba8c3e73c0bc1a8bb16843fa9f02f",
+    "mapping_exact": true,
+    "mapped_atom_count_R": 12,
+    "mapped_atom_count_P": 12,
+    "formed_bonds": [
+      "2–9",
+      "5–12",
+      "7–8"
+    ],
+    "broken_bonds": [
+      "9–12"
+    ],
+    "bond_order_changes": [
+      "2–8",
+      "5–7"
+    ],
+    "charge_changes": [],
+    "hydrogen_moves": [
+      [
+        9,
+        [
+          12
+        ],
+        [
+          2
+        ]
+      ],
+      [
+        12,
+        [
+          9
+        ],
+        [
+          5
+        ]
+      ]
+    ]
+  },
+  {
+    "reaction_id": "RXN_0000138453",
+    "image": "RXN_0000138453.png",
+    "sha256": "98ff85e04a51b2f6ebeefeafe222f90c4674882cd5b751529e2876f4ba5c8a0c",
+    "mapping_exact": true,
+    "mapped_atom_count_R": 12,
+    "mapped_atom_count_P": 12,
+    "formed_bonds": [
+      "2–4"
+    ],
+    "broken_bonds": [
+      "2–6",
+      "5–7"
+    ],
+    "bond_order_changes": [
+      "4–5",
+      "4–8",
+      "5–6",
+      "6–7",
+      "7–8"
+    ],
+    "charge_changes": [],
+    "hydrogen_moves": []
+  },
+  {
+    "reaction_id": "RXN_0000110869",
+    "image": "RXN_0000110869.png",
+    "sha256": "415b60e4b08132c468eedf71adc5767edf931bc922508e7ca1719d78e19b0111",
+    "mapping_exact": true,
+    "mapped_atom_count_R": 14,
+    "mapped_atom_count_P": 14,
+    "formed_bonds": [
+      "8–9"
+    ],
+    "broken_bonds": [
+      "5–8"
+    ],
+    "bond_order_changes": [
+      "2–3",
+      "2–9",
+      "3–4",
+      "4–5",
+      "5–6",
+      "6–9"
+    ],
+    "charge_changes": [],
+    "hydrogen_moves": []
+  },
+  {
+    "reaction_id": "RXN_0000047010",
+    "image": "RXN_0000047010.png",
+    "sha256": "70ff4dd7e664ef4b429b013c8a03f93c2c0d21d103bf0e5f0f528dcef73006ab",
+    "mapping_exact": true,
+    "mapped_atom_count_R": 13,
+    "mapped_atom_count_P": 13,
+    "formed_bonds": [
+      "5–6"
+    ],
+    "broken_bonds": [
+      "2–3"
+    ],
+    "bond_order_changes": [
+      "2–4",
+      "2–7",
+      "3–4",
+      "4–5",
+      "6–7"
+    ],
+    "charge_changes": [],
+    "hydrogen_moves": []
+  },
+  {
+    "reaction_id": "RXN_0000194484",
+    "image": "RXN_0000194484.png",
+    "sha256": "abfacb4769be7bc210bee0fc92240348ca31f6f4e5c1ce35dabe6c34162aaa0f",
+    "mapping_exact": true,
+    "mapped_atom_count_R": 20,
+    "mapped_atom_count_P": 20,
+    "formed_bonds": [
+      "1–9",
+      "2–10",
+      "3–8",
+      "4–8"
+    ],
+    "broken_bonds": [
+      "1–10"
+    ],
+    "bond_order_changes": [
+      "1–2",
+      "3–4",
+      "8–9"
+    ],
+    "charge_changes": [],
+    "hydrogen_moves": [
+      [
+        10,
+        [
+          1
+        ],
+        [
+          2
+        ]
+      ]
+    ]
+  },
+  {
+    "reaction_id": "RXN_0000074997",
+    "image": "RXN_0000074997.png",
+    "sha256": "f4b3ab195a3eb9ec9e87da064c4d2bdcff8cc3995ae0a9b56aec28fc3adb669a",
+    "mapping_exact": true,
+    "mapped_atom_count_R": 16,
+    "mapped_atom_count_P": 16,
+    "formed_bonds": [
+      "3–8"
+    ],
+    "broken_bonds": [
+      "1–6",
+      "2–10",
+      "3–9",
+      "5–8"
+    ],
+    "bond_order_changes": [
+      "1–2",
+      "5–6",
+      "9–10"
+    ],
+    "charge_changes": [],
+    "hydrogen_moves": []
+  },
+  {
+    "reaction_id": "RXN_0000109608",
+    "image": "RXN_0000109608.png",
+    "sha256": "70503a22f24bed44ed5b436f2e9ea2cc6a25b54e001e50d7daf4d5ae8caedd4b",
+    "mapping_exact": true,
+    "mapped_atom_count_R": 10,
+    "mapped_atom_count_P": 10,
+    "formed_bonds": [
+      "3–4",
+      "3–5",
+      "4–6",
+      "5–6"
+    ],
+    "broken_bonds": [],
+    "bond_order_changes": [
+      "3–6",
+      "4–5"
+    ],
+    "charge_changes": [],
+    "hydrogen_moves": []
+  }
+]
