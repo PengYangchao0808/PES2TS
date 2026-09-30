@@ -47,3 +47,16 @@
 - BackendCapability = orca_capabilities_v1.json 形：engine/adapter_version、supported_modes⊆{SINGLE_1D,COUPLED_1D,SCHEDULED_1D,PATH_NEB}、coordinate_kinds⊆{B,A,D}、point_limits{baseline<=max}、constraint_support 三布尔、method_element_coverage、probe_receipts。effective_capability 留给 todo 16 计算（不在合同内）。
 - 全量套件：700 passed, 4 deselected（666 基线 + 本 todo 21 + 并行 todo5 worker 的 test_endpoint_graph.py 13 个——其文件未入本提交）。lsp error 级清零（_is_int 等改 TypeGuard）；reportAny 警告与 contracts.py 同型，仓库无 basedpyright CI，门是 pytest。
 - 教训：`.omo/notepads/.../learnings.md` 已被 git 跟踪（早前 force-add），更新需随提交；evidence 仍需 `git add -f`。contracts_v2.py ~850 纯 LOC 超 250 上限——SIZE_OK：任务显式单文件合同 + contracts.py（559 纯 LOC）先例。
+
+## 2026-10-01 todo 5 — EndpointGraphBundle + 表示归一化 — PASSED
+- 新建 `pes2ts_core/g1/endpoint_graph.py`（EndpointGraphBundle frozen dataclass + build_endpoint_graph_bundle 纯函数）与 `pes2ts_core/g1/endpoint_materials.py`（白名单材料 schema 信任边界）+ `tests/test_endpoint_graph.py`（13 tests 全绿）。现有 g1 文件零改动（只增）。
+- 双侧同一代码路径：复用 `g1/parse.py::parse_reaction`（removeHs=False），芳香键保持 1.5 不 kekulize，docstring 固化 `rdkit_default_unkekulized` + rdkit.__version__（本环境 2026.03.6）；禁用互变异构标准化（根本不调 MolStandardize/AddHs）。
+- 材料 schema：顶层键仅 {r,p}；每原子键 {map,element,coordinates}；dict 按 map 键 或 list 带显式 "map" 字段。`MAP_INVALID`（非双射：extra/missing/duplicate map、materials 元素与 SMILES 不符）；`MAP_AMBIGUOUS`（order_based_binding_forbidden——禁止顺序绑定）；`MATERIALS_SCHEMA_INVALID`（未知键/坏坐标/缺 side）。
+- 守恒：R→P 逐 map 元素比较 → `ELEMENT_IMBALANCE`；同位素 → `ISOTOPE_IMBALANCE`；显式 H 清点缺口（SMILES 侧或 materials 侧丢 H map）→ `H_INVENTORY_MISMATCH`（typed，绝不静默）。注意：`[CH3:1]` 括号 H 是隐式计数、不是图原子——`explicit_H_neighbors` 只数图上显式 H 邻居；测试 fixture 必须写 `[H:n]` 才有 H 清点语义。
+- content_sha256：节点按 map 排序、边按 (min_map,max_map,type,order) 排序、stable_json_dumps；几何绑定 = SHA256 over centroid-centered 坐标（round 8 位）→ 刚体平移不变；材料按 map 键 → SMILES 原子顺序置换不变（测试：反转 SMILES 原子序哈希相等；平移 (5,-2,1.5) 哈希相等）。
+- 真值防火墙：`to_doc()` 键扫描 vs `contracts.FORBIDDEN_TRUTH_KEYS ∪ v2_verify.FORBIDDEN_EXPORT_KEYS` = 0；数据类字段名同样扫描。
+- SIZE：endpoint_materials.py 159 纯 LOC 达标；endpoint_graph.py 355 纯 LOC → `# noqa: SIZE_OK`（设计 §13.1 单模块图合同：冻结 schema+builder+身份；材料边界已拆出）。
+- 全量套件：`python -m pytest -q` → **700 passed, 4 deselected**（666 基线 + todo3 21 + 本 todo 13；0 失败）。`conda run -n pes2ts python -m pytest -q tests/test_endpoint_graph.py` → 13 passed。
+- Evidence: `.omo/evidence/task-5-pes-generation-graph-scan-strategy.txt`；Commit: `feat(g1): add EndpointGraphBundle and representation normalization`。
+- 教训（给 todo 6-9）：下游只从 `g1.endpoint_graph` import（re-export 全部 codes/EndpointGraphError，与 materials 同一类对象）；材料适配（demo24 CSV + export 快照 → map 键 {element,coordinates}）是后续 todo 的职责；bundle 不存原始坐标（只存 geometry_ref SHA256）。
+

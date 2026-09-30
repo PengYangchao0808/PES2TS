@@ -1,0 +1,67 @@
+task-5 pes-generation-graph-scan-strategy — EndpointGraphBundle + representation normalization
+date: 2026-10-01
+env: conda pes2ts (/root/miniforge3/envs/pes2ts), python 3.12.14, rdkit 2026.03.6
+
+WHAT LANDED
+- pes2ts_core/g1/endpoint_graph.py (new): EndpointGraphBundle frozen dataclass
+  (r_graph/p_graph node+edge+component lists, ConservationReport, GeometryRef,
+  content_sha256) + pure build_endpoint_graph_bundle(reaction_smiles,
+  endpoint_materials). Fixed aromatic model "rdkit_default_unkekulized" (both
+  sides via g1/parse.py parse_reaction, removeHs=False, no tautomer pass,
+  aromatic stays 1.5 per bond_changes.py semantics); rdkit.__version__ recorded
+  in the bundle doc. Element/isotope conservation raises typed
+  ELEMENT_IMBALANCE / ISOTOPE_IMBALANCE; explicit-H inventory gaps raise typed
+  H_INVENTORY_MISMATCH (never silent). content_sha256 over frozen content via
+  stable_json_dumps — invariant to template atom ordering (nodes/edges sorted
+  by map; materials map-keyed) and rigid translation (geometry SHA256 over
+  centroid-centered coordinates rounded to 8 decimals). to_doc() carries no
+  truth-derived keys.
+- pes2ts_core/g1/endpoint_materials.py (new): whitelisted materials schema
+  boundary — top keys {r,p}; per-atom keys {map,element,coordinates}; dict
+  keyed by map id OR list of entries with explicit "map" key. Typed errors:
+  MAP_INVALID (non-bijection: extra/missing maps, duplicate map, materials
+  element mismatch), MAP_AMBIGUOUS (order_based_binding_forbidden), 
+  MATERIALS_SCHEMA_INVALID (unknown keys, bad coordinates, missing sides).
+  Split out of endpoint_graph.py as the trust boundary (parse-don't-validate);
+  endpoint_graph re-exports the public error/codes so downstream imports from
+  g1.endpoint_graph stay stable.
+- tests/test_endpoint_graph.py (new): 13 tests — conservation pass; template
+  atom-order invariance (reversed SMILES, same hash); rigid-translation
+  invariance (shift (5,-2,1.5), same hash + geometry sha); element swap →
+  ELEMENT_IMBALANCE; isotope swap → ISOTOPE_IMBALANCE; H deletion (SMILES-side
+  and materials-side) → typed H_INVENTORY_MISMATCH; MAP_INVALID extra map 99 +
+  missing heavy map 2; MAP_AMBIGUOUS order-based binding; whitelist violations
+  → MATERIALS_SCHEMA_INVALID; forbidden-keys scan over to_doc + dataclass
+  fields vs contracts.FORBIDDEN_TRUTH_KEYS ∪ v2_verify.FORBIDDEN_EXPORT_KEYS =
+  0 hits; aromatic fixture ring bonds bond_order==1.5/aromatic=True + versions
+  recorded; node/edge property-set completeness (explicit-H fixture:
+  [C:1]([H:2])([H:3])([H:4])[H:5] closed-shell, explicit_H_neighbors=4).
+- SIZE: endpoint_graph.py 405 raw / 355 pure-LOC → # noqa: SIZE_OK marker
+  (design §13.1 single graph-contract module; materials boundary already
+  split). endpoint_materials.py 183 raw / 159 pure-LOC.
+
+VERIFICATION
+- conda run -n pes2ts python -m pytest -q tests/test_endpoint_graph.py
+  → 13 passed in 0.77s
+- /root/miniforge3/envs/pes2ts/bin/python -m pytest -q  (full default suite)
+  → 700 passed, 4 deselected in 35.23s
+  (notepad baseline 666 + 13 new = 679 expected; 700 observed because parallel
+  todo-3 contracts_v2 work added tests to the tree — 0 failures either way)
+- lsp_diagnostics: no errors on endpoint_materials.py / test file after
+  frozenset fix; endpoint_graph.py shows stale-index reportMissingImports for
+  endpoint_materials (runtime import verified OK, __all__ re-exports complete,
+  same EndpointGraphError class object as materials module)
+- atomic-order/hash evidence (inline conda python): shuffle hash equal True;
+  translation hash equal True; geometry sha equal True; ELEM→ELEMENT_IMBALANCE
+  map=2 R=O P=S; ISOPE→ISOTOPE_IMBALANCE map=1; HDEL→H_INVENTORY_MISMATCH
+  map=4; aromatic edges R=6 orders=[1.5]; doc keys clean.
+
+NOTES FOR DOWNSTREAM TODOS (6-9)
+- build_endpoint_graph_bundle is the only entry point; materials schema is
+  map-keyed {"element","coordinates"} per side "r"/"p" — demo24 candidate CSV +
+  export snapshots must be adapted into this shape in later todos.
+- Aromatic model + rdkit version are frozen in the doc; do not re-kekulize.
+- Explicit-H neighbors count only graph-attached H atoms (bracket-implicit Hs
+  are not map-space atoms; fixtures must write explicit [H:n] for H inventory).
+- content_sha256 covers graphs + conservation + geometry binding (centered
+  coords); raw coordinates are not part of the bundle (geometry_ref only).
