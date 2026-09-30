@@ -23,6 +23,12 @@ external GFN2-xTB binary via ``subprocess``, so its dynamic-execution
 primitives are sanctioned, but it is still scanned in full for quarantined
 path strings, truth-file names, and truth imports.
 
+A third, narrowest list permits the reviewed ACP CLI adapters
+(``pes2ts_core/integration/acp/cli_backend.py`` and
+``pes2ts_core/integration/acp/stage_cli.py``) to import ``subprocess`` for
+the sanctioned ACP process boundary; every other dynamic-execution primitive
+(``importlib``, ``eval``, ``exec``) and every truth check still apply to them.
+
 Importing ``pes2ts_core.g0.truth_quarantine`` from elsewhere stays allowed: it
 returns relocation metadata, never trajectory data.  Importing the
 ``pes2ts_core.g0.truth`` package or ``truth_reader`` is flagged.
@@ -68,6 +74,15 @@ DEFAULT_ALLOWLIST: Final[tuple[str, ...]] = (
 #: to these modules in full.
 DYNAMIC_EXEC_ALLOWLIST: Final[tuple[str, ...]] = (
     "pes2ts_core/g2/runner.py",
+)
+
+#: Modules permitted to import ``subprocess`` only (project-relative). The
+#: reviewed ACP CLI adapters launch the ACP engine as an argv-only child
+#: process; every other dynamic-execution finding (``importlib``, ``eval``,
+#: ``exec``, ``__import__``) and every truth check still applies to them.
+SUBPROCESS_IMPORT_ALLOWLIST: Final[tuple[str, ...]] = (
+    "pes2ts_core/integration/acp/cli_backend.py",
+    "pes2ts_core/integration/acp/stage_cli.py",
 )
 
 TRUTH_PATH_MARKERS: Final[tuple[str, ...]] = ("ground_truth", "truth_sources")
@@ -170,7 +185,7 @@ def _imported_names(node: ast.Import | ast.ImportFrom) -> list[str]:
 def _dynamic_import_findings(
     node: ast.Import | ast.ImportFrom, file: str
 ) -> list[Finding]:
-    """Flag subprocess/importlib imports only (used inside the CLI exemption)."""
+    """Flag subprocess/importlib imports (used inside narrow exceptions)."""
     findings: list[Finding] = []
     for name in _imported_names(node):
         if name.split(".")[0] in DYNAMIC_MODULES:
@@ -248,7 +263,7 @@ def _scan_file(
     allowlist: Sequence[str],
     dynamic_exec_allowlist: Sequence[str],
 ) -> list[Finding]:
-    """Scan one module, honoring both allowlists and the ``cli.py`` rule."""
+    """Scan one module, honoring every allowlist and the ``cli.py`` rule."""
     file = str(path)
     try:
         source = path.read_text(encoding="utf-8")
@@ -268,7 +283,16 @@ def _scan_file(
     for node in ast.walk(module):
         findings.extend(_check_node(node, file))
     if relative in dynamic_exec_allowlist:
-        return [finding for finding in findings if finding.kind != DYNAMIC_EXEC_RISK]
+        findings = [finding for finding in findings if finding.kind != DYNAMIC_EXEC_RISK]
+    if relative in SUBPROCESS_IMPORT_ALLOWLIST:
+        findings = [
+            finding
+            for finding in findings
+            if not (
+                finding.kind == DYNAMIC_EXEC_RISK
+                and finding.detail == "imports subprocess (manual review)"
+            )
+        ]
     return findings
 
 
@@ -281,7 +305,9 @@ def scan_truth_access(
 
     Modules in *allowlist* are skipped entirely; modules in
     *dynamic_exec_allowlist* are scanned in full except that their
-    ``DYNAMIC_EXEC_RISK`` findings are suppressed.
+    ``DYNAMIC_EXEC_RISK`` findings are suppressed; modules in
+    ``SUBPROCESS_IMPORT_ALLOWLIST`` are scanned in full except that their
+    subprocess-import finding is suppressed.
     """
     root = _resolve_scan_root(package_root)
     findings: list[Finding] = []
@@ -326,6 +352,7 @@ __all__ = [
     "CLI_TRUTH_HANDLER_MARKER",
     "DEFAULT_ALLOWLIST",
     "DYNAMIC_EXEC_ALLOWLIST",
+    "SUBPROCESS_IMPORT_ALLOWLIST",
     "DYNAMIC_EXEC_RISK",
     "TRUTH_FILE_REF",
     "TRUTH_IMPORT",

@@ -75,6 +75,15 @@ g1_class:
   canonical_budget: 2000
   sample_size: 20
   sample_seed: 42
+g1_v2:
+  shard_size: 1000
+  collapse_audit_budget: 256
+  center_shell: 1
+  taxonomy_version: "g1p2_taxonomy_v2"
+  canonical_budget: 2000
+  sample_size: 20
+  sample_seed: 42
+
 g2:
   eligible_path: null            # null => <paths.interim>/g2_eligible.json
   shard_size: 1000

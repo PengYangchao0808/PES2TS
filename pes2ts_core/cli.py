@@ -51,17 +51,6 @@ from pes2ts_core.g0.fetch import (
     write_source_manifest,
 )
 from pes2ts_core.g0.inventory import INVENTORY_PARQUET_FILENAME, build_inventory
-from pes2ts_core.g0.neardup import (
-    EXIT_AUDIT_BUDGET_EXCEEDED,
-    AuditBudgetExceeded,
-    compute_fingerprints,
-    cross_split_leak_audit,
-)
-from pes2ts_core.g0.pipeline import (
-    EXIT_PIPELINE_FAILED,
-    run_pipeline,
-    with_data_root,
-)
 from pes2ts_core.g0.reader import H5SchemaError
 from pes2ts_core.g0.split import (
     EXIT_AUDIT_INCOMPLETE,
@@ -139,6 +128,11 @@ G1_SUBCOMMANDS: tuple[str, ...] = (
     "resolve-map",
     "classify",
     "gate",
+    "v2-build",
+    "v2-classify",
+    "v2-verify",
+    "v2-gate",
+    "v2-sanitize-exports",
 )
 
 #: ``g1 verify --stage`` choices.
@@ -212,6 +206,11 @@ def _g0_dedup_handler(_args: argparse.Namespace, config: dict[str, Any]) -> int:
 
 def _g0_audit_handler(_args: argparse.Namespace, config: dict[str, Any]) -> int:
     """Run the full cross-split near-duplicate audit; exit 6 on budget abort."""
+    from pes2ts_core.g0.neardup import (
+        EXIT_AUDIT_BUDGET_EXCEEDED, AuditBudgetExceeded, compute_fingerprints,
+        cross_split_leak_audit,
+    )
+
     logger = logging.getLogger(__name__)
     try:
         fingerprints = compute_fingerprints(config)
@@ -263,6 +262,8 @@ def _g0_split_handler(_args: argparse.Namespace, config: dict[str, Any]) -> int:
 
 def _g0_freeze_handler(args: argparse.Namespace, config: dict[str, Any]) -> int:
     """Freeze the split manifest under the explicit leak decision policy."""
+    from pes2ts_core.g0.neardup import EXIT_AUDIT_BUDGET_EXCEEDED, AuditBudgetExceeded
+
     logger = logging.getLogger(__name__)
     remediation = cast(
         Literal["none", "exclude-leaky", "rebuild"],
@@ -362,6 +363,8 @@ def _g0_quarantine_handler(_args: argparse.Namespace, config: dict[str, Any]) ->
 
 def _g0_run_all_handler(args: argparse.Namespace, config: dict[str, Any]) -> int:
     """Run the full idempotent G0 pipeline; exit 21 on a stage failure or halt."""
+    from pes2ts_core.g0.pipeline import EXIT_PIPELINE_FAILED, run_pipeline, with_data_root
+
     logger = logging.getLogger(__name__)
     data_root = getattr(args, "data_root", None)
     if data_root:
@@ -653,6 +656,106 @@ def _g1_gate_handler(_args: argparse.Namespace, config: dict[str, Any]) -> int:
     return 0
 
 
+def _g1_v2_build_handler(_args: argparse.Namespace, config: dict[str, Any]) -> int:
+    """Freeze the v1 baseline and rebuild the v2 exclusive-edit tree."""
+    logger = logging.getLogger(__name__)
+    from pes2ts_core.g1.v2_build import build_v2
+
+    try:
+        result = build_v2(config)
+    except FileNotFoundError as exc:
+        logger.error("%s", exc)
+        return EXIT_CHECKSUM_MISMATCH
+    print(
+        f"v2-build: total={result.n_total} clean={result.n_clean} "
+        f"issues={result.n_issues} excluded={result.n_excluded}"
+    )
+    return 0
+
+
+def _g1_v2_classify_handler(_args: argparse.Namespace, config: dict[str, Any]) -> int:
+    """Classify every v2 edit document and write the migration report."""
+    logger = logging.getLogger(__name__)
+    from pes2ts_core.g1.v2_classify import classify_v2
+
+    try:
+        manifest = classify_v2(config)
+    except FileNotFoundError as exc:
+        logger.error("%s", exc)
+        return EXIT_CHECKSUM_MISMATCH
+    print(
+        f"v2-classify: total={manifest['n_total']} "
+        f"classified={manifest['n_classified']} "
+        f"l0_clusters={manifest['n_clusters_by_level']['l0_edit_family']}"
+    )
+    return 0
+
+
+def _g1_v2_verify_handler(_args: argparse.Namespace, config: dict[str, Any]) -> int:
+    """Recompute the v2 trees; exit 22 on any verification problem."""
+    logger = logging.getLogger(__name__)
+    from pes2ts_core.g1.v2_verify import verify_v2
+
+    try:
+        result = verify_v2(config)
+    except FileNotFoundError as exc:
+        logger.error("%s", exc)
+        return EXIT_CHECKSUM_MISMATCH
+    if result.problems:
+        for problem in result.problems[:10]:
+            logger.error("v2 verify: %s", problem)
+        return EXIT_G1_BUILD_FAILED
+    print(
+        f"v2-verify: total={result.n_total} clean={result.n_clean} "
+        f"issues={result.n_issues} excluded={result.n_excluded} problems=0"
+    )
+    return 0
+
+
+def _g1_v2_gate_handler(args: argparse.Namespace, config: dict[str, Any]) -> int:
+    """Write the v2 gate manifests and the whitelisted G2 export."""
+    logger = logging.getLogger(__name__)
+    from pes2ts_core.g1.v2_gate import run_v2_gate
+
+    assume_verified = bool(getattr(args, "assume_verified", False))
+    try:
+        result = run_v2_gate(config, assume_verified=assume_verified)
+    except FileNotFoundError as exc:
+        logger.error("%s", exc)
+        return EXIT_CHECKSUM_MISMATCH
+    if result.refusals:
+        for refusal in result.refusals[:10]:
+            logger.error("v2 gate refusal: %s", refusal)
+        return EXIT_G1_BUILD_FAILED
+    print(
+        f"v2-gate: scan_ready={result.n_scan_ready}/{result.n_denominator} "
+        f"needs_review={result.n_needs_review} excluded={result.n_excluded}"
+    )
+    return 0
+
+
+def _g1_v2_sanitize_exports_handler(args: argparse.Namespace, config: dict[str, Any]) -> int:
+    """Non-destructively migrate the legacy G2 export tree without truth fields."""
+    from pes2ts_core.g1.export_sanitize import migrate_export_tree
+    from pes2ts_core.g1.v2_schema import G2_SCAN_READY_FILENAME, EXPORT_DIRNAME, V2_DIRNAME
+    from pes2ts_core.utils.jsonio import read_json
+
+    interim = Path(config["paths"]["interim"])
+    source_root = interim / V2_DIRNAME / EXPORT_DIRNAME
+    output_root = Path(args.output_root) if args.output_root else source_root.with_name("export_contracts_v1")
+    ready = read_json(interim / G2_SCAN_READY_FILENAME)
+    reaction_ids = set(ready.get("reaction_ids", []))
+    manifest = migrate_export_tree(
+        source_root, output_root, expected_reaction_ids=reaction_ids,
+        resume_staging=bool(args.resume_staging),
+    )
+    print(
+        f"v2-sanitize-exports: exports={manifest['n_exports']} bytes={manifest['n_bytes']} "
+        f"removed={manifest['removed_truth_key_occurrences']} output={output_root}"
+    )
+    return 0
+
+
 #: The handler for every ``g0`` subcommand; all are implemented.
 SUBCOMMAND_HANDLERS: dict[str, G0Handler] = {
     "fetch": _fetch_handler,
@@ -677,6 +780,11 @@ G1_SUBCOMMAND_HANDLERS: dict[str, G1Handler] = {
     "resolve-map": _g1_resolve_map_handler,
     "classify": _g1_classify_handler,
     "gate": _g1_gate_handler,
+    "v2-build": _g1_v2_build_handler,
+    "v2-classify": _g1_v2_classify_handler,
+    "v2-verify": _g1_v2_verify_handler,
+    "v2-gate": _g1_v2_gate_handler,
+    "v2-sanitize-exports": _g1_v2_sanitize_exports_handler,
 }
 
 
@@ -799,6 +907,112 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
 
     top_subparsers = parser.add_subparsers(dest="command", required=True, metavar="COMMAND")
+    demo_parser = top_subparsers.add_parser(
+        "demo", help="write the offline synthetic seven-contract demonstration bundle",
+    )
+    _add_common_options(demo_parser, suppress_defaults=True)
+    demo_parser.add_argument("--output", default="examples/contracts_v1", metavar="PATH",
+                             help="output directory (default: examples/contracts_v1)")
+    demo_parser.set_defaults(handler=_demo_handler)
+    acp_run_parser = top_subparsers.add_parser(
+        "acp-run", help="execute one frozen ScanPlan attempt through the local ACP CLI",
+    )
+    _add_common_options(acp_run_parser, suppress_defaults=True)
+    acp_run_parser.add_argument("--case", required=True, metavar="PATH", help="sealed ReactionCase JSON")
+    acp_run_parser.add_argument("--review-record", required=True, metavar="PATH",
+                                help="accepted ReviewRecord linked to this exact ready ReactionCase")
+    acp_run_parser.add_argument("--plan", required=True, metavar="PATH", help="sealed ScanPlan JSON")
+    acp_run_parser.add_argument("--acp-root", required=True, metavar="PATH", help="ACP source checkout")
+    acp_run_parser.add_argument("--python", dest="python_executable", metavar="PATH",
+                                help="Python executable from the configured ACP environment")
+    acp_run_parser.add_argument("--acp-config", metavar="PATH", help="ACP QC/resource configuration")
+    acp_run_parser.add_argument("--output-root", required=True, metavar="PATH",
+                                help="PES2TS output root; each attempt gets a separate directory")
+    acp_run_parser.add_argument("--execution-id", required=True, help="PES2TS execution identifier")
+    acp_run_parser.add_argument("--attempt-id", required=True, help="immutable attempt identifier")
+    acp_run_parser.add_argument("--candidate-id", help="frozen candidate ID (default: first candidate)")
+    acp_run_parser.add_argument("--timeout", type=float, help="wall-time limit in seconds (cannot exceed plan budget)")
+    acp_run_parser.add_argument("--nproc", type=int, help="ACP process core count")
+    acp_run_parser.add_argument("--memory", help="ACP memory limit, e.g. 8GB")
+    acp_run_parser.set_defaults(handler=_acp_run_handler)
+    demo_run_parser = top_subparsers.add_parser(
+        "acp-demo-run", help="execute a frozen train-first Demo cohort through the ACP CLI",
+    )
+    _add_common_options(demo_run_parser, suppress_defaults=True)
+    demo_run_parser.add_argument("--manifest", required=True, metavar="PATH",
+                                 help="frozen DemoExecutionManifest JSON")
+    demo_run_parser.add_argument("--acp-root", required=True, metavar="PATH", help="ACP source checkout")
+    demo_run_parser.add_argument("--python", dest="python_executable", metavar="PATH",
+                                 help="Python executable from the configured ACP environment")
+    demo_run_parser.add_argument("--acp-config", metavar="PATH", help="ACP QC/resource configuration")
+    demo_run_parser.add_argument("--output-root", required=True, metavar="PATH",
+                                 help="new or empty output directory for this immutable cohort run")
+    demo_run_parser.add_argument("--include-valid", action="store_true",
+                                 help="explicitly execute accepted valid-split cases for frozen evaluation")
+    demo_run_parser.add_argument("--train-index", metavar="PATH",
+                                 help="matching train-only DemoExecutionIndex.json required with --include-valid")
+    demo_run_parser.add_argument("--nproc", type=int, help="ACP process core count")
+    demo_run_parser.add_argument("--memory", help="ACP memory limit, e.g. 8GB")
+    demo_run_parser.add_argument("--evaluation-split", choices=("train", "valid", "test", "unassigned"),
+                                 default="valid")
+    demo_run_parser.add_argument("--ranking-labels", metavar="PATH",
+                                 help="bundle-relative JSON array of independently sourced frame labels")
+    demo_run_parser.set_defaults(handler=_acp_demo_run_handler)
+    validation_run_parser = top_subparsers.add_parser(
+        "acp-validate-run",
+        help="run ACP TS optimization/frequency then two-way IRC for one accepted proposal",
+    )
+    _add_common_options(validation_run_parser, suppress_defaults=True)
+    validation_run_parser.add_argument("--case", required=True, metavar="PATH", help="reviewed ReactionCase JSON")
+    validation_run_parser.add_argument("--review-record", required=True, metavar="PATH", help="accepted ReviewRecord JSON")
+    validation_run_parser.add_argument("--path", required=True, metavar="PATH", help="usable PathBundle JSON")
+    validation_run_parser.add_argument("--proposal", required=True, metavar="PATH", help="accepted SeedProposal JSON")
+    validation_run_parser.add_argument("--source-frame-id", required=True)
+    validation_run_parser.add_argument("--acp-root", required=True, metavar="PATH", help="ACP source checkout")
+    validation_run_parser.add_argument("--python", dest="python_executable", metavar="PATH",
+                                       help="Python executable from the ACP environment")
+    validation_run_parser.add_argument("--acp-config", metavar="PATH", help="ACP QC/resource configuration")
+    validation_run_parser.add_argument("--output-root", required=True, metavar="PATH", help="stage attempt output root")
+    validation_run_parser.add_argument("--batch-execution-id", required=True)
+    validation_run_parser.add_argument("--batch-attempt-id", required=True)
+    validation_run_parser.add_argument("--irc-execution-id", required=True)
+    validation_run_parser.add_argument("--irc-attempt-id", required=True)
+    validation_run_parser.add_argument("--batch-item-id", default="pes2ts_ts")
+    validation_run_parser.add_argument("--method", required=True, help="frozen OptTS/frequency/IRC method")
+    validation_run_parser.add_argument("--basis", required=True, help="frozen basis; empty string for built-in basis")
+    validation_run_parser.add_argument("--batch-timeout", type=float, required=True, help="BatchOptimize wall-time budget in seconds")
+    validation_run_parser.add_argument("--irc-timeout", type=float, required=True, help="IRC wall-time budget in seconds")
+    validation_run_parser.add_argument("--nproc", type=int)
+    validation_run_parser.add_argument("--memory", help="ACP memory limit, e.g. 8GB")
+    validation_run_parser.add_argument("--irc-maxpoints", type=int, default=100)
+    validation_run_parser.add_argument("--irc-step", type=float, default=0.1)
+    validation_run_parser.add_argument("--endpoint-tolerance", type=float, default=0.35)
+    validation_run_parser.add_argument("--validation-id", required=True)
+    validation_run_parser.add_argument("--output", required=True, metavar="PATH", help="ValidationResult JSON output")
+    validation_run_parser.set_defaults(handler=_acp_validate_run_handler)
+    validation_parser = top_subparsers.add_parser(
+        "acp-collect-validation",
+        help="verify ACP TS/frequency/IRC products and assemble one ValidationResult",
+    )
+    _add_common_options(validation_parser, suppress_defaults=True)
+    validation_parser.add_argument("--case", required=True, metavar="PATH", help="reviewed ReactionCase JSON")
+    validation_parser.add_argument("--review-record", required=True, metavar="PATH", help="accepted ReviewRecord JSON")
+    validation_parser.add_argument("--path", required=True, metavar="PATH", help="usable PathBundle JSON")
+    validation_parser.add_argument("--proposal", required=True, metavar="PATH", help="accepted SeedProposal JSON")
+    validation_parser.add_argument("--batch-result", required=True, metavar="DIR", help="completed ACP BatchOptimize task directory")
+    validation_parser.add_argument("--batch-item", required=True, help="TS-tagged BatchOptimize item ID")
+    validation_parser.add_argument("--batch-execution-id", required=True)
+    validation_parser.add_argument("--batch-attempt-id", required=True)
+    validation_parser.add_argument("--irc-result", required=True, metavar="DIR", help="completed ACP IRC task directory")
+    validation_parser.add_argument("--irc-execution-id", required=True)
+    validation_parser.add_argument("--irc-attempt-id", required=True)
+    validation_parser.add_argument("--method", required=True, help="frozen validation method")
+    validation_parser.add_argument("--basis", required=True, help="frozen validation basis (empty string for built-in basis)")
+    validation_parser.add_argument("--endpoint-tolerance", type=float, default=0.35,
+                                    help="R/P endpoint aligned RMSD limit in Angstrom (default: 0.35)")
+    validation_parser.add_argument("--validation-id", required=True)
+    validation_parser.add_argument("--output", required=True, metavar="PATH", help="ValidationResult JSON output")
+    validation_parser.set_defaults(handler=_acp_collect_validation_handler)
     g0_parser = top_subparsers.add_parser(
         "g0",
         help="G0: data entry, ground-truth quarantine, and split freezing",
@@ -893,6 +1107,11 @@ def build_parser() -> argparse.ArgumentParser:
         "resolve-map": "build the truth-assisted P1 TS/IRC mapping documents (requires --allow-truth)",
         "classify": "classify the P1 documents into the hierarchical reaction taxonomy",
         "gate": "write the G2 eligibility gate manifest and eligible id list",
+        "v2-build": "freeze the v1 baseline and rebuild exclusive v2 edits with the audit",
+        "v2-classify": "classify the v2 documents and write the v1->v2 migration report",
+        "v2-verify": "recompute the v2 edit/class trees and the export whitelist",
+        "v2-gate": "write scan_ready/needs_review/excluded manifests and the G2 export",
+        "v2-sanitize-exports": "write a separate truth-clean copy of legacy G2 exports",
     }
     for name in G1_SUBCOMMANDS:
         sub_parser = g1_subparsers.add_parser(name, help=g1_help[name])
@@ -932,6 +1151,17 @@ def build_parser() -> argparse.ArgumentParser:
                 default="build",
                 help="Which tree to verify (default: build, the classic G1 documents)",
             )
+        elif name == "v2-gate":
+            sub_parser.add_argument(
+                "--assume-verified",
+                action="store_true",
+                help="Skip the built-in v2 verification (after an explicit `g1 v2-verify`)",
+            )
+        elif name == "v2-sanitize-exports":
+            sub_parser.add_argument("--output-root", default=None, metavar="PATH",
+                                    help="new destination (must not exist; default: sibling export_contracts_v1)")
+            sub_parser.add_argument("--resume-staging", action="store_true",
+                                    help="resume this command's existing .staging directory after checking it")
         elif name in ("join-audit", "resolve-map"):
             sub_parser.add_argument(
                 "--allow-truth",
@@ -998,6 +1228,220 @@ def build_parser() -> argparse.ArgumentParser:
             )
         sub_parser.set_defaults(handler=G2_SUBCOMMAND_HANDLERS[name])
     return parser
+
+
+def _demo_handler(args: argparse.Namespace, _config: dict[str, Any]) -> int:
+    """Write the local interface demonstration; never submits external jobs."""
+    from pes2ts_core.demo import write_synthetic_bundle
+
+    root = write_synthetic_bundle(args.output)
+    print(f"synthetic contract bundle written: {root}")
+    return 0
+
+
+def _acp_run_handler(args: argparse.Namespace, _config: dict[str, Any]) -> int:
+    """Execute and collect one ACP CLI attempt; never infer TS validation."""
+    import json
+
+    from pes2ts_core.contracts import ContractError, dumps_document, loads_document
+    from pes2ts_core.integration.acp.adapter import scan_plan_to_acp_request
+    from pes2ts_core.integration.acp.cli_backend import (
+        ACPCLIBackend, ACPCLIError, cli_result_to_execution_record,
+        collect_cli_path_bundle, write_cli_result_json,
+    )
+    from pes2ts_core.integration.acp.quality import apply_scan_path_quality
+
+    try:
+        case = loads_document(Path(args.case).read_text(encoding="utf-8"))
+        review = loads_document(Path(args.review_record).read_text(encoding="utf-8"))
+        plan = loads_document(Path(args.plan).read_text(encoding="utf-8"))
+        source = case.get("source", {})
+        review_output = review.get("extensions", {}).get("pes2ts.review_output.v1", {})
+        if (case.get("status") != "ready" or review.get("schema_name") != "ReviewRecord"
+                or review.get("status") != "accepted"
+                or (review.get("reaction_id"), review.get("case_id"), review.get("dataset_version"), review.get("split"))
+                   != (case.get("reaction_id"), case.get("case_id"), case.get("dataset_version"), case.get("split"))
+                or source.get("review_record_id") != review.get("object_id")
+                or source.get("reviewed_from_case_sha256") != review.get("case_sha256")
+                or review_output.get("reviewed_case_sha256") != case.get("content_sha256")):
+            raise ACPCLIError("calculation requires an accepted human review bound to this exact ready ReactionCase")
+        preflight = scan_plan_to_acp_request(case, plan, args.candidate_id)
+        candidate_id = preflight["metadata"]["candidate_id"]
+        candidate = next(row for row in plan["candidates"] if row["candidate_id"] == candidate_id)
+        frozen_timeout = float(candidate["budget"]["max_wall_seconds"])
+        timeout = args.timeout if args.timeout is not None else frozen_timeout
+        if timeout > frozen_timeout:
+            raise ACPCLIError("requested timeout exceeds the frozen ScanPlan wall-time budget")
+        backend = ACPCLIBackend(acp_root=args.acp_root, python_executable=args.python_executable,
+                                config_path=args.acp_config)
+        result = backend.run_scan(execution_id=args.execution_id, attempt_id=args.attempt_id,
+            scan_request=preflight["scan_request"], output_root=args.output_root,
+            timeout_seconds=timeout, nproc=args.nproc, memory=args.memory)
+        attempt_root = Path(result.attempt_dir)
+        audit_dir = attempt_root / "PES2TS"
+        audit_dir.mkdir(parents=True, exist_ok=True)
+        execution = cli_result_to_execution_record(case=case, plan=plan,
+            candidate_id=candidate_id, result=result)
+        (audit_dir / "ExecutionRecord.json").write_text(dumps_document(execution), encoding="utf-8")
+        summary = {"execution_id": args.execution_id, "attempt_id": args.attempt_id,
+                   "acp_task_id": None, "request_sha256": result.request_sha256,
+                   "manifest_sha256": result.manifest_sha256, "process_status": result.status,
+                   "returncode": result.returncode, "wall_seconds": result.wall_seconds,
+                   "execution_record": "ExecutionRecord.json", "path_bundle": None,
+                   "path_quality": None, "error": result.error}
+        if result.status == "completed":
+            path = collect_cli_path_bundle(output_dir=attempt_root, case=case, plan=plan,
+                                           execution_id=args.execution_id, candidate_id=candidate_id)
+            assessed = apply_scan_path_quality(plan=plan, execution=execution, path=path)
+            path = assessed["path_bundle"]
+            (audit_dir / "PathBundle.json").write_text(dumps_document(path), encoding="utf-8")
+            (audit_dir / "PathQuality.json").write_text(
+                json.dumps(assessed["quality_assessment"], ensure_ascii=False, sort_keys=True, indent=2),
+                encoding="utf-8")
+            summary["path_bundle"] = "PathBundle.json"
+            summary["path_quality"] = path["status"]
+        write_cli_result_json(result, audit_dir / "cli_attempt_summary.json")
+        (audit_dir / "run_summary.json").write_text(
+            json.dumps(summary, ensure_ascii=False, sort_keys=True, indent=2), encoding="utf-8")
+        print(json.dumps(summary, ensure_ascii=False, sort_keys=True))
+        return 0 if result.status == "completed" else 1
+    except (OSError, ValueError, ContractError, ACPCLIError) as exc:
+        logging.getLogger(__name__).error("ACP CLI attempt failed: %s", exc)
+        return 2
+
+
+def _acp_demo_run_handler(args: argparse.Namespace, _config: dict[str, Any]) -> int:
+    """Run the train-first frozen cohort and persist its index/metrics bundle."""
+    import json
+
+    from pes2ts_core.contracts import ContractError
+    from pes2ts_core.demo_runner import run_demo_execution_manifest
+
+    try:
+        result = run_demo_execution_manifest(manifest_path=args.manifest,
+            output_root=args.output_root, acp_root=args.acp_root,
+            python_executable=args.python_executable, config_path=args.acp_config,
+            nproc=args.nproc, memory=args.memory, include_valid=args.include_valid,
+            train_index_path=args.train_index, evaluation_split=args.evaluation_split,
+            ranking_labels_path=args.ranking_labels)
+        print(json.dumps(result, ensure_ascii=False, sort_keys=True))
+        return 0
+    except (OSError, ValueError, ContractError) as exc:
+        logging.getLogger(__name__).error("ACP Demo cohort failed: %s", exc)
+        return 2
+
+
+def _acp_collect_validation_handler(args: argparse.Namespace, _config: dict[str, Any]) -> int:
+    """Verify existing ACP stage artifacts and persist the derived result."""
+    import json
+
+    from pes2ts_core.contracts import ContractError, loads_document
+    from pes2ts_core.integration.acp.cli_backend import ACPCLIError
+    from pes2ts_core.integration.acp.stage_results import collect_acp_validation_result
+    from pes2ts_core.utils.jsonio import write_json
+
+    try:
+        case = loads_document(Path(args.case).read_text(encoding="utf-8"))
+        review = loads_document(Path(args.review_record).read_text(encoding="utf-8"))
+        path = loads_document(Path(args.path).read_text(encoding="utf-8"))
+        proposal = loads_document(Path(args.proposal).read_text(encoding="utf-8"))
+        result = collect_acp_validation_result(
+            validation_id=args.validation_id, case=case, review_record=review,
+            path=path, proposal=proposal, batch_task_root=args.batch_result,
+            batch_item_id=args.batch_item, batch_execution_id=args.batch_execution_id,
+            batch_attempt_id=args.batch_attempt_id, irc_task_root=args.irc_result,
+            irc_execution_id=args.irc_execution_id, irc_attempt_id=args.irc_attempt_id,
+            expected_method=args.method, expected_basis=args.basis,
+            endpoint_tolerance_angstrom=args.endpoint_tolerance)
+        write_json(args.output, result)
+        print(json.dumps({"validation_id": result["object_id"],
+                          "status": result["status"], "output": str(Path(args.output))},
+                         ensure_ascii=False, sort_keys=True))
+        return 0
+    except (OSError, ValueError, ContractError, ACPCLIError) as exc:
+        logging.getLogger(__name__).error("ACP validation collection failed: %s", exc)
+        return 2
+
+
+def _acp_validate_run_handler(args: argparse.Namespace, _config: dict[str, Any]) -> int:
+    """Run and verify one selected proposal through ACP OptTS/Freq and IRC."""
+    import json
+
+    from pes2ts_core.contracts import ContractError, loads_document
+    from pes2ts_core.integration.acp.cli_backend import ACPCLIError
+    from pes2ts_core.integration.acp.stage_cli import ACPValidationCLIBackend
+    from pes2ts_core.integration.acp.stage_results import collect_acp_validation_result
+    from pes2ts_core.utils.jsonio import write_json
+
+    try:
+        case = loads_document(Path(args.case).read_text(encoding="utf-8"))
+        review = loads_document(Path(args.review_record).read_text(encoding="utf-8"))
+        path = loads_document(Path(args.path).read_text(encoding="utf-8"))
+        proposal = loads_document(Path(args.proposal).read_text(encoding="utf-8"))
+        backend = ACPValidationCLIBackend(acp_root=args.acp_root,
+            python_executable=args.python_executable, config_path=args.acp_config)
+        stage = backend.run_validation(case=case, review_record=review, path=path,
+            proposal=proposal, source_frame_id=args.source_frame_id,
+            validation_id=args.validation_id,
+            expected_method=args.method, expected_basis=args.basis,
+            output_root=args.output_root, batch_execution_id=args.batch_execution_id,
+            batch_attempt_id=args.batch_attempt_id, irc_execution_id=args.irc_execution_id,
+            irc_attempt_id=args.irc_attempt_id, batch_item_id=args.batch_item_id,
+            batch_timeout_seconds=args.batch_timeout, irc_timeout_seconds=args.irc_timeout,
+            nproc=args.nproc, memory=args.memory, irc_maxpoints=args.irc_maxpoints,
+            irc_step=args.irc_step, endpoint_tolerance_angstrom=args.endpoint_tolerance)
+        result = stage.get("validation_result")
+        if result is None:
+            result = collect_acp_validation_result(validation_id=args.validation_id,
+                case=case, review_record=review, path=path, proposal=proposal,
+                batch_task_root=stage["batch"].task_root, batch_item_id=args.batch_item_id,
+                batch_execution_id=args.batch_execution_id, batch_attempt_id=args.batch_attempt_id,
+                irc_task_root=stage["irc"].task_root, irc_execution_id=args.irc_execution_id,
+                irc_attempt_id=args.irc_attempt_id, expected_method=args.method,
+                expected_basis=args.basis, endpoint_tolerance_angstrom=args.endpoint_tolerance)
+        result = _add_stage_receipt_extension(result, stage, args.output_root)
+        write_json(args.output, result)
+        print(json.dumps({"validation_id": result["object_id"],
+            "status": result["status"], "output": str(Path(args.output)),
+            "batch_attempt": stage["batch"].attempt_id,
+            "irc_attempt": stage["irc"].attempt_id if stage["irc"] else None},
+            ensure_ascii=False, sort_keys=True))
+        return 0 if result["status"] in {"passed", "failed"} else 1
+    except (OSError, ValueError, ContractError, ACPCLIError) as exc:
+        logging.getLogger(__name__).error("ACP validation run failed: %s", exc)
+        return 2
+
+
+def _add_stage_receipt_extension(result: dict[str, Any], stage: dict[str, Any],
+                                 output_root: str | Path) -> dict[str, Any]:
+    """Bind local stage receipts and wall-time accounting into ValidationResult."""
+    from pes2ts_core.contracts import ContractError, seal_document
+
+    root = Path(output_root).expanduser().resolve()
+    receipts = []
+    for name in ("batch", "irc"):
+        item = stage.get(name)
+        if item is None:
+            continue
+        task_root = Path(item.task_root).resolve()
+        try:
+            task_ref = task_root.relative_to(root).as_posix()
+        except ValueError as exc:
+            raise ContractError("ACP validation attempt escaped its output root") from exc
+        receipts.append({"workflow": item.workflow, "execution_id": item.execution_id,
+            "attempt_id": item.attempt_id, "status": item.status,
+            "returncode": item.returncode, "wall_seconds": item.wall_seconds,
+            "cpu_seconds": None, "request_sha256": item.request_sha256,
+            "result_manifest_sha256": item.manifest_sha256,
+            "task_ref": task_ref, "receipt_ref": f"{task_ref}/WORK/pes2ts/stage_cli_receipt.json",
+            "log_ref": f"{task_ref}/WORK/pes2ts/acp_cli.log", "error": item.error})
+    extensions = dict(result.get("extensions", {}))
+    extensions["pes2ts.acp_stage_receipts.v1"] = {
+        "schema": "pes2ts_acp_stage_receipts_v1",
+        "wall_time_unit": "second", "cpu_time_available": False,
+        "attempts": receipts,
+    }
+    return seal_document({**result, "extensions": extensions})
 
 
 def main(argv: Sequence[str] | None = None) -> int:

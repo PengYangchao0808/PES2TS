@@ -9,11 +9,123 @@ imports without installation.
 from __future__ import annotations
 
 import sys
+import argparse
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
+
+if len(sys.argv) >= 2 and sys.argv[1] in {
+    "demo", "view-path", "project-acp", "acp-request", "acp-run", "acp-demo-run",
+    "acp-collect-validation", "acp-validate-run"
+}:
+    # Route the contract/ACP surface without importing the optional G0 data
+    # pipeline (and its chemistry dependencies such as drfp).
+    command = sys.argv[1]
+    from pes2ts_core.utils.jsonio import read_json, write_json
+
+    if command in {"acp-run", "acp-demo-run", "acp-collect-validation", "acp-validate-run"}:
+        from pes2ts_core.cli import main
+
+        raise SystemExit(main(sys.argv[1:]))
+
+    if command == "acp-request":
+        from pes2ts_core.integration.acp.adapter import scan_plan_to_acp_job_payload
+
+        request_parser = argparse.ArgumentParser(prog="pes2ts acp-request")
+        request_parser.add_argument("--case", required=True, metavar="PATH", help="ReactionCase JSON")
+        request_parser.add_argument("--plan", required=True, metavar="PATH", help="ScanPlan JSON")
+        request_parser.add_argument("--resources", required=True, metavar="PATH",
+                                    help="JSON object with explicit ACP resources")
+        request_parser.add_argument("--candidate-id", metavar="ID", help="candidate to project (default: first)")
+        request_parser.add_argument("--project-id", metavar="ID", help="optional ACP project ID")
+        request_parser.add_argument("--acp-root", metavar="PATH",
+                                    help="optionally validate against this ACP checkout's native schemas")
+        request_parser.add_argument("--output", required=True, metavar="PATH", help="ACP job request JSON output")
+        request_args = request_parser.parse_args(sys.argv[2:])
+        case = read_json(request_args.case)
+        plan = read_json(request_args.plan)
+        resources = read_json(request_args.resources)
+        payload = scan_plan_to_acp_job_payload(case, plan, resources=resources,
+            candidate_id=request_args.candidate_id, project_id=request_args.project_id)
+        if request_args.acp_root:
+            acp_src = (Path(request_args.acp_root).resolve() / "src")
+            if not acp_src.is_dir():
+                request_parser.error(f"ACP source directory does not exist: {acp_src}")
+            if str(acp_src) not in sys.path:
+                sys.path.insert(0, str(acp_src))
+            try:
+                from acp.api.v1_schemas import BondLengthScanJobInput, V1JobCreateRequest
+                from acp.calculations.pes.contracts import PesScanRequest, validate_scan_protocol
+
+                native_job = V1JobCreateRequest.model_validate(payload)
+                BondLengthScanJobInput.model_validate(native_job.input)
+                native_scan = PesScanRequest.from_dict({
+                    "mode": native_job.method.get("mode"), **native_job.input})
+                validate_scan_protocol(native_scan.coordinate, native_scan.protocol)
+            except Exception as exc:
+                request_parser.error(f"ACP native request validation failed: {exc}")
+            print("ACP native job, input, and PES scan protocol validation passed")
+        write_json(request_args.output, payload)
+        print(f"ACP job request written (not submitted): {request_args.output}")
+        raise SystemExit(0)
+
+    if command == "demo":
+        from pes2ts_core.demo import write_synthetic_bundle
+
+        demo_parser = argparse.ArgumentParser(prog="pes2ts demo")
+        demo_parser.add_argument("--output", default="examples/contracts_v1", metavar="PATH")
+        demo_args = demo_parser.parse_args(sys.argv[2:])
+        print(f"synthetic contract bundle written: {write_synthetic_bundle(demo_args.output)}")
+        raise SystemExit(0)
+
+    if command == "view-path":
+        from pes2ts_core.viewer import render_path_viewer
+
+        view_parser = argparse.ArgumentParser(prog="pes2ts view-path")
+        view_parser.add_argument("--path", required=True, metavar="PATH", help="PathBundle JSON")
+        view_parser.add_argument("--output", required=True, metavar="PATH", help="HTML output file")
+        view_parser.add_argument("--top-k", type=int, default=3)
+        view_args = view_parser.parse_args(sys.argv[2:])
+        print(f"path viewer written: {render_path_viewer(read_json(view_args.path), view_args.output, top_k=view_args.top_k)}")
+        raise SystemExit(0)
+
+    from pes2ts_core.integration.acp.trajectory import (
+        path_bundle_to_acp_pes_profile,
+        project_path_bundle_to_acp_graph,
+    )
+
+    project_parser = argparse.ArgumentParser(prog="pes2ts project-acp")
+    project_parser.add_argument("--path", required=True, metavar="PATH", help="PathBundle JSON")
+    project_parser.add_argument("--plan", required=True, metavar="PATH", help="ScanPlan JSON")
+    project_parser.add_argument("--acp-root", required=True, metavar="PATH", help="ACP checkout root")
+    project_parser.add_argument("--proposal", action="append", default=[], metavar="PATH",
+                                help="SeedProposal JSON; repeat to project multiple ranking suggestions")
+    project_parser.add_argument("--output", required=True, metavar="PATH", help="ACP graph JSON output")
+    project_parser.add_argument("--profile-output", metavar="PATH",
+                                help="optional pes_profile_v2 JSON for ACP RESULT/pes_search/pes_profile.json")
+    project_parser.add_argument("--relative-reference", choices=("minimum", "first"), default="minimum")
+    project_args = project_parser.parse_args(sys.argv[2:])
+    path_bundle = read_json(project_args.path)
+    scan_plan = read_json(project_args.plan)
+    proposals = [read_json(path) for path in project_args.proposal]
+    graph = project_path_bundle_to_acp_graph(
+        path_bundle, scan_plan,
+        acp_source_root=project_args.acp_root,
+        proposals=proposals,
+        relative_reference=project_args.relative_reference,
+    )
+    write_json(project_args.output, graph)
+    print(f"ACP trajectory graph written: {project_args.output}")
+    if project_args.profile_output:
+        profile = path_bundle_to_acp_pes_profile(
+            path_bundle, scan_plan, proposals=proposals,
+            relative_reference=project_args.relative_reference,
+        )
+        write_json(project_args.profile_output, profile)
+        print(f"ACP PES profile written: {project_args.profile_output}")
+    raise SystemExit(0)
 
 from pes2ts_core.cli import main
 
