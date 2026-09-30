@@ -5,18 +5,22 @@ from scripts.build_demo24_reaction_cases import DEFAULT_OUTPUT, MANIFEST_PATH, b
 from scripts.audit_demo24_spin_sources import build_spin_audit
 
 
-def test_demo24_cases_are_standardized_with_source_backed_spin_but_still_need_review():
-    manifest = build_review_cases()
+def test_demo24_cases_are_standardized_with_source_backed_spin_but_still_need_review(tmp_path):
+    output_root = tmp_path / "review_cases"
+    manifest_path = tmp_path / "demo24_reaction_case_manifest_v1.json"
+    manifest = build_review_cases(output_root=output_root, manifest_path=manifest_path)
 
     assert manifest["n_cases"] == 24
     assert manifest["split_counts"] == {"train": 16, "valid": 8}
     assert manifest["case_status_counts"] == {"needs_review": 24}
     assert manifest["status"] == "awaiting_manual_chemistry_review"
+    assert manifest_path.is_file()
+    assert (output_root / "README.md").is_file()
     assert MANIFEST_PATH.is_file()
     assert (DEFAULT_OUTPUT / "README.md").is_file()
 
     for record in manifest["records"]:
-        case = loads_document((DEFAULT_OUTPUT / record["relative_path"]).read_text(encoding="utf-8"))
+        case = loads_document((output_root / record["relative_path"]).read_text(encoding="utf-8"))
         assert case["reaction_id"] == record["reaction_id"]
         assert case["status"] == "needs_review"
         assert case["reactant"]["multiplicity"] == record["multiplicities"]["reactant"]
