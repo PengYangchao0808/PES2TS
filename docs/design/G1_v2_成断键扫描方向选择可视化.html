@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="description" content="PES2TS G1 v2 成断键方向选择与扫描计划的交互式设计说明">
+  <title>PES2TS · G1 成断键扫描方向选择</title>
+  <style>
+    :root {
+      --bg: #080e19; --surface: #101b2a; --surface-2: #162638;
+      --line: #2b4155; --ink: #ecf5fb; --muted: #aec1ce;
+      --teal: #58dfc3; --blue: #83b9ff; --amber: #ffd188;
+      --red: #ff9a9a; --radius: 18px;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; color: var(--ink); background: radial-gradient(circle at 82% 1%, #183b4e 0, transparent 28%), radial-gradient(circle at 0 40%, #152a43 0, transparent 28%), var(--bg); font: 16px/1.6 "Microsoft YaHei", "Noto Sans SC", Arial, sans-serif; }
+    a { color: var(--blue); text-underline-offset: 3px; }
+    button, input { font: inherit; }
+    button { cursor: pointer; }
+    button:focus-visible, input:focus-visible, a:focus-visible { outline: 3px solid var(--amber); outline-offset: 3px; }
+    .wrap { max-width: 1200px; margin: auto; padding: 34px 28px 68px; }
+    .topline, .section-head, .sim-head, .scenario-head { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
+    .eyebrow { color: var(--teal); font-size: .76rem; font-weight: 800; letter-spacing: .18em; text-transform: uppercase; }
+    .stamp { color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; font-size: .78rem; }
+    h1 { font-size: clamp(2.25rem, 5.5vw, 4.7rem); letter-spacing: -.055em; line-height: 1.1; margin: 11px 0 16px; }
+    h2 { font-size: clamp(1.35rem, 2.3vw, 2rem); letter-spacing: -.025em; line-height: 1.3; margin: 0; }
+    h3 { font-size: 1.02rem; margin: 0; }
+    p { margin: 0; }
+    .hero { display: grid; grid-template-columns: 1.35fr .65fr; gap: 28px; align-items: center; margin: 28px 0 36px; }
+    .lead { max-width: 760px; color: #c5d7e2; font-size: 1.08rem; }
+    .hero-note { border: 1px solid #406476; background: linear-gradient(145deg, #143748, #102233); border-radius: 22px; padding: 23px; }
+    .hero-note b { color: var(--teal); font-size: 2rem; display: block; line-height: 1.1; letter-spacing: -.04em; }
+    .hero-note span { color: var(--muted); display: block; margin-top: 10px; font-size: .88rem; }
+    .chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 22px; }
+    .chip { border: 1px solid #3c5668; border-radius: 999px; padding: 6px 11px; color: #dbe8ef; font-size: .8rem; }
+    .chip strong { color: var(--teal); }
+    section { margin-top: 43px; }
+    .section-sub { color: var(--muted); margin-top: 6px; max-width: 890px; }
+    .flow { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; margin-top: 20px; }
+    .flow-step { position: relative; background: #102031; border: 1px solid var(--line); border-radius: 16px; padding: 16px; min-height: 149px; }
+    .flow-step:not(:last-child)::after { content: "→"; position: absolute; right: -16px; top: 47%; color: var(--teal); z-index: 1; font-size: 1.15rem; font-weight: 800; }
+    .flow-step .num { color: var(--teal); font-weight: 800; font-size: .78rem; letter-spacing: .08em; }
+    .flow-step h3 { margin: 9px 0 5px; }
+    .flow-step p { color: var(--muted); font-size: .84rem; line-height: 1.48; }
+    .formula-strip { display: flex; gap: 10px; align-items: stretch; flex-wrap: wrap; margin-top: 18px; }
+    .formula { border: 1px solid var(--line); background: #101c2a; border-radius: 12px; padding: 10px 14px; flex: 1 1 240px; }
+    .formula b { color: var(--teal); font-size: 1.12rem; }
+    .formula span { display: block; color: var(--muted); font-size: .82rem; }
+    .formula.alt b { color: var(--blue); }
+    .formula.order b { color: var(--amber); }
+    .simulator { margin-top: 22px; border: 1px solid #3b6171; background: linear-gradient(160deg, #12293a, #0f1c2c); border-radius: 22px; padding: 23px; }
+    .sim-head small { color: var(--muted); }
+    .input-row { display: flex; align-items: end; gap: 13px; flex-wrap: wrap; margin: 18px 0 14px; }
+    .field { display: grid; gap: 5px; }
+    .field label { font-weight: 700; font-size: .87rem; color: #d6e7ee; }
+    .field input { width: 92px; border: 1px solid #4f6a7e; border-radius: 9px; background: #081724; color: var(--ink); padding: 9px 11px; font-variant-numeric: tabular-nums; }
+    .field input:invalid { border-color: var(--red); }
+    .preset-wrap { display: flex; gap: 7px; flex-wrap: wrap; align-items: center; }
+    .preset-label { color: var(--muted); font-size: .82rem; margin-right: 2px; }
+    .preset { background: #172b3e; color: #dceaf0; border: 1px solid #476075; border-radius: 999px; padding: 6px 11px; font-size: .8rem; }
+    .preset:hover, .preset[aria-pressed="true"] { border-color: var(--teal); color: var(--ink); background: #20534f; }
+    .validation { color: var(--red); min-height: 24px; font-size: .85rem; }
+    .candidate-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 8px; }
+    .candidate { background: #0e1d2d; border: 1px solid #385066; border-radius: 16px; padding: 17px; min-width: 0; }
+    .candidate.recommended { border-color: var(--teal); box-shadow: inset 0 3px 0 var(--teal); }
+    .candidate.alternative { border-color: var(--blue); box-shadow: inset 0 3px 0 var(--blue); }
+    .candidate-head { display: flex; align-items: start; justify-content: space-between; gap: 8px; }
+    .candidate-head h3 { font-size: 1.08rem; }
+    .badge { border-radius: 999px; padding: 3px 9px; border: 1px solid #4b6173; color: var(--muted); font-size: .72rem; white-space: nowrap; }
+    .badge.good { border-color: #458b82; color: var(--teal); }
+    .badge.warn { border-color: #967247; color: var(--amber); }
+    .badge.bad { border-color: #a15e65; color: var(--red); }
+    .candidate-number { font-size: 2.45rem; font-weight: 800; letter-spacing: -.05em; line-height: 1.2; margin: 10px 0 4px; font-variant-numeric: tabular-nums; }
+    .candidate-number small { font-size: .85rem; font-weight: 500; letter-spacing: 0; color: var(--muted); }
+    .candidate p { color: #c1d4df; font-size: .88rem; }
+    .candidate .route { display: inline-block; background: #1a3546; border-radius: 8px; padding: 5px 9px; margin-top: 10px; color: #e3f3f7; font-size: .83rem; }
+    .bond-rail { display: flex; align-items: center; gap: 5px; min-height: 16px; margin: 11px 0 0; }
+    .bond { display: block; width: 25px; height: 7px; border-radius: 5px; background: var(--teal); }
+    .bond.dim { background: #63798b; }
+    .bond-over { color: var(--amber); font-size: .75rem; padding-left: 3px; }
+    .decision { margin-top: 16px; border-left: 4px solid var(--teal); border-radius: 0 12px 12px 0; background: #18413f; padding: 16px 18px; }
+    .decision.warning { border-color: var(--amber); background: #453820; }
+    .decision.special { border-color: var(--blue); background: #1b354b; }
+    .decision strong { display: block; font-size: 1.12rem; }
+    .decision p { color: #d9e9ed; margin-top: 5px; }
+    .decision .decision-meta { color: #bdd6de; font-size: .83rem; margin-top: 8px; }
+    .quality-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 14px; }
+    .quality-strip div { background: #102433; border: 1px solid #345469; border-radius: 10px; padding: 10px 12px; color: #d8e9ef; font-size: .81rem; }
+    .quality-strip b { color: var(--amber); display: block; font-size: .74rem; letter-spacing: .04em; }
+    .branch-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 11px; margin-top: 19px; }
+    .branch { border: 1px solid var(--line); border-radius: 15px; background: #101f2f; padding: 15px; transition: background .2s, border-color .2s; }
+    .branch.active { background: #19423f; border-color: var(--teal); }
+    .branch .condition { color: var(--teal); font-size: .81rem; font-weight: 800; }
+    .branch h3 { margin: 8px 0 4px; }
+    .branch p { color: var(--muted); font-size: .82rem; }
+    .comparison { margin-top: 20px; display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(300px, .85fr); gap: 20px; align-items: start; }
+    .data-panel { background: #101f2f; border: 1px solid var(--line); border-radius: 17px; padding: 20px; }
+    .data-panel h3 { margin-bottom: 14px; }
+    .bar-group { margin: 17px 0; }
+    .bar-head { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; font-size: .88rem; }
+    .bar-head b { font-variant-numeric: tabular-nums; }
+    .bar-head span { color: var(--muted); }
+    .stack { height: 18px; border-radius: 999px; overflow: hidden; display: flex; background: #253b4b; margin-top: 7px; }
+    .stack .covered { background: var(--teal); }
+    .stack .zero { background: var(--amber); }
+    .stack .over { background: #936e82; }
+    .legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: .76rem; color: var(--muted); }
+    .legend i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 5px; }
+    .legend .cov { background: var(--teal); } .legend .zero-key { background: var(--amber); } .legend .over-key { background: #936e82; }
+    .big-number { color: var(--teal); font-size: 2.2rem; font-weight: 800; letter-spacing: -.04em; line-height: 1.2; font-variant-numeric: tabular-nums; }
+    .data-panel p { color: var(--muted); font-size: .88rem; margin-top: 11px; }
+    .data-panel ul { margin: 12px 0 0; padding-left: 19px; color: #cbdde5; font-size: .87rem; }
+    .data-panel li { margin: 6px 0; }
+    .principle-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 18px; }
+    .principle { background: #101f2f; border: 1px solid var(--line); border-radius: 15px; padding: 17px; }
+    .principle strong { color: var(--teal); display: block; margin-bottom: 5px; }
+    .principle p { color: #c3d6e0; font-size: .88rem; }
+    .handoff { display: grid; grid-template-columns: 1fr auto 1fr; align-items: stretch; gap: 18px; margin-top: 20px; }
+    .handoff-col { background: #102232; border: 1px solid #355468; border-radius: 17px; padding: 19px; }
+    .handoff-col h3 { color: var(--teal); font-size: 1.2rem; margin-bottom: 9px; }
+    .handoff-col.g2 h3 { color: var(--blue); }
+    .handoff-col ul { padding-left: 18px; margin: 0; color: #d0e0e8; font-size: .88rem; }
+    .handoff-col li { margin: 5px 0; }
+    .handoff-arrow { display: grid; place-items: center; color: var(--amber); font-size: 2rem; }
+    .foot { border-top: 1px solid var(--line); padding-top: 21px; margin-top: 46px; color: var(--muted); font-size: .83rem; }
+    .foot a { margin-right: 17px; display: inline-block; margin-top: 5px; }
+    code { color: #c7f7e9; background: #153547; border-radius: 4px; padding: 0 4px; }
+    .sr-only { position: absolute; height: 1px; width: 1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; }
+    @media (max-width: 930px) { .hero, .comparison { grid-template-columns: 1fr; } .flow { grid-template-columns: repeat(3, 1fr); } .flow-step::after { display: none; } .branch-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 650px) { .wrap { padding: 21px 15px 48px; } .flow, .candidate-grid, .principle-grid, .handoff, .quality-strip { grid-template-columns: 1fr; } .branch-grid { grid-template-columns: 1fr 1fr; } .handoff-arrow { transform: rotate(90deg); } .hero-note { padding: 17px; } }
+    @media (max-width: 410px) { .branch-grid { grid-template-columns: 1fr; } .field input { width: 76px; } }
+    @media print { :root { --bg:#fff; --surface:#fff; --surface-2:#fff; --line:#aab7c2; --ink:#172b35; --muted:#405563; --teal:#087b67; --blue:#1c568c; --amber:#9b5c00; --red:#a53535; } body { background: #fff; } .wrap { max-width: none; padding: 0; } .hero-note, .flow-step, .formula, .simulator, .candidate, .branch, .data-panel, .principle, .handoff-col { background: #fff !important; color: #172b35; box-shadow: none; } .candidate p, .section-sub, .lead, .decision p, .data-panel p, .principle p, .handoff-col ul, .flow-step p, .branch p, .decision .decision-meta { color: #334c5a; } .decision { background: #e8f4f0 !important; color: #172b35; } .decision.warning { background: #fff0d7 !important; } .decision.special { background: #e5f0fa !important; } .quality-strip div, .candidate .route { background: #eef3f5; color: #172b35; } .preset-wrap { display: none; } .field input { background: #fff; color: #172b35; } .flow-step, .data-panel, .principle, .handoff-col { break-inside: avoid; } a { color: #1c568c; } }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <div class="topline"><span class="eyebrow">PES2TS / G1 v2 · scan strategy</span><span class="stamp">设计讨论版 · 2026-09-27 · 单文件离线可用</span></div>
+    <header class="hero">
+      <div>
+        <h1>成断键方向<br>如何决定扫描？</h1>
+        <p class="lead">从原始反应 <strong>R→P</strong> 同时构造两个“成键方向”，比较可拉伸键数与端点质量。G1 冻结候选和回退条件；G2 按计划计算、记录并核验。</p>
+        <div class="chips"><span class="chip"><strong>核心</strong> 成键端作为锚点</span><span class="chip"><strong>首选</strong> 混合选边</span><span class="chip"><strong>边界</strong> 最多 3 个同步坐标</span></div>
+      </div>
+      <div class="hero-note"><b>99.76%</b><span>当前 clean 集合中，混合规则在“完整新键集合为 1–3 根”这一单一条件上的候选覆盖率：183,012 / 183,460。仍需几何、装配与路径验证。</span></div>
+    </header>
+
+    <section aria-labelledby="flow-title">
+      <h2 id="flow-title">一条反应的决策链</h2>
+      <p class="section-sub">原始 R/P 标签始终保留。这里选择的是扫描算法的方向和端点，不重写数据集的化学方向。</p>
+      <div class="flow" role="list">
+        <div class="flow-step" role="listitem"><span class="num">01 · 输入</span><h3>映射的 R / P</h3><p>端点几何、原子映射、组分和编辑图。</p></div>
+        <div class="flow-step" role="listitem"><span class="num">02 · 计数</span><h3>求 F 与 B</h3><p>F 是 R→P 新连接；B 是 R→P 断连接。</p></div>
+        <div class="flow-step" role="listitem"><span class="num">03 · 双向候选</span><h3>比较 P 与 R 锚点</h3><p>各自的新键数、几何质量与装配成本。</p></div>
+        <div class="flow-step" role="listitem"><span class="num">04 · G1 冻结</span><h3>主方案 + 回退</h3><p>驱动键、观察键、步数、预算和触发条件。</p></div>
+        <div class="flow-step" role="listitem"><span class="num">05 · G2 执行</span><h3>计算与核验</h3><p>运行预定候选，验证目标编辑与 TS 初猜。</p></div>
+      </div>
+      <div class="formula-strip">
+        <div class="formula"><b>F = |E<sub>P</sub> \ E<sub>R</sub>|</b><span>原始正向 R→P 形成的新连接</span></div>
+        <div class="formula alt"><b>B = |E<sub>R</sub> \ E<sub>P</sub>|</b><span>原始正向断裂、反向 P→R 形成的连接</span></div>
+        <div class="formula order"><b>O 单独记录</b><span>已有连接的键级变化不计入 F/B</span></div>
+      </div>
+    </section>
+
+    <section aria-labelledby="sim-title">
+      <div class="section-head"><div><h2 id="sim-title">输入 F / B，查看候选</h2><p class="section-sub">这是“键数优先”的预选器；实际 G1 还要筛端点几何、组分装配与未约束编辑。</p></div></div>
+      <div class="simulator">
+        <div class="sim-head"><h3>双向成键与反向拉伸</h3><small>试着改变 F、B 或点选典型情形</small></div>
+        <div class="input-row">
+          <div class="field"><label for="f-input">F · R→P 成键</label><input id="f-input" type="number" min="0" max="20" step="1" value="2" inputmode="numeric"></div>
+          <div class="field"><label for="b-input">B · R→P 断键</label><input id="b-input" type="number" min="0" max="20" step="1" value="1" inputmode="numeric"></div>
+          <div class="preset-wrap" aria-label="典型案例"><span class="preset-label">案例</span><button class="preset" type="button" data-f="1" data-b="0">结合 / 解离</button><button class="preset" type="button" data-f="1" data-b="1">H 转移</button><button class="preset" type="button" data-f="2" data-b="0">双键形成</button><button class="preset" type="button" data-f="4" data-b="1">4 对 1</button><button class="preset" type="button" data-f="4" data-b="4">双侧超限</button></div>
+        </div>
+        <div id="validation" class="validation" role="alert"></div>
+        <div class="candidate-grid">
+          <article id="forward-card" class="candidate" aria-label="R 到 P 成键候选">
+            <div class="candidate-head"><h3>候选 A · R → P 成键</h3><span id="forward-status" class="badge">待判定</span></div>
+            <div class="candidate-number"><span id="forward-number">2</span> <small>根终点新键</small></div>
+            <p>终点与键合锚点：<strong>P</strong>。若从该端拉伸，实际扫描是 <strong>P → R</strong>。</p>
+            <div id="forward-rail" class="bond-rail" aria-hidden="true"></div>
+            <span class="route">形成 F 根 → 在 P 端拉伸 F 根</span>
+          </article>
+          <article id="reverse-card" class="candidate" aria-label="P 到 R 成键候选">
+            <div class="candidate-head"><h3>候选 B · P → R 成键</h3><span id="reverse-status" class="badge">待判定</span></div>
+            <div class="candidate-number"><span id="reverse-number">1</span> <small>根终点新键</small></div>
+            <p>终点与键合锚点：<strong>R</strong>。若从该端拉伸，实际扫描是 <strong>R → P</strong>。</p>
+            <div id="reverse-rail" class="bond-rail" aria-hidden="true"></div>
+            <span class="route">形成 B 根 → 在 R 端拉伸 B 根</span>
+          </article>
+        </div>
+        <div id="decision" class="decision" aria-live="polite"><strong id="decision-title">预选结果</strong><p id="decision-text"></p><p id="decision-meta" class="decision-meta"></p></div>
+        <div class="quality-strip" aria-label="G1 后续必须检查的四项条件"><div><b>① 锚点</b>端点几何和映射可靠</div><div><b>② 装配</b>多组分取向可构造</div><div><b>③ 路径</b>其余目标编辑能发生</div><div><b>④ 预算</b>步数与资源有上限</div></div>
+      </div>
+    </section>
+
+    <section aria-labelledby="rule-title">
+      <h2 id="rule-title">混合选边规则</h2>
+      <p class="section-sub">下列分支会随上方输入高亮。它确定候选优先级，不声称扫描一定找到目标鞍点。</p>
+      <div class="branch-grid" role="list">
+        <div class="branch" id="branch-tie" role="listitem"><span class="condition">F = B</span><h3>几何决定平局</h3><p>1–3 根时比较两侧端点；仍相当则冻结双向候选。零键或双侧超限另走特殊路线。</p></div>
+        <div class="branch" id="branch-more" role="listitem"><span class="condition">max(F,B) ≤ 3</span><h3>多成键为主</h3><p>优先完整键合锚点；少成键侧在非零且装配合格时作为有限备选。</p></div>
+        <div class="branch" id="branch-less" role="listitem"><span class="condition">max &gt; 3，1 ≤ min ≤ 3</span><h3>评估少成键侧</h3><p>少成键侧可降低坐标数；须验证它能驱动其余目标编辑。</p></div>
+        <div class="branch" id="branch-special" role="listitem"><span class="condition">其余情况</span><h3>代表键 / PATH / NEB</h3><p>一侧零键且另一侧超限，或双侧都超限；保留观察键与拒绝原因。</p></div>
+      </div>
+    </section>
+
+    <section aria-labelledby="data-title">
+      <h2 id="data-title">为何不固定选“更少的键”？</h2>
+      <p class="section-sub">数据口径：2026-09-27 的 G1 v2 clean 快照，183,460 条。下图是新键坐标数量的统计，不是 ORCA 运行或 TS 成功统计。</p>
+      <div class="comparison">
+        <div class="data-panel">
+          <h3>完整新键集合的坐标数量</h3>
+          <div class="bar-group"><div class="bar-head"><span>多成键优先</span><b>178,085 · 97.07%</b></div><div class="stack" role="img" aria-label="多成键优先：1 到 3 根 178085 条，零根 0 条，超过 3 根 5375 条"><span class="covered" style="width:97.07%"></span><span class="over" style="width:2.93%"></span></div></div>
+          <div class="bar-group"><div class="bar-head"><span>少成键优先</span><b>172,512 · 94.03%</b></div><div class="stack" role="img" aria-label="少成键优先：1 到 3 根 172512 条，零根 10694 条，超过 3 根 254 条"><span class="covered" style="width:94.03%"></span><span class="zero" style="width:5.83%"></span><span class="over" style="width:.14%"></span></div></div>
+          <div class="bar-group"><div class="bar-head"><span>混合规则 · 坐标预选</span><b>183,012 · 99.76%</b></div><div class="stack" role="img" aria-label="混合规则：1 到 3 根完整新键候选 183012 条，其余 448 条"><span class="covered" style="width:99.76%"></span><span class="over" style="width:.24%"></span></div></div>
+          <div class="legend"><span><i class="cov"></i>1–3 根完整新键</span><span><i class="zero-key"></i>0 根</span><span><i class="over-key"></i>超限 / 需其他路线</span></div>
+          <p>混合规则中的 448 条 = 一侧零键且另一侧 &gt;3 的 194 条 + 两侧都 &gt;3 的 254 条。</p>
+        </div>
+        <div class="data-panel">
+          <h3>端点装配负担</h3>
+          <div class="big-number">77.1% vs 18.8%</div>
+          <p>在 F≠B 的 112,137 条反应中，多成键锚点为单组分的比例是 77.1%；少成键锚点仅 18.8%。组分数只是端点可用性的代理指标，最终仍需逐条几何检查。</p>
+          <ul><li>少成键策略有 <strong>10,694</strong> 条零驱动键，无法按“终点新键拉伸”生成扫描。</li><li>两侧都超过三根的 <strong>254</strong> 条，不能靠换向直接满足 ORCA 的三坐标上限。</li><li>协同的 2–3 根键可按共同步号扫描；这是一条同步路径，不是 2D/3D 网格。</li></ul>
+        </div>
+      </div>
+    </section>
+
+    <section aria-labelledby="physics-title">
+      <h2 id="physics-title">一维路径的含义与边界</h2>
+      <div class="principle-grid">
+        <div class="principle"><strong>一个进度参数，最多三个受控键长</strong><p>对同步候选，以同一步号推进 1–3 个 B 坐标；每一步松弛其他自由度。可选不同键的起止值或有限的早/晚时间表。它保留 RPH 的协同成键思路，同时避免 N×N×N 网格。</p></div>
+        <div class="principle"><strong>键数合格 ≠ 路径正确</strong><p>未约束的成断键、H 迁移、芳香重排和片段取向必须逐帧检查。高能峰只是 TS 初猜；严格 TS 仍需优化、频率与双向 IRC 验证。</p></div>
+      </div>
+    </section>
+
+    <section aria-labelledby="handoff-title">
+      <h2 id="handoff-title">团队实现边界</h2>
+      <div class="handoff">
+        <div class="handoff-col"><h3>G1 · 设计并冻结</h3><ul><li>保留原始 R/P、F/B/O 和 L0/L0u 标签；构造两个方向候选。</li><li>检查原子映射、端点几何、组分装配、碰撞与坐标独立性。</li><li>冻结驱动键、观察键、起止值、步数、ORCA 索引、输入文件和 SHA256。</li><li>冻结主备排序、触发条件、拒绝原因与预算；不使用 TS/IRC 真值设计输入。</li></ul></div>
+        <div class="handoff-arrow" aria-hidden="true">→</div>
+        <div class="handoff-col g2"><h3>G2 · 执行并验证</h3><ul><li>按 G1 的计划和条件运行，不临时改方向、键集或预算。</li><li>保存原始帧、能量、失败码与资源消耗。</li><li>检查目标编辑、端点匹配、路径连续性与 TS 初猜质量。</li><li>需要新策略时回到 G1 产生新版本计划；报告仍按原始 R→P 方向归一。</li></ul></div>
+      </div>
+    </section>
+
+    <footer class="foot"><p><strong>状态：</strong>这是团队讨论用的 G1 scan-plan 设计，不表示逐反应计划已生成或 ORCA 输入已在本机验证。静态数量来自仓库内 <code>g1_v2_summary.parquet</code> 与 <code>inventory.parquet</code> 的 clean 集合。</p><div><a href="G1_v2_补全实施总方案.md">G1 补全实施总方案</a><a href="G1_v2_多成键与少成键方向对比.md">混合规则详细文档</a><a href="G1_v2_ORCA扫描模式识别与计划.md">G1→G2 计划合同</a><a href="https://www.faccts.de/docs/orca/6.1/manual/contents/structurereactivity/optimizations_scans.html" target="_blank" rel="noopener noreferrer">ORCA 6.1 Surface Scans 手册</a></div></footer>
+  </main>
+  <script>
+    (() => {
+      const fInput = document.getElementById('f-input');
+      const bInput = document.getElementById('b-input');
+      const validation = document.getElementById('validation');
+      const cards = [document.getElementById('forward-card'), document.getElementById('reverse-card')];
+      const statuses = [document.getElementById('forward-status'), document.getElementById('reverse-status')];
+      const numbers = [document.getElementById('forward-number'), document.getElementById('reverse-number')];
+      const rails = [document.getElementById('forward-rail'), document.getElementById('reverse-rail')];
+      const decision = document.getElementById('decision');
+      const decisionTitle = document.getElementById('decision-title');
+      const decisionText = document.getElementById('decision-text');
+      const decisionMeta = document.getElementById('decision-meta');
+      const branchIds = ['tie', 'more', 'less', 'special'];
+      const presets = [...document.querySelectorAll('.preset')];
+
+      function bondRail(n) {
+        const shown = Math.min(n, 4);
+        const lines = Array.from({length: shown}, (_, i) => `<i class="bond${i === 3 ? ' dim' : ''}"></i>`).join('');
+        return lines + (n > 3 ? `<span class="bond-over">${n} 根 · 超出完整同步扫描上限</span>` : n === 0 ? '<span class="bond-over">无可拉伸的终点新键</span>' : '');
+      }
+
+      function route(f, b) {
+        if (f === 0 && b === 0) return {key:'special', side:-1, type:'warning', title:'没有新连接：转入其他坐标或路径方法', text:'F=B=0 时，“从新键端点拉伸”没有驱动键。G1 应检查键级变化、角度/二面角或双端路径候选。', meta:'当前 clean 快照没有 F=B=0 的记录；此处保留规则完整性。'};
+        if (f === b && f > 3) return {key:'special', side:-1, type:'warning', title:'两侧都超过三根：完整新键集合不可直接同步扫描', text:'G1 选择不超过三根代表性驱动键，并把其余编辑设为观察项；否则预排 PATH/NEB。', meta:'两方向成键数相同，换向无法降低坐标数量。'};
+        if (f === b) return {key:'tie', side:2, type:'special', title:'成键数平局：比较 R 与 P 的端点质量', text:'两侧均有相同数量的新键。G1 先比较几何、组分装配和反应中心；仍相当则冻结双向候选与顺序。', meta:'H 转移常见 F=B=1；不能只凭原始 R/P 名称选边。'};
+        const max = Math.max(f, b), min = Math.min(f, b), moreSide = f > b ? 0 : 1, lessSide = f < b ? 0 : 1;
+        if (max <= 3) return {key:'more', side:moreSide, type:'good', title:`预选 ${moreSide === 0 ? 'P' : 'R'} 端：多成键锚点`, text:`完整新键集合有 ${max} 根，处于 ORCA 同步扫描的坐标数量范围内。从锚点拉伸作为首候选。`, meta:min === 0 ? '另一方向成键数为 0，不能作为“终点新键拉伸”备选。' : `另一方向有 ${min} 根新键；只有几何或装配更好、或主路径失败时才考虑。`};
+        if (min >= 1 && min <= 3) return {key:'less', side:lessSide, type:'special', title:`条件预选 ${lessSide === 0 ? 'P' : 'R'} 端：少成键候选`, text:`该侧需控制 ${min} 根键；多成键侧需 ${max} 根。G1 必须检查该侧装配可行，且其余目标编辑能沿扫描完成。`, meta:'若检查不通过：从多成键侧选 ≤3 根代表键并观察其他键，或使用 PATH/NEB。'};
+        return {key:'special', side:-1, type:'warning', title:'完整新键扫描不能直接覆盖这条反应', text:min === 0 ? `少成键侧为零驱动键；多成键侧有 ${max} 根，超过三个同步坐标。` : `两方向分别有 ${f} 和 ${b} 根新键，均超过三个同步坐标。`, meta:'G1 需选 ≤3 根代表性驱动键及其余观察键，或编排 PATH/NEB；记录可解释的回退原因。'};
+      }
+
+      function render() {
+        const f = Number(fInput.value), b = Number(bInput.value);
+        if (!Number.isInteger(f) || !Number.isInteger(b) || f < 0 || b < 0 || f > 20 || b > 20 || fInput.value === '' || bInput.value === '') {
+          validation.textContent = '请输入 0–20 之间的整数。';
+          return;
+        }
+        validation.textContent = '';
+        const values = [f, b], result = route(f, b);
+        values.forEach((n, i) => {
+          numbers[i].textContent = n.toLocaleString('zh-CN');
+          rails[i].innerHTML = bondRail(n);
+          cards[i].classList.toggle('recommended', result.side === i);
+          cards[i].classList.toggle('alternative', result.side === 2);
+          statuses[i].className = 'badge ' + (n === 0 || n > 3 ? 'bad' : result.side === i || result.side === 2 ? 'good' : 'warn');
+          statuses[i].textContent = n === 0 ? '零驱动' : n > 3 ? '完整集合超限' : result.side === i ? '预选锚点' : result.side === 2 ? '几何待比较' : '可构造备选';
+        });
+        decision.className = 'decision' + (result.type === 'warning' ? ' warning' : result.type === 'special' ? ' special' : '');
+        decisionTitle.textContent = result.title;
+        decisionText.textContent = result.text;
+        decisionMeta.textContent = result.meta;
+        branchIds.forEach(key => document.getElementById('branch-' + key).classList.toggle('active', key === result.key));
+        presets.forEach(button => button.setAttribute('aria-pressed', String(Number(button.dataset.f) === f && Number(button.dataset.b) === b)));
+      }
+
+      [fInput, bInput].forEach(input => input.addEventListener('input', render));
+      presets.forEach(button => button.addEventListener('click', () => { fInput.value = button.dataset.f; bInput.value = button.dataset.b; render(); }));
+      render();
+    })();
+  </script>
+</body>
+</html>

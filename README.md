@@ -1,5 +1,199 @@
 # PES2TS
 
+## Current project direction
+
+PES2TS is the integration of two separately testable projects: **PES generation**
+(G1 plans and G2 executes auditable, approximate reaction paths) and **PES
+ranking** (validates path usability and ranks calculated frames as TS seeds).
+The strict outcome is a target TS confirmed by OptTS, frequency, and two-way
+IRC; a path or high-energy frame alone is an intermediate result. The
+repository now includes v1 shared data contracts, endpoint-only ReactionCase
+conversion, a minimal one-coordinate ScanPlan, ACP request/result projections,
+a local ACP CLI attempt runner, and a replaceable synthetic path ranker with an
+offline energy/structure viewer. It also has a read-only collector for ACP
+BatchOptimize TS/frequency and IRC result artifacts; scheduler-managed task
+registration, stage execution orchestration, and validation against a real
+reaction remain later-stage integrations.
+
+See the [current development plan](docs/plans/PES2TS_双项目开发与Demo方案.md), the
+[unified stage acceptance order](docs/plans/PES2TS_统一开发顺序与阶段验收.md), the
+[contracts v1 field dictionary](docs/contracts/PES2TS_contracts_v1.md), the
+[ACP v1 field mapping](docs/contracts/PES2TS_ACP字段映射_v1.md), the
+[24-reaction Demo candidate set](docs/demo/PES2TS_demo24_反应挑选与复核方案.md), the
+[Demo evaluation metrics v1](docs/demo/PES2TS_Demo评估指标_v1.md), and the
+[G1 completion plan](docs/design/G1_v2_补全实施总方案.md). The older
+[step-by-step plan](docs/plans/PES2TS_逐步实施与验证方案.md) is retained as historical context.
+The [stage report](docs/reports/PES2TS_开发阶段性报告_20260930.md) and the
+[scan-planning lineage merge plan](docs/plans/PES2TS_扫描规划谱系合并方案_20260930.md)
+record the 2026-09-30 checkpoint.
+
+Run `python bin/pes2ts demo` to write the synthetic seven-object bundle and
+offline viewer to `examples/contracts_v1`. The energy curve demonstrates that
+highest-energy and internal-peak rules can select different frames without
+recomputing the path; the viewer links each selected frame to its structure.
+The bundle also includes a rejected plan, a failed attempt followed by a retry,
+a missing energy, and an unrun validation result. To view any PathBundle, run
+`python bin/pes2ts view-path --path <PathBundle.json> --output <viewer.html>`.
+The first real-input preflight plan is under `examples/m1_first_plan`; it is not
+an ACP submission or a calculated path.
+It is a hash-bound preflight snapshot. After the pending chemistry review is
+accepted, regenerate the plan from the approved ReactionCase snapshot before
+any ACP submission; the current review cases have updated source-spin evidence.
+
+## One local ACP CLI attempt
+
+`acp-run` launches the ACP `PESsearch` CLI in a separate process using a frozen
+ScanPlan. It requires an accepted `ReviewRecord` linked to the exact ready
+ReactionCase produced by the review importer. Each invocation has a unique
+`execution_id` and immutable `attempt_id`; an interrupted attempt is recovered
+from its receipt when ACP already finalized the result, while a retry uses new
+IDs. The command applies the plan wall-time budget, captures the ACP log and
+exit status, verifies the ACP v2 result manifest and products, reads frame XYZ
+files from `WORK`, and publishes the same atom-ordered geometries under
+`RESULT/pes2ts/frames/`, registered as hash-bearing products in ACP's v2
+manifest. The collected `PathBundle.geometry_ref` points to those `RESULT`
+files, while the native ACP profile and `WORK` frames remain intact. It writes
+PES2TS `ExecutionRecord`, `PathBundle`, and path quality files beside the ACP
+attempt directory. CLI mode does not create an ACP scheduler task ID or claim
+a TS has passed physical validation. CPU time stays unknown unless ACP reports
+it.
+
+```powershell
+python bin/pes2ts acp-run `
+  --case <accepted-ReactionCase.json> `
+  --review-record <accepted-ReviewRecord.json> `
+  --plan <ScanPlan.json> `
+  --acp-root E:/Calculations/Common_Script/Auto_Calc_Platform/ACP_V1_20260811 `
+  --python <ACP-environment-python.exe> `
+  --acp-config <ACP-config.yaml> `
+  --output-root outputs/acp_cli `
+  --execution-id <unique-execution-id> `
+  --attempt-id <unique-attempt-id>
+```
+
+This command starts a real local calculation. The CLI backend has automated
+regression coverage with an isolated fake ACP process, but no accepted real
+reaction has yet been submitted through it.
+
+## Train-first cohort execution
+
+`acp-demo-run` executes a frozen cohort manifest sequentially. The manifest
+lists every ReactionCase snapshot under `cohort_cases` and exactly one `runs`
+row for each case; each row may point to an accepted ReviewRecord. Train cases
+run by default. Valid cases remain in the denominator and are marked held out
+unless `--include-valid` is explicitly supplied. Each run writes its plan,
+execution record, collected path, quality decision, ranking proposals, and
+offline viewer where those stages succeed, followed by a cohort index, run
+bundle, and split-aware metrics. Metrics report measured wall time from each
+attempt receipt and keep CPU cost unknown when ACP does not provide it. Use a
+new/empty output root for each immutable cohort run.
+
+```powershell
+python bin/pes2ts acp-demo-run `
+  --manifest <DemoExecutionManifest.json> `
+  --acp-root E:/Calculations/Common_Script/Auto_Calc_Platform/ACP_V1_20260811 `
+  --python <ACP-environment-python.exe> `
+  --output-root outputs/demo24_train_run
+```
+
+The manifest contains `schema_version: "pes2ts_demo_execution_manifest_v1"`,
+bundle-relative JSON references in `cohort_cases` and `runs`, and optional
+frozen `experiment_id`, `method`, `n_points`, `budget`, and `ranking_labels` values.
+Ranking labels are a separate JSON array with a source SHA256 and are never
+inferred from generated paths. A `budget` object freezes `max_attempts`,
+`max_cpu_hours`, and `max_wall_seconds`; each retry gets a new attempt ID, and
+all retries share the enforced wall-time limit. ACP CLI does not expose a
+measured CPU counter, so `max_cpu_hours` is recorded but cannot be certified as
+a hard runtime limit. Supplying
+`--include-valid` enables reviewed valid cases for the one-time evaluation
+run. This runner has only been exercised against a fake ACP CLI; the 24 sample
+cases still require human chemistry review before any real run.
+
+After separately completing ACP BatchOptimize (TS-tagged structure plus
+frequency) and two-way IRC tasks, `acp-collect-validation` verifies their ACP v2
+manifests, file hashes, method/basis, selected proposal geometry, normal modes,
+and endpoint matches, then writes a `ValidationResult`. It only collects and
+checks existing products; it does not launch those calculations. A passed
+result therefore requires genuine ACP products from the same reviewed case and
+proposal. Use `python bin/pes2ts acp-collect-validation --help` for the required
+artifact arguments.
+
+`acp-validate-run` executes those two ACP stages in sequence. It checks the
+accepted review and proposal binding, runs a TS-tagged `opt_freq` BatchOptimize,
+checks its actual method and optimized geometry, then writes ACP's required
+hash-bound TS provenance and starts a two-way IRC. Each stage gets a separate
+execution/attempt ID, receipt, log, and timeout. After both stages, it writes a
+ValidationResult from the ACP manifests and products. Failed BatchOptimize,
+bad TS/frequency evidence, failed IRC, or rejected IRC products still produce a
+failed ValidationResult with the failed stage and its attempt identity recorded;
+IRC is skipped unless frequency establishes a first-order saddle. The result
+also carries receipt references, manifest hashes, return codes, and wall-time
+per attempt; ACP does not currently report CPU time, so CPU cost remains
+explicitly unavailable.
+
+```powershell
+python bin/pes2ts acp-validate-run `
+  --case <accepted-ReactionCase.json> `
+  --review-record <accepted-ReviewRecord.json> `
+  --path <usable-PathBundle.json> `
+  --proposal <accepted-SeedProposal.json> `
+  --source-frame-id <selected-frame-id> `
+  --acp-root E:/Calculations/Common_Script/Auto_Calc_Platform/ACP_V1_20260811 `
+  --python <ACP-environment-python.exe> `
+  --output-root outputs/acp_validation `
+  --batch-execution-id <batch-execution-id> `
+  --batch-attempt-id <batch-attempt-id> `
+  --irc-execution-id <irc-execution-id> `
+  --irc-attempt-id <irc-attempt-id> `
+  --method <frozen-method> --basis <frozen-basis> `
+  --batch-timeout 7200 --irc-timeout 7200 `
+  --validation-id <validation-id> --output <ValidationResult.json>
+```
+
+This starts real quantum-chemistry calculations. No calculation has been
+launched through this sequence because the 24 sample reviews are still pending.
+
+For the 24-reaction S1 review packet, run `python scripts/audit_demo24_endpoints.py`
+then `python scripts/build_demo24_reaction_cases.py`, and run
+`python scripts/audit_demo24_spin_sources.py` for the spin-source ledger. The
+builder writes standard
+endpoint-only cases under `data/interim/g1_v2/reaction_cases_review_v1` and a
+provenance manifest under `data/manifests`. All 24 cases remain `needs_review`.
+R/P spin states are now resolved from sanitized source component records when
+total spin is unambiguous, with evidence recorded in each case and in
+[`demo24_spin_source_audit_v1.json`](data/manifests/demo24_spin_source_audit_v1.json).
+This does not replace independent chemistry review; reviewers must still accept
+the endpoints and confirm spin before the cases can become ScanPlans.
+
+The two-reviewer review workbook is
+[`outputs/01a0ed78-73eb-7833-b3c1-4a6c0733a397/Demo24_双人化学复核.xlsx`](outputs/01a0ed78-73eb-7833-b3c1-4a6c0733a397/Demo24_双人化学复核.xlsx).
+It contains independent reviewer sheets, an adjudication sheet, candidate
+summaries, mapped reaction SMILES, and review instructions. Review decisions
+must still be transferred to auditable `ReviewRecord`/`ReactionCase` records;
+blank cells are not approvals.
+
+After both reviewers and the adjudicator complete all 24 rows, import the
+workbook with `python scripts/import_demo24_review_workbook.py <completed.xlsx>`.
+The importer verifies row identities against the frozen ReactionCase manifest,
+requires distinct reviewers and matching adjudication, and promotes a case to
+`ready` only when both reviews confirm every dimension, agree on 1D feasibility,
+and enter matching explicit R/P multiplicities. It writes a new reviewed-case
+snapshot and review-record manifest without overwriting the review packet.
+
+After a successful import, freeze the 16/8 execution input bundle with
+`python scripts/build_demo24_execution_bundle.py --reviewed-cases <reviewed-root> --reviewed-manifest <review-records.json> --output <new-input-bundle>`.
+The packer reconciles each reviewed case and ReviewRecord against the original
+24-case IDs/splits, copies the exact snapshots, and writes a hash receipt. It
+does not create approvals; accepted/rejected decisions must come from the
+completed workbook. Run `acp-demo-run` on the resulting
+`DemoExecutionManifest.json` first without `--include-valid`. After reviewing
+and locking the train run, pass its `DemoExecutionIndex.json` with
+`--include-valid --train-index <train-index.json>` for the valid evaluation.
+The runner verifies the same frozen manifest hash, complete cohort accounting,
+the same input/config/ACP Python-source fingerprint, and held-out valid rows
+before starting that run. It carries the train artifacts into the final bundle
+and calculates only valid cases, so train work is not submitted again.
+
 PES2TS (Potential Energy Surface to Transition State) builds a traceable,
 leakage-audited data foundation on top of the public Reaction-QM dataset. Stage
 **G0** ("data entry and split") downloads and MD5-verifies the B3LYP-D3/TZVP
@@ -599,6 +793,118 @@ and audit digests — never TS/IRC coordinates or energy arrays (the P1
 verifier rejects any document containing them). CLI truth reads demand an
 explicit `--allow-truth` (exit 23 otherwise).
 
+## G1 v2 — audit and repair layer (`g1 v2-build` / `v2-classify` / `v2-verify` / `v2-gate`)
+
+The L0 population counts and earlier routing analysis are documented in [G1 v2 L0 到 G2 扫描策略设计](docs/design/G1_v2_L0到G2扫描策略设计.md). The current responsibility split and G1-owned ORCA scan-mode plan are specified in [G1 v2 ORCA 扫描模式识别与计划](docs/design/G1_v2_ORCA扫描模式识别与计划.md).
+The one-dimensional-first path strategy and the xTB versus 2D-grid cost analysis are in [G1 v2 一维优先与 xTB 二维成本策略](docs/design/G1_v2_一维优先与xTB二维成本策略.md).
+The earlier fixed-product-side reverse-scan analysis and H-transfer shortcut are in [G1 v2 产物成键逆向扫描优先策略](docs/design/G1_v2_产物成键逆向扫描优先策略.md). The direction-independent more-bond anchor baseline is in [G1 v2 方向无关成键锚点与双向扫描策略](docs/design/G1_v2_方向无关成键锚点与双向扫描策略.md). The current recommended hybrid selector, comparing more-bond and fewer-bond anchors, is in [G1 v2 多成键与少成键方向对比](docs/design/G1_v2_多成键与少成键方向对比.md).
+For team discussion, open the self-contained [G1 v2 成断键扫描方向选择可视化](docs/design/G1_v2_成断键扫描方向选择可视化.html) in a browser; it includes an interactive F/B selector and the G1→G2 handoff.
+The integrated implementation contract and acceptance gates are in [G1 v2 补全实施总方案](docs/design/G1_v2_补全实施总方案.md).
+
+The v1 bond-edit semantics were deliberately **not mutually exclusive** (a
+single→double bond change produced one `formed` key, one `broken` key, *and*
+one `order_changed` pair for the same atom pair; 165,165 of 191,148 admitted
+records carried bond-order changes under that reading), the P2 L0 family and
+the rule labels consumed those overlapping counters, the gate released
+records carrying IRC event mismatches as ordinary eligible records, and the
+canonicalization fallback serialized by map-number insertion order so the
+budget-exhausted records (868) changed cluster ids under pure map relabeling.
+The v2 layer repairs all of this in **independent artifact paths** — v1
+trees, the frozen split, and the v1 gate outputs are never overwritten.
+
+### v2 bond edits (`g1 v2-build`)
+
+Every admitted P1 reaction gets one v2 document
+(`data/interim/g1_v2/edits/<shard>/<rid>.json`, schema `g1_v2_edits_v1`)
+holding:
+
+- **Mutually exclusive edits.** One record per unordered map pair with
+  `edit_kind` ∈ {`formed` (R-absent/P-present), `broken` (R-present/P-absent),
+  `order_changed` (both present, different order)} and both original bond
+  orders preserved (aromatic stays `1.5`). Edited aromatic bonds carry their
+  **conjugated-region id** (`aromatic_regions` groups a whole re-kekulizing
+  ring into one region, so G2 never scans six independent coordinates for one
+  ring event).
+- **Hydrogen partner changes** with an exhaustive partner-state taxonomy:
+  `transfer` (heavy→heavy), `release`/`capture` (bound⇄free),
+  `to_hh`/`from_hh`/`hh_release`/`hh_form_free`/`hh_swap` (H–H events). H₂
+  formation is never labelled an H transfer.
+- The embedded map-space graph, the v2 reaction center, per-kind edit
+  counts, and the complete audit verdict.
+
+The build first freezes the v1 baseline (`data/manifests/g1_v2_freeze.json`:
+the 199,217 denominator, 191,148 eligible, 638 v1 L0 clusters, status
+histograms, digests), then audits every record along three separated
+dimensions with typed issue codes:
+
+| Dimension | Issue codes | Meaning |
+| --- | --- | --- |
+| `structural_validity` | `map_bijection_broken`, `element_sequence_mismatch`, `component_assignment_mismatch`, `legacy_event_inconsistency`, `multi_bond_pair`, `edit_contract_violation` | the map table is a bijection onto the component rows, elements agree at every (component, row), the v1 `bond_events` are exactly derivable from the same graph, and the v2 block satisfies its own contract |
+| `mapping_determinism` | `collapse_edit_ambiguous`, `collapse_audit_truncated`, `candidate_search_truncated` | symmetry-collapse ties and truncated G1 candidate searches |
+| `irc_evidence_quality` | `irc_event_mismatch`, `orientation_unresolved` | IRC evidence conflicts (previously silently eligible) |
+
+**Symmetry-collapse equivalence proof.** The v2 edits, reaction center, and
+classifications are functions of the mapped reaction-SMILES graphs alone;
+candidate bijections and same-skeleton pairing permutations only reassign
+which inventory geometry row backs each map number, so a
+`resolved_symmetry_collapsed` tie provably cannot change the recorded
+chemistry. The build verifies every stored G1 alternative is
+element-consistent with that proof (`collapse_state` = `invariant`, with the
+verified-alternative count as evidence); a candidate that breaks element
+consistency is flagged `collapse_edit_ambiguous`. Same-skeleton pairing
+permutations are accepted by the component check (per-tag map sets must
+partition the maps into component map sets), not misread as tag/ordinal
+mismatches.
+
+Outputs: `g1_v2_summary.parquet` (one row per reaction: audit status, issue
+list, dimensions, exclusive counts, H-change counts by class, aromatic
+counts, collapse state), `g1_v2_manifest.json` (status/issue/dimension
+histograms, collapse-state histogram, digests), and the per-reaction issue
+ledger `data/manifests/g1_v2_issue_ledger.jsonl`.
+
+### v2 taxonomy (`g1 v2-classify`)
+
+Five levels per record (`data/interim/g1_v2/classes/<shard>/<rid>.json`,
+schema `g1_v2_class_v1`, taxonomy `g1p2_taxonomy_v2`): the **directional**
+`l0_edit_family` (`F/B/O/H` exclusive counts — the scan-facing layer), the
+**direction-invariant** `l0u_undirected_family` (F/B swap-normalized — the
+chemical family), and `l1`–`l3` center/context templates over exclusive-edit
+roles. Two v1 defects are fixed: the individualization search branches on the
+smallest-*color* cell (colour ranks are canonical; v1 branched by map-number
+lexicographic order, making leaves map-dependent), and a budget exhaustion
+aborts the whole search into a **group-based WL-stable serialization**
+(colour classes + connection-label multisets; no map numbers), so the id is
+mapping-number-invariant by construction and still flagged
+`canonical_budget_exhausted`. Rule labels are recomputed from exclusive
+counts (H₂ events get no `h_transfer`; a pure H₂ formation is an `addition`).
+`g1_v2_migration.json` records the v1→v2 family-label transition matrix, the
+L0 cluster counts, and per-split L0u distributions.
+
+### v2 verification and gate (`g1 v2-verify` / `g1 v2-gate`)
+
+`v2-verify` **recomputes** every edit block, center, and classification from
+the persisted documents (not just field/digest reconciliation) and enforces
+the export blacklist (`ts_irc_index`, IRC frames, coordinates of truth,
+energies may never appear). `v2-gate` verifies first, refuses on any problem,
+then splits the population three ways — **`scan_ready`** / **`needs_review`**
+(with typed reasons and dimensions, exported to `g2_needs_review.json` as the
+adjudication queue; IRC-mismatch and truncated-search records land here, no
+longer inside a single eligible number) / **`excluded`** (`p1:<status>`) —
+and writes, for every scan-ready reaction, a **whitelisted G2 export**
+(`data/interim/g1_v2/export/<shard>/<rid>.json`, schema `g1_v2_export_v1`):
+map-ascending `r/p_atomic_numbers` + `r/p_coordinates` (assembled through
+the P1 bijection from the inventory endpoint components — endpoint data, not
+truth), the component bijection table, charges/spins, the exclusive edits,
+aromatic regions, reaction center, v2 classification, and
+`mapping_provenance="truth_assisted_p1"`. The gate manifest
+(`g1_v2_gate.json`) reports per-reason and per-dimension breakdowns plus the
+scan-ready split histogram; `g2_scan_ready.json` is the pure reaction-id
+list G2 may consume.
+
+Configuration (`g1_v2` in `config/defaults.yaml`): `shard_size` 1000,
+`collapse_audit_budget` 256, `center_shell` 1, `taxonomy_version`
+`g1p2_taxonomy_v2`, `canonical_budget` 2000.
+
 ## G2: R/P endpoint assembly and cheap GFN2-xTB paths
 
 Stage **G2** turns the eligible reaction list (`g2_eligible.json`, 191,148 ids
@@ -927,7 +1233,7 @@ G2 suite adds endpoint-assembly placement/separation/collision fixtures, the
 strict xTB output parser against real pinned PATH fixtures, frame metrics and
 validity predicates (including the superposed-endpoint regression), the runner
 subprocess contract (fake binaries), and the reverse-retry direction
-normalization. Tally: **542 passed, 4 deselected**
+normalization. Tally: **666 passed, 4 deselected**
 (the 4 deselected are the gated families below).
 
 Checks that need Zenodo or the ~12 GB download are marked `realdata`, and the

@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="color-scheme" content="dark">
-  <title>PES2TS｜逐步实施与验证路线图</title>
+  <title>PES2TS｜双项目开发与 Demo 路线图</title>
   <style>
     :root{--bg:#07111c;--surface:#101f2e;--surface2:#14283a;--line:#294050;--ink:#edf7fa;--muted:#a9becb;--mint:#53e2bf;--blue:#82bbff;--amber:#ffd187;--red:#ff8e8e;--radius:20px}
     *{box-sizing:border-box}
@@ -80,25 +80,30 @@
     .small-note{color:var(--muted);font-size:.85rem;margin-top:14px}
     .sources{border-top:1px solid var(--line);padding-top:22px;color:var(--muted);font-size:.82rem}
     .sources a{margin-right:18px;display:inline-block;margin-top:8px}
+    .projects{display:grid;grid-template-columns:1fr 1fr;gap:17px;margin-top:20px}
+    .project{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:22px}
+    .project strong{color:var(--mint);font-size:1.2rem}
+    .project p{color:var(--muted);margin-top:8px}
+    .integration{margin-top:14px;border:1px solid #3b6070;border-radius:14px;background:#163b42;padding:16px 20px;color:#e6fff4}
     :focus-visible{outline:3px solid var(--amber);outline-offset:3px}
     @media(max-width:900px){.hero,.workflow{grid-template-columns:1fr}.detail{position:static}.cards{grid-template-columns:repeat(2,1fr)}.timeline{grid-template-columns:repeat(2,1fr)}.milestone:after{display:none}}
-    @media(max-width:580px){.wrap{padding:22px 16px 45px}.topline{align-items:flex-start}.stamp{white-space:normal}.stage{grid-template-columns:32px 1fr auto;padding:13px}.cards,.compare,.verdict,.timeline{grid-template-columns:1fr}.card{min-height:0}.hero{padding:24px 0 40px}}
+    @media(max-width:580px){.wrap{padding:22px 16px 45px}.topline{align-items:flex-start}.stamp{white-space:normal}.stage{grid-template-columns:32px 1fr auto;padding:13px}.cards,.compare,.verdict,.timeline,.projects{grid-template-columns:1fr}.card{min-height:0}.hero{padding:24px 0 40px}}
     @media print{body{background:white;color:#12222d}.wrap{max-width:none}.hero-visual,.lane,.detail,.card,.panel,.milestone,.target{background:white;color:#12222d;box-shadow:none}.detail,.lane,.card,.panel,.milestone,.target,.stage{border-color:#9aabb3}.detail *,.card *,.panel *,.milestone *,.target *{color:#12222d!important}.filters,.toggle{display:none}.detail{position:static}.stage[hidden]{display:grid}}
   </style>
 </head>
 <body>
   <main class="wrap">
-    <div class="topline"><span class="eyebrow">Research roadmap · PES → TS seed</span><span class="stamp">方案 v1.0 · 2026-09-25 · 离线可用</span></div>
+    <div class="topline"><span class="eyebrow">PES generation + PES ranking = PES2TS</span><span class="stamp">方案 v2.0 · 2026-09-29 · Demo 优先</span></div>
     <header class="hero">
       <div>
-        <h1>PES2TS<br>逐步实施路线图</h1>
-        <p class="lead">先识别反应中心，再生成廉价路径；先证实路径有可选的 TS 候选，再训练排序模型，最终以 OptTS＋频率＋IRC 检验实际价值。</p>
+        <h1>PES2TS<br>双项目开发路线图</h1>
+        <p class="lead">PES generation 生成可审计的近似反应路径；PES ranking 在已计算的路径中挑选 TS 初猜。先用 24 条待复核反应走通 Demo，再用同预算 OptTS＋频率＋双向 IRC 检验实际价值。</p>
         <div class="pills">
           <span class="pill"><strong>输入</strong> 已映射 R / P</span>
-          <span class="pill"><strong>主路径</strong> GFN2-xTB PATH</span>
-          <span class="pill"><strong>输出</strong> Top-k 初猜</span>
+          <span class="pill"><strong>生成</strong> 一维进度扫描优先，PATH/NEB 回退</span>
+          <span class="pill"><strong>排序</strong> 路径质检 + Top-k 真实帧</span>
         </div>
-        <small>项目独立建于 E:\Calculations\AI4S_ML_Studys\PES2TS；验证后再与 RPH 对接。</small>
+        <small>当前 G0/G1 数据基础已存在；逐反应扫描计划、G2 路径执行与排序器仍待开发。24 条是候选名单，不是成功样本。</small>
       </div>
       <div class="hero-visual" aria-label="示意能量曲线：端点可能高于内部反应峰">
         <svg viewBox="0 0 460 245" role="img" aria-labelledby="curveTitle">
@@ -116,13 +121,22 @@
       </div>
     </header>
 
+    <section aria-labelledby="position-title">
+      <span class="eyebrow">00 / Position</span><h2 id="position-title">两条独立开发线，共用一份路径合同</h2>
+      <div class="projects">
+        <article class="project"><strong>PES generation</strong><p>G1 冻结有限 ScanPlan，G2 执行受限扫描或双端回退并质检，交付逐帧坐标、能量、状态与成本组成的 PathBundle。评价路径覆盖、化学有效性和计算成本。</p></article>
+        <article class="project"><strong>PES ranking</strong><p>读取相同 PathBundle，先判断路径是否可用，再比较能量峰、内部峰与键进度等规则；有明确可提升空间后才训练模型。输出可拒绝的 Top-k SeedProposal。</p></article>
+      </div>
+      <div class="integration"><strong>集成后的 PES2TS：</strong>从 R/P 到真实帧初猜；RPH/ACP 执行并记录 OptTS、频率、IRC。沿路径的能量剖面不代表完整多维 PES，初猜也不代表已验证 TS。</div>
+    </section>
+
     <section aria-labelledby="flow-title">
       <div class="workflow-head">
-        <div><span class="eyebrow">01 / Build</span><h2 id="flow-title">从数据到可提交的初猜</h2><p class="section-intro">点击步骤查看输入、产物与转段条件。</p></div>
+        <div><span class="eyebrow">01 / Build</span><h2 id="flow-title">从端点到可提交的初猜</h2><p class="section-intro">点击步骤查看输入、产物与转段条件。</p></div>
         <div class="filters" role="group" aria-label="流程筛选">
           <button class="filter" data-filter="all" aria-pressed="true">全部</button>
-          <button class="filter" data-filter="data" aria-pressed="false">数据生成</button>
-          <button class="filter" data-filter="model" aria-pressed="false">训练拟合</button>
+          <button class="filter" data-filter="data" aria-pressed="false">PES generation</button>
+          <button class="filter" data-filter="model" aria-pressed="false">PES ranking</button>
           <button class="filter" data-filter="eval" aria-pressed="false">验证与接入</button>
         </div>
       </div>
@@ -131,16 +145,16 @@
           <div class="lane-label"><span>IMPLEMENTATION FLOW</span><span>选中步骤显示详情</span></div>
           <div class="stage-list" role="listbox" aria-label="PES2TS 实施步骤">
             <button class="stage" role="option" data-stage="source" data-kind="data" aria-selected="true"><span class="num">G0</span><span><strong>数据入口与固定划分</strong><span class="stage-sub">Reaction-QM · 映射 R/P · 真值隔离</span></span><span class="arrow">↗</span></button>
-            <button class="stage" role="option" data-stage="s0" data-kind="data" aria-selected="false"><span class="num">G1</span><span><strong>通用 S0：成键、断键、键级变化</strong><span class="stage-sub">统一原子映射和 0 基 XYZ 索引</span></span><span class="arrow">↗</span></button>
-            <button class="stage" role="option" data-stage="path" data-kind="data" aria-selected="false"><span class="num">G2</span><span><strong>R/P 双端廉价路径</strong><span class="stage-sub">GFN2-xTB PATH · 几何/拓扑检查</span></span><span class="arrow">↗</span></button>
-            <button class="stage" role="option" data-stage="label" data-kind="data" aria-selected="false"><span class="num">G3</span><span><strong>标签与 oracle gap</strong><span class="stage-sub">DFT TS 仅作标签 · IRC 仅作真值</span></span><span class="arrow">↗</span></button>
-            <button class="stage" role="option" data-stage="train" data-kind="model" aria-selected="false"><span class="num">M1</span><span><strong>帧排序训练</strong><span class="stage-sub">同路径启发式基线 · Top-k 输出</span></span><span class="arrow">↗</span></button>
+             <button class="stage" role="option" data-stage="s0" data-kind="data" aria-selected="false"><span class="num">G1</span><span><strong>反应编辑与冻结 ScanPlan</strong><span class="stage-sub">选边 · 驱动/观察键 · 有限回退</span></span><span class="arrow">↗</span></button>
+             <button class="stage" role="option" data-stage="path" data-kind="data" aria-selected="false"><span class="num">G2</span><span><strong>执行廉价路径并质检</strong><span class="stage-sub">一维/同步扫描 · PATH/NEB 回退 · PathBundle</span></span><span class="arrow">↗</span></button>
+             <button class="stage" role="option" data-stage="label" data-kind="eval" aria-selected="false"><span class="num">EVAL</span><span><strong>隔离标签与 oracle gap</strong><span class="stage-sub">只用于诊断和评估，不回流生成输入</span></span><span class="arrow">↗</span></button>
+             <button class="stage" role="option" data-stage="train" data-kind="model" aria-selected="false"><span class="num">R1</span><span><strong>路径判断与帧排序</strong><span class="stage-sub">规则先行 · 可拒绝 · 模型视证据决定</span></span><span class="arrow">↗</span></button>
             <button class="stage" role="option" data-stage="benchmark" data-kind="eval" aria-selected="false"><span class="num">V1–4</span><span><strong>四级效果验证</strong><span class="stage-sub">拟合 → 初猜耗时 → OptTS → IRC</span></span><span class="arrow">↗</span></button>
-            <button class="stage" role="option" data-stage="bridge" data-kind="eval" aria-selected="false"><span class="num">RPH</span><span><strong>版本化接口接入 RPH</strong><span class="stage-sub">先外部环加成对照，再逐步替换</span></span><span class="arrow">↗</span></button>
+             <button class="stage" role="option" data-stage="bridge" data-kind="eval" aria-selected="false"><span class="num">RPH</span><span><strong>版本化初猜与验证接口</strong><span class="stage-sub">RPH/ACP 执行 OptTS、频率、IRC</span></span><span class="arrow">↗</span></button>
           </div>
         </div>
         <aside class="detail" aria-live="polite" aria-label="步骤详情">
-          <div class="detail-kicker" id="detail-kicker">G0 · 数据生成</div>
+           <div class="detail-kicker" id="detail-kicker">G0 · PES generation 输入</div>
           <h3 id="detail-title">数据入口与固定划分</h3>
           <p class="description" id="detail-description">构建可追溯的反应输入，同时把 DFT 真值与路径生成严格隔离。</p>
           <dl><dt>输入</dt><dd id="detail-input"></dd><dt>核心动作</dt><dd id="detail-action"></dd><dt>产物</dt><dd id="detail-output"></dd></dl>
@@ -150,20 +164,20 @@
     </section>
 
     <section aria-labelledby="validate-title">
-      <span class="eyebrow">02 / Prove</span><h2 id="validate-title">四级验证：每一步都要单独成立</h2>
-      <p class="section-intro">主比较使用同一批反应、同一条廉价路径和 Top-1 对 Top-1 候选预算。</p>
+      <span class="eyebrow">02 / Prove</span><h2 id="validate-title">分清路径、排序与最终结果</h2>
+      <p class="section-intro">生成评价以全部计划反应为分母；排序评价固定同一批有效路径；集成评价从原始反应和全部成本开始。</p>
       <div class="cards">
-        <article class="card"><span class="step">01</span><h3>拟合有效</h3><p>在未见反应上，Top-1 更接近参考 TS；Top-3 覆盖更多近邻帧。训练损失下降不等于泛化成功。</p><div class="metric">反应中心 RMSD · Top-3 覆盖率</div></article>
-        <article class="card"><span class="step">02</span><h3>获取初猜更快</h3><p>分别计量已有路径上的排序时间与 R/P 输入到候选 XYZ 的总时间。模型推理不会自动缩短路径计算。</p><div class="metric">映射 + 端点 + PATH + 能量 + 选点</div></article>
-        <article class="card"><span class="step">03</span><h3>后续优化更快</h3><p>相同理论级别、Hessian、核数和超时下，比较 OptTS 核时、迭代及重试；失败作业也计入成本。</p><div class="metric">OptTS 核时 · 收敛率 · 重试数</div></article>
-        <article class="card"><span class="step">04</span><h3>真正找到目标 TS</h3><p>OptTS 收敛、恰好一个显著虚频、模态匹配反应中心，双向 IRC 连回映射 R/P。</p><div class="metric">严格 TS＋IRC 成功率</div></article>
+        <article class="card"><span class="step">01</span><h3>生成路径</h3><p>计划输入能否构造，计算能否完成，路径是否连续且化学合理；每次回退与失败都记账。</p><div class="metric">构造率 · 完成率 · 有效路径率 · 核时</div></article>
+        <article class="card"><span class="step">02</span><h3>选择初猜</h3><p>对同一份有效 PathBundle，比较可拒绝规则、最高能帧和内部峰。先查 oracle gap，再决定是否训练模型。</p><div class="metric">同路径 Top-1 / Top-3 · 拒绝率</div></article>
+        <article class="card"><span class="step">03</span><h3>后续优化</h3><p>相同理论级别、Hessian、核数和超时下，比较 OptTS 核时、迭代及重试；失败作业也计入成本。</p><div class="metric">OptTS 核时 · 收敛率 · 重试数</div></article>
+        <article class="card"><span class="step">04</span><h3>目标 TS</h3><p>OptTS 收敛、恰好一个目标模态的显著虚频，双向 IRC 连回映射 R/P。</p><div class="metric">全部反应中的严格成功率 · 每成功核时</div></article>
       </div>
     </section>
 
     <section aria-labelledby="compare-title">
-      <span class="eyebrow">03 / Compare</span><h2 id="compare-title">把“选点能力”和“完整流程”分开比较</h2>
+      <span class="eyebrow">03 / Compare</span><h2 id="compare-title">固定路径比较排序，固定预算比较全流程</h2>
       <div class="compare">
-        <article class="panel"><h3>公平的选点比较</h3><p>模型、全局能量峰、内部局部峰和 knee+shift 使用同一条 GFN2-xTB 路径。RPH 选点器、ORCA ScanTS 仅在适用反应子集参与。</p><div class="formula">同路径 · 同候选数 · 同 QC 预算</div></article>
+        <article class="panel"><h3>公平的选点比较</h3><p>最高能帧、内部峰、键进度规则和以后可能的模型使用同一条冻结 PathBundle。扫描与 PATH/NEB 的差异另作配对比较。</p><div class="formula">同路径 · 同候选数 · 同 QC 预算</div></article>
         <article class="panel"><h3>时间口径</h3><div class="toggle" role="group" aria-label="时间口径"><button class="mode" data-mode="seed" aria-pressed="true">初猜获取</button><button class="mode" data-mode="final" aria-pressed="false">完整验证</button></div><div class="formula" id="cost-formula">T_seed = T_mapping + T_endpoint + T_path + T_energy + T_select</div><p id="cost-note">初猜获取若要提速，须实测完整流程变化；只报告选点推理时间不足以证明。</p></article>
       </div>
     </section>
@@ -171,26 +185,28 @@
     <section aria-labelledby="schedule-title">
       <span class="eyebrow">04 / Scale</span><h2 id="schedule-title">规模与转段关卡</h2>
       <div class="timeline">
-        <div class="milestone"><b>A · 合同</b><strong>100–200 条</strong><span>修复 S0 映射与索引错误；端点和失败分类可追溯。</span></div>
-        <div class="milestone"><b>B · 路径</b><strong>约 1,000 条</strong><span>分层测路径有效率；证明 oracle 选点优于启发式。</span></div>
-        <div class="milestone"><b>C · 训练</b><strong>约 1–2 万条</strong><span>冻结划分，训练排序模型；独立测试优于基线。</span></div>
-        <div class="milestone"><b>D · 物理验证</b><strong>至少 300 条</strong><span>必要时扩至预留的 1,000 条；完成等预算 OptTS/Freq/IRC。</span></div>
-        <div class="milestone"><b>E · 接入</b><strong>RPH 外部集</strong><span>先在现有环加成数据并行对照，再经适配器接入。</span></div>
+        <div class="milestone"><b>0 · 封口</b><strong>24 条候选</strong><span>人工复核、修真值字段泄漏，冻结 16 train + 8 valid。</span></div>
+        <div class="milestone"><b>1 · 最短链路</b><strong>1 条 A/B</strong><span>ScanPlan → PathBundle → SeedProposal → OptTS/Freq/IRC。</span></div>
+        <div class="milestone"><b>2 · 分层 Demo</b><strong>24 条</strong><span>A–E 测一维/同步扫描，F–H 暴露特殊事件与回退。</span></div>
+        <div class="milestone"><b>3 · 分层试点</b><strong>200–1000 条</strong><span>估计覆盖和 oracle gap；确认是否值得训练排序模型。</span></div>
+        <div class="milestone"><b>4 · 扩展</b><strong>条件触发</strong><span>有稳定增益才扩训练规模、冻结测试并接入 RPH。</span></div>
       </div>
     </section>
 
     <section aria-labelledby="verdict-title">
-      <span class="eyebrow">05 / Decision</span><h2 id="verdict-title">什么结果才可以称为“效果很好”</h2>
+      <span class="eyebrow">05 / Decision</span><h2 id="verdict-title">Demo 完成与后续放大的判断</h2>
       <div class="verdict">
-        <div class="target"><strong>+10 个百分点</strong><p>目标 TS＋双向 IRC 成功率，相对最强适用基线的预设提升目标。</p></div>
-        <div class="target"><strong>−20% 核时</strong><p>全部计算核时 ÷ 正确完成反应数，相对基线的预设降低目标。</p></div>
+        <div class="target"><strong>24 条闭环</strong><p>每条候选都有人工复核、计划、路径或拒绝、排序或拒绝、验证结果与成本账本。</p></div>
+        <div class="target"><strong>200–1000 条试点</strong><p>在独立分层样本上估计路径覆盖、同路径排序收益和严格 TS 成功成本，再决定模型与扩大计算。</p></div>
       </div>
-      <p class="small-note">两项改善均需反应级配对 95% 置信区间支持。失败和超时计入总成本；队列等待单列。若未达到某一项，报告实际结果并返回对应阶段修复。</p>
+      <p class="small-note">24 条是机制覆盖型开发样本，不用于估计全库成功率或宣称统计显著改善。失败和超时计入总成本；独立试点使用反应级配对区间。</p>
     </section>
 
     <footer class="sources">
-      <strong>原始资料与完整方案</strong><br>
-      <a href="PES2TS_逐步实施与验证方案.md">完整 Markdown 方案</a>
+      <strong>当前方案与样本</strong><br>
+      <a href="PES2TS_双项目开发与Demo方案.md">双项目完整方案</a>
+      <a href="PES2TS_demo24_反应挑选与复核方案.md">24 条候选及复核</a>
+      <a href="G1_v2_补全实施总方案.md">G1 扫描计划</a>
       <a href="https://www.nature.com/articles/s41597-026-07325-w_reference.pdf">Reaction-QM</a>
       <a href="https://www.nature.com/articles/s41467-026-77230-8">UniTS</a>
       <a href="https://www.nature.com/articles/s41467-026-72945-0">DeePEST-OS</a>
@@ -201,13 +217,13 @@
   <script>
     (function(){
       const details={
-        source:{kicker:"G0 · 数据生成",title:"数据入口与固定划分",description:"构建可追溯的反应输入，同时把 DFT 真值与路径生成严格隔离。",input:"Reaction-QM 映射反应 SMILES、R/P 几何、元素、电荷、自旋。",action:"按反应固定训练/验证/测试；检查重复和逆向反应；TS/IRC 单独封存。",output:"反应清单、来源摘要、固定划分与剔除原因。",gate:"转段条件：每条记录能追溯，真值不进入路径生成。"},
-        s0:{kicker:"G1 · 数据生成",title:"通用 S0：识别完整键变化",description:"从 R/P 图差异可靠识别变化，不再假设只有两条新成键。",input:"已映射 R/P 分子图及独立组分的 XYZ。",action:"求形成键、断裂键、键级变化及反应中心；建立映射号到全局 0 基 XYZ 的转换。",output:"reaction_change.json、索引表与映射校验状态。",gate:"转段条件：无静默索引错误；歧义明确拒绝并留痕。"},
-        path:{kicker:"G2 · 数据生成",title:"R/P 双端廉价 PES 路径",description:"从真实两端构造同原子顺序的 PATH，并记录每帧几何与能量。",input:"有效 S0、R/P 几何及统一原子顺序。",action:"先单分子后多组分；GFN2-xTB PATH；失败时反向尝试；检查端点、拓扑、碰撞及能量。",output:"path_manifest.json、逐帧 XYZ/能量与完整日志。",gate:"转段条件：仅有效、完整且抵达目标端点的路径进入训练。"},
-        label:{kicker:"G3 · 数据生成",title:"标签与 oracle gap",description:"先确认路径里存在值得排序的 TS 候选，再决定是否训练。",input:"有效廉价路径、隔离保存的 DFT TS 与 IRC 真值。",action:"计算每帧反应中心距离；用 IRC 判断路径对应关系；比较最优可选帧与启发式。",output:"隔离标签、oracle 上界及路径质量分层报告。",gate:"转段条件：若 oracle 没有明显提升空间，先修路径而非训练。"},
-        train:{kicker:"M1 · 训练拟合",title:"帧排序模型与 Top-k",description:"训练一个可泛化的候选排序器，而不是直接生成 TS 或学习完整势能面。",input:"廉价路径可得特征、冻结划分和路径内标签。",action:"与能量峰、内部峰、knee+shift 同路径比较；验证集选模型，测试集一次性评估。",output:"冻结模型、版本、Top-k XYZ/分数与拒绝原因。",gate:"转段条件：未见反应的主要指标显著优于最强适用基线。"},
-        benchmark:{kicker:"V1–V4 · 验证",title:"四级物理效果验证",description:"把拟合、初猜获取、OptTS 优化与目标 IRC 成功逐层拆开。",input:"冻结模型、独立反应和相同预算的 QC 协议。",action:"配对比较 Top-1/Top-3，记录全流程核时、失败、虚频模态与双向 IRC 端点。",output:"成功率、每成功反应成本、95% 置信区间和失败分析。",gate:"研究目标：严格成功率至少 +10 个百分点且每成功反应核时至少 −20%。"},
-        bridge:{kicker:"RPH · 系统对接",title:"版本化接口接入 RPH",description:"先独立证明模型可用，再让 RPH 消费 PES2TS 选出的 TS 初猜。",input:"reaction_change.json、path_manifest.json 与 Top-k XYZ。",action:"在现有环加成案例上并行对照，逐步引入适配器和回归验证。",output:"RPH 可消费的候选几何与完整溯源。",gate:"边界：RPH 继续负责 QC 执行与恢复；训练和数据集构建留在 PES2TS。"}
+        source:{kicker:"G0 · 共同数据入口",title:"数据入口与固定划分",description:"构建可追溯的端点输入，并将 DFT 真值与生成、排序推理隔离。",input:"Reaction-QM 映射反应 SMILES、R/P 几何、元素、电荷和自旋。",action:"固定反应级 split，审计重复及逆向反应，TS/IRC 单独封存。",output:"ReactionCase、来源摘要、划分与拒绝账本。",gate:"Demo：24 条候选人工复核；现有真值辅助映射的限制明确记录。"},
+        s0:{kicker:"G1 · PES generation",title:"反应编辑与冻结 ScanPlan",description:"从 R/P 图识别成断键、键级和特殊事件；为每条反应计划有限路径候选。",input:"端点分子图、几何、统一映射原子顺序和预算。",action:"定选边、成键锚点、实际扫描方向、驱动/观察键、装配及回退；静态验证后冻结。",output:"scan_plan_v1、候选顺序、参数和哈希。",gate:"当前计划尚未实现；Demo 前修复导出中的 IRC 派生字段泄漏。"},
+        path:{kicker:"G2 · PES generation",title:"执行廉价路径并质检",description:"按冻结计划运行一维/同步进度扫描，必要时尝试双端路径。",input:"通过白名单检查的 ScanPlan 与 R/P 端点。",action:"执行优化，记录逐帧几何和能量；检查收敛、碰撞、拓扑与反应进度；保留失败成本。",output:"统一 PathBundle 或带原因的失败记录。",gate:"A–E 每层需有可复核有效实例或明确阻断；全部 24 条有闭合账本。"},
+        label:{kicker:"EVAL · 隔离评估",title:"真值标签与 oracle gap",description:"只在隔离评估区检验路径里是否存在值得排序的候选。",input:"冻结 PathBundle、参考 TS/IRC 和后续 QC 结果。",action:"比较几何上界、简单规则与同预算 OptTS/频率/IRC 结果；归因路径或选点问题。",output:"分层诊断报告，不写入生成与 ranking 推理输入。",gate:"若路径本身没有可用帧，先修 generation；不因模型损失下降而扩训练。"},
+        train:{kicker:"R1 · PES ranking",title:"路径判断与真实帧排序",description:"先实现可拒绝规则，量化选点空间后才考虑轻量学习模型。",input:"同一批符合合同的有效 PathBundle；不读取真值。",action:"比较最高能帧、内部峰、键进度与连续性；固定 Top-1/Top-3 和拒绝策略。",output:"SeedProposal：实际帧 XYZ、排名、理由、版本与拒绝原因。",gate:"在同路径、同候选数和同 QC 预算下评价；模型训练是条件阶段。"},
+        benchmark:{kicker:"V · 集成验证",title:"从输入到目标 TS",description:"分别报告生成漏斗、同路径排序收益与完整流程严格成功。",input:"冻结的计划、路径、排序策略和相同预算的 QC 协议。",action:"配对比较 OptTS、频率和双向 IRC，计入失败、回退及超时核时。",output:"逐例成功状态、总成本、失败归因；大样本再报告配对区间。",gate:"24 条只证明链路与问题；200–1000 条独立分层试点用于估计覆盖和收益。"},
+        bridge:{kicker:"RPH/ACP · 对接",title:"版本化初猜与验证接口",description:"PES2TS 交付可追溯候选，执行层运行并记录 QC 验证。",input:"SeedProposal、原始 R/P 身份和计算预算。",action:"ACP 调度与恢复，RPH 消费候选并按同条件执行 OptTS、频率、IRC。",output:"ValidationResult 与初猜、路径、计划可双向追溯。",gate:"验证结果回到隔离评估区，不成为生成或排序推理特征。"}
       };
       const stageButtons=Array.from(document.querySelectorAll(".stage"));
       function showStage(key){
