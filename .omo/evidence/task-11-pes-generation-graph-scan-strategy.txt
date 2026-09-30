@@ -1,0 +1,92 @@
+task-11 pes-generation-graph-scan-strategy — strategy registry + motif routing
+date: 2026-10-01
+status: PASSED
+
+WHAT LANDED
+- pes2ts_core/scan_strategy/registry.py (new; 1096 pure LOC → # noqa: SIZE_OK,
+  plan-named todo-11 single module; precedent contracts_v2/event_coupling).
+  - STRATEGY_REGISTRY: design §5.2 eleven rows verbatim (LOCAL_CONNECTIVITY,
+    H_TRANSFER, CONNECTIVITY_EXCHANGE, H_TRANSFER_COUPLED, RING_COUPLED,
+    H2_EVENT, AROMATIC_COUPLED, MULTI_EVENT_CONNECTED, CONFORMATION_STEREO,
+    NETWORK_PATH, SPECIAL_DOMAIN), each with required_graph_pattern /
+    preferred_drivers / monitoring_targets / escalation_fallback.
+  - route_strategies(*, bundle, edit_graph, context, coupling, reaction_id?,
+    policy?, stratum?) — keyword-only; stratum kwarg raises
+    ValueError("STRATUM_NOT_SUPPORTED...") (motif matching graph-structural
+    only; design §5.1 "不按 stratum 分派").
+  - Routing order §5.1: (1) watershed — conservation → typed rejection
+    ELEMENT_IMBALANCE/ISOTOPE_IMBALANCE; non-organic elements →
+    SPECIAL_DOMAIN special-domain exit (required representations/methods
+    listed; full detail todo 29); endpoint charge/multiplicity mismatch →
+    SPECIAL_ELECTRONIC_STATE_REQUIRED exit (§3.2). (2) NO_REACTION_CHANGE
+    typed rejection when no edits + no attribute changes. (3) Event
+    construction consumed from todo 9 EventCouplingGraph. (4) No-connectivity
+    branch: aromatic-region pure order changes → AROMATIC_COUPLED
+    (delocalized strategy, review); stereo/attribute change →
+    CONFORMATION_STEREO (review); otherwise O-network → NETWORK_PATH
+    (review). (5) Per-strong-component motif match in specificity order
+    (H2 > H-coupled > pure H > exchange > ring > delocalized > single-fb
+    LOCAL_CONNECTIVITY > multi-event > network fallback) → 1/2/3-driver
+    candidates. (6/7) Direction (todo 15) / schedule (todo 14) / budget
+    (todo 17) hooks are no-op functions with owning-todo docstrings; pending
+    markers recorded in rule_trace.
+  - RouteResult (schema g1_strategy_route_result_v1): outcome ∈
+    {executable_candidate_set, needs_review, special_domain_exit,
+    typed_rejection} — exactly one per input, never silent empty (defensive
+    NETWORK_PATH fallback). strategy_candidates ordered; each carries
+    strategy_id / rule_trace (matched rule ids in order) / pattern_evidence /
+    review_required / component_events / labels / escalation_fallback /
+    n_drivers_planned. to_doc()/to_json() via stable_json_dumps.
+  - Multi-label preservation: candidate.labels + rule_trace keep ALL event
+    types of the routed component (e.g. H transfer + connectivity exchange →
+    H_TRANSFER_COUPLED with both R_EVENT_H_TRANSFER and
+    R_EVENT_CONNECTIVITY_EXCHANGE in trace).
+  - ORGANIC_ELEMENTS = {H,C,N,O,F,Cl,S,P,Br,I,B,Si} named constant + policy
+    note (design §12 pins Demo24 coverage only; conservative set per task).
+  - Genuine-ring predicate: todo 8 attaches singleton support_path_overlap
+    ring groups to EVERY support-path edit → RING_REORGANIZATION event nodes
+    are noise unless basis=shared_ring_region or >=2 edit pairs. Labels and
+    ring-branch matching filter this noise (else every single bond routes
+    RING_COUPLED — observed in first test run, fixed).
+- tests/test_strategy_registry.py (new; 42 tests): single bond F/B, pure H
+  transfer, H2 event, connectivity exchange, ring closure (single-bond →
+  LOCAL_CONNECTIVITY + R_MOTIF_RING_CLOSURE; two-bond → RING_COUPLED), ring
+  opening, no-edit identical → NO_REACTION_CHANGE, stereo flip →
+  CONFORMATION_STEREO, pure aromatic order change → AROMATIC_COUPLED
+  delocalized branch, pure non-aromatic order change → NETWORK_PATH (NOT
+  aromatic), multi-H coupled → H_TRANSFER_COUPLED, H+exchange multi-label,
+  disjoint centers → 2× LOCAL_CONNECTIVITY + multi-component NETWORK_PATH,
+  metal input → SPECIAL_DOMAIN exit, electronic mismatch →
+  SPECIAL_ELECTRONIC_STATE_REQUIRED exit, element imbalance typed rejection,
+  stratum negative test, determinism (identical to_json twice), hooks in
+  trace, forbidden-key purity scan, 17-fixture exactly-one-disposition
+  parametrization, Demo24 integration (24/24 fixture records route; rdkit
+  pin never-skip gate; no assertion vs design-time PROPOSALS).
+
+VERIFICATION
+- pytest tests/test_strategy_registry.py → 42 passed.
+- Full suite: 829 passed, 4 deselected (787 baseline + 42 new). 0 failed.
+- lsp_diagnostics error-level: clean on both new files.
+- truth_guard suite green (registry.py carries no quarantined-path strings,
+  truth-file names, truth imports, or dynamic-exec primitives).
+
+QA / FAILURE SCENARIOS
+- stratum=... on route_strategies → ValueError match STRATUM_NOT_SUPPORTED.
+- Fe element in bundle → outcome special_domain_exit, code SPECIAL_DOMAIN,
+  required_representations/required_methods non-empty, zero candidates.
+- conservation.element_conserved=False (dataclasses.replace) → typed_rejection
+  ELEMENT_IMBALANCE.
+- R==P no edits → typed_rejection NO_REACTION_CHANGE.
+
+NOTES FOR TODOS 12-17
+- RouteResult API documented in .omo/notepads/pes-generation-graph-scan-strategy/
+  learnings.md (todo 11 section): outcome vocabulary, StrategyCandidate
+  fields, escalation_fallback consumption, hook call order
+  (direction → schedule → budget), genuine-ring semantics, membership
+  event_ids alphabetized (primary not [0]).
+- Todo 12 consumes candidate.n_drivers_planned + component_events for
+  coordinate pools / event_coverage; review_required=True candidates must not
+  become default automatic scans while uncovered events exist.
+- Todo 17 consumes escalation_fallback chains + apply_budget_gate seam;
+  contracts_v2 still forces execution_eligible=False (plan decision 3 —
+  freeze-gate contradiction noted in todo 4 learnings remains open for 17).
