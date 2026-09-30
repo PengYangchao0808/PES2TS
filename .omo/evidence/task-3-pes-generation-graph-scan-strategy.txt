@@ -1,0 +1,93 @@
+task-3: contracts v2 module (proposal/plan/capability + identity sealing)
+plan: .omo/plans/pes-generation-graph-scan-strategy.md (todo 3)
+date: 2026-10-01
+env: conda pes2ts, python 3.12
+
+WHAT WAS BUILT
+- pes2ts_core/scan_strategy/__init__.py: package surface re-exporting contracts_v2 public API.
+- pes2ts_core/scan_strategy/contracts_v2.py: stdlib-only dict-factory contracts module
+  following pes2ts_core/contracts.py idiom (module docstring, Final constants like
+  g1/v2_schema.py, list[str]-returning validators, make/seal/dumps/loads roundtrip).
+  Schema kinds:
+    StrategyProposal  -> schema_version "g1_strategy_proposal_v1"
+    GenerationPlan    -> schema_version "g1_generation_plan_v2"
+    BackendCapability -> schema_version "orca_capabilities_v1"
+- tests/test_scan_strategy_contracts_v2.py: 21 tests (18 functions + 3 parametrized).
+
+INTERFACE DECISIONS (design §10.1 + 谱系归一裁决 §3)
+- Proposal: execution_eligible forced False (factory raises ContractError on True;
+  validate rejects True). needs_review status allowed (reasons required); rejected
+  requires blocking_reasons. Per-candidate failure_reasons and whole-case
+  blocking_reasons stored separately; top-level reasons[] per design §10.1.
+  epistemic_status pinned to "endpoint_hypothesis". Candidates at proposal stage
+  are scan-mode only (mode ∈ SINGLE_1D/COUPLED_1D/SCHEDULED_1D); path proposals
+  arrive with the PathRequest todo.
+- GenerationPlan: frozen; candidates is a discriminated union on candidate_kind
+  ∈ {ScanCandidateV2, PathCandidateV1}. Cross-kind key contamination rejected
+  (scan-only: mode/drivers/lambda_values/schedule_id/schedule_kind/assembly_id;
+  path-only: endpoint_geometries/image_chain/method_kind). ScanCandidateV2 covers
+  SINGLE_1D (exactly 1 driver), COUPLED_1D/SCHEDULED_1D (2..3 drivers,
+  MAX_SCAN_DRIVERS=3 = config scan_strategy.max_scan_coordinates); shared
+  lambda_values + schedule_id; SCHEDULED_1D requires schedule_kind
+  (linear/event_A_early/event_A_late/smoothstep). PathCandidateV1 minimal:
+  n_atoms + endpoint_geometries{reactant,product} (N×3 finite, row count ==
+  n_atoms) + image_chain{n_images>=1}; method_kind ∈ {NEB} optional.
+  Plan top-level: policy_hashes (non-empty), backend{engine,adapter_version,method},
+  candidate_graph (unique node_ids, terminal bools, edges reference known nodes),
+  budget, compiled{kind: hashes|recipe}, quality_tests; status frozen/superseded
+  (superseded requires supersedes). Empty candidates rejected.
+- BackendCapability: orca_capabilities_v1.json shape — engine_version,
+  adapter_version, supported_modes ⊆ {SINGLE_1D,COUPLED_1D,SCHEDULED_1D,PATH_NEB},
+  coordinate_kinds ⊆ {B,A,D}, max_scan_coordinates int>=0,
+  point_limits{baseline,max} positive ints baseline<=max, custom_schedule_support
+  bool, constraint_support{native_scan,per_point_constraints,simul_scan} bools,
+  method_element_coverage {method: [elements]}, probe_receipts
+  [{probe_id,status,receipt_sha256?}]. Statuses active/retired.
+- Identity sealing: REUSES pes2ts_core.contracts.seal_document verbatim (imports it)
+  so volatile-key semantics are identical to v1: created_at/generated_at/producer
+  volatile, content_sha256 stable. stable_json_dumps from utils/hashing.py.
+- FORBIDDEN keys: single source — imports contracts.FORBIDDEN_TRUTH_KEYS +
+  g1.v2_verify.FORBIDDEN_EXPORT_KEYS (lower-cased union) as FORBIDDEN_KEYS.
+  Importing v2_verify creates no cycle (g1 does not import scan_strategy) and does
+  not trip truth_guard (no ground_truth/truth_sources strings, no truth imports).
+  validate_v2_document ALWAYS rejects forbidden keys at any depth (unlike v1 which
+  gates on production_input).
+- Legacy ScanPlan exporter stubs deliberately absent (todo 18).
+
+VERIFICATION
+- conda run -n pes2ts python -m pytest -q tests/test_scan_strategy_contracts_v2.py
+  -> 21 passed in 0.78s
+  Coverage: make->seal->loads roundtrip for all 3 kinds; content_sha256 stable for
+  identical input across calls (volatile created_at excluded); mutating frozen
+  drivers field changes hash (plan + proposal); mutating created_at does NOT change
+  hash; validate rejects orientation/irc_evidence/endpoint_match at top level,
+  nested events, and inside reason dicts; rejects ts_irc_index (export blacklist);
+  FORBIDDEN_KEYS ⊇ both source sets; execution_eligible=True raises + forged True
+  rejected; needs_review proposal roundtrips; rejected requires blocking_reasons;
+  discriminated union rejects wrong candidate_kind and cross-kind payloads;
+  SINGLE_1D with 2 drivers / COUPLED_1D with 1 driver / 4 drivers all rejected;
+  start_endpoint/direction inconsistency rejected; path geometry row count mismatch
+  rejected; empty plan candidates rejected; unknown node edge rejected; non-finite
+  lambda rejected; unknown fields rejected; tampered content_sha256 rejected by
+  loads; capability unknown mode + inverted point_limits rejected.
+- conda run -n pes2ts python -m pytest -q -> 700 passed, 4 deselected in 32.89s
+  (baseline 666 + 21 this todo + 13 from parallel todo-5 worker's
+  tests/test_endpoint_graph.py which landed untracked in the same tree; no file
+  overlap; todo-5 files NOT included in this commit).
+- lsp_diagnostics on pes2ts_core/scan_strategy: 0 error-level after TypeGuard
+  narrowing fixes (_is_int/_is_number/_is_nonempty_str/_int_list_ok are TypeGuards).
+  Remaining basedpyright reportAny/reportUnknown* warnings match the contracts.py
+  idiom (validators over untrusted JSON dicts); the repo has no basedpyright CI
+  config — gate is pytest.
+- contracts.py NOT modified (byte-frozen). No CLI added. data/ground_truth and
+  data/interim/g1_v2/edits never read. No demo24 reaction ids hardcoded.
+
+NOTES
+- contracts_v2.py pure LOC ~850 (awk non-blank non-comment) — exceeds the generic
+  250 LOC ceiling; justified SIZE_OK: contracts schema module mandated as a single
+  file by the task, mirrors contracts.py (559 pure LOC) which covers 8 v1 kinds;
+  this covers 3 v2 kinds + discriminated-union candidate payloads. Splitting would
+  break the task's explicit file contract.
+- Factory signatures use **fields: Any exactly like contracts.make_document —
+  boundary parse-don't-validate is enforced by make_*/loads_* raising ContractError.
+- Commit: feat(scan-strategy): add v2 proposal/plan/capability contracts
