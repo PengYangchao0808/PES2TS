@@ -1,0 +1,108 @@
+task-1 L0 closure verification receipt — pes-generation-graph-scan-strategy
+================================================================================
+date: 2026-09-30 / 2026-10-01 (Asia/Shanghai, CST)
+plan: .omo/plans/pes-generation-graph-scan-strategy.md todo 1
+env: conda pes2ts (python 3.12.14, rdkit 2026.03.6)
+repo: /mnt/e/Calculations/AI4S_ML_Studys/PES2TS
+
+--------------------------------------------------------------------------------
+CONTEXT: STALE-TREE REMEDIATION
+--------------------------------------------------------------------------------
+Prior attempt (2026-09-30): `g1 v2-verify` FAILED (exit 22, problems>0).
+Root cause confirmed by orchestrator: the on-disk `data/interim/g1_v2/export/`
+tree was stale — written by an older v2_gate.py that embedded IRC-derived
+`status_summary.orientation` / `status_summary.endpoint_match` in every export
+document. Current `pes2ts_core/g1/v2_gate.py:164-170` is clean (status_summary
+holds only `p1_status` + `audit_status`), and `v2-gate` rmtree's the export
+root and rewrites every scan-ready doc (v2_gate.py:249-251).
+
+Remediation sequence (no source code modified):
+  1. `g1 v2-gate --assume-verified`  — regenerate export/ with current clean code
+  2. `g1 v2-verify`                  — recompute + whitelist check on clean tree
+  3. `g1 v2-gate`                    — full gate (verify + rewrite + manifest)
+
+--------------------------------------------------------------------------------
+COMMANDS, EXIT CODES, OUTPUTS
+--------------------------------------------------------------------------------
+[1] regenerate export tree
+  cmd:  nohup /root/miniforge3/envs/pes2ts/bin/python bin/pes2ts g1 v2-gate --assume-verified
+  exit: 0
+  out:  G1 v2 gate: 183460 scan-ready, 7688 needs_review, 8069 excluded (of 199217)
+        v2-gate: scan_ready=183460/199217 needs_review=7688 excluded=8069
+  wall: ~1h38m (rmtree + rewrite of 183460 export JSONs on /mnt/e WSL 9p mount)
+  note: --assume-verified skips the internal verify_v2 pass (cli.py:1156);
+        refusals=0, gate_pass=true in the written manifest.
+
+[2] verification
+  cmd:  nohup /root/miniforge3/envs/pes2ts/bin/python bin/pes2ts g1 v2-verify
+  exit: 0
+  out:  v2-verify: total=199217 clean=183460 issues=7688 excluded=8069 problems=0
+  wall: ~1h41m (recomputes every edit block + classification + export whitelist)
+  problems=0  ← acceptance criterion met
+  note: v2-verify does NOT write a manifest artifact (pes2ts_core/cli.py:694-712
+        handler prints the summary line only; verify_v2 returns a dataclass).
+        Therefore no sha256 of a "verify manifest" exists — recorded as N/A.
+
+[3] full gate
+  cmd:  nohup /root/miniforge3/envs/pes2ts/bin/python bin/pes2ts g1 v2-gate
+  exit: 0
+  out:  G1 v2 gate: 183460 scan-ready, 7688 needs_review, 8069 excluded (of 199217)
+        v2-gate: scan_ready=183460/199217 needs_review=7688 excluded=8069
+  wall: ~3h22m (internal verify_v2 ~1h46m + export rmtree/rewrite ~1h36m)
+  gate_pass=true  ← acceptance criterion met
+  refusals: 0
+  manifest: data/manifests/g1_v2_gate.json
+  generated_at: 2026-09-30T20:43:21+00:00
+
+--------------------------------------------------------------------------------
+GATE MANIFEST DIGEST
+--------------------------------------------------------------------------------
+path:   data/manifests/g1_v2_gate.json
+sha256: 9d991a624d5c5e4d6800af6b4068676d9d887e695623fdd5efbb12d1c9af8be5
+gate_pass: true
+n_denominator: 199217
+n_scan_ready: 183460
+n_needs_review: 7688
+n_excluded: 8069
+refusals: 0
+
+v2-verify output manifest sha256: N/A (v2-verify writes no manifest; prints summary only)
+
+--------------------------------------------------------------------------------
+100-FILE RECURSIVE FORBIDDEN-KEY SAMPLE (dual tree)
+--------------------------------------------------------------------------------
+script: /tmp/opencode/sample_check_dual.py (recursive dict+list scan)
+keys:   endpoint_match, orientation, irc_evidence
+seed:   42 (deterministic)
+scope:  per-reaction exports only (shard subdirs; root-level sanitize
+        provenance manifest excluded from sampling pool)
+
+  data/interim/g1_v2/export/               n_sampled=100  n_violations=0
+  data/interim/g1_v2/export_contracts_v1/  n_sampled=100  n_violations=0
+  TOTAL                                     n_sampled=200  n_violations=0
+
+Spot-check on regenerated export doc (00000/RXN_0000000001.json):
+  "orientation" absent, "endpoint_match" absent, "irc_evidence" absent
+  status_summary keys = ['audit_status', 'p1_status']  (matches current clean code)
+
+--------------------------------------------------------------------------------
+QA INJECTION CHECK (recursive-key checker rejects a doctored export)
+--------------------------------------------------------------------------------
+script: /tmp/opencode/qa_inject_orientation.py
+method: copy real export from shard 00000 to tmp_path, inject
+        "orientation":"R_first" at top level, run recursive-key check
+result: original had 0 forbidden hits; injected doc -> hits=['orientation']
+        QA_PASS: injected orientation is flagged by recursive-key check
+
+--------------------------------------------------------------------------------
+SUMMARY
+--------------------------------------------------------------------------------
+  v2-verify exit 0, problems=0                        PASS
+  v2-gate   exit 0, gate_pass=true                    PASS
+  100-file sample export/          0 violations       PASS
+  100-file sample export_contracts_v1/ 0 violations   PASS
+  QA injection rejection           PASS
+  stale export/ tree regenerated   DONE (no code change)
+
+  git commit: chore(g1): record L0 closure verification receipt
+  committed file: .omo/evidence/task-1-pes-generation-graph-scan-strategy.txt
