@@ -1,0 +1,32 @@
+task-8: endpoint context graph (pes-generation-graph-scan-strategy)
+date: 2026-10-01
+status: PASSED
+
+Scope
+- Created pes2ts_core/g1/endpoint_context.py (endpoint context graph, design §4.2) and tests/test_context_graph.py.
+- Ported support-path / cross-component / endpoints evidence semantics EXACTLY from outputs/pes_generation_strategy_design_v1/build_evidence.py.
+- No new dependencies (requirements.txt has no networkx): union-find components, BFS shortest paths, DFS low-link bridges + Hopcroft-Tarjan biconnected blocks, BFS fundamental-cycle ring sizes, multi-source BFS shells — all stdlib.
+- Existing modules unmodified. reaction_edit_graph.py (todo 7) did NOT exist at execution time; EditGraph consumed via documented duck-typing Protocol (.edits records with pair/edit_kind/r_bond_order/p_bond_order; .atom_events passthrough); module try-imports EditGraph and exports the Protocol types. Interface assumptions recorded in notepad for todo 9/10 reconciliation.
+
+Implementation notes
+- support_path_R on formed = shortest R-graph path between pair atoms; support_path_P on broken = shortest P-graph path; order_changed carries neither (evidence key-presence semantics in evidence_edit_fields(); formed cross-component yields support_path_R=null, matching RXN_0000100736).
+- cross_component_R/P = bundle component-id inequality per side; same_component_* = negation.
+- distance_R_A/distance_P_A = round(math.dist(...),6) from caller-supplied map->xyz (bundle stores only geometry SHA256; coords come from review-case geometry aligned to atom_map_id).
+- endpoints evidence block: n_components, cycle_rank (|E|-|V|+C), charge, multiplicity (case-level via EndpointElectronic), rdkit_formal_charge_sum / rdkit_charged_atom_count / rdkit_radical_electron_count (from bundle AtomNodes) — all seven keys per side.
+- Ring grouping (plan failure scenario 两根不相交新键仍识别为同一环化): formed→P-graph / broken→R-graph ring region = 2-edge-connected component containing the edge (None if bridge); union-find links edits with intersecting regions (shared_ring_region) or same-kind intersecting support-path atom sets (support_path_overlap). Cross-kind edits never merge on shared atoms alone (H transfer stays out of RING groups). order_changed excluded.
+- Ring sizes = deterministic BFS-tree fundamental-cycle multisets, NEVER the sole classification: in_cycle (membership in a >=3-atom biconnected block), biconnected blocks (bridges appear as size-2 blocks — standard decomposition), classic bridges, cycle_rank per component + total, 2-edge-connected components ship alongside.
+- bridge_edges_R/P = task definition (edge present on one side whose endpoints differ in the other side's component structure); classic graph bridges stored in SideTopology.bridges.
+- Aromatic regions = connected aromatic-atom clusters; aromatic_boundary = non-aromatic atoms bonded into a region; aromatic_periphery = region-edge aromatic atoms.
+- Spectator components = bundle components with no edit atoms (tuple-of-tuples).
+- context_radius default 2 (config/defaults.yaml scan_strategy.context_radius); context_radius_from_config falls back to 2 on invalid values; radius 1 vs 3 proven not to change support paths, cross flags, endpoints block, ring groups, bridge edges (shells only grow).
+
+Verification
+- tests/test_context_graph.py: 23 passed (support paths formed/broken; order_changed carries neither; two-disjoint-bonds one ring group; independent closures two groups; support-path overlap grouping; cross-component formed/broken; manual triangle+pendant block/bridge/rank math; bicyclic rank=2 with bridge block (6,7); benzene ring_sizes=(6,); cycle-rank change on ring closure; radius 1 vs 3 invariance + config parsing; toluene aromatic boundary; spectator HCl; distances 5.0/1.0 from hand coords; endpoints seven-key block on charged fixture; bridge_edges_R on broken-cross; determinism (to_doc equal); zero truth-derived keys in output).
+- Evidence cross-check (skip-if-data-missing, PASSED, not skipped): 6 Demo24 records RXN_0000007104, RXN_0000161724, RXN_0000077619, RXN_0000026256, RXN_0000102998, RXN_0000100736 rebuilt from candidates CSV + reaction_cases_review_v1 docs (whitelisted; never data/ground_truth, never g1_v2/edits). Per edit: cross_component_R/P, support_path_R (formed, incl. null), support_path_P (broken), distance_R_A/P_A matched evidence exactly. Endpoints block all seven keys x both sides matched features.endpoints (incl. rdkit_charged_atom_count=2 for161724 R, cycle_rank 2->1 for 26256, 2 components for 100736 R). Dedicated ring-case check: 102998 formed (2,7)->[2,4,7], formed (4,8)->[4,7,8], broken (2,4)->[2,7,4] reproduced.
+- Full suite: conda pes2ts python -m pytest -q -> 753 passed, 4 deselected (baseline 730 + this todo's 23; todo 7's reaction_edit_graph module/tests still absent at final run — suite contains zero imports of it).
+- lsp_diagnostics error-level: clean on endpoint_context.py and test_context_graph.py.
+- Pure LOC: endpoint_context.py 876 (SIZE_OK justified: plan-named single §4.2 module; precedent endpoint_graph.py 355); tests 566.
+
+Evidence JSON probe note: Demo24 reaction ids are RXN_ + 10-digit zero padding (e.g. RXN_0000077619); querying with 11-digit padding falsely reports missing rows — candidates CSV and evidence JSON both carry the 14-char ids.
+
+Commit: feat(g1): add endpoint context graph
