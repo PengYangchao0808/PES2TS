@@ -1,0 +1,94 @@
+task-9: 事件耦合图 H（typed event coupling graph）— pes-generation-graph-scan-strategy
+date: 2026-10-01
+env: conda pes2ts (/root/miniforge3/envs/pes2ts/bin/python), python 3.12, rdkit 2026.03.6
+baseline: 768 passed, 4 deselected (todo 7+8 landed)
+
+== WHAT WAS BUILT ==
+pes2ts_core/g1/event_coupling.py (864 pure LOC, # noqa: SIZE_OK, plan §4.3 single module)
+tests/test_event_coupling.py (12 tests)
+Imports only (read-only): g1/endpoint_graph.py, g1/reaction_edit_graph.py, g1/endpoint_context.py,
+g1/v2_edits.py (hydrogen_partner_changes + exclusive_edits), g1/v2_schema.py (HH_EVENT_KINDS etc.).
+No modification of todo 5/7/8 modules. No scan-coordinate generation. No demo24 ids in production code.
+
+== API ==
+build_event_coupling_graph(bundle, edit_graph, context) -> EventCouplingGraph
+hydrogen_events_from_bundle(bundle) -> tuple[dict,...]        # golden {from,from_state,h,kind,to,to_state}
+aromatic_regions_from_bundle(bundle) -> dict[str, list[list[int]]]  # golden {region_id: [[a,b],...]} | {}
+EventCouplingGraph: events / coupling_records / strong_components / weak_links / membership /
+                    hydrogen_events / aromatic_regions / events_by_type() / component_of() /
+                    membership_map() / to_doc()
+
+Event node types (design §4.3): H_TRANSFER, H2_EVENT, CONNECTIVITY_EXCHANGE, RING_REORGANIZATION,
+DELOCALIZED_REGION, SHARED_CENTER (leftover shared-centre groups + inter-event strong rule);
+CONTEXT_NEAR = weak link only (never merges).
+Rule ids return rule_id/support_atom_maps/support_edges/evidence_level on every CouplingRecord.
+
+== OWNERSHIP / MEMBERSHIP ==
+Primary priority: H (transfer/release/capture; HH_EVENT_KINDS->H2 dedup by H-H pair cluster)
+  > CONNECTIVITY_EXCHANGE (formed+broken sharing non-H centre) > RING (todo-8 ring_groups)
+  > DELOCALIZED (v2 aromatic region with edits) > leftovers
+Leftovers: >=2 sharing edit-degree>=2 atom -> SHARED_CENTER event; single order_changed ->
+DELOCALIZED_REGION singleton (rule order_change_singleton); single formed/broken ->
+CONNECTIVITY_EXCHANGE singleton (rule connectivity_single).
+Multi-membership -> typed justifications (aromatic_region_membership / ring_group_membership /
+h_partner_change / shared_center) + shared_edit_membership strong link between co-member events.
+Strong components = union-find over strong links ONLY (shared_edit_membership + shared_center).
+CONTEXT_NEAR weak links listed separately; NO transitive closure over weak links.
+
+== SYNTHETIC TEST LOCKS (tests/test_event_coupling.py) ==
+1. Two disjoint H transfers -> 2 H_TRANSFER events, 2 strong components, zero coupling records between them
+2. Nearby disjoint H transfers (shell overlap radius 2) -> CONTEXT_NEAR weak link exists, components NOT merged
+   (plan failure scenario: 远端两编辑不被自动同步)
+3. H2 formation (to_hh x2) -> 1 H2_EVENT (H2_EVENT:hh3_5), 0 H_TRANSFER events
+4. Benzene R->kekulized P -> 6 order_changed edits, aromatic_regions one region of 6 pairs,
+   exactly 1 DELOCALIZED_REGION event (never six coordinates)
+5. Ring closure + H transfer sharing atom 1 -> SHARED_CENTER strong link (support contains 1),
+   shared_edit_membership links, single strong component, multi-membership justifications present
+6. Substitution A-B broken + B-C formed sharing B=2 -> 1 CONNECTIVITY_EXCHANGE:c2 owning both edits
+7. Membership registry: every edit exactly-once-or-shared; strong components partition event set
+8. Determinism: stable_json_dumps(to_doc()) byte-identical across rebuilds
+9. to_doc key scan vs FORBIDDEN_TRUTH_KEYS ∪ FORBIDDEN_EXPORT_KEYS = 0 hits
+10. CouplingRecord projection carries exactly {rule_id, evidence_level, event_ids,
+    support_atom_maps, support_edges}
+
+== DEMO24 EVIDENCE CROSS-CHECK (skip-if-data-missing; tree present -> ran) ==
+For all 24 records in outputs/pes_generation_strategy_design_v1/demo24_strategy_evidence.json:
+  rebuild bundle from candidates CSV SMILES + export_contracts_v1 materials (todo 6 path),
+  build edit graph + context, build coupling graph; assert:
+  - list(coupling.hydrogen_events) == features.hydrogen_events          (24/24 exact)
+  - coupling.aromatic_regions == features.aromatic_regions              (24/24 exact)
+  - membership registry covers every edit pair exactly-once-or-shared   (24/24)
+  - every multi-membership row has >=1 typed justification              (24/24)
+  - strong components partition the event set (no overlap, full cover)  (24/24)
+Manual precursor script /tmp/opencode/evidence_check.py: compared=24/24 OK
+(test file test_demo24_evidence_crosscheck_hydrogen_and_aromatic repeats this inside pytest;
+skip when evidence/csv/export tree absent; asserts compared==24 when any export is found)
+
+== COMMAND TRANSCRIPTS ==
+$ /root/miniforge3/envs/pes2ts/bin/python -m pytest -q tests/test_event_coupling.py
+............                                                             [100%]
+12 passed in 1.15s
+
+$ /root/miniforge3/envs/pes2ts/bin/python -m pytest -q
+........................................................................ [ 73%]
+........................................................................ [ 83%]
+........................................................................ [ 92%]
+............................................................             [100%]
+780 passed, 4 deselected in 36.36s
+(768 baseline + 12 new; 4 deselected = gated realdata/xtb/acp/orca families unchanged)
+
+$ lsp_diagnostics(event_coupling.py, test_event_coupling.py, severity=error)
+No diagnostics found (both files)
+
+$ pure LOC: event_coupling.py 864 (SIZE_OK, precedent endpoint_context 876 / contracts_v2 ~850);
+            test_event_coupling.py 476
+
+$ truth purity: to_doc key scan vs FORBIDDEN set = 0 (test_to_doc_carries_no_forbidden_truth_keys)
+
+== NOTEPAD ==
+appended .omo/notepads/pes-generation-graph-scan-strategy/learnings.md (todo 9 section;
+documents the H API for todo 11 routing: events_by_type / strong_components as routing units /
+hydrogen_events / aromatic_regions / membership_map / weak_links monitoring-only)
+
+== COMMIT ==
+feat(g1): add typed event coupling graph
