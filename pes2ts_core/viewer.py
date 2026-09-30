@@ -1,0 +1,89 @@
+"""Self-contained local viewer for PathBundle energy curves and structures."""
+from __future__ import annotations
+
+import json
+from pathlib import Path
+from typing import Any
+
+from pes2ts_core.contracts import ContractError, dumps_document
+from pes2ts_core.ranking import rank_path_bundle
+
+
+_PAGE = r'''<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PES2TS 路径查看器</title><style>
+:root{color-scheme:dark;--bg:#09131d;--panel:#111f2d;--line:#284252;--ink:#eef7fa;--muted:#9db3bf;--mint:#5ce1bd;--blue:#83bbff;--amber:#ffd083}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 75% 0,#17364b 0,transparent 42%),var(--bg);color:var(--ink);font:15px/1.5 "Microsoft YaHei","Noto Sans SC",Arial,sans-serif}
+main{max-width:1320px;margin:auto;padding:28px 22px 44px}header{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:20px}h1{font-size:clamp(1.5rem,3vw,2.3rem);margin:0 0 5px;letter-spacing:-.03em}.sub,.muted{color:var(--muted)}.badge{border:1px solid #886b3f;color:var(--amber);padding:6px 10px;border-radius:999px;font-size:.82rem;white-space:nowrap}
+.grid{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(360px,.8fr);gap:16px}.panel{background:#111f2deF;border:1px solid var(--line);border-radius:16px;padding:16px;min-width:0}.panel h2{font-size:1.06rem;margin:0 0 5px}.toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:12px 0}.toolbar button,.framebtn{background:#172a39;border:1px solid #345466;color:var(--ink);border-radius:9px;padding:7px 11px;cursor:pointer}.toolbar button[aria-pressed="true"],.framebtn[aria-pressed="true"]{border-color:var(--mint);background:#174139}.toolbar button:focus-visible,.framebtn:focus-visible{outline:2px solid var(--mint);outline-offset:2px}
+canvas{display:block;width:100%;height:330px;background:linear-gradient(145deg,#0d1a26,#0b1722);border:1px solid #223a49;border-radius:11px;touch-action:none}.curve{height:300px}.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:.8rem;color:var(--muted);margin-top:8px}.dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--blue);margin-right:5px}.dot.selected{background:var(--mint)}.frame-list{display:flex;gap:7px;overflow:auto;padding:9px 1px 3px}.framebtn{min-width:110px;text-align:left;font-size:.78rem}.framebtn span{display:block;color:var(--muted)}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:11px}.stat{background:#0d1924;border:1px solid #203745;padding:9px 10px;border-radius:10px;min-width:0}.stat small{display:block;color:var(--muted);font-size:.72rem}.stat strong{display:block;overflow-wrap:anywhere;font-size:.88rem;margin-top:2px}.note{font-size:.82rem;color:var(--muted);margin-top:12px}.error{color:#ff9a9a;padding:20px}.atomkey{display:flex;gap:10px;flex-wrap:wrap;font-size:.78rem;color:var(--muted);margin-top:7px}.atomkey b{color:var(--ink)}
+@media(max-width:900px){.grid{grid-template-columns:1fr}.panel.structure{grid-row:2}canvas{height:290px}}@media(max-width:550px){main{padding:20px 12px}.badge{white-space:normal;text-align:center}header{align-items:flex-start}.stats{grid-template-columns:1fr 1fr}}
+</style></head><body><main>
+<header><div><h1 id="title">PES2TS 路径查看器</h1><div id="subtitle" class="sub"></div></div><div class="badge">帧排序建议 · 未做 TS 验证</div></header>
+<div class="grid"><section class="panel"><h2>能量曲线与候选帧</h2><div class="sub" id="energyMeta"></div>
+<div class="toolbar" role="group" aria-label="选择排序规则"><button data-rule="highest_scan_energy" aria-pressed="true">最高扫描能</button><button data-rule="internal_scan_peak" aria-pressed="false">内部峰</button><span class="muted" id="ruleNote"></span></div>
+<canvas class="curve" id="curve" aria-label="扫描能量曲线，点击数据点选择对应结构"></canvas><div class="legend"><span><i class="dot"></i>可用扫描能</span><span><i class="dot selected"></i>当前帧</span><span>空缺能量不连线</span></div><div class="frame-list" id="ranked"></div>
+<div class="stats"><div class="stat"><small>当前帧 ID</small><strong id="frameId">—</strong></div><div class="stat"><small>扫描能</small><strong id="energy">—</strong></div><div class="stat"><small>优化状态</small><strong id="convergence">—</strong></div></div>
+<p class="note" id="selectionNote"></p></section>
+<section class="panel structure"><h2>帧结构</h2><div class="sub">拖动旋转 · 滚轮缩放；与左侧曲线和候选列表使用同一帧 ID。</div><canvas id="molecule" aria-label="当前路径帧的可旋转三维分子结构"></canvas><div class="atomkey" id="atomkey"></div><p class="note">球体位置来自 PathBundle 几何；连线按显示距离估计，仅供浏览，不代表化学键级或 TS 成键结论。</p></section></div>
+</main><script>
+const DATA=__DATA__;
+const path=DATA.path, atoms=DATA.atoms, frames=path.frames;
+let rule='highest_scan_energy', selected=0, yaw=.65, pitch=-.25, scale=1, drag=null;
+const $=s=>document.querySelector(s), energyOf=f=>f.energies?.scan_electronic?.value??null;
+const esc=s=>String(s??'');
+$('#title').textContent=`${path.reaction_id} · 路径查看`;
+$('#subtitle').textContent=`${path.object_id}　|　状态：${path.status}　|　${frames.length} 帧`;
+$('#energyMeta').textContent=DATA.energyMeta;
+const colors={H:'#f4f7fa',C:'#8092a2',N:'#568cff',O:'#f05b62',F:'#68dc79',Cl:'#39b977',S:'#f1c44d',P:'#e8884a'};
+const radii={H:.31,C:.76,N:.71,O:.66,F:.57,Cl:1.02,S:1.05,P:1.07};
+function proposals(){return DATA.proposals[rule]||[]}
+function select(i){selected=i;paint();}
+function paint(){drawCurve();drawMolecule();const f=frames[selected];$('#frameId').textContent=f.frame_id;const en=energyOf(f);$('#energy').textContent=en===null?'缺失':`${Number(en).toFixed(6)} ${DATA.energyUnit}`;$('#convergence').textContent=f.converged===true?'收敛':f.converged===false?'未收敛':'未知';
+const prop=proposals(), rank=prop.findIndex(x=>x.frame_id===f.frame_id);$('#selectionNote').textContent=rank>=0?`当前帧列入“${rule==='highest_scan_energy'?'最高扫描能':'内部峰'}” Top-${DATA.topK}（第 ${rank+1} 位）。`: '当前帧不在当前规则的 Top-k；路径与能量数据未重新计算。';
+document.querySelectorAll('[data-rule]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.rule===rule)));
+$('#ruleNote').textContent=`切换排序只读取现有 PathBundle；Top-${DATA.topK}`;
+const list=$('#ranked');list.replaceChildren();for(const item of prop){const b=document.createElement('button');b.className='framebtn';b.setAttribute('aria-pressed',String(item.frame_id===f.frame_id));b.innerHTML=`#${item.rank} · ${esc(item.frame_id)}<span>${Number(item.score).toFixed(5)} ${DATA.energyUnit}</span>`;b.onclick=()=>select(frames.findIndex(x=>x.frame_id===item.frame_id));list.append(b)}if(!prop.length){list.textContent='当前规则没有可排序帧';}}
+function drawCurve(){const c=$('#curve'),ctx=c.getContext('2d'),dpr=devicePixelRatio||1,w=c.clientWidth,h=c.clientHeight;c.width=w*dpr;c.height=h*dpr;ctx.scale(dpr,dpr);ctx.clearRect(0,0,w,h);const vals=frames.map(energyOf).filter(x=>x!==null);if(!vals.length){ctx.fillStyle='#9db3bf';ctx.fillText('无可用扫描能',18,32);return}let lo=Math.min(...vals),hi=Math.max(...vals);if(hi===lo){lo-=.02;hi+=.02}const pad={l:58,r:16,t:18,b:38},x=i=>pad.l+(w-pad.l-pad.r)*(frames.length<2?.5:i/(frames.length-1)),y=v=>pad.t+(h-pad.t-pad.b)*(hi-v)/(hi-lo);ctx.font='11px Arial';ctx.strokeStyle='#294453';ctx.fillStyle='#a7bac5';ctx.lineWidth=1;for(let j=0;j<5;j++){let v=hi-(hi-lo)*j/4,yy=y(v);ctx.beginPath();ctx.moveTo(pad.l,yy);ctx.lineTo(w-pad.r,yy);ctx.stroke();ctx.fillText(v.toFixed(4),4,yy+4)}ctx.fillText('帧序',w/2-10,h-8);
+let open=false;ctx.beginPath();for(let i=0;i<frames.length;i++){const v=energyOf(frames[i]);if(v===null){open=false;continue}if(!open){ctx.moveTo(x(i),y(v));open=true}else ctx.lineTo(x(i),y(v))}ctx.strokeStyle='#83bbff';ctx.lineWidth=2;ctx.stroke();
+for(let i=0;i<frames.length;i++){const v=energyOf(frames[i]);if(v===null)continue;ctx.beginPath();ctx.arc(x(i),y(v),i===selected?6:4,0,Math.PI*2);ctx.fillStyle=i===selected?'#5ce1bd':'#83bbff';ctx.fill();if(i===selected){ctx.strokeStyle='#e8fff8';ctx.lineWidth=1.4;ctx.stroke()}}}
+function project(xyz,w,h){const pts=xyz.map(p=>{let x=p[0],y=p[1],z=p[2],cy=Math.cos(yaw),sy=Math.sin(yaw),cp=Math.cos(pitch),sp=Math.sin(pitch);let X=cy*x-sy*y,Y=sy*x+cy*y,Z=cp*z-sp*Y;Y=sp*z+cp*Y;return [X,Y,Z]});const center=[0,1,2].map(k=>pts.reduce((a,p)=>a+p[k],0)/pts.length);let span=Math.max(...pts.map(p=>Math.hypot(p[0]-center[0],p[1]-center[1],p[2]-center[2])),1);const factor=Math.min(w,h)*.34*scale/span;return pts.map(p=>({x:w/2+(p[0]-center[0])*factor,y:h/2-(p[1]-center[1])*factor,z:p[2]-center[2],factor}));}
+function drawMolecule(){const c=$('#molecule'),ctx=c.getContext('2d'),dpr=devicePixelRatio||1,w=c.clientWidth,h=c.clientHeight;c.width=w*dpr;c.height=h*dpr;ctx.scale(dpr,dpr);ctx.clearRect(0,0,w,h);const f=frames[selected],xyz=f.geometry,points=project(xyz,w,h);let bonds=[];for(let i=0;i<atoms.length;i++)for(let j=i+1;j<atoms.length;j++){const d=Math.hypot(...xyz[i].map((v,k)=>v-xyz[j][k]));const lim=(radii[atoms[i].element]||.75)+(radii[atoms[j].element]||.75);if(d>.4&&d<lim*1.24)bonds.push([i,j,points[i].z+points[j].z])}bonds.sort((a,b)=>a[2]-b[2]);for(const [i,j] of bonds){ctx.beginPath();ctx.moveTo(points[i].x,points[i].y);ctx.lineTo(points[j].x,points[j].y);ctx.strokeStyle='#9db3bf';ctx.lineWidth=4;ctx.stroke()}const order=points.map((p,i)=>({p,i})).sort((a,b)=>a.p.z-b.p.z);for(const {p,i} of order){const r=Math.max(6,(radii[atoms[i].element]||.75)*p.factor*.31);ctx.beginPath();ctx.arc(p.x,p.y,r,0,Math.PI*2);ctx.fillStyle=colors[atoms[i].element]||'#bd8aff';ctx.fill();ctx.strokeStyle='#07121c';ctx.lineWidth=2;ctx.stroke();ctx.fillStyle=atoms[i].element==='H'?'#15202a':'#fff';ctx.font=`bold ${Math.max(10,Math.min(16,r*.78))}px Arial`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(atoms[i].element,p.x,p.y);ctx.font='10px Arial';ctx.fillStyle='#c8d7de';ctx.fillText(String(atoms[i].atom_map_id),p.x+r+7,p.y-r-4)} }
+$('#curve').addEventListener('click',e=>{const r=e.currentTarget.getBoundingClientRect(),x=e.clientX-r.left,items=frames.map((f,i)=>({i,v:energyOf(f)})).filter(o=>o.v!==null);if(!items.length)return;let i=Math.round((x-58)/(r.width-74)*(frames.length-1));i=Math.max(0,Math.min(frames.length-1,i));if(energyOf(frames[i])===null){i=items.reduce((a,b)=>Math.abs(a.i-i)<Math.abs(b.i-i)?a:b).i}select(i)});
+document.querySelectorAll('[data-rule]').forEach(b=>b.onclick=()=>{rule=b.dataset.rule;const best=proposals()[0];if(best){const i=frames.findIndex(f=>f.frame_id===best.frame_id);if(i>=0)selected=i}paint()});
+$('#molecule').addEventListener('pointerdown',e=>{drag=[e.clientX,e.clientY];e.currentTarget.setPointerCapture(e.pointerId)});$('#molecule').addEventListener('pointermove',e=>{if(!drag)return;yaw+=(e.clientX-drag[0])*.012;pitch=Math.max(-1.45,Math.min(1.45,pitch+(e.clientY-drag[1])*.01));drag=[e.clientX,e.clientY];drawMolecule()});$('#molecule').addEventListener('pointerup',()=>drag=null);$('#molecule').addEventListener('wheel',e=>{e.preventDefault();scale=Math.max(.5,Math.min(2.8,scale*(e.deltaY<0?1.08:.92)));drawMolecule()},{passive:false});
+const keys=atoms.map(a=>`<span><b>${a.element}</b> map ${a.atom_map_id}</span>`);$('#atomkey').innerHTML=keys.join('');window.addEventListener('resize',paint);paint();
+</script></body></html>'''
+
+
+def render_path_viewer(path: dict[str, Any], output: str | Path, *, top_k: int = 3) -> Path:
+    """Write a dependency-free HTML viewer; no calculation or validation is implied."""
+    dumps_document(path)
+    frames = path["frames"]
+    if not frames:
+        raise ContractError("cannot view an empty PathBundle")
+    maps = path["atom_map_ids"]
+    elements = frames[0]["elements"]
+    for frame in frames:
+        if frame["atom_map_ids"] != maps or frame["elements"] != elements:
+            raise ContractError("all displayed frames must preserve atom-map and element identity")
+    available = [(entry["method_id"], entry["unit"])
+                 for frame in frames if (entry := frame.get("energies", {}).get("scan_electronic")) is not None]
+    if len(set(available)) > 1:
+        raise ContractError("viewer requires one comparable scan energy method and unit")
+    method, unit = available[0] if available else ("unknown", "hartree")
+    proposals = {
+        rule: rank_path_bundle(path, rule=rule, top_k=top_k)["selected_frames"]
+        for rule in ("highest_scan_energy", "internal_scan_peak")
+    }
+    payload = {"path": path, "atoms": [{"atom_map_id": atom_map, "element": element}
+                                      for atom_map, element in zip(maps, elements, strict=True)],
+               "proposals": proposals, "energyUnit": unit, "energyMeta": f"扫描通道 · {method} · {unit}",
+               "topK": top_k}
+    # Prevent an embedded string from closing the data script element.
+    encoded = json.dumps(payload, ensure_ascii=False, separators=(",", ":")).replace("<", "\\u003c")
+    page = _PAGE.replace("__DATA__", encoded)
+    destination = Path(output)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    destination.write_text(page, encoding="utf-8")
+    return destination
