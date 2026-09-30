@@ -1,0 +1,107 @@
+task-12 pes-generation-graph-scan-strategy — coordinate pool + event coverage roles
+=================================================================================
+
+Plan: .omo/plans/pes-generation-graph-scan-strategy.md (todo 12)
+Design: docs/design/PES_GENERATION_图论扫描策略选择器设计_v1.md §6.1–§6.2
+Date: 2026-10-01
+Env: conda pes2ts, /root/miniforge3/envs/pes2ts/bin/python, python 3.12
+
+DELIVERABLES
+------------
+1. pes2ts_core/scan_strategy/coordinate_pool.py (new; SIZE_OK per plan-named
+   single-module precedent: registry.py todo 11 / event_coupling.py todo 9)
+   - build_coordinate_pool(route_result, edit_graph, context, coupling,
+     bundle, materials) -> CoordinatePool
+   - CoordinateRecord {coordinate_id, role, kind, atom_maps (map ids),
+     units, event_ids, origin: OriginRecord}
+   - roles: driver|monitor|guard|target_test (design §6.1); kinds B|A|D;
+     units angstrom|degree
+   - origin source_kind ∈ {edit, hydrogen_event, ring_geometry,
+     conformational_difference}; O-edit origins carry
+     note="order_change_monitor_by_default"
+   - Generation rules (design §6.2):
+     * F/B edits → B (driver-nominated) + target_test companion
+     * O edits → B monitor-only (never drivers by default)
+     * H events → TWO separate partner B records (donor-H / acceptor-H;
+       never one B = d1−d2), ∠DHA as A, optional D–A as B, H2 → hh B
+     * genuine ring events → attack A/D from endpoint adjacency
+       (formed→R-side neighbours, broken→P-side)
+     * conformational Δtorsion ≥ 10° (materials required) → D drivers
+       + target_test companions, top-3 by |Δ| (stable tie-break)
+   - Event coverage per driver SET: direct | coupled_monitor (shared
+     support atom / same H / same aromatic region / same ring group /
+     shared edit membership evidence) | uncovered; coverage vocab single-
+     sourced from contracts_v2.COVERAGE_KINDS
+   - default_automatic requires: no uncovered event AND ≥1 driver AND
+     route candidate review_required=False; otherwise typed
+     non_default_reason (UNCOVERED_EVENT | NO_DRIVER_COORDINATES |
+     ROUTE_REVIEW_REQUIRED) — candidate stays listed
+   - constraint_rank(n_drivers, n_guards) = n_drivers + n_guards;
+     monitors never count; guard role defaults empty on every candidate
+   - all_edits_monitored invariant: every edit pair covered by
+     driver∪monitor coordinates in every candidate (drivers monitor
+     themselves; unselected driver-nominated records act as monitors)
+   - determinism: coordinates sorted by (atom_maps, kind, role, origin);
+     candidates by driver-id tuples; to_json via stable_json_dumps
+
+2. tests/test_coordinate_pool.py — 19 tests (synthetic hand-built P0
+   fixtures; zero reads of data/ trees)
+
+ACCEPTANCE CHECKS (plan todo 12)
+--------------------------------
+[x] F/B → B: single-bond formation yields B driver (1,3) + target_test,
+    origin edit/formed, units angstrom
+[x] H event → D–H / A–H / ∠DHA: transfer fixture has separate donor
+    (2,4) and acceptor (1,4) B records + A(2,4,1) ∠DHA + D–A(1,2) B;
+    no difference-style coordinate anywhere in pool
+[x] ring closure → A/D: closing B(1,5) + attack D(2,1,5,4) with
+    origin ring_geometry/attack_torsion
+[x] pure O → monitor-only: all coords role=monitor, note
+    order_change_monitor_by_default, candidates() empty, O pair monitored
+[x] uncovered event → excluded from default with typed reason but listed:
+    disjoint-centres fixture → UNCOVERED_EVENT candidates present in
+    candidates(), default_automatic=False, no default candidate exists
+[x] coupled_monitor: multi-H fixture → undriven H event covered via
+    shared_support_atom / same_hydrogen evidence
+[x] all edits monitored in every candidate: 5 fixtures × every candidate
+[x] guard empty default + counts in constraint rank when set:
+    guard_coordinate_ids==() everywhere; constraint_rank(2,1)==3
+[x] monitor never compiled as driver: no pool-role monitor id in any
+    candidate driver set
+[x] determinism: two builds → identical to_json, coordinate order,
+    candidate order; (atom_maps, kind) keys sorted
+[x] purity: to_doc recursive scan vs FORBIDDEN_TRUTH_KEYS ∪
+    FORBIDDEN_EXPORT_KEYS ∪ {endpoint_match, orientation, irc_evidence} = 0
+[x] LSP error-level diagnostics: clean on coordinate_pool.py
+    (test-file aromatic_regions Mapping-invariance diagnostic is pre-existing
+    repo-wide parity — present in test_strategy_registry.py lines 240/721;
+    pytest is the gate per notepad todo-3 lesson)
+
+TEST RUNS
+---------
+$ python -m pytest -q tests/test_coordinate_pool.py
+19 passed in 0.93s
+
+$ python -m pytest -q
+848 passed, 4 deselected in 38.18s
+(baseline 829 + this todo's 19 = 848; 4 deselected = gated realdata/xtb/acp/orca families)
+
+NOTES FOR DOWNSTREAM TODOS
+--------------------------
+- todo 13 (geometry feasibility): consume CoordinateRecord.atom_maps (map
+  ids) + EndpointMaterials; degenerate A/D rejection belongs there, not here
+- todo 14 (schedules): D–H/A–H are already separate B records — never
+  recombine into a difference coordinate
+- todo 15 (direction/assembly): pool candidates carry route_strategy_id +
+  route_review_required; direction hooks attach here
+- todo 17 (selector core): candidates() is the finite driver-set input;
+  default_automatic + non_default_reason are the first tie-break signals;
+  PRUNED_BY_BUDGET ranking happens there
+- todo 22 (target-path quality): role=target_test records mark the
+  coordinates whose final values decide target-path compatibility
+- todo 19 (compile): map→index resolution from common atom order; monitor
+  ids must NOT be compiled as ORCA constraints
+
+COMMIT
+------
+feat(scan-strategy): add coordinate pool and event coverage roles
