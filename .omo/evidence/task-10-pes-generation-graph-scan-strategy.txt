@@ -1,0 +1,83 @@
+task-10 P0 golden acceptance — Demo24 reproduction + frozen fixtures
+=====================================================================
+date: 2026-10-01
+plan: .omo/plans/pes-generation-graph-scan-strategy.md todo 10 / design §13.2 P0 gate
+commit: test(p0): golden Demo24 evidence reproduction and frozen fixture
+
+1. Fixture freeze (tests/fixtures/p0_demo24/, 228K, 26 files)
+   - Candidate CSV byte-copy: pes2ts_demo24_candidates_v1.csv
+     sha256 63ac74ee55e3367f8f937c897620a5cf9993275df22b89e4ac9c2d48644e489c
+     VERIFIED equal to evidence JSON source_csv_sha256 before copy
+     (data/manifests/*.csv is gitignored — fixture copy is the committed input)
+   - 24 minimal per-reaction snapshots records/<rid>.json derived from
+     data/interim/g1_v2/export_contracts_v1/<shard>/<rid>.json:
+     maps/elements/r_coordinates/p_coordinates/atom_rows/components/
+     aromatic_regions/hydrogen_partner_changes + endpoint_electronic
+     (case charge/multiplicity, cross-checked vs export totals at build)
+     + export_sha256 binding + reaction_smiles + mapping_provenance.
+     Full export docs and review cases NOT committed (whitelist only).
+   - manifest.json: source_csv_sha256, source_manifest_sha256
+     (demo24_reaction_case_manifest_v1.json = 81922e28ab5c...), rdkit_version
+     pin 2026.03.6 (repo reference env), evidence_rdkit_version 2026.03.3,
+     per-record export_sha256 + mapped reaction SMILES.
+   - README.md: field whitelist, pin rationale, regeneration steps,
+     explicit note that evidence proposal/PROPOSALS fields are design-time
+     hypotheses, NOT selector outputs (selector arrives todo 17).
+   - Generator: /tmp/opencode/build_p0_fixtures.py (not committed; README
+     documents regeneration). Refuses to write on sha mismatch.
+
+2. Golden test tests/test_p0_demo24_golden.py (7 tests, all green)
+   Pipeline per record (P0 modules only, fixtures + tracked evidence JSON):
+     load_endpoint_materials_from_export -> rebuild_endpoint_graphs
+     -> aromatic_regions_from_bundle -> build_reaction_edit_graph
+     -> build_endpoint_context (coords + EndpointElectronic from snapshot)
+     -> build_event_coupling_graph
+   Assertions:
+   - features field-by-field EXACT vs evidence records[].features
+     (edit_counts, edit_components, connectivity_edit_components,
+      edit_cycle_rank, endpoints, atom_attribute_changes, hydrogen_events,
+      aromatic_regions) — typed AssertionError prints record/field/expected/got
+   - edits[] field-by-field with build_evidence.py key-presence semantics
+     (support_path_R only formed, support_path_P only broken, neither for
+      order_changed) and distance round-6
+   - membership: registry covers exactly the edit pairs; each edit one owner
+     or shared with one typed justification per additional owner; primary is
+     the unique event id WITHOUT justification (event_ids is alphabetically
+     sorted — NOT primary-first; first naive assertion failed on
+     RXN_0000047010 (5,6) and was corrected)
+   - purity: recursive key scan of bundle/edit_graph/context/coupling to_doc
+     vs FORBIDDEN_TRUTH_KEYS ∪ FORBIDDEN_EXPORT_KEYS ∪ named set = 0 hits
+   - binding: snapshot.export_sha256 == manifest mapping == evidence record;
+     tamper test (in-memory + tmp_path copy, fixture untouched) must fail
+   - rdkit pin: running rdkit (2026.03.6) must equal manifest pin else
+     pytest.fail with pin/evidence-version message
+   - offline: open()/Path.read_text/read_bytes guard rejects any data/ path
+     while running the full 24-record pipeline — proves fixtures-only reads
+   - hydrogen_events/aromatic_regions also asserted equal to the snapshot
+     copies (recomputed == frozen fixture == evidence, triple binding)
+
+3. Verification
+   - conda run -n pes2ts python -m pytest -q tests/test_p0_demo24_golden.py
+     -> 7 passed (24/24 record coverage inside the golden test)
+   - conda run -n pes2ts python -m pytest -q
+     -> 787 passed, 4 deselected (baseline 780 + 7 new)
+   - lsp_diagnostics on test file: no error-level findings
+   - gitignore: tests/fixtures/p0_demo24/* NOT ignored (committed normally);
+     .omo/ evidence force-added
+
+4. NOTES / CAVEATS
+   - PROPOSALS in outputs/pes_generation_strategy_design_v1/
+     demo24_strategy_evidence.json (and build_evidence.py PROPOSALS table)
+     are design-time strategy hypotheses produced manually on 2026-09-30.
+     They are NOT selector outputs. The P0 golden test never reads or asserts
+     them as pipeline products; the strategy selector arrives in todo 17.
+   - Evidence JSON rdkit_version=2026.03.3; reference env runs 2026.03.6.
+     Graph features are stable across the two pins (todos 7/9 cross-checks +
+     this golden under 2026.03.6). Fixture pin = 2026.03.6 per repo env.
+   - MembershipRegistry.event_ids semantics: sorted({primary, *extras});
+     justifications cover extras only (rule_id ∈ {aromatic_region_membership,
+     ring_group_membership, shared_center, h_partner_change}).
+   - Test file pure LOC ~596 (repo test-suite precedent: test_context_graph
+     750 lines; golden tests keep shared typed-diff helpers in one module).
+   - data/interim/* and data/manifests/* dirty files on disk belong to earlier
+     todo runs (gate regen etc.) and are intentionally NOT staged.

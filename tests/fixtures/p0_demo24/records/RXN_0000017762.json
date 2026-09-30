@@ -1,0 +1,335 @@
+{
+  "schema_name": "p0_demo24_record_snapshot_v1",
+  "schema_version": 1,
+  "reaction_id": "RXN_0000017762",
+  "split": "valid",
+  "stratum": "F_H2_event",
+  "export_sha256": "df42ec429f1e4cb228be3d9e55a1cfc0d12b5cacc61c07efcab6617382e1d421",
+  "source_export_path": "data/interim/g1_v2/export_contracts_v1/00017/RXN_0000017762.json",
+  "reaction_smiles": "[Cl:1][C:2]([O:3][C:4]([C:5]([Cl:6])=[O:7])([H:10])[H:11])=[O:8].[H:9][H:12]>>[Cl:1][C:2]1([H:9])[O:3][C:4]([H:10])([H:11])[C:5]([Cl:6])([H:12])[O:7][O:8]1",
+  "maps": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12
+  ],
+  "elements": [
+    "Cl",
+    "C",
+    "O",
+    "C",
+    "C",
+    "Cl",
+    "O",
+    "O",
+    "H",
+    "H",
+    "H",
+    "H"
+  ],
+  "r_coordinates": [
+    [
+      3.108859062194824,
+      0.1958319991827011,
+      -0.23959000408649445
+    ],
+    [
+      1.4863970279693604,
+      -0.19071200489997864,
+      0.34872299432754517
+    ],
+    [
+      0.741303026676178,
+      -0.6039389967918396,
+      -0.6875569820404053
+    ],
+    [
+      -0.6187180280685425,
+      -0.9153599739074707,
+      -0.37241899967193604
+    ],
+    [
+      -1.4493980407714844,
+      0.3430689871311188,
+      -0.20833100378513336
+    ],
+    [
+      -3.1817259788513184,
+      -0.10386499762535095,
+      0.11959899961948395
+    ],
+    [
+      -1.085988998413086,
+      1.459859013557434,
+      -0.28141000866889954
+    ],
+    [
+      1.1481029987335205,
+      -0.10438600182533264,
+      1.482571005821228
+    ],
+    [
+      0.0,
+      0.0,
+      0.3719770014286041
+    ],
+    [
+      -0.6963719725608826,
+      -1.5105290412902832,
+      0.53848797082901
+    ],
+    [
+      -1.0019129514694214,
+      -1.4871519804000854,
+      -1.2153229713439941
+    ],
+    [
+      0.0,
+      0.0,
+      -0.3719770014286041
+    ]
+  ],
+  "p_coordinates": [
+    [
+      2.2500219345092773,
+      -0.5389549732208252,
+      -0.8461009860038757
+    ],
+    [
+      1.498687982559204,
+      0.3320600092411041,
+      0.6071619987487793
+    ],
+    [
+      0.8248460292816162,
+      1.4626859426498413,
+      0.21704399585723877
+    ],
+    [
+      -0.4255169928073883,
+      1.197482943534851,
+      -0.44025999307632446
+    ],
+    [
+      -1.2163889408111572,
+      0.2226250022649765,
+      0.4133610129356384
+    ],
+    [
+      -2.701261043548584,
+      -0.3071250021457672,
+      -0.43106698989868164
+    ],
+    [
+      -0.44334301352500916,
+      -0.9633809924125671,
+      0.6034740209579468
+    ],
+    [
+      0.7289230227470398,
+      -0.537846028804779,
+      1.3741999864578247
+    ],
+    [
+      2.326127052307129,
+      0.6177440285682678,
+      1.2510440349578857
+    ],
+    [
+      -0.24906200170516968,
+      0.7650129795074463,
+      -1.4270089864730835
+    ],
+    [
+      -0.9332919716835022,
+      2.154144048690796,
+      -0.5309669971466064
+    ],
+    [
+      -1.4967930316925049,
+      0.6417760252952576,
+      1.379470944404602
+    ]
+  ],
+  "atom_rows": [
+    {
+      "element": "Cl",
+      "map": 1,
+      "p_component": "P0",
+      "p_local_index": 0,
+      "r_component": "R0",
+      "r_local_index": 0
+    },
+    {
+      "element": "C",
+      "map": 2,
+      "p_component": "P0",
+      "p_local_index": 1,
+      "r_component": "R0",
+      "r_local_index": 1
+    },
+    {
+      "element": "O",
+      "map": 3,
+      "p_component": "P0",
+      "p_local_index": 2,
+      "r_component": "R0",
+      "r_local_index": 2
+    },
+    {
+      "element": "C",
+      "map": 4,
+      "p_component": "P0",
+      "p_local_index": 3,
+      "r_component": "R0",
+      "r_local_index": 3
+    },
+    {
+      "element": "C",
+      "map": 5,
+      "p_component": "P0",
+      "p_local_index": 4,
+      "r_component": "R0",
+      "r_local_index": 4
+    },
+    {
+      "element": "Cl",
+      "map": 6,
+      "p_component": "P0",
+      "p_local_index": 5,
+      "r_component": "R0",
+      "r_local_index": 5
+    },
+    {
+      "element": "O",
+      "map": 7,
+      "p_component": "P0",
+      "p_local_index": 6,
+      "r_component": "R0",
+      "r_local_index": 6
+    },
+    {
+      "element": "O",
+      "map": 8,
+      "p_component": "P0",
+      "p_local_index": 7,
+      "r_component": "R0",
+      "r_local_index": 7
+    },
+    {
+      "element": "H",
+      "map": 9,
+      "p_component": "P0",
+      "p_local_index": 8,
+      "r_component": "R1",
+      "r_local_index": 0
+    },
+    {
+      "element": "H",
+      "map": 10,
+      "p_component": "P0",
+      "p_local_index": 9,
+      "r_component": "R0",
+      "r_local_index": 8
+    },
+    {
+      "element": "H",
+      "map": 11,
+      "p_component": "P0",
+      "p_local_index": 10,
+      "r_component": "R0",
+      "r_local_index": 9
+    },
+    {
+      "element": "H",
+      "map": 12,
+      "p_component": "P0",
+      "p_local_index": 11,
+      "r_component": "R1",
+      "r_local_index": 1
+    }
+  ],
+  "components": {
+    "P0": {
+      "atomic_numbers": [
+        17,
+        6,
+        8,
+        6,
+        6,
+        17,
+        8,
+        8,
+        1,
+        1,
+        1,
+        1
+      ],
+      "charge": 0,
+      "multiplicity": 1
+    },
+    "R0": {
+      "atomic_numbers": [
+        17,
+        6,
+        8,
+        6,
+        6,
+        17,
+        8,
+        8,
+        1,
+        1
+      ],
+      "charge": 0,
+      "multiplicity": 1
+    },
+    "R1": {
+      "atomic_numbers": [
+        1,
+        1
+      ],
+      "charge": 0,
+      "multiplicity": 1
+    }
+  },
+  "aromatic_regions": {},
+  "hydrogen_partner_changes": [
+    {
+      "from": 12,
+      "from_state": "hh",
+      "h": 9,
+      "kind": "from_hh",
+      "to": 2,
+      "to_state": "heavy"
+    },
+    {
+      "from": 9,
+      "from_state": "hh",
+      "h": 12,
+      "kind": "from_hh",
+      "to": 5,
+      "to_state": "heavy"
+    }
+  ],
+  "endpoint_electronic": {
+    "reactant": {
+      "charge": 0,
+      "multiplicity": 1
+    },
+    "product": {
+      "charge": 0,
+      "multiplicity": 1
+    }
+  },
+  "endpoint_electronic_source": "reaction_cases_review_v1",
+  "mapping_provenance": "truth_assisted_p1"
+}
