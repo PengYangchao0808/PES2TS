@@ -1,0 +1,170 @@
+# task-25-pes-generation-graph-scan-strategy — P2 闭环验收（能力合同 + 每 driver 可追踪 + 显式拒绝）
+# Plan: .omo/plans/pes-generation-graph-scan-strategy.md todo 25
+# Date: 2026-10-01
+# Env: conda pes2ts (python 3.12), cwd = PES2TS repo root
+
+## P2 gate status (design §13.2 P2)
+
+- Offline closure (todos 19-24 loop via REAL module calls): **PASSED**
+- Gated ORCA/ACP smoke (todo 24, `-m acp`/`-m orca`): **BLOCKED**
+  - Missing env: `PES2TS_ACP_ROOT`, `PES2TS_ACP_PYTHON`, `PES2TS_ORCA_EXECUTABLE`
+    (all absent in this tree: `env | grep PES2TS_(ACP|ORCA|SMOKE)` empty)
+  - No probe receipts on disk: `.omo/evidence/` has zero `probe_receipt_*.json`
+    / `smoke_evidence_*.json` (todo-24 bodies never ran; env-gated never-skip
+    semantics mean absence = blocked, never a false pass)
+  - Per plan verification strategy §45: env 未就绪记 blocked，不阻塞代码落地；
+    "未冒烟不得产出 ready 计划" 红线不变（e2e 测试断言 raw 候选 freeze 被
+    `CANDIDATE_NOT_CLEAN` 拒绝）。
+
+Status helper: `tests/test_p2_closure.py::_p2_gated_smoke_status()` reads the
+env vars + receipts dir and returns `passed` only when env is ready AND pass
+probe receipts cover both families; otherwise `blocked` with the missing env
+list.  Test asserts the returned status is one of the two and matches env
+reality (this tree → blocked).
+
+## File created
+
+- `tests/test_p2_closure.py` — P2 closure acceptance harness, 8 tests
+  (7 phase + 1 end-to-end happy path).  REAL module calls only; synthetic
+  candidates reuse sibling-test fixtures (test_compile_orca `_smoke`/`_driver`/
+  `_scan_candidate`, test_acp_multicoord_adapter `_compile_2b`/
+  `_compile_scheduled_nonuniform`/`_default_capability`/`_materials`,
+  test_acp_frame_all_drivers `_raw_frames_2b`, test_selector_core EXCHANGE
+  fixtures + `_bundle`/`_config`/`_materials`, test_generation_plan_freeze
+  `_proposal`/`_config`).  No production module touched.
+
+### Phase coverage (one test function per phase, per task spec)
+
+1. `test_coupled_and_scheduled_compile_from_selector_outputs`
+   - Real selector (`propose_strategies`) on synthetic EXCHANGE reaction with
+     injected passing Simul_Scan probe receipts (todo-16 `_smoke` stack) →
+     2-driver COUPLED_1D candidate → `compile_orca` (todo 19):
+     both drivers present (`{(1,2),(2,3)}`), `Simul_Scan true` fragment,
+     aligned λ (values[i] = q_start + λ_i·Δ, schedule_values ≈ λ within
+     6-dp compile rounding), `total_points == len(lambda_values)` (no
+     implicit grid), point hashes recorded.
+   - Synthetic SCHEDULED_1D non-uniform candidate (selector-output shape) →
+     per-point recipe: `len(point_input_sha256) == total_points == 4`,
+     distinct hashes, BOTH drivers in every `%geom Constraints` fragment,
+     non-uniform per-driver schedule lists preserved.
+
+2. `test_per_frame_all_driver_recovery_marks_missing_driver_frame_incomplete`
+   - Synthetic multicoord result (2 drivers, 3 frames, driver-02 actual
+     missing at frame 1) → `parse_multicoord_result` (todo 20) →
+     `recover_frames` (todo 21): complete per-frame target/actual/residual
+     traces for both drivers on healthy frames; frame 1 marked
+     `incomplete=True`, `missing_driver_ids=("driver-02",)`,
+     `incomplete_frame_indices=(1,)` — never silently passed.
+
+3. `test_target_quality_layer_records_tiers_and_unfinished_target`
+   - Recovered complete frames → `assess_target_path` (todo 22): all four
+     tiers recorded independently (`execution_complete` achieved,
+     `numerically_usable` achieved, `target_path_compatible` NOT achieved
+     with `TARGET_PATH_INCOMPLETE` for the unfinished C–C formed bond,
+     `validated_ts` absent listing all four missing evidence refs).
+   - Technical usable ≠ chemical completion (design §11.2 plan failure).
+
+4. `test_plan_freeze_valid_document_and_failure_tree_replayable`
+   - Freeze-ready 2-driver COUPLED proposal + real CompiledRequest →
+     `freeze_generation_plan` (todo 23): `validate_v2_document == []`,
+     `verify_generation_plan == []`, frozen candidate carries BOTH drivers,
+     `extensions.freeze.compiled_request.coordinates` has both entries.
+   - Failure tree replayable: `FAILURE_PREDICATES == FAILURE_TREE_CODES`,
+     `active_failure_codes` computable (GATE_REFUSED / BUDGET_EXHAUSTED /
+     multi-code), `is_failure_code` rejects free text ("效果不好"),
+     `assert_failure_code` raises `FAILURE_CODE_UNKNOWN`.
+
+5. `test_explicit_refusals_capability_missing_unsupported_and_no_implicit_grids`
+   - Inject test: COUPLED request on shipped default registry →
+     `compile_orca` raises `BACKEND_CAPABILITY_MISSING`; adapter
+     `multicoord_request_payload` refuses with the same code and is an
+     `ACPMappingError` subclass.
+   - Unsupported A/D on current adapter (registry: B only) → compile AND
+     adapter refuse with `BACKEND_CAPABILITY_MISSING`.
+   - No implicit grids: COUPLED and SCHEDULED compiled totals equal the
+     schedule grid (`total_points == len(lambda_values)`, per-point hash
+     count == total_points).
+
+6. `test_no_first_driver_projection_across_every_chain_artifact`
+   - Both drivers appear in EVERY artifact down the chain:
+     compiled.coordinates, payload coordinates + metadata (n_drivers=2,
+     driver_ids), recovery frames (targets/actuals/residuals per driver),
+     PathBundle extension (`all_driver_*` per frame), frozen plan candidate
+     drivers, and the sealed compiled-request binding.
+
+7. `test_p2_gated_smoke_status_is_explicit_passed_or_blocked`
+   - `_p2_gated_smoke_status()` returns `passed` or `blocked`; in this tree
+     (env absent) → `blocked` with missing env var names — matches env
+     reality.  Helper contract locked: env ready + pass receipts for both
+     families → `passed` (injected, no real ORCA run); env ready without
+     receipts → `blocked` (never optimistic); env absent → `blocked`.
+
+8. `test_end_to_end_multi_coordinate_loop_happy_path`
+   - Full chain with REAL modules: selector (EXCHANGE, injected probed
+     capability) → `compile_orca` → `multicoord_request_payload` →
+     `parse_multicoord_result` → `recover_frames` → `assess_target_path`
+     (targets derived from endpoint geometry, not hardcoded) →
+     `freeze_generation_plan`.
+   - Freeze red line armed: freezing the RAW gate-carrying selector candidate
+     raises `PlanFreezeError(CANDIDATE_NOT_CLEAN)` (BACKEND_SMOKE_REQUIRED
+     etc. present — un-smoked plans never become ready); the post-gate
+     projection (clears ONLY gate-state codes; budget prunes and technical
+     failures refuse loudly) freezes validly with the real compiled binding.
+   - Both drivers present at every stage; smoke status explicit.
+
+## Commands + outputs
+
+### Command A (new file)
+conda run -n pes2ts python -m pytest -q tests/test_p2_closure.py
+→ 8 passed in 1.88s
+
+### Command B (full default suite)
+conda run -n pes2ts python -m pytest -q
+→ 1195 passed, 10 deselected in 42.73s
+  (baseline 1187 + 8 new; deselected 4 realdata/xtb + 6 gated acp/orca)
+
+### Command C (P2 smoke status surface)
+env | grep -E "PES2TS_(ACP|ORCA|SMOKE)" → empty (exit 1)
+ls .omo/evidence/ | grep -E "probe_receipt|smoke_evidence" → empty (exit 1)
+→ `_p2_gated_smoke_status()` = {"status": "blocked", "env_ready": False,
+  "missing_env": ["PES2TS_ACP_ROOT", "PES2TS_ACP_PYTHON",
+                  "PES2TS_ORCA_EXECUTABLE"], "pass_receipts": []}
+
+### Command D (static)
+lsp_diagnostics (error severity) on tests/test_p2_closure.py → clean
+Pure LOC: 714 — test files are plan-named acceptance harnesses; repo
+precedent (test_compile_orca.py 793 LOC, todo-24 evidence) exempts tests
+from the 250-LOC source ceiling.
+
+## Design §13.2 P2 gate mapping
+
+| Gate item | Evidence |
+| --- | --- |
+| 每个 driver 每帧目标/实测/残差可追踪 | phase 2 + phase 6 + e2e (recovery frames + extension) |
+| 未支持能力拒绝 | phase 5 (default registry COUPLED/A-D → BACKEND_CAPABILITY_MISSING, compile + adapter) |
+| 目标 ORCA 冒烟通过或显式 blocked | phase 7 + evidence status: BLOCKED (env list above) |
+| 无隐式网格 | phase 1 + phase 5 (total_points == schedule N everywhere) |
+| 无第一驱动投影 | phase 6 (every artifact down the chain) |
+
+## What was NOT done (blocked / out of scope)
+
+- No real ORCA/ACP execution (env absent; plan MUST NOT in offline tests).
+- Probe receipts NOT written; shipped registry `orca_capabilities_v1.json`
+  keeps `probe_receipts=[]` (todo-16 honesty preserved).
+- No production module changes; `planning.py`/`adapter.py`/`contracts.py`
+  behavior untouched (todo-24 hash pins still hold — suite green).
+- Known gap carried forward (todo-24 finding, unchanged here): compile_orca
+  `_constraint_block` leaves the outer `%geom` open for per-point
+  Constraints fragments; offline tests assert fragment text only; real-ORCA
+  assembly closes it (todo-26 territory).
+
+## Plan cross-refs
+
+- Todo 25 acceptance: 每个 driver 每帧可追踪 ✓; 未支持能力拒绝 ✓;
+  P2 冒烟状态显式（passed/blocked）✓; COUPLED/SCHEDULED 编译 ✓;
+  逐帧全驱动回收 ✓; 目标质量层 ✓; 计划冻结 ✓; 失败树可重放 ✓.
+- Blocks todo 26 (PathRequest/NEB protocol consumes this closure).
+
+## Commit
+
+test(p2): close multi-coordinate loop acceptance
