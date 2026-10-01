@@ -1,0 +1,134 @@
+task-17 pes-generation-graph-scan-strategy — selector core and strategy proposal
+================================================================================
+
+Date: 2026-10-01
+Plan: .omo/plans/pes-generation-graph-scan-strategy.md (todo 17)
+Env: conda pes2ts (python 3.12, rdkit 2026.03.6)
+
+DELIVERABLES
+------------
+- pes2ts_core/scan_strategy/selector.py (new; pure orchestration layer)
+  - propose_strategies(bundle, materials=None, config=None, *, reaction_id,
+    case_id, split, source_case_sha256, capability) -> sealed
+    g1_strategy_proposal_v1 dict (StrategyProposal)
+  - all_release_gates_pass(proposal) -> bool
+  - RankInputs + rank_rank_inputs (pure 6-layer ranking surface, §8.3)
+- tests/test_selector_core.py (new; 50 tests)
+- Existing modules: ZERO modifications (plan guardrail honored)
+
+PIPELINE (implemented in plan order)
+------------------------------------
+1. P0 chain: build_reaction_edit_graph -> build_endpoint_context
+   (r/p coordinates + endpoint_electronic from materials) ->
+   build_event_coupling_graph (aromatic_regions_from_bundle prelude)
+2. registry.route_strategies — typed refusals propagate as whole-case
+   blocking_reasons (SPECIAL_DOMAIN, NO_REACTION_CHANGE, conservation codes)
+3. coordinate_pool.build_coordinate_pool(route, edit_graph, context,
+   coupling, bundle, materials)
+4. geometry_feasibility.assess_geometry_feasibility per pool candidate x
+   start endpoint
+5. schedules.build_schedules per candidate x direction
+6. direction_assembly.resolve_direction_assembly (profiles: review flags
+   False — proposal stage never claims review; target-definition gate True)
+7. capabilities.capability_check(cap, mode, kinds, n_coords) per schedule
+   mode — unprobed => status "unknown" (+ CAPABILITY_UNPROBED reason),
+   structural/undeclared => "fail" (+ BACKEND_CAPABILITY_MISSING); never pass
+8. Ranking (RankInputs.ranking_key): (a) no uncovered events, (b) geometry
+   qualified, (c) assembly-ready + capability pass<unknown<fail, (d) fewer
+   constraints (constraint_rank), (e) fewer coupled_monitor follow-alongs,
+   (f) lower cost n_points*n_coords; residual lex on (sorted driver map
+   tuples, kinds); deterministic total order (verified via reversed-input
+   key equality test)
+9. Dedup on (frozenset(driver (kind,sorted-maps)), direction, schedule_kind,
+   assembly-key) then budget scan_strategy.max_total_candidates.scan;
+   over-budget rows keep PRUNED_BY_BUDGET in failure_reasons + extensions
+10. make_strategy_proposal — execution_eligible always false (factory
+    enforces; passing True raises ContractError); per-candidate
+    failure_reasons separate from whole-case blocking_reasons/reasons
+
+all_release_gates_pass
+----------------------
+- False when candidates empty or every candidate carries PRUNED_BY_BUDGET
+  (runnable subgraph empty)
+- True only when runnable subgraph non-empty AND every fallback_ids entry
+  named by any candidate exists in registry.STRATEGY_REGISTRY
+- Unit tests: empty / pruned-only / valid NETWORK_PATH fallback /
+  undefined fallback ref
+
+ACCEPTANCE (tests/test_selector_core.py — 50 passed)
+----------------------------------------------------
+- Synthetic integration (mapped SMILES + materials, via
+  graph_rebuild.rebuild_endpoint_graphs): single-bond formation,
+  H-transfer, coupled two-bond connectivity exchange -> each yields a
+  sealed proposal, validate_v2_document == [], execution_eligible False
+- All-candidates-fail: R==P -> rejected proposal, blocking NO_REACTION_CHANGE,
+  release gate False; Fe input -> rejected SPECIAL_DOMAIN
+- Single-candidate failure isolation: collinear D-H-A H-transfer fixture ->
+  ANGLE_DEGENERATE/JACOBIAN candidates recorded alongside clean B-driver
+  candidates; failures never enter whole-case blocking_reasons
+- PRUNED_BY_BUDGET traceable: default budget 6 vs 40 assembled H-transfer
+  views -> pruned rows carry code+detail; schedule_budget=1 prunes smoothstep
+  as its own row; budget=4 keeps exactly 4 active + tail pruned, gate True
+- Capability honesty: SINGLE_1D unknown (unprobed), COUPLED_1D fail beyond
+  adapter max_scan_coordinates=1; missing lists recorded
+- Ranking: 6 layer-flip tests + capability pass<unknown<fail + residual lex
+  + total-order determinism on reversed input
+- Determinism: two runs -> equal content_sha256, byte-identical dumps minus
+  created_at
+- Demo24 sweep (24 parametrized fixture records, rdkit pin never-skip):
+  every record -> sealed proposal, validate_v2_document == [], zero
+  forbidden keys (FORBIDDEN_TRUTH_KEYS ∪ FORBIDDEN_EXPORT_KEYS ∪
+  {endpoint_match, orientation, irc_evidence}), rejected => blocking
+  reasons present else reasons present; release gate bool; no crashes
+
+FULL SUITE
+----------
+conda-run python -m pytest -q -> 1012 passed, 4 deselected
+(baseline 962 + 50 new selector tests; 0 failures)
+lsp error-level diagnostics: clean on selector.py and test_selector_core.py
+
+DESIGN/CONTRACT DECISIONS RECORDED
+----------------------------------
+1. Proposal profiles: electronic_review_complete=False,
+   geometry_review_complete=False (no ReviewRecord consumed at proposal
+   stage); has_usable_target_definition stays True (endpoint hypothesis).
+   Direction readiness therefore False until review+assembly complete —
+   correct §10.1 semantics; execution_eligible stays false regardless.
+2. Mode projection: contracts_v2 requires SINGLE_1D => 1 driver and
+   COUPLED/SCHEDULED_1D => 2..3 drivers, while schedules.py suggests
+   SCHEDULED_1D for single-driver smoothstep. Selector projects
+   single-driver schedules as SINGLE_1D with schedule_kind +
+   per-driver schedule_values carrying non-linearity; original
+   suggested_mode preserved in candidate extensions
+   (selector._contract_mode docstring).
+3. Cross-module defect (NOT fixed here — orchestration-only guardrail):
+   schedules.assert_schedule_integrity rejects any coordinate origin text
+   containing "difference"; coordinate_pool conformational D legitimately
+   emits geometry_kind="torsion_difference". Selector catches the
+   ValueError per candidate, records typed SCHEDULE_INTEGRITY
+   failure_reasons and emits fallback schedule rows (uniform lambda grid)
+   so the candidate stays visible. Affects 23/24 demo24 records.
+   Follow-up plan needed: vocabulary alignment between todo 12 and todo 14.
+4. Cross-module defect (NOT fixed here): coordinate_pool ring-attack
+   torsion generation can emit D coordinates with duplicate terminal map
+   (e.g. RXN_0000100071 coord-0004 maps (2,1,3,2)); contracts_v2 rejects
+   duplicate driver maps. Selector skips such pool candidates and records
+   case-level COORDINATE_DRIVER_MAPS_NOT_UNIQUE reasons (never silently
+   rewrites chemistry). Follow-up: coordinate_pool ring torsion atom
+   selection.
+5. Candidate budget object: proposal stage authorizes no compute —
+   max_attempts=1, max_cpu_hours=0.0, max_wall_seconds=0 by default
+   (overridable via scan_strategy.proposal_budget).
+6. Budget interaction: schedules.py applies its own conservative
+   n_active x direction_budget <= max_total_candidates.scan projection, so
+   selector-level budget tests must pick budgets where schedules survive
+   (e.g. scan=4 for the 10-driver-set H-transfer fixture).
+7. schema_name vocabulary: contracts_v2 uses schema_name="StrategyProposal"
+   with schema_version="g1_strategy_proposal_v1" (not the reverse).
+
+SIZE: selector.py 1044 pure LOC -> # allow: SIZE_OK (plan-named todo-17
+single module; precedent registry.py todo-11 / geometry_feasibility
+todo-13). test_selector_core.py 478 pure LOC (test file, no ceiling).
+
+Evidence: .omo/evidence/task-17-pes-generation-graph-scan-strategy.txt
+Commit: feat(scan-strategy): add selector core and strategy proposal
