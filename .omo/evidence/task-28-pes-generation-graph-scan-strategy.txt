@@ -1,0 +1,164 @@
+todo 28 — 方向/时序对照与成本核算 — PASSED
+====================================================
+Plan: .omo/plans/pes-generation-graph-scan-strategy.md (todo 28)
+Design: docs/design/PES_GENERATION_图论扫描策略选择器设计_v1.md §7, §8.3, §13.4
+Commit: feat(scan-strategy): add direction/timing comparison and cost accounting
+
+1. DELIVERABLES
+---------------
+- NEW pes2ts_core/scan_strategy/direction_timing_cost.py (~900 pure LOC -> # allow: SIZE_OK,
+  plan-named todo-28 single module; precedent path_request.py todo-26)
+- NEW tests/test_direction_timing_cost.py (30 tests, all green)
+- Existing modules ZERO changes (direction_assembly.py / path_request.py / plan_freeze.py /
+  contracts_v2.py / intermediate_staging.py / special_domain.py untouched — imports only)
+
+2. API SURFACE
+--------------
+Direction/timing comparison ledger (design §7):
+- ComparisonCandidate: candidate_id / start_endpoint / direction / assembly_id /
+  anchor_reason (tuple[AnchorReason]) + schedule_id / schedule_kind / method_kind.
+  __post_init__ enforces endpoint∈{R,P}, direction∈{R_to_P,P_to_R} with start-endpoint
+  consistency (DIRECTION_MISMATCH typed), method_kind∈{NEB,scan} (METHOD_CHANNELS from
+  todo 26, single source). Boundary parse accepts mappings; anchor_reason normalized
+  str|mapping|AnchorReason -> AnchorReason at the single trust boundary.
+- ReverseStartVerification: candidate_id / verification_id / start_optimization_ok /
+  assembly_verified; .verified = both true; .failure_reason typed code.
+- ComparisonRecord: comparison_id / comparison_kind / candidate_ids / status /
+  splice_permitted / reasons / reverse_verification_ids.
+- DirectionTimingLedger (schema g1_direction_timing_ledger_v1): reaction_id + candidates +
+  comparisons + reverse_verifications; to_doc()/to_json() (stable_json_dumps); .comparison(id)
+  lookup (typed refusal when absent).
+- build_comparison_ledger(candidates, *, reaction_id=None, reverse_verifications=())
+  -> DirectionTimingLedger. Duplicate candidate_id rejected; verification referencing an
+  unknown candidate rejected.
+
+Comparison emission (deterministic: candidates sorted by candidate_id; drafts sorted by
+(kind order, candidate_ids); ids cmp-%04d):
+- forward_vs_reverse: per (assembly_id, schedule_id|schedule_kind) pairing key, emitted
+  only when BOTH directions present in the group.
+- early_vs_late: per (direction, assembly_id, schedule_id) group containing BOTH
+  event_A_early and event_A_late schedule kinds. splice_permitted ALWAYS False for
+  timing comparisons (REASON_TIMING_COMPARISON_NO_SPLICE) — timing comparison never
+  splices curves.
+- per_assembly: one aggregate gate record per assembly_id group.
+
+Reverse-verification gate (design §7 structural rule — THE test lock):
+- No reverse participant -> status=complete, splice_permitted=False,
+  REASON_NO_REVERSE_PARTICIPANT (nothing to verify).
+- Any reverse candidate WITHOUT a verified ReverseStartVerification ->
+  status=incomplete_missing_reverse_verification, splice_permitted=False, reasons
+  contain REASON_REVERSE_VERIFICATION_REQUIRED (no record) /
+  REASON_REVERSE_START_OPTIMIZATION_FAILED / REASON_REVERSE_ASSEMBLY_UNVERIFIED
+  (record present but flags false).
+- All reverse participants verified -> status=complete, splice_permitted=True,
+  REASON_REVERSE_VERIFIED + verification ids recorded.
+- assert_splice_permitted(record) raises DirectionTimingCostError(CODE_SPLICE_BLOCKED)
+  when splice_permitted=False — curves are NEVER spliced without verification.
+- SPLICE_POLICY re-exported from direction_assembly (single source, not restated).
+
+Cost accounting (design §8.3/§13.4):
+- CostAccounting: reaction_id + budget (todo-23 BudgetLedger, IMPORTED) + channels
+  (todo-26 MethodChannelAccounting tuple, IMPORTED) + counted (CountedOperations) +
+  measured (MeasuredTime). cost_accounting(reaction_id, *, max_attempts=0, budget=None,
+  channels=None) factory; zeroed_channels() aligned with todo-26 branch vocabulary.
+- Budget extension (ADDITIVE only via BudgetLedger.record):
+  .record_constrained_optimizations(*, n, point_retries=0, endpoint_preparations=0)
+  -> increments counted.n_constrained_optimizations + budget.spent_retries +
+  budget.spent_endpoint_preparations; .record_directions(*, n_directions, n_assemblies,
+  n_schedules) -> budget.spent_* + counted.*. Non-negative int validation (COUNT_INVALID).
+- Separate NEB/scan channels (todo-26 reused, NOT duplicated):
+  .enter_method(kind) additive — NEB entry sets NEB.n_entered+1 AND stamps scan channel
+  branch=BRANCH_NATIVE_SCAN_EXITED (entering NEB exits the native scan branch);
+  zeroed->enter_method(NEB) reproduces path_request.enter_neb_channels() EXACTLY (test lock).
+  .record_outcome(kind, succeeded=) delegates to path_request.record_channel_outcome —
+  NEB success NEVER increments scan (test lock). Unknown kind -> CODE_METHOD_KIND_INVALID
+  (validated before delegation for error-family consistency).
+- Counted vs measured (design §13.4 — THE cost lock):
+  .record_measured_time(*, receipt_id, n_cpu_hours=None, n_wall_seconds=None) — requires
+  non-blank receipt_id (CODE_MEASUREMENT_REQUIRES_RECEIPT otherwise); cumulative sums;
+  *_time_status flips unknown->measured only when a value/receipt arrives.
+  .cost_report() -> {schema g1_direction_timing_cost_v1, counted_operations{n_*,
+  sum_constrained_optimizations, equals_actual_core_hours=false, note}, measured_time{
+  n_cpu_hours, cpu_time_status, n_wall_seconds, wall_time_status, receipt_ids, note},
+  method_channels{NEB:{...},scan:{...}}, budget{spent,max,exhausted}, splice_policy}.
+  LOCK: counting 1000 optimizations + 500 retries leaves measured_time.n_cpu_hours=0.0
+  and cpu_time_status="unknown" — Σ constrained_optimizations is NEVER actual core-hours
+  (SUM_IS_NOT_CORE_HOURS=False constant + equals_actual_core_hours=false in the report).
+
+3. TESTS (30, tests/test_direction_timing_cost.py)
+--------------------------------------------------
+- Four-field ledger rows: every candidate carries start_endpoint/direction/assembly_id/
+  anchor_reason in dataclass AND to_doc projection (incl. bare candidate with
+  assembly_id=None + empty anchor_reason).
+- Reverse WITHOUT verification -> forward_vs_reverse incomplete + splice_permitted=False
+  + REVERSE_START_VERIFICATION_REQUIRED; assert_splice_permitted raises CODE_SPLICE_BLOCKED;
+  per-assembly aggregate carries the same gate.
+- Reverse with failed start optimization / unverified assembly -> typed reason codes.
+- Reverse with verified record -> complete + splice permitted + verification id recorded.
+- Verification for unknown candidate rejected; DIRECTION_MISMATCH and bad method_kind
+  rejected at __post_init__; vocabulary aligned with contracts_v2 DIRECTIONS/ENDPOINTS
+  and path_request METHOD_CHANNELS.
+- early_vs_late emitted for event_A_early+event_A_late pair; splice ALWAYS False; with
+  unverified reverse participant -> incomplete.
+- per_assembly groups candidates of one assembly; forward_vs_reverse requires shared
+  assembly+schedule key (different assembly ids -> no pairing).
+- zeroed->enter_method(NEB) == enter_neb_channels() byte-equal; NEB success/failure never
+  touches scan counters; scan entry never touches NEB; unknown method kind typed rejected.
+- Budget: retries+endpoint_preparations land in BudgetLedger.spent_* AND counted.*;
+  original ledger untouched (immutability); directions/assemblies/schedules likewise;
+  BudgetLedger identity preserved when injected; negative counts rejected.
+- Cost report: counted_operations.equals_actual_core_hours=false + note; budget spent
+  shows retries/prep; CPU stays 0.0/unknown after heavy counting; blank receipt_id refused
+  and CPU STILL unknown after the refused call (never estimated); measured receipt flips
+  status and receipt_ids while counted ops stay pure counts; channels separate in report.
+- Determinism: same inputs -> byte-identical ledger.to_json() and cost_report_json().
+- Purity: ledger + report recursive key scan vs FORBIDDEN_TRUTH_KEYS ∪ FORBIDDEN_EXPORT_KEYS
+  = 0 hits.
+- Comparison lookup typed refusal for missing id.
+
+4. FULL SUITE
+-------------
+Final run: 1316 passed, 2 failed, 10 deselected.
+- Baseline at todo-26: 1219 passed, 10 deselected.
+- +30 (this todo) + todos 27/29 in-flight tests landed concurrently
+  (test_intermediate_staging.py / test_special_domain.py are UNTRACKED parallel work).
+- The 2 failures are BOTH in tests/test_intermediate_staging.py (todo 27's in-flight
+  module): test_stable_evidence_stages_new_scan_plan_version_with_hash_and_segments and
+  test_path_plan_multi_peak_stages_adjacent_segments_with_geometry.
+- Independence proof: grep direction_timing_cost in intermediate_staging.py +
+  test_intermediate_staging.py -> ZERO references; those files do not import this module.
+  Per spec, todo 27/29 own intermediate_staging.py/special_domain.py — not touched here.
+- Dependency-neighborhood suites all green: tests/test_direction_timing_cost.py +
+  test_path_request.py + test_generation_plan_freeze.py + test_direction_assembly.py
+  = 115 passed.
+- lsp_diagnostics error-level: clean (direction_timing_cost.py).
+- truth_guard: OK (no truth strings / dynamic-exec).
+- Pure LOC: ~900 (SIZE_OK marked, plan-named single module precedent).
+
+5. LESSONS (for todos 30/31 + parallel 27/29)
+----------------------------------------------
+- (1) Cost channels are IMPORTED from path_request (MethodChannelAccounting,
+  enter_neb_channels, record_channel_outcome) and budget from plan_freeze (BudgetLedger)
+  — direction_timing_cost adds NO parallel accounting vocabulary. Todo 30's §13.4 report
+  should consume cost_report() directly: counted_operations.* vs measured_time.* are the
+  two report columns; measured CPU requires an actual receipt id (never a guess).
+- (2) enter_method(NEB) is additive over existing channel state (n_entered+1 on NEB,
+  branch stamp on scan); it does NOT reset prior scan counters — cohort accounting that
+  interleaves scan runs and a NEB attempt preserves both channels correctly.
+- (3) The reverse-verification gate is structural at the ledger layer: any comparison
+  group containing an unverified reverse candidate is incomplete + splice-blocked, even
+  when a verification record exists with one flag false. Todo 31 P3 assertions can call
+  assert_splice_permitted() directly for the "反向高点未经核验不拼接" red line.
+- (4) early_vs_late comparisons NEVER permit splice (timing comparison ≠ curve splice);
+  only verified forward_vs_reverse pairs do. If todo 30 needs a "spliced curve" artifact,
+  it must come from a splice_permitted=true comparison plus the q(1-λ) pairing convention
+  of design §7 — this module only gates, never splices.
+- (5) BudgetLedger(max_attempts=0) means the attempts channel is UNARMED (exhausted()
+  never fires on attempts alone) — consistent with plan_freeze semantics; arm channels
+  with positive maxima when a frozen plan exists.
+- (6) Zero-receipt cost reports are the honest default state; a report with
+  cpu_time_status="unknown" after heavy counting is CORRECT, not a bug — do not "fix"
+  it by estimating.
+
+Evidence: .omo/evidence/task-28-pes-generation-graph-scan-strategy.txt
+Commit: feat(scan-strategy): add direction/timing comparison and cost accounting
