@@ -33,11 +33,15 @@ from typing import Any, Final
 
 from pes2ts_core.contracts import seal_document
 from pes2ts_core.scan_strategy.contracts_v2 import (
+    CANDIDATE_KIND_PATH,
     CANDIDATE_KIND_SCAN,
     OBJECT_GENERATION_PLAN,
     SCHEMA_GENERATION_PLAN,
     make_generation_plan,
     validate_v2_document,
+)
+from pes2ts_core.scan_strategy.path_request import (
+    RECIPE_PATH_REQUEST_V1 as _RECIPE_PATH_REQUEST_V1,
 )
 from pes2ts_core.utils.hashing import sha256_bytes, stable_json_dumps
 
@@ -1016,6 +1020,185 @@ def freeze_generation_plan(
     return make_generation_plan(plan_id, "frozen", **fields)
 
 
+def _path_candidate_atom_rows(candidate: Mapping[str, Any]) -> list[int] | None:
+    """Frozen atom order carried in the candidate's path_request extension."""
+    extensions = candidate.get("extensions")
+    if not isinstance(extensions, Mapping):
+        return None
+    block = extensions.get("path_request")
+    if not isinstance(block, Mapping):
+        return None
+    raw = block.get("atom_rows")
+    if not isinstance(raw, (list, tuple)) or not raw:
+        return None
+    return [int(entry) for entry in raw]
+
+
+def _path_compiled_binding(
+    compiled: Any, candidate: Mapping[str, Any]
+) -> tuple[dict[str, Any], dict[str, Any], list[int] | None]:
+    """Compiled binding for a PathCandidateV1 freeze.
+
+    ``compiled=None`` seals a path-generation recipe (endpoint xyz blocks in
+    the frozen atom order + ``%geom Path`` image chain; per-image recovery
+    owned by the backend).  Any other binding is delegated to the scan
+    freeze path (``CompiledRequest`` / hashes / recipe mappings).
+    """
+    if compiled is not None:
+        return _compiled_binding(compiled, candidate)
+    atom_rows = _path_candidate_atom_rows(candidate)
+    image_chain = candidate.get("image_chain")
+    image_chain_doc = dict(image_chain) if isinstance(image_chain, Mapping) else {}
+    geometries = candidate.get("endpoint_geometries")
+    recipe: dict[str, Any] = {
+        "recipe_kind": _RECIPE_PATH_REQUEST_V1,
+        "engine": DEFAULT_ENGINE,
+        "method": DEFAULT_METHOD,
+        "adapter_version": DEFAULT_ADAPTER_VERSION,
+        "method_kind": candidate.get("method_kind") or "NEB",
+        "n_atoms": candidate.get("n_atoms"),
+        "n_images": image_chain_doc.get("n_images"),
+        "image_chain": image_chain_doc,
+        "atom_rows": list(atom_rows) if atom_rows is not None else None,
+        "endpoint_geometries": dict(geometries) if isinstance(geometries, Mapping) else {},
+        "generation": (
+            "NEB path: frozen endpoint xyz blocks in the common atom order + "
+            "%geom Path image chain; per-image energies/gradients/convergence "
+            "recovered by the backend under the PathRequest recovery protocol"
+        ),
+    }
+    block = {"kind": "recipe", "recipe": recipe}
+    doc = {
+        "kind": "recipe",
+        "compiled_kind": "recipe",
+        "recipe_kind": _RECIPE_PATH_REQUEST_V1,
+        "recipe": recipe,
+        "candidate_id": candidate.get("candidate_id"),
+    }
+    return block, doc, atom_rows
+
+
+def freeze_path_candidate_plan(
+    path_candidate: Mapping[str, Any],
+    *,
+    reaction_id: str,
+    case_id: str,
+    split: str = "unassigned",
+    source_case_sha256: str | None = None,
+    endpoint_graph_sha256: str | None = None,
+    compiled: Any = None,
+    config: Mapping[str, Any] | None = None,
+    plan_version: int = 1,
+    supersedes: str | None = None,
+) -> dict[str, Any]:
+    """Freeze one PathRequest-derived ``PathCandidateV1`` into a plan document.
+
+    ``path_candidate`` is the payload produced by
+    ``PathRequest.to_path_candidate`` (contracts_v2 ``PathCandidateV1``).
+    Proposals cannot carry path candidates (contracts proposal candidates are
+    scan-shaped), so path freezes take the candidate directly — the same
+    frozen-plan discipline applies: clean ``failure_reasons``, sealed
+    content digest, explicit budget/quality/failure-tree dimensions.
+    ``source_case_sha256`` is required (identity binding is never guessed).
+    """
+    if not isinstance(path_candidate, Mapping):
+        raise PlanFreezeError("PATH_CANDIDATE_INVALID", "path_candidate must be an object")
+    if path_candidate.get("candidate_kind") != CANDIDATE_KIND_PATH:
+        raise PlanFreezeError(
+            "PATH_CANDIDATE_INVALID",
+            f"candidate_kind={path_candidate.get('candidate_kind')!r}; "
+            f"expected {CANDIDATE_KIND_PATH!r}",
+        )
+    candidate_id = path_candidate.get("candidate_id")
+    if not isinstance(candidate_id, str) or not candidate_id:
+        raise PlanFreezeError("PATH_CANDIDATE_INVALID", "candidate_id must be a non-empty string")
+    failure_reasons = path_candidate.get("failure_reasons")
+    if failure_reasons:
+        raise PlanFreezeError(
+            "CANDIDATE_NOT_CLEAN",
+            f"candidate {candidate_id!r} carries failure_reasons",
+        )
+    if not isinstance(source_case_sha256, str) or len(source_case_sha256) != 64:
+        raise PlanFreezeError(
+            "PATH_CANDIDATE_INVALID", "source_case_sha256 must be a 64-char digest"
+        )
+    if not isinstance(plan_version, int) or isinstance(plan_version, bool) or plan_version < 1:
+        raise PlanFreezeError("PATH_CANDIDATE_INVALID", "plan_version must be a positive integer")
+    payload = dict(path_candidate)
+    payload.setdefault("failure_reasons", [])
+    plan_id = f"{reaction_id}:gp-v{plan_version}"
+    compiled_block, compiled_doc, atom_order = _path_compiled_binding(compiled, payload)
+    graph, graph_sha = _candidate_graph(plan_id, candidate_id)
+    extensions = payload.get("extensions")
+    request_block = extensions.get("path_request") if isinstance(extensions, Mapping) else None
+    endpoint_sha = str(
+        endpoint_graph_sha256
+        or (
+            request_block.get("bundle_content_sha256")
+            if isinstance(request_block, Mapping)
+            else None
+        )
+        or ""
+    )
+    complete_graph_sha = sha256_bytes(
+        stable_json_dumps(
+            {
+                "endpoint_graph_sha256": endpoint_sha,
+                "candidate_graph_sha256": graph_sha,
+            }
+        ).encode("utf-8")
+    )
+    fallback_ids = list(payload.get("fallback_ids") or ())
+    quality_tests = _quality_tests(config)
+    plan_budget = _plan_budget(config, [payload])
+    policy_hashes = {
+        "registry_version": REGISTRY_VERSION,
+        "schedule_version": SCHEDULE_VERSION,
+        "freeze_version": PLAN_FREEZE_VERSION,
+        "endpoint_graph_sha256": endpoint_sha,
+    }
+    freeze_block: dict[str, Any] = {
+        "freeze_version": PLAN_FREEZE_VERSION,
+        "registry_version": REGISTRY_VERSION,
+        "schedule_version": SCHEDULE_VERSION,
+        "endpoint_graph_sha256": endpoint_sha,
+        "candidate_graph_sha256": graph_sha,
+        "graph_sha256": complete_graph_sha,
+        "selected_candidate_id": candidate_id,
+        "quality_test_ids": [row["test_id"] for row in quality_tests],
+        "fallback_tree": {candidate_id: fallback_ids},
+        "alternate_candidate_ids": [],
+        "budget_accounting": list(BUDGET_ACCOUNTING_CATEGORIES),
+        "compiled_request": compiled_doc,
+        "failure_tree": {
+            "version": FAILURE_TREE_VERSION,
+            "codes": list(FAILURE_TREE_CODE_ORDER),
+        },
+    }
+    if atom_order is not None:
+        freeze_block["atom_order"] = list(atom_order)
+    fields: dict[str, Any] = {
+        "reaction_id": reaction_id,
+        "case_id": case_id,
+        "split": split,
+        "plan_id": plan_id,
+        "plan_version": plan_version,
+        "source_proposal_sha256": str(payload.get("source_proposal_sha256") or source_case_sha256),
+        "source_case_sha256": source_case_sha256,
+        "policy_hashes": policy_hashes,
+        "backend": _backend_block(compiled_doc),
+        "candidate_graph": graph,
+        "candidates": [payload],
+        "budget": plan_budget,
+        "compiled": compiled_block,
+        "quality_tests": quality_tests,
+        "extensions": {"freeze": freeze_block},
+    }
+    if supersedes is not None:
+        fields["supersedes"] = supersedes
+    return make_generation_plan(plan_id, "frozen", **fields)
+
+
 __all__ = [
     "BUDGET_ACCOUNTING_CATEGORIES",
     "DEFAULT_QUALITY_TEST_IDS",
@@ -1033,6 +1216,7 @@ __all__ = [
     "assert_failure_code",
     "compiled_binding_from_candidate",
     "freeze_generation_plan",
+    "freeze_path_candidate_plan",
     "is_failure_code",
     "verify_generation_plan",
 ]

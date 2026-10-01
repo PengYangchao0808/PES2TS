@@ -102,6 +102,7 @@ __all__ = [
     "OrcaCompileError",
     "SCHEMA_ORCA_COMPILE",
     "compile_orca",
+    "compile_orca_path_request",
 ]
 
 # ---------------------------------------------------------------------------
@@ -1031,6 +1032,200 @@ def _compile_path(
         compiled_kind="hashes",
         recipe_kind=RECIPE_PATH_NEB,
         geom_fragments=fragments,
+        point_input_sha256=(point_hash,),
+        total_points=n_images,
+        coordinates=(),
+        simultaneous=False,
+        lambda_values=(),
+        atom_rows=order,
+        recipe=recipe,
+    )
+
+
+def _path_atom_rows_tuple(raw: Any) -> tuple[int, ...]:
+    """Parse a frozen atom-order array into a positive-int tuple."""
+    if not isinstance(raw, (list, tuple)) or not raw:
+        raise OrcaCompileError(
+            CODE_PATH_GEOMETRY_INVALID,
+            "atom_rows must be a non-empty array of positive integers",
+        )
+    out: list[int] = []
+    for entry in raw:
+        if isinstance(entry, bool) or not isinstance(entry, int) or entry <= 0:
+            raise OrcaCompileError(
+                CODE_PATH_GEOMETRY_INVALID, "atom_rows entries must be positive integers"
+            )
+        out.append(entry)
+    return tuple(out)
+
+
+def _path_extension_block(candidate: Mapping[str, Any]) -> Mapping[str, Any] | None:
+    """Return the namespaced ``extensions.path_request`` block when present."""
+    extensions = candidate.get("extensions")
+    if not isinstance(extensions, Mapping):
+        return None
+    block = extensions.get("path_request")
+    return block if isinstance(block, Mapping) else None
+
+
+def _json_scalar_map(raw: Any) -> dict[str, Any]:
+    """Project a mapping into a JSON-scalar dict (stable-hash safe)."""
+    if not isinstance(raw, Mapping):
+        return {}
+    out: dict[str, Any] = {}
+    for key, value in raw.items():
+        if value is None or isinstance(value, (str, int, float, bool)):
+            out[str(key)] = value
+    return out
+
+
+def _xyz_rows(raw: Any, where: str) -> list[list[float]]:
+    """Parse an endpoint geometry block into rows of three finite floats."""
+    if not isinstance(raw, (list, tuple)):
+        raise OrcaCompileError(CODE_PATH_GEOMETRY_INVALID, f"{where} must be an array")
+    rows: list[list[float]] = []
+    for index, row in enumerate(raw):
+        if not isinstance(row, (list, tuple)) or len(row) != 3:
+            raise OrcaCompileError(
+                CODE_PATH_GEOMETRY_INVALID, f"{where}[{index}] must be one 3D coordinate"
+            )
+        coords: list[float] = []
+        for item in row:
+            if isinstance(item, bool) or not isinstance(item, (int, float)):
+                raise OrcaCompileError(
+                    CODE_PATH_GEOMETRY_INVALID,
+                    f"{where}[{index}] coordinates must be numbers",
+                )
+            coords.append(float(item))
+        rows.append(coords)
+    return rows
+
+
+def compile_orca_path_request(
+    path_request: Any,
+    capability: EffectiveCapability,
+    *,
+    elements: Sequence[str] | None = None,
+    method: str = "B3LYP-D3",
+    charge: int = 0,
+    multiplicity: int = 1,
+    nprocs: int = 4,
+) -> CompiledRequest:
+    """Compile a PathRequest (todo 26) into the ORCA NEB input shape.
+
+    Additive entry point: projects the request through
+    ``PathRequest.to_path_candidate`` (duck-typed — no import of
+    ``path_request`` from this module), runs the todo-19 capability-gated
+    ``compile_orca`` NEB path unchanged, then binds the frozen image-chain
+    parameters and recovery protocol into the recipe and the hashed input
+    text.  The ``%geom Path`` fragment keeps the minimal ``n_images`` shape;
+    spring/backend parameters are frozen in the recipe for the backend —
+    this module never invents unverified ORCA keywords.
+
+    ``path_request`` may be a PathRequest dataclass (exposes
+    ``to_path_candidate``/``atom_rows``/``elements``) or a PathCandidateV1
+    mapping carrying ``extensions.path_request.atom_rows``.
+    """
+    candidate: dict[str, Any]
+    order: tuple[int, ...]
+    request_block: Mapping[str, Any] | None
+    request_id: str
+    to_candidate = getattr(path_request, "to_path_candidate", None)
+    if callable(to_candidate):
+        request_id = str(getattr(path_request, "request_id", "") or "path-request")
+        raw_candidate = to_candidate(candidate_id=request_id)
+        if not isinstance(raw_candidate, Mapping):
+            raise OrcaCompileError(
+                CODE_UNKNOWN_CANDIDATE_KIND, "to_path_candidate() must return a mapping"
+            )
+        candidate = dict(raw_candidate)
+        order = _path_atom_rows_tuple(getattr(path_request, "atom_rows", ()))
+        if elements is None:
+            raw_elements = getattr(path_request, "elements", ()) or ()
+            elements = tuple(str(entry) for entry in raw_elements)
+        request_block = _path_extension_block(candidate)
+    elif isinstance(path_request, Mapping) and path_request.get(
+        "candidate_kind"
+    ) == CANDIDATE_KIND_PATH:
+        candidate = dict(path_request)
+        request_block = _path_extension_block(candidate)
+        raw_order = request_block.get("atom_rows") if request_block is not None else None
+        order = _path_atom_rows_tuple(raw_order)
+        raw_id = request_block.get("request_id") if request_block is not None else None
+        request_id = str(raw_id or candidate.get("candidate_id") or "path-request")
+    else:
+        raise OrcaCompileError(
+            CODE_UNKNOWN_CANDIDATE_KIND,
+            "path_request must be a PathRequest or a PathCandidateV1 mapping",
+        )
+    if not order:
+        raise OrcaCompileError(CODE_PATH_GEOMETRY_INVALID, "atom_rows must be non-empty")
+    base = compile_orca(
+        candidate,
+        order,
+        capability,
+        elements=elements,
+        method=method,
+        charge=charge,
+        multiplicity=multiplicity,
+        nprocs=nprocs,
+    )
+    recipe = dict(base.recipe)
+    raw_chain = candidate.get("image_chain")
+    image_chain_doc = _json_scalar_map(raw_chain)
+    recipe["image_chain"] = image_chain_doc
+    schema_version = "g1_path_request_v1"
+    if request_block is not None and request_block.get("schema_version") is not None:
+        schema_version = str(request_block.get("schema_version"))
+    recipe["path_request"] = {
+        "schema_version": schema_version,
+        "request_id": request_id,
+    }
+    if request_block is not None:
+        recovery = request_block.get("recovery_protocol")
+        if isinstance(recovery, Mapping):
+            recipe["recovery_protocol"] = _json_scalar_map(recovery)
+        channels = request_block.get("method_channels")
+        if isinstance(channels, Mapping):
+            recipe["method_channels"] = _json_scalar_map(channels)
+    raw_blocks = recipe.get("endpoint_geometries")
+    if not isinstance(raw_blocks, Mapping):
+        raise OrcaCompileError(
+            CODE_PATH_GEOMETRY_INVALID, "compiled recipe lost endpoint_geometries"
+        )
+    reactant_rows = _xyz_rows(raw_blocks.get("reactant"), "endpoint_geometries.reactant")
+    product_rows = _xyz_rows(raw_blocks.get("product"), "endpoint_geometries.product")
+    n_images = int(base.total_points)
+    path_fragment = _path_block(n_images)
+    reactant_block = _xyz_block(reactant_rows, charge, multiplicity, elements)
+    product_block = _xyz_block(product_rows, charge, multiplicity, elements)
+    endpoint_sha = str(recipe.get("endpoint_sha256") or "")
+    text = "\n".join(
+        [
+            f"pes2ts-orca-compile {base.candidate_id} path",
+            f"! {method}",
+            "%pal",
+            f" nprocs {nprocs}",
+            "end",
+            f"# endpoint_sha256={endpoint_sha} n_images={n_images} atom_rows={list(order)}",
+            f"# path_request {schema_version} "
+            f"{request_id} image_chain={stable_json_dumps(image_chain_doc)}",
+            path_fragment,
+            "# reactant endpoint",
+            reactant_block,
+            "# product endpoint",
+            product_block,
+            "",
+        ]
+    )
+    point_hash = sha256_bytes(text.encode("utf-8"))
+    return CompiledRequest(
+        schema_version=SCHEMA_ORCA_COMPILE,
+        candidate_id=base.candidate_id,
+        mode="PATH_NEB",
+        compiled_kind="hashes",
+        recipe_kind=RECIPE_PATH_NEB,
+        geom_fragments=base.geom_fragments,
         point_input_sha256=(point_hash,),
         total_points=n_images,
         coordinates=(),

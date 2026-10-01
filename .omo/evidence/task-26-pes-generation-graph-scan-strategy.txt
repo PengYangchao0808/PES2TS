@@ -1,0 +1,113 @@
+# task-26-pes-generation-graph-scan-strategy — PathRequest/NEB 协议
+# Plan: .omo/plans/pes-generation-graph-scan-strategy.md todo 26
+# Date: 2026-10-01
+# Env: conda pes2ts (python 3.12.14), cwd = PES2TS repo root
+# Baseline: 1195 passed / 10 deselected (todo 25); this todo: +24 tests
+
+## Outcome: PASSED
+
+- Full suite: **1219 passed, 10 deselected** (1195 基线 + 本 todo 24；0 失败)
+- `tests/test_path_request.py` → 24 passed (pytest -q)
+- truth_guard: 19 passed (新模块无真值字符串/dynamic-exec)
+- lsp error 级：path_request.py / test_path_request.py clean；plan_freeze.py 与
+  compile_orca.py 残留 error 全部落在**既有**行（plan_freeze 342-613 = todo-23
+  原码；compile_orca 345/989 = todo-19 原码 JSONValue-variance 同型噪声，
+  learnings todo-3 已记录"门是 pytest"）——本 todo 新增行零 error
+- 纯 LOC：path_request.py 879（`# allow: SIZE_OK`，plan 点名 todo-26 单模块）；
+  plan_freeze.py 1127 / compile_orca.py 1068（既有 SIZE_OK 模块，只增不改）
+
+## Files
+
+- NEW `pes2ts_core/scan_strategy/path_request.py` — PathRequest/NEB 协议
+- ADDITIVE `pes2ts_core/scan_strategy/plan_freeze.py` — `freeze_path_candidate_plan`
+  （既有 freeze_generation_plan 等函数零改动，只追加）
+- ADDITIVE `pes2ts_core/scan_strategy/compile_orca.py` — `compile_orca_path_request`
+  + 4 个私有助手（既有 compile_orca/_compile_path 等零改动）
+- NEW `tests/test_path_request.py` — 24 tests
+- scan_strategy/__init__.py 未动（下游直接 import 子模块，先例 todo 6）
+
+## PathRequest API (给 todos 27-31)
+
+- `make_path_request(bundle, materials, config, image_chain_params, *, reaction_id=None) -> PathRequest`
+  - bundle: EndpointGraphBundle（实例；RebuiltEndpointGraphBundle 子类可过）
+  - materials: EndpointMaterials 或映射 {r_coordinates/p_coordinates 或 r/p}，
+    可选 `atom_map_ids`（冻结原子序声明——非 map 排序合法，双端几何都按它对齐）
+  - config: scan_strategy 段（读 max_total_candidates.path_neb 与可选
+    path_request.deep_intermediate_threshold；数值字符串接受——YAML 1.1 quirk）
+  - image_chain_params: int | {"n_images", "spring_constant"?, "neb_backend_id"?} |
+    ImageChainParams
+- `PathRequest` 冻结 dataclass：atom_rows（冻结序）/ n_atoms / elements /
+  endpoint_geometries{reactant,product}（**双端同行序 = atom_rows**）/
+  image_chain / method_kind="NEB" / recovery_protocol / method_channels / policy；
+  `to_doc()` / `to_path_candidate(candidate_id, ...)` / `request_json()`
+- `path_request_from_doc(doc)` 往返重建；`flag_intermediate_minimum(energies, *, deep_threshold=None)`
+  → IntermediateMinimumFlag（interior min → NEB_INTERMEDIATE_MINIMUM；
+  depth≥threshold → DEEP_INTERMEDIATE_MINIMUM + adjacent_segment_required=True；
+  恒 single_elementary_process_guaranteed=False；next_stage=
+  "intermediate_evidence_staging" = todo 27 接缝）
+- 拒绝码（PathRequestError.code，全部 typed，绝不伪造坐标）：
+  ENDPOINT_GEOMETRY_MISSING / ATOM_ORDER_MISMATCH / IMAGE_CHAIN_INVALID /
+  MATERIALS_SCHEMA_INVALID / BUNDLE_INVALID / PATH_REQUEST_INVALID
+- 方法通道（NEB/Scan 分算）：CHANNEL_NEB/CHANNEL_SCAN；`enter_neb_channels()`
+  = 进入 NEB 时 NEB.n_entered=1 + 双通道 branch=native_scan_branch_exited；
+  `record_channel_outcome(channels, method_kind, succeeded=...)` 只改被寻址通道
+  （测试钉死 NEB 成功不加 scan 成功）；n_cpu_hours 恒 0 直至后端实测（§13.4）
+
+## Freeze / compile 接缝
+
+- `plan_freeze.freeze_path_candidate_plan(path_candidate, *, reaction_id, case_id,
+  split, source_case_sha256, endpoint_graph_sha256=None, compiled=None, config=None,
+  plan_version=1, supersedes=None)` → sealed g1_generation_plan_v2
+  - 提案合同不能携带 path 候选（proposal 候选 scan-shaped），故 path 冻结直接吃
+    `PathRequest.to_path_candidate()` 产出的 PathCandidateV1 payload
+  - compiled=None → 封存 `pes2ts_path_request_recipe_v1`（端点几何+图像链+回收协议）；
+    CompiledRequest/hashes/recipe mapping 走既有 `_compiled_binding`
+  - atom_order 来自候选 extensions.path_request.atom_rows（进 extensions.freeze.atom_order）
+  - 拒绝：failure_reasons 非空 → CANDIDATE_NOT_CLEAN；非 PathCandidateV1 /
+    坏 source_case_sha256 → PATH_CANDIDATE_INVALID
+  - verify_generation_plan(plan)==[] 且 validate_v2_document(plan)==[]（测试钉死）
+- `compile_orca.compile_orca_path_request(path_request, capability, *, elements=None,
+  method=..., charge=..., multiplicity=..., nprocs=...)` → CompiledRequest(PATH_NEB)
+  - duck-type：PathRequest dataclass 或带 extensions.path_request.atom_rows 的
+    PathCandidateV1 映射（不 import path_request——零循环）
+  - 能力门先行（_refuse_capability PATH_NEB）；复用 todo-19 compile_orca NEB 路径；
+    recipe 加性携带 image_chain/path_request/recovery_protocol/method_channels；
+    输入文本加 `# path_request ... image_chain={stable_json_dumps}` 注释行并重算
+    point hash；**%geom Path 仍只发 n_images**——spring/backend 参数冻结在 recipe
+    供后端使用，绝不发明未验证 ORCA 关键字（gated 冒烟后再定语法）
+- to_path_candidate 扩展块：extensions.path_request = {schema_version, request_id,
+  atom_rows, bundle_content_sha256, method_channels, recovery_protocol}
+
+## Tests (24)
+
+1. 双端同 atom_rows 序 + image_chain + method/recovery/policy
+2. materials atom_map_ids 定义冻结序（非 map 排序 + 对齐列表；排列≠mismatch）
+3. recovery policy 块（single_elementary_process_guaranteed=False 结构性记录）
+4. YAML 数值字符串 deep_intermediate_threshold="1.5"
+5-7. 拒绝：materials=None / 缺 map → ENDPOINT_GEOMETRY_MISSING（含 "never fabricated"）；
+   atom_map_ids 缺/多 map、重复 → ATOM_ORDER_MISMATCH；对齐列表无 atom_map_ids →
+   MATERIALS_SCHEMA_INVALID；拒绝路径不产部分请求
+8. image_chain 0 / 负 spring → IMAGE_CHAIN_INVALID
+9. 无伪造距离坐标键（FABRICATED_DISTANCE_KEYS 全 doc/候选扫描）
+10-12. 通道：进入 NEB=scan 分支退出；NEB 成功不加 scan 成功（不可变通道）；
+    doc 携带分通道
+13-15. intermediate flag：interior/deep/单调
+16-17. freeze 兼容：validate+verify 全空、atom_order 冻结、双次 freeze
+    content_sha256 相等、dirty 候选 CANDIDATE_NOT_CLEAN、错 kind PATH_CANDIDATE_INVALID
+18-19. compile：probed 能力 → Path/n_images/双 xyz block + recipe 携带
+    image_chain/path_request/recovery + hash 确定性；unprobed → CAPABILITY_UNPROBED
+20-22. 确定性：双请求 request_json 字节相等；to_path_candidate 相等；rehydrate 往返稳定
+23. doc 递归键扫描 vs FORBIDDEN ∪ = 0
+24. （含于上）纯度
+
+## NOT done / boundaries
+
+- 未配置新 config 键（path_request.deep_intermediate_threshold 为可选键，
+  缺省无深阈值——设计未钉数，绝不编造校准值）；defaults.yaml 零改动
+- ORCA NEB spring 语法未发明；gated ORCA 冒烟（PES2TS_ORCA_EXECUTABLE）本树仍 blocked
+- 中间体分段/计划新版本归 todo 27（本 todo 只产 typed flag + 结构性 caveat）
+- 成本核算细化归 todo 28（本 todo 只定通道结构：NEB/Scan 分账 + 分支退出语义）
+
+## Commit
+
+feat(scan-strategy): add PathRequest and NEB protocol
