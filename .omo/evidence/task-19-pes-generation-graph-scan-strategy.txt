@@ -1,0 +1,160 @@
+task-19: compile_orca — ORCA Scan/Constraints/Path compiler (PES2TS scan-strategy)
+================================================================================
+
+Plan todo 19 of .omo/plans/pes-generation-graph-scan-strategy.md
+Design refs: §8 mode table, §9.1 capability registry, §9.2 compilation sketch
+(docs/design/PES_GENERATION_图论扫描策略选择器设计_v1.md)
+
+DELIVERABLES
+------------
+- pes2ts_core/scan_strategy/compile_orca.py (new; existing modules untouched:
+  capabilities.py / contracts_v2.py / schedules.py / adapter.py / planning.py)
+- tests/test_compile_orca.py — 31 tests, all green
+- Full suite: 1086 passed, 4 deselected (baseline 1055 + 31 new), exit 0
+- lsp error-level diagnostics: clean on both new files
+- truth_guard: clean (module carries no truth strings / dynamic-exec)
+
+PUBLIC API (contract for todos 20/21/23)
+-----------------------------------------
+compile_orca(candidate, atom_rows, capability, *, geometry=None, elements=None,
+             method="B3LYP-D3", charge=0, multiplicity=1, nprocs=4)
+  -> CompiledRequest          (raises OrcaCompileError(code, detail) on refusal)
+
+Inputs:
+  candidate : frozen-plan ScanCandidateV2 | PathCandidateV1 payload (dict)
+  atom_rows : plan's common frozen atom order (map ids) — indices resolve
+              through this order, NEVER map-1
+  capability: EffectiveCapability (todo 16 effective intersection)
+  geometry  : {"R"| "P"| "reactant"/"product": {map_id: xyz}} endpoint blocks
+              (required for scan physical values; Path uses endpoint_geometries)
+  elements  : optional per-atom symbols (Path xyz blocks only)
+
+CompiledRequest (frozen dataclass, schema g1_orca_compile_v1):
+  candidate_id, mode, compiled_kind ("hashes"|"recipe"), recipe_kind,
+  geom_fragments  : tuple[str]  — %geom syntax fragment strings
+  point_input_sha256 : tuple[str] — per-point input hashes (1 for native
+                    Scan/Path inputs; total_points for per-point recipes)
+  total_points    : int — == len(lambda_values) for scans; n_images for NEB
+  coordinates     : tuple[CompiledCoordinate] — EVERY driver, fields:
+                    kind, maps, indices (0-based via atom_rows), unit,
+                    start_value, end_value, values (per λ), schedule_values
+  simultaneous    : bool — Simul_Scan compiled (COUPLED_1D only)
+  lambda_values   : tuple[float]
+  atom_rows       : tuple[int]
+  recipe          : dict — sealed generation recipe (method/charge/mult/nprocs,
+                    geometry_sha256, atom_rows, per-driver value tables,
+                    generation note) — NOT inline per-point files
+  to_doc()/to_json() — stable_json_dumps deterministic serialization
+
+COMPILE STRATEGY BY MODE (design §8)
+------------------------------------
+- SINGLE_1D linear        -> native "%geom Scan B/A/D i.. = start, end, steps end"
+                             (steps = N-1); compiled_kind="hashes", 1 hash
+- SINGLE_1D non-linear    -> per-point "%geom Constraints" recipe (custom
+                             schedule gate: custom_schedule_support AND
+                             per_point_constraints)
+- COUPLED_1D (2-3 linear) -> "%geom Scan" per driver + "Simul_Scan true";
+                             requires effective constraint_support.simul_scan
+                             AND COUPLED_1D enabled by passing probe receipts;
+                             non-linear schedule -> typed refusal
+                             (Simul_Scan cannot express it — no implicit grids)
+- SCHEDULED_1D            -> per-point Constraints recipe always (custom λ
+                             lists); one fragment + one sha256 per λ point
+- PathCandidateV1         -> minimal "%geom Path / n_images N / end" + both
+                             endpoint xyz blocks (elements optional); total
+                             points = n_images; elaborated by todo 26
+
+CAPABILITY GATE (order matters — tested)
+----------------------------------------
+1. minimal shape extraction (mode, driver kinds) only
+2. capability_check(capability, mode, kinds, n_coords) — status must be "pass"
+   - fail    -> OrcaCompileError BACKEND_CAPABILITY_MISSING
+   - unknown -> SIMUL_SCAN_UNPROBED (COUPLED_1D) / CAPABILITY_UNPROBED (else)
+3. per-mode extras: simul_scan flag (COUPLED), custom_schedule_support +
+   per_point_constraints (SCHEDULED / non-linear single), native_scan flag
+   (native Scan paths)
+4. ONLY THEN: index resolution, unit checks, geometry, value compilation
+Gate-first tests prove an unprobed candidate with missing geometry AND an
+unknown map still returns the capability code (no compilation output).
+
+TYPED REFUSAL CODES
+-------------------
+BACKEND_CAPABILITY_MISSING, SIMUL_SCAN_UNPROBED, SIMUL_SCAN_UNSUPPORTED,
+CAPABILITY_UNPROBED, CUSTOM_SCHEDULE_UNSUPPORTED,
+PER_POINT_CONSTRAINTS_UNSUPPORTED, UNKNOWN_CANDIDATE_KIND, ATOM_ORDER_INVALID,
+DRIVER_MAPS_INVALID, DRIVER_MAP_UNKNOWN, DRIVER_ARITY_INVALID,
+INDEX_ORDER_MISMATCH, UNIT_UNSUPPORTED, GEOMETRY_REQUIRED,
+COORDINATE_VALUE_INVALID, LAMBDA_GRID_INVALID, SCHEDULE_VALUE_MISMATCH,
+POINT_WINDOW_INVALID, PATH_GEOMETRY_INVALID, PATH_METHOD_INVALID
+
+SEMANTICS LOCKED BY TESTS
+-------------------------
+- indices from permuted atom_rows: maps [1,2] on order (4,2,1,3) -> (2,1),
+  fragment "Scan B 2 1" — never map-1 (0,1)
+- index0 disagreement with atom_rows -> INDEX_ORDER_MISMATCH
+- B unit angstrom / A,D unit degree; kind-unit mismatch refused
+- D periodic: 170° -> −170° compiles on the +20° shortest arc (mid = ±180,
+  never 0); values match (b−a+180)%360−180 interpolation, rounded 6 dp
+- Simul_Scan fragment ONLY with fake passing probe receipts injected into a
+  synthetic registry (all 3 layers, modes cover COUPLED_1D, simul_scan=true);
+  without receipts -> SIMUL_SCAN_UNPROBED; receipts pass but simul_scan flag
+  false -> SIMUL_SCAN_UNSUPPORTED; adapter undeclares COUPLED_1D ->
+  BACKEND_CAPABILITY_MISSING
+- 3 coordinates compile (boundary OK); 4 coordinates -> BACKEND_CAPABILITY_MISSING
+- SCHEDULED per-point: hashes count == N, all distinct; values == q_start +
+  s(λ)·(q_end−q_start); fragments are "%geom Constraints" blocks with BOTH
+  drivers on every point
+- NEB minimal: fragments contain Path + n_images + two * xyz blocks;
+  total_points == n_images; PATH_NEB unprobed -> CAPABILITY_UNPROBED
+- every-coordinate-present: 3-driver COUPLED records all 3 coordinates and
+  all 3 Scan lines (no first-driver projection)
+- no implicit grids: total_points == len(lambda_values) everywhere
+- determinism: two compiles -> byte-identical to_json
+- shipped registry (unprobed, todo 16 honest baseline) refuses compile
+
+TEST INVENTORY (tests/test_compile_orca.py, 31 tests)
+------------------------------------------------------
+single_1d indices/units/no-grid, A degrees, D periodic native + per-point,
+coupled simul with/without receipt, simul flag missing, adapter undeclared,
+coupled non-linear refused, 3-coord boundary, 4-coord rejected, gate-before-
+compilation (single + coupled), shipped registry refusal, scheduled per-point
+hashes/values, single non-linear per-point, per-point constraint syntax,
+per-point capability missing, NEB minimal + unprobed + bad image count,
+every-driver present, determinism, refusals: map unknown / index0 / unit /
+point window / geometry required / atom order / unknown kind
+
+ENV / RUN
+---------
+conda env pes2ts; direct interpreter /root/miniforge3/envs/pes2ts/bin/python
+(conda run heredoc swallows stdin on this host — see learnings todo 1)
+pytest -q tests/test_compile_orca.py -> 31 passed
+pytest -q (full) -> 1086 passed, 4 deselected, 42.6s
+No ORCA execution (MUST NOT DO honored); no capability/contract module edits.
+
+DECISIONS RECORDED FOR TODOS 20/21/23
+--------------------------------------
+- Simul_Scan enablement = mode-level probe receipts (COUPLED_1D in
+  receipt.modes on every layer at effective versions) AND declared
+  constraint_support.simul_scan; receipts vocabulary has no "Simul_Scan"
+  mode token (contracts_v2 CAPABILITY_MODES), so COUPLED_1D pass receipts
+  are the machine-checkable Simul_Scan probe surface.
+- Physical q(λ) values compile from endpoint geometry:
+  q(λ)=q_start+s(λ)·(q_end−q_start); D uses shortest_arc_delta + normalize
+  into (−180,180]; values rounded to 6 dp (todo-18 endpoint-rounding
+  precedent generalized per driver kind).
+- Hashed input text = deterministic pseudo-input (title/method/pal/geometry
+  sha/%geom fragment). Full XYZ assembly is adapter-side (todo 20/23);
+  recipe carries geometry_sha256 + atom_rows + per-driver value tables so a
+  frozen recipe regenerates every point input byte-identically.
+- Native Scan fragment uses steps = N−1 (ORCA nsteps convention); total_points
+  recorded separately as N.
+- OrcaCompileError(ValueError) with .code — independent error family (does not
+  subclass ACPMappingError; compilation is ORCA-syntax-level, not ACP mapping).
+- compile_orca.py ~1041 lines -> # noqa: SIZE_OK (plan-named todo-19 single
+  module; precedent contracts_v2/capabilities/schedules/compat_export).
+- Per-point Constraints syntax: "{ B i j v }" / "{ A i j k v }" /
+  "{ D i j k l v }" inside "%geom Constraints ... end" per point input.
+
+NOTEPAD NOTE
+------------
+.learnings.md appended with the CompiledRequest API summary for todos 20/21/23.
