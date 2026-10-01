@@ -1,0 +1,116 @@
+task-14 — pes-generation-graph-scan-strategy — 时间表生成与有限候选树 — PASSED
+================================================================================
+
+Date: 2026-10-01
+Commit: feat(scan-strategy): add one-dimensional schedules and finite candidate tree
+Plan: .omo/plans/pes-generation-graph-scan-strategy.md todo 14
+Design: docs/design/PES_GENERATION_图论扫描策略选择器设计_v1.md §8, §8.1, §8.3
+
+FILES
+-----
+- pes2ts_core/scan_strategy/schedules.py   (new, 1033 pure LOC → # noqa: SIZE_OK)
+- tests/test_schedules.py                   (new, 24 tests, all green)
+- .omo/notepads/pes-generation-graph-scan-strategy/learnings.md (appended)
+
+API (consumed by todos 17/19)
+-----------------------------
+- build_schedules(candidate_with_feasibility: CandidateWithFeasibility,
+                  config: Mapping) -> ScheduledCandidate
+  CandidateWithFeasibility = {candidate: DriverSetCandidate, pool: CoordinatePool,
+                              feasibility: FeasibilityReport, start_endpoint: str}
+- refinement_options(schedule: ScheduleSpec, *, rule: RefinementRule | None)
+  -> tuple[RefinementOption, ...]   # closed set, empty at max depth
+- refinement_tree(schedule, *, rule) -> RefinementTree
+- assert_schedule_integrity(pool, candidate) -> tuple[str, ...]
+- policy_from_config(config) -> SchedulePolicy
+- smoothstep_s / uniform_lambda_grid / double_lambda_grid /
+  refine_lambda_interval / s_value_for_window (math primitives)
+
+SCHEDULE KINDS (single source contracts_v2.SCHEDULE_KINDS)
+----------------------------------------------------------
+- linear:       s_j = λ (shared uniform λ grid, N from FeasibilityReport.n_points)
+- event_A_early / event_A_late: windowed smoothstep on exactly two event groups
+  (group A = min event id; early window (0,0.5), late window (0.5,1); drivers
+  outside the two groups stay linear). Generated ONLY when the candidate's
+  drivers span exactly 2 event groups (design §8.1: not per-bond permutations).
+- smoothstep:   s = 3u²−2u³, u=clip((λ−a)/(b−a),0,1), window (0,1):
+  s(0)=0, s(0.5)=0.5, s(1)=1, monotone.
+- ALL drivers share ONE λ list per schedule (invariant, test-locked).
+- No arbitrary non-uniform λ lists; custom-list/Simul_Scan compilation is
+  todo 19 and is NEVER produced here (requires_backend_smoke=True on
+  SCHEDULED_1D + multi-driver linear; doc contains no %geom/%pal markers).
+
+BUDGET (config keys verified in config/defaults.yaml scan_strategy section)
+--------------------------------------------------------------------------
+- schedule_budget=3, direction_budget=2, assembly_candidate_budget=2,
+  max_total_candidates.{scan:6, path_neb:1}
+- Partition: keep ≤ schedule_budget schedules; projected total
+  n_active × direction_budget ≤ max_total_candidates.scan (conservative —
+  direction CHOICE is todo 15, this module only enforces arithmetic).
+- Over-budget schedules → PrunedCandidate records code=PRUNED_BY_BUDGET with
+  full schedule_id/kind/λ list + reason (traceable, never silently unproposed).
+
+REFINEMENT TREE (pre-frozen, design §8.3)
+------------------------------------------
+- RefinementRule{max_refinement_count=2 (TODO: calibrate),
+                 kinds=(doubling, local_interval)}
+- doubling: N→2N−1 midpoint halving, endpoints preserved exactly
+- local_interval: one midpoint per adjacent λ pair (closed set: N−1 options)
+- refinement_options returns the full closed set from any node; empty when
+  depth ≥ max_refinement_count. Runtime never invents new schedules.
+- Optional config key scan_strategy.max_refinement_count read when present;
+  defaults.yaml NOT modified (todo-2 file frozen in practice).
+
+DOUBLE-DISTANCE INTEGRITY (design §8.1 hard rule)
+--------------------------------------------------
+- assert_schedule_integrity raises ValueError("SCHEDULE_INTEGRITY_VIOLATION: ...")
+  on: unresolved driver ids, role/kind/arity mismatch, duplicate driver ids,
+  n_drivers != len(driver_coordinate_ids), any pool coordinate whose origin
+  geometry_kind/note claims difference/delta/relative/d1_minus (forbidden),
+  or two hydrogen partner/hh DRIVER records sharing (event, H map) with
+  duplicate atom_maps (collapsed double distance).
+- Target_test companions sharing atom_maps with their driver are LEGITIMATE
+  and excluded (role filter) — first version flagged them, fixed.
+- Real H-transfer pipeline test: donor(2,4)+acceptor(1,4) remain separate
+  drivers into ScheduledCandidate; driver ids unchanged.
+
+DETERMINISM
+-----------
+- Same input → byte-identical to_json (stable_json_dumps; λ/s rounded 12 dp;
+  schedules ordered by contracts_v2.SCHEDULE_KIND_ORDER).
+
+TEST RESULTS
+------------
+- tests/test_schedules.py: 24 passed
+- Full suite excluding parallel todo-15 file: 933 passed, 4 deselected
+  (909 baseline + 24 new)
+- tests/test_direction_assembly.py (parallel todo-15 worker, untracked):
+  3 failures — out of scope, file not touched per spec
+- lsp_diagnostics error-level: clean on schedules.py + test_schedules.py
+- truth purity: to_doc recursive key scan vs FORBIDDEN_TRUTH_KEYS ∪
+  FORBIDDEN_EXPORT_KEYS ∪ {endpoint_match, orientation, irc_evidence} = 0
+
+CONFIG KEY QUIRK
+----------------
+- Todo 13 learned YAML 1.1 parses "1.0e6" as str; schedule-budget keys are
+  plain ints, but policy_from_config still coerces numeric strings strictly
+  (same idiom as geometry_feasibility._int_key).
+
+LESSONS FOR TODOS 17/19
+-----------------------
+1. ScheduledCandidate.schedules[].suggested_mode: linear×1=SINGLE_1D,
+   linear×≥2=COUPLED_1D (requires_backend_smoke=True — Simul_Scan unsmoked),
+   event_A_*/smoothstep=SCHEDULED_1D (requires_backend_smoke=True).
+   Todo 17 must surface smoke-gated candidates as non-executable until
+   capabilities probe_receipts enable the mode (todo 16 semantics).
+2. ScheduledCandidate.pruned[] carries PRUNED_BY_BUDGET rows with full λ —
+   todo 17 merges them into proposal failure_reasons; do NOT re-derive.
+3. scheduled.lambda_by_schedule_id() + refinement_tree(schedule_id) are the
+   consumption surface for todo 19 compile_orca; q_j(λ)=q_start+s_j(λ)(q_end−q_start)
+   still needs endpoint values (origin r_value/p_value or geometry measure) —
+   that mapping is compile-time, not schedule-time.
+4. event_A groups: event_groups[0] is group A (min event id). Todo 15's
+   direction choice must not reorder groups (affects early/late assignment).
+5. Point count: ScheduledCandidate.n_points comes from FeasibilityReport.n_points
+   (todo 13 rule); None → config point_limits.baseline. point_budget_exceeded
+   is carried through with a note — segmentation/reject decision stays todo 17.
