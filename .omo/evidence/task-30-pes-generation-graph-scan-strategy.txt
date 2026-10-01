@@ -1,0 +1,109 @@
+task-30: stratified comparison + version lock + scientific report — PASSED
+Plan: .omo/plans/pes-generation-graph-scan-strategy.md (todo 30)
+Date: 2026-10-01
+Env: conda pes2ts, python 3.12.14 (/root/miniforge3/envs/pes2ts/bin/python)
+
+WHAT LANDED
+- pes2ts_core/scan_strategy/scientific_report.py (new; ~818 pure LOC →
+  # allow: SIZE_OK per plan-named todo-30 single module, precedent
+  path_request.py / plan_freeze.py / direction_timing_cost.py).
+  Existing modules untouched (contracts_v2/plan_freeze/path_request/
+  special_domain imported read-only; __init__.py unchanged).
+- tests/test_scientific_report.py (new; 30 tests, all green).
+
+DESIGN SURFACE (§13.4 / §12 / 裁决记录 §7.5)
+- Stratification stages L1..L4 (unified ladder L1=P0..L4=P3).
+  POPULATION_SCAN_READY_N = 183460.
+- Comparison arms as DATA (COMPARISON_ARMS):
+  old_single_b_v1 / graph_theory_single_b / coupled_1d /
+  timing_direction_variants / path_neb. Report assembly is pure.
+- assert_population_unlocked(stage, *, lock=None):
+  L1/L2/L3 → typed refusal POPULATION_LOCKED_BEFORE_L4;
+  L4 without lock → POPULATION_LOCK_REQUIRED;
+  L4 + VersionLock → allowed (returns the lock). Population never executed.
+- assert_valid_not_tuned(run_log): first split=="valid" entry freezes its
+  parameter snapshot; any later entry with different parameters →
+  VALID_TUNED_AFTER_VALID_RUN; no valid touch → pass; unchanged params → pass.
+- assert_demo24_scope / build-time guard: demo24 cohort with
+  scope=population_estimate → DEMO24_SCOPE_MISMATCH; must be
+  development_mechanism_coverage. Demo24 block carries DEMO24_COVERAGE
+  (special_domain single source; C/H/N/O/F/Cl only, metals no-evidence).
+- §13.4 per-cohort fields: n_total / n_review_pending_refusals / n_compilable /
+  n_executed / n_numerically_usable / n_target_path_compatible / n_strict_ts /
+  core_hours / unit_success_cost / failure_code_histogram — all locked by test.
+- Candidate vs reaction denominators SEPARATE: n_reactions_* vs
+  n_candidates_*; new_target_path_rate uses reaction denominator only;
+  unit_success_cost = core_hours / reaction successes; DENOMINATOR_NOTE
+  carried on every arm/cohort row. Funnel violations → DENOMINATOR_INVALID.
+- truth_assisted_p1: every input_provenance block must state
+  mapping_provenance explicitly (single source g1.v2_schema.MAPPING_PROVENANCE
+  = "truth_assisted_p1"); missing → PROVENANCE_MAPPING_UNDECLARED. Default
+  provenance block declares it from g2_scan_ready_export_contracts_v1.
+- lock_version(report_id, *, strategy_versions=None, config=None) → VersionLock:
+  digest = sha256(stable_json({report_id, strategy_versions, config}));
+  changes when EITHER versions or config change (tested both ways);
+  default_strategy_versions() pulls live module versions (registry/schedules/
+  failure_tree/plan_freeze/path_request) + mapping_provenance.
+- Shared budget discipline: all arms must carry byte-identical budget
+  (stable_json of SharedBudget.to_doc()); mismatch → BUDGET_MISMATCH.
+  Unknown arm_id → ARM_UNKNOWN. Duplicate arm_id → REPORT_INPUT_INVALID.
+- Named cohorts carry EXACT n_total (demo24=24, train16=16, valid8=8,
+  full_population=183460); wrong N → COHORT_INVALID.
+- valid-use declaration: cohort.consumes_valid=True requires valid_used_at +
+  valid_input_set_sha256; report.valid_discipline carries valid_used +
+  timestamp + input-set hash; missing → VALID_USE_UNDECLARED.
+- purity: report to_doc() recursive key scan vs FORBIDDEN_TRUTH_KEYS ∪
+  FORBIDDEN_EXPORT_KEYS ∪ {endpoint_match,orientation,irc_evidence} = 0 hits.
+
+TESTS (tests/test_scientific_report.py — 30 passed)
+- test_report_carries_full_13_4_field_set — full §13.4 field set + 5 arms +
+  shared budget + provenance + demo24 coverage + digest.
+- test_report_dumps_roundtrip_and_purity — dumps roundtrip + forbidden-key scan.
+- test_population_guard_refuses_before_l4 (parametrized L1/L2/L3).
+- test_population_guard_refuses_l4_without_lock.
+- test_population_guard_allows_l4_with_lock.
+- test_population_guard_rejects_unknown_stage.
+- test_report_population_estimate_requires_l4_lock — population-estimate
+  cohort at L1 refused; at L4 + lock unlocked (population_lock embedded).
+- test_valid_tuning_guard_errors_on_parameter_change_after_valid.
+- test_valid_tuning_guard_passes_without_parameter_change.
+- test_valid_tuning_guard_passes_when_valid_never_touched.
+- test_report_valid_use_carries_timestamp_and_input_hash.
+- test_report_valid_use_without_declaration_is_refused.
+- test_demo24_scope_population_estimate_is_refused.
+- test_demo24_scope_development_mechanism_coverage_accepted.
+- test_full_population_cohort_exact_n_enforced.
+- test_candidate_success_never_masquerades_as_reaction_success — 3 reaction
+  successes vs 9 candidate successes stay separate; arm rate = 3/24 not 9/12;
+  unit-success cost reaction-based.
+- test_reaction_funnel_violation_is_refused.
+- test_truth_assisted_p1_declaration_carried_by_default.
+- test_truth_assisted_p1_declaration_carried_from_input.
+- test_missing_mapping_provenance_is_refused.
+- test_lock_version_digest_changes_when_versions_change.
+- test_lock_version_digest_changes_when_config_changes.
+- test_lock_version_deterministic_for_identical_inputs.
+- test_lock_version_rejects_empty_versions.
+- test_report_determinism_byte_identical — pinned created_at → byte-identical
+  stable_json + equal content_sha256.
+- test_report_budget_mismatch_is_refused.
+- test_unknown_arm_id_is_refused.
+- test_all_five_comparison_arms_accepted_under_shared_budget — all five arms
+  under one budget; NEB arm carries method_channel=NEB + branch-exit note.
+
+FULL SUITE
+- conda run -n pes2ts python -m pytest -q → 1348 passed, 10 deselected
+  (baseline 1318 + this todo 30; 0 failures).
+- lsp_diagnostics error-level: scientific_report.py clean; test file clean.
+
+MUST-NOT-DO CHECKS
+- No 183k population executed (guard logic only; no data/ reads).
+- Candidate success never reported as reaction success (separate denominators
+  + separate rate fields + denominator_note on every row).
+- No existing module modified (git status: only the two new files untracked;
+  planning.py/adapter.py/contracts.py/contracts_v2.py untouched).
+
+NOTEPAD
+- Findings appended to .omo/notepads/pes-generation-graph-scan-strategy/learnings.md.
+
+Commit: feat(scan-strategy): add stratified comparison and version lock
