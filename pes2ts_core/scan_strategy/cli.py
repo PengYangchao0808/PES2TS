@@ -14,12 +14,21 @@ selector:
   Clean → exit 0 with ``problems=0``; dirty → exit 22 listing problems.
 - ``freeze_scan_plans`` is the gated freeze: verification runs first; the
   freeze gate then requires verification cleanliness **and** at least one
-  execution-eligible proposal.  When the gate fails (including the empty-input
-  case, typed ``NO_ELIGIBLE_PROPOSALS``), the freeze manifest records
-  ``plan_gate_pass=false`` and **no** consumable export is written under the
-  plans tree (an empty directory skeleton is permitted).  Only a passing gate
-  writes frozen ``g1_generation_plan_v2`` documents, the plan manifest, and
-  the plan summary.
+  freeze-ready proposal (valid document, status ``proposed``/``accepted``,
+  release gates passing, a candidate whose recorded capability check is
+  ``pass`` with clean ``failure_reasons`` — the contract-forced
+  ``execution_eligible=false`` is never read as the gate).  When the gate
+  fails (including the empty-input case, typed ``NO_ELIGIBLE_PROPOSALS``),
+  the freeze manifest records ``plan_gate_pass=false`` and **no**
+  consumable export is written under the plans tree (an empty directory
+  skeleton is permitted).  A passing gate writes frozen
+  ``g1_generation_plan_v2`` documents via
+  :func:`pes2ts_core.scan_strategy.plan_freeze.freeze_generation_plan`, the
+  plan manifest, and the plan summary.
+- ``verify_scan_proposals`` also re-reads the plans tree when present:
+  every plan document goes through
+  :func:`pes2ts_core.scan_strategy.plan_freeze.verify_generation_plan`, and
+  the plan manifest/summary are reconciled when a plan manifest exists.
 
 Artifact paths come from the ``scan_strategy`` config section, resolved
 against ``paths.interim`` / ``paths.manifests`` (g1_v2 dirname idiom).
@@ -36,6 +45,10 @@ from typing import Any, Final
 
 from pes2ts_core.contracts import seal_document
 from pes2ts_core.scan_strategy.contracts_v2 import validate_v2_document
+from pes2ts_core.scan_strategy.plan_freeze import (
+    freeze_generation_plan,
+    verify_generation_plan,
+)
 from pes2ts_core.utils.hashing import sha256_file
 from pes2ts_core.utils.jsonio import read_json, write_json
 from pes2ts_core.utils.parquet_io import write_parquet
@@ -150,6 +163,27 @@ def _iter_proposal_documents(paths: ScanArtifactPaths) -> list[Path]:
     return sorted(paths.proposals_dir.rglob("*.json"))
 
 
+def _iter_plan_documents(paths: ScanArtifactPaths) -> list[Path]:
+    """Return every frozen-plan JSON under the tree in sorted path order."""
+    if not paths.plans_dir.is_dir():
+        return []
+    return sorted(paths.plans_dir.rglob("*.json"))
+
+
+def _plan_document_problem(document_path: Path) -> str | None:
+    """Return one problem string for a plan document, or None when clean."""
+    try:
+        document = read_json(document_path)
+    except (OSError, ValueError) as exc:
+        return f"{document_path}: unreadable ({exc})"
+    if not isinstance(document, dict):
+        return f"{document_path}: document root must be an object"
+    issues = verify_generation_plan(document)
+    if issues:
+        return f"{document_path}: {'; '.join(issues)}"
+    return None
+
+
 def scan_plan_proposals(config: Mapping[str, Any]) -> ScanProposalResult:
     """Write the proposals tree skeleton, summary, and manifest."""
     logger = logging.getLogger(__name__)
@@ -242,6 +276,39 @@ def verify_scan_proposals(config: Mapping[str, Any]) -> ScanVerifyResult:
                     "proposal manifest summary_sha256 does not match the summary parquet"
                 )
 
+    plan_documents = _iter_plan_documents(paths)
+    for document_path in plan_documents:
+        problem = _plan_document_problem(document_path)
+        if problem is not None:
+            problems.append(problem)
+    if plan_documents or paths.plan_manifest.is_file():
+        if not paths.plan_manifest.is_file():
+            problems.append(
+                f"Missing scan plan manifest {paths.plan_manifest}; "
+                "run `g1 v2-scan-freeze` first"
+            )
+        else:
+            plan_manifest = read_json(paths.plan_manifest)
+            if not isinstance(plan_manifest, dict):
+                problems.append(f"{paths.plan_manifest}: manifest is not a JSON object")
+            else:
+                if plan_manifest.get("n_total") != len(plan_documents):
+                    problems.append(
+                        f"plan manifest n_total={plan_manifest.get('n_total')!r} "
+                        f"but the tree holds {len(plan_documents)} document(s)"
+                    )
+                if plan_manifest.get("n_files") != len(plan_documents):
+                    problems.append(
+                        f"plan manifest n_files={plan_manifest.get('n_files')!r} "
+                        f"but the tree holds {len(plan_documents)} document(s)"
+                    )
+                if not paths.plan_summary.is_file():
+                    problems.append(f"Missing scan plan summary {paths.plan_summary}")
+                elif plan_manifest.get("summary_sha256") != sha256_file(paths.plan_summary):
+                    problems.append(
+                        "plan manifest summary_sha256 does not match the summary parquet"
+                    )
+
     return ScanVerifyResult(
         n_total=len(documents),
         n_clean=n_clean,
@@ -262,7 +329,7 @@ def freeze_scan_plans(config: Mapping[str, Any]) -> ScanFreezeResult:
     eligible = [
         document_path
         for document_path in _iter_proposal_documents(paths)
-        if _is_execution_eligible(document_path)
+        if _freeze_ready_proposal(document_path)
     ]
     if not eligible:
         reasons.append(REASON_NO_ELIGIBLE_PROPOSALS)
@@ -290,14 +357,104 @@ def freeze_scan_plans(config: Mapping[str, Any]) -> ScanFreezeResult:
             freeze_manifest_path=paths.freeze_manifest,
         )
 
-    raise NotImplementedError(
-        "frozen plan export (g1_generation_plan_v2 + plan manifest + plan "
-        "summary) arrives with the GenerationPlanV2 freeze todo 23"
+    return _freeze_gate_pass(config, paths, verification, eligible)
+
+
+def _freeze_gate_pass(
+    config: Mapping[str, Any],
+    paths: ScanArtifactPaths,
+    verification: ScanVerifyResult,
+    eligible: list[Path],
+) -> ScanFreezeResult:
+    """Write frozen plans, plan manifest, plan summary, and freeze manifest."""
+    logger = logging.getLogger(__name__)
+    planned: list[tuple[dict[str, Any], Path]] = []
+    for proposal_path in eligible:
+        document = read_json(proposal_path)
+        if not isinstance(document, dict):
+            continue
+        selected = next(
+            (row for row in document.get("candidates") or () if _freeze_ready_candidate(row)),
+            None,
+        )
+        if selected is None:
+            continue
+        plan_doc = freeze_generation_plan(document, selected, compiled=None, config=config)
+        reaction_id = str(plan_doc["reaction_id"])
+        shard = _plan_shard(reaction_id, config)
+        target = paths.plans_dir / shard / f"{reaction_id}.json"
+        planned.append((plan_doc, target))
+
+    paths.plans_dir.mkdir(parents=True, exist_ok=True)
+    for plan_doc, target in planned:
+        write_json(target, plan_doc)
+    summary_rows = [
+        {
+            "reaction_id": str(plan_doc["reaction_id"]),
+            "plan_id": str(plan_doc["plan_id"]),
+            "plan_version": int(plan_doc["plan_version"]),
+            "n_candidates": len(plan_doc["candidates"]),
+            "content_sha256": str(plan_doc["content_sha256"]),
+        }
+        for plan_doc, _target in planned
+    ]
+    write_parquet(
+        paths.plan_summary,
+        {
+            column: [row[column] for row in summary_rows]
+            for column in PLAN_SUMMARY_COLUMNS
+        },
+    )
+    n_plans = len(planned)
+    write_json(
+        paths.plan_manifest,
+        {
+            "schema_version": PLAN_MANIFEST_SCHEMA,
+            "n_total": n_plans,
+            "n_files": n_plans,
+            "n_summary_rows": n_plans,
+            "summary_sha256": sha256_file(paths.plan_summary),
+            "generated_at": _now(),
+        },
+    )
+    write_json(
+        paths.freeze_manifest,
+        {
+            "schema_version": FREEZE_MANIFEST_SCHEMA,
+            "plan_gate_pass": True,
+            "reasons": [],
+            "n_proposals": verification.n_total,
+            "n_plans": n_plans,
+            "n_verification_problems": 0,
+            "generated_at": _now(),
+        },
+    )
+    logger.info("v2-scan-freeze: plan_gate_pass=true plans=%d", n_plans)
+    return ScanFreezeResult(
+        plan_gate_pass=True,
+        reasons=(),
+        n_proposals=verification.n_total,
+        n_plans=n_plans,
+        freeze_manifest_path=paths.freeze_manifest,
     )
 
 
-def _is_execution_eligible(document_path: Path) -> bool:
-    """True when the proposal document is valid and execution-eligible."""
+def _freeze_ready_candidate(candidate: Any) -> bool:
+    """True when one proposal candidate may enter a frozen plan."""
+    if not isinstance(candidate, Mapping):
+        return False
+    if candidate.get("failure_reasons"):
+        return False
+    capability_check = candidate.get("capability_check")
+    if not isinstance(capability_check, Mapping):
+        return False
+    return capability_check.get("status") == "pass"
+
+
+def _freeze_ready_proposal(document_path: Path) -> bool:
+    """True when one proposal document passes the freeze gate predicates."""
+    from pes2ts_core.scan_strategy.selector import all_release_gates_pass
+
     try:
         document = read_json(document_path)
     except (OSError, ValueError):
@@ -306,7 +463,40 @@ def _is_execution_eligible(document_path: Path) -> bool:
         return False
     if validate_v2_document(document):
         return False
-    return document.get("execution_eligible") is True
+    if seal_document(document).get("content_sha256") != document.get("content_sha256"):
+        return False
+    if document.get("status") not in {"proposed", "accepted"}:
+        return False
+    if document.get("blocking_reasons"):
+        return False
+    if not all_release_gates_pass(document):
+        return False
+    candidates = document.get("candidates")
+    return isinstance(candidates, list) and any(
+        _freeze_ready_candidate(candidate) for candidate in candidates
+    )
+
+
+def _plan_shard(reaction_id: str, config: Mapping[str, Any]) -> str:
+    """Return the five-digit shard directory for one reaction id."""
+    digits = "".join(character for character in reaction_id if character.isdigit())
+    numeric_id = int(digits) if digits else 0
+    shard_size = 1000
+    g1_v2 = config.get("g1_v2")
+    if isinstance(g1_v2, Mapping):
+        raw = g1_v2.get("shard_size", 1000)
+        if isinstance(raw, bool):
+            raw = 1000
+        if isinstance(raw, int):
+            shard_size = raw
+        elif isinstance(raw, str):
+            try:
+                shard_size = int(raw.strip())
+            except ValueError:
+                shard_size = 1000
+    if shard_size <= 0:
+        shard_size = 1000
+    return f"{numeric_id // shard_size:05d}"
 
 
 __all__ = [

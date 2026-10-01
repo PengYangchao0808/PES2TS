@@ -721,7 +721,10 @@ def _plan_issues(document: dict[str, Any]) -> list[str]:
     else:
         for i, candidate in enumerate(candidates):
             _plan_candidate_issues(candidate, f"$.candidates[{i}]", issues)
-    if document.get("status") == "superseded" and not document.get("supersedes"):
+    supersedes = document.get("supersedes")
+    if supersedes is not None and not _is_nonempty_str(supersedes):
+        issues.append("$.supersedes: must be a non-empty string when present")
+    if document.get("status") == "superseded" and not supersedes:
         issues.append("$.supersedes: superseded plans must reference the replacing plan")
     return issues
 
@@ -808,7 +811,9 @@ def validate_v2_document(document: Any) -> list[str]:
         issues.append(f"$.{key}: required field missing")
     for key in sorted((OBJECT_FIELDS[kind] - OPTIONAL_FIELDS[kind]) - document.keys()):
         issues.append(f"$.{key}: required field missing")
-    allowed = BASE_REQUIRED | OBJECT_FIELDS[kind] | {"extensions"}
+    # Optional fields belong to the accepted set: superseded plans carry
+    # ``supersedes``, so excluding OPTIONAL_FIELDS made that key unvalidatable.
+    allowed = BASE_REQUIRED | OBJECT_FIELDS[kind] | OPTIONAL_FIELDS[kind] | {"extensions"}
     for key in sorted(document.keys() - allowed):
         issues.append(f"$.{key}: unknown field; use a namespaced extension if needed")
     if document.get("schema_version") != SCHEMA_VERSIONS[kind]:

@@ -1,0 +1,99 @@
+task-23 pes-generation-graph-scan-strategy — GenerationPlanV2 freeze / budget / failure tree
+date: 2026-10-01
+env: conda pes2ts, /root/miniforge3/envs/pes2ts/bin/python
+
+WHAT LANDED
+1. pes2ts_core/scan_strategy/contracts_v2.py (minimal diff, defect fix from todo-18 notepad)
+   - validate_v2_document allowed-set now merges OPTIONAL_FIELDS[kind]:
+     allowed = BASE_REQUIRED | OBJECT_FIELDS[kind] | OPTIONAL_FIELDS[kind] | {"extensions"}
+   - _plan_issues: supersedes gets its own type check (non-empty string when present);
+     superseded status still requires the reference.
+   - Additive validation allowance only: existing sealed docs without supersedes unchanged.
+
+2. pes2ts_core/scan_strategy/plan_freeze.py (new, # allow: SIZE_OK — plan-named todo-23 module)
+   - freeze_generation_plan(proposal, selected_candidate, compiled, config, *,
+     plan_version=1, supersedes=None) -> sealed g1_generation_plan_v2 via
+     contracts_v2.make_generation_plan.
+     * compiled: todo-19 CompiledRequest (duck-typed to_doc), hashes/recipe mapping,
+       or None -> sealed candidate recipe (pes2ts_candidate_recipe_v1) that fully
+       determines per-point targets given endpoint geometries.
+     * Refusals (PlanFreezeError + code): PROPOSAL_INVALID / CANDIDATE_NOT_IN_PROPOSAL /
+       CAPABILITY_NOT_PASSED / CANDIDATE_NOT_CLEAN / COMPILED_KIND_INVALID /
+       COMPILED_RECIPE_INVALID / BUDGET_INVALID / PLAN_BUDGET_RECORD_INVALID /
+       FAILURE_CODE_UNKNOWN.
+     * Dimension bundle under extensions.freeze: freeze/registry/schedule versions,
+       endpoint_graph_sha256 + candidate_graph_sha256 + complete graph_sha256,
+       atom_order, quality_test_ids, fallback_tree, alternate_candidate_ids,
+       budget_accounting, compiled_request, failure_tree {version, codes}.
+     * candidate_graph: 6 immutable node ids (start/exec/fallback + 3 explicit
+       terminals: path_saved / budget_exhausted_preserve_paths / terminal_failure),
+       fallback edge loops exec<->fallback, graph_sha256 bound into freeze block.
+     * policy_hashes: registry_version=strategy_registry_v1, schedule_version=schedules_v1,
+       freeze_version=g1_generation_plan_freeze_v1, endpoint_graph_sha256.
+     * Plan budget = stricter-of(config scan_strategy.freeze, candidate budgets);
+       max_attempts always armed (>=1 enforced); cpu/wall armed only when >0
+       (ACP cpu time is unmeasured — non-positive max = no independent cap).
+       accounting lists directions/assemblies/schedules/retries/endpoint_preparations.
+   - Failure tree (design §10.2 enumeration, 26 codes incl. task-named GATE_REFUSED):
+     FAILURE_TREE_CODES closed vocabulary; FAILURE_PREDICATES code -> lambda(FailureState);
+     active_failure_codes(state) replayable; is_failure_code/assert_failure_code reject
+     free text ("效果不好" -> FAILURE_CODE_UNKNOWN).
+   - BudgetLedger frozen/immutable; record() returns new ledger; exhausted() = any armed
+     channel spent >= max; exhaustion_record(obtained_paths) keeps budget_spent/budget_max
+     denominator + obtained paths (BUDGET_EXHAUSTED).
+   - verify_generation_plan(doc) -> problems: contracts validate + re-seal digest +
+     extensions.freeze presence/shape + policy_hashes↔freeze version match +
+     atom_order validity + compiled_request↔compiled/selected-candidate binding +
+     hashes entries projection + closed-vocabulary failure codes + frozen candidates
+     must carry clean failure_reasons + budget coherence (>=1 attempt; candidate
+     budgets not stricter than plan) + >=1 explicit terminal graph node.
+
+3. pes2ts_core/scan_strategy/cli.py (minimal diff; todo-4 refusal behavior byte-identical)
+   - verify_scan_proposals: also walks plans tree when present; each plan doc through
+     verify_generation_plan; plan manifest/summary reconciled only when a plan manifest
+     exists (empty/rejected trees stay problems=0 — todo-4 tests green).
+   - freeze_scan_plans gate-pass branch implemented via _freeze_gate_pass:
+     gate = verification clean AND >=1 freeze-ready proposal
+     (valid doc, status proposed|accepted, digest ok, no blocking_reasons,
+      all_release_gates_pass, >=1 candidate capability_check.status==pass with clean
+      failure_reasons). Contract-forced execution_eligible=false is NEVER read as the
+     gate (todo-4 contradiction resolved via release-gate semantics, design §5.1/§10.1).
+     Writes scan_plans/<shard>/<rid>.json (shard = digits(rid)//g1_v2.shard_size, 5-digit)
+     + plan summary parquet + plan manifest + freeze manifest (plan_gate_pass=true).
+     needs_review proposals stay refused (review gate not lifted; 24 demo unchanged).
+   - Dead _is_execution_eligible removed (encoded the never-true execution_eligible=True
+     read that todo 4 recorded as the contradiction).
+
+4. tests/test_generation_plan_freeze.py — 32 tests, all green:
+   - freeze valid + deterministic content_sha256 + superseding version/reference
+   - hash coverage: parametrized mutation of rule version / graph hash / atom order /
+     assembly / schedule / direction / method / budget / quality tests / fallback tree
+     -> every mutation changes seal_document content_sha256
+   - failure tree: predicates == vocabulary; states -> correct codes (MAP_INVALID,
+     GATE_REFUSED, BUDGET_EXHAUSTED, multi-code); unknown codes rejected
+   - budget: exhaustion at spent>=max preserves spent/max + obtained_paths;
+     negative increments rejected; frozen plan budget stricter-of sources
+   - verify catches digest tamper, re-sealed free-text code, re-sealed non-terminal
+     graph, re-sealed duplicate atom_order; rejects non-GenerationPlan roots
+   - contracts fix: superseded+supersedes validates; superseded without reference
+     rejected; non-string supersedes rejected
+   - freeze refusals: CANDIDATE_NOT_CLEAN / CAPABILITY_NOT_PASSED / PROPOSAL_INVALID
+   - compiled: hashes mapping projects entries + atom_order; None seals candidate recipe
+   - CLI: gate-pass writes plan json + manifests + summary and v2-scan-verify exits 0
+     problems=0 on the frozen tree; empty-tree refusal regression (NO_ELIGIBLE_PROPOSALS,
+     no plan json, no plan manifest); needs_review proposal refused
+
+COMMANDS / RESULTS
+- pytest -q tests/test_generation_plan_freeze.py -> 32 passed
+- pytest -q (full suite) -> 1187 passed, 4 deselected  (baseline 1155 + 32)
+- lsp_diagnostics error-level on plan_freeze.py / cli.py / contracts_v2.py -> clean
+- truth_guard included in full suite -> green (no truth strings / dynamic-exec in plan_freeze)
+
+RECORDS / BOUNDARIES
+- planning.py / adapter.py / contracts.py untouched (git: only the three scan_strategy
+  files + new test file changed).
+- 24 demo remain needs_review; freeze gate explicitly refuses needs_review proposals.
+- Offline only: no ORCA/ACP executed; CLI freeze uses the sealed candidate recipe
+  (compiled=None) — real CompiledRequest projection path unit-tested separately.
+- Superseded-plan semantics (todo 27 version bump chain) land with that todo; this
+  todo fixes validation + freeze/version primitives.
