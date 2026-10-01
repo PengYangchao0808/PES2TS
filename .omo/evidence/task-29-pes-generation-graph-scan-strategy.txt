@@ -1,0 +1,191 @@
+task-29 — pes-generation-graph-scan-strategy — special-domain and electronic-state routing
+=========================================================================================
+Date: 2026-10-01
+Plan: .omo/plans/pes-generation-graph-scan-strategy.md (todo 29)
+Design refs: docs/design/PES_GENERATION_图论扫描策略选择器设计_v1.md §3.2, §5.2, §12
+Notepad: .omo/notepads/pes-generation-graph-scan-strategy/learnings.md (todo 11 registry SPECIAL_DOMAIN exit)
+
+WHAT WAS BUILT
+--------------
+New module (exits only; specialized methods NOT implemented):
+  pes2ts_core/scan_strategy/special_domain.py
+    - SPECIAL_DOMAIN subtypes (closed set): coordination_metal, surface_periodic,
+      electron_exchange, excited_state — each a typed SpecialDomainExit with:
+        * required_representations / required_methods as typed Requirement records
+          (requirement_id, category ∈ {representation, method_family}, label, detail)
+        * why_generic_selector_invalid (design §5.2/§3.2 rationale)
+        * future_module_pointer (specialized/* future modules — pointers only)
+        * ordinary_neb_permitted = False on every exit
+    - SPECIAL_ELECTRONIC_STATE_REQUIRED sub-exits (design §3.2 closed set):
+        total_charge_difference / particle_number_difference /
+        cross_spin_surface / excited_state_crossing — requirement LISTS only
+        (multi-state methods, constrained DFT, spin-flip, MECP/seam — named as
+        requirements, no implementations)
+    - Ordinary-NEB guard: refuse_ordinary_neb() -> typed NebRefusal;
+      assert_ordinary_neb_not_used() raises OrdinaryNebRefusedError;
+      guard_route_for_ordinary_neb(route_result) -> NebRefusal|None
+      (None for ordinary routes — NEB stays a legal explicit §5.1 step-7
+      escalation; refusal code ORDINARY_NEB_REFUSED_{SPECIAL_DOMAIN,
+      ELECTRONIC_STATE})
+    - Covalent-radius guard: generic_covalent_radius_sum() refuses any
+      non-organic element with COVALENT_RADIUS_RULE_FORBIDDEN_FOR_METAL BEFORE
+      consulting the radius table; covalent_radius_rule_check() non-raising form;
+      organic pairs reuse geometry_feasibility.covalent_radius_sum (single source)
+    - Coverage declaration: DEMO24_COVERAGE records domains_with_evidence =
+      (C,H,N,O,F,Cl) only; domains_without_evidence includes metal/Fe/
+      coordination_metal/surface_periodic/electron_exchange/excited_state/...;
+      element_has_demo24_evidence() boundary helper
+    - detail_for_route_result(route_result, ...) expands todo-11 RouteResult
+      special_domain_exit into the full typed subtype layer (empty for ordinary
+      outcomes; unrefined SPECIAL_DOMAIN falls back to a typed
+      coordination_metal exit, never a generic candidate)
+    - Element classification single source: imports registry.ORGANIC_ELEMENTS
+      (never redefined); non_organic_elements() helper
+
+Tests:
+  tests/test_special_domain.py — 32 tests, all offline, all green
+  Fixtures reuse test_strategy_registry hand-built helpers (established
+  cross-test-module import precedent, see learnings todo 25).
+
+ACCEPTANCE CRITERIA — EVIDENCE
+------------------------------
+1. Metal input -> typed SPECIAL_DOMAIN exit (subtype + representations/methods),
+   NOT a generic candidate:
+   test_metal_input_route_is_special_exit_not_generic_candidate
+   test_metal_input_detail_layer_subtype_and_requirements
+   test_metal_route_ordinary_neb_refused
+   Evidence: Fe-C hand-built p0 -> route_strategies outcome=special_domain_exit,
+   rejection_code=SPECIAL_DOMAIN, strategy_candidates=();
+   detail_for_route_result -> subtype=coordination_metal,
+   required_representations non-empty (rep_coordination_bonds, rep_basis_treatment),
+   required_methods non-empty (mth_validated_special_backend,
+   mth_no_generic_covalent_radius), ordinary_neb_permitted=False,
+   future_module_pointer contains "specialized".
+
+2. Cross-spin-surface input -> SPECIAL_ELECTRONIC_STATE_REQUIRED; ordinary NEB
+   refused (typed):
+   test_cross_spin_surface_route_special_electronic_state_exit
+   test_cross_spin_surface_ordinary_neb_refused_typed
+   test_guard_route_for_ordinary_neb_refuses_special_route
+   Evidence: organic endpoints charge 0/0 mult 1/3 ->
+   route outcome=special_domain_exit code=SPECIAL_ELECTRONIC_STATE_REQUIRED;
+   detail subtype=cross_spin_surface; method ids include mth_multi_state_methods,
+   mth_spin_flip_methods, mth_mecp_seam;
+   refuse_ordinary_neb -> code=ORDINARY_NEB_REFUSED_ELECTRONIC_STATE,
+   reason contains ORDINARY_NEB_NOT_UNIVERSAL_FALLBACK + method family ids;
+   assert_ordinary_neb_not_used raises OrdinaryNebRefusedError;
+   guard_route_for_ordinary_neb returns typed refusal (refined and unrefined);
+   guard returns None for ordinary routes (NEB remains legal escalation).
+
+3. Surface/periodic -> typed:
+   test_surface_periodic_flag_typed_exit
+   test_metal_surface_multiple_subtypes_all_typed
+   Evidence: DomainFlags(surface_or_periodic=True) -> subtype=surface_periodic,
+   code=SPECIAL_DOMAIN, representations/methods non-empty, ordinary NEB false;
+   Fe+surface flag -> BOTH coordination_metal and surface_periodic exits returned.
+
+4. Coverage declaration records metals as no-evidence:
+   test_coverage_declaration_demo24_organic_only
+   test_element_has_demo24_evidence_boundary
+   test_metal_exit_carries_no_evidence_coverage_note
+   Evidence: DEMO24_COVERAGE.domains_with_evidence == {C,H,N,O,F,Cl};
+   "Fe" and "metal" and "coordination_metal" in domains_without_evidence;
+   element_has_demo24_evidence("Fe") is False, ("C") is True;
+   metal exit coverage_note contains "no evidence" + "c/h/n/o/f/cl".
+
+5. Guard: covalent-radius rule application to metal input refused:
+   test_covalent_radius_rule_refused_for_metal_input
+   test_covalent_radius_rule_permitted_for_organic_pairs
+   test_covalent_radius_rule_refused_for_each_non_organic_element
+   Evidence: covalent_radius_rule_check(["Fe","C"]) -> permitted=False,
+   code=COVALENT_RADIUS_RULE_FORBIDDEN_FOR_METAL, non_organic_elements=("Fe",);
+   generic_covalent_radius_sum("Fe","C") raises CovalentRadiusRuleError;
+   C/H pair returns positive radius sum (organic permitted);
+   Fe/Na/Se each refused.
+
+6. Determinism + purity:
+   test_exit_serialization_deterministic
+   test_exit_docs_carry_no_forbidden_truth_keys
+   test_route_result_detail_roundtrip_via_registry_json
+   Evidence: to_json() byte-identical across calls for metal exit, cross-spin
+   exit, DEMO24_COVERAGE; recursive key scan vs FORBIDDEN_TRUTH_KEYS ∪
+   FORBIDDEN_EXPORT_KEYS ∪ {endpoint_match,orientation,irc_evidence} = 0 hits
+   on exit/coverage/refusal/guard docs.
+
+7. Other electronic sub-exits typed (bonus coverage):
+   test_total_charge_difference_sub_exit (constrained_dft method family named)
+   test_particle_number_difference_sub_exit
+   test_excited_state_crossing_sub_exit
+   test_charge_and_multiplicity_differ_yields_two_sub_exits (both returned)
+   test_registry_electronic_mismatch_expands_to_sub_exits
+   test_electronic_state_compatible_returns_empty
+   test_detail_layer_empty_for_ordinary_route
+   test_detail_layer_unrefined_special_domain_fallback_still_typed
+
+8. Vocabulary single-source:
+   test_special_domain_subtype_closed_set
+   test_electronic_state_subtype_closed_set
+   test_organic_elements_reused_from_registry_single_source
+   Evidence: imports registry.ORGANIC_ELEMENTS; closed subtype sets pinned.
+
+STATIC / SUITE
+--------------
+- lsp_diagnostics (error severity): special_domain.py clean, test_special_domain.py clean
+- truth_guard: tests/test_truth_guard.py 19 passed (no truth strings/dynamic-exec
+  in special_domain.py)
+- new tests: conda run -n pes2ts python -m pytest -q tests/test_special_domain.py
+  -> 32 passed in 1.81s
+- joint with registry: tests/test_special_domain.py tests/test_strategy_registry.py
+  -> 74 passed
+- FULL SUITE final run:
+  conda run -n pes2ts python -m pytest -q
+  -> 1279 passed, 2 failed, 10 deselected (75.16s)
+  Failures (BOTH owned by parallel todo 28, NOT todo 29):
+    tests/test_direction_timing_cost.py::test_per_assembly_comparison_groups_candidates_of_one_assembly
+    tests/test_direction_timing_cost.py::test_unknown_method_kind_rejected
+  These target pes2ts_core/scan_strategy/direction_timing_cost.py which is
+  UNTRACKED (todo-28 worker, not yet committed). Todo 29 MUST NOT touch
+  direction_timing_cost.py / intermediate_staging.py (spec). Baseline before
+  parallel todos = 1219; current = 1219 + todo27/28 in-flight tests + 32 (todo29)
+  = 1291 collected (1279 pass + 2 fail + 10 gated deselected).
+  Todo-29-owned tests: 32/32 green. Registry regression: test_strategy_registry
+  42/42 green (unchanged module, 74 passed joint run).
+
+- pure LOC: special_domain.py 863 non-blank non-comment lines -> `# allow: SIZE_OK`
+  marker (plan-named todo-29 single detail-layer module; precedent registry.py
+  / path_request.py / plan_freeze.py). Test file 401 pure LOC (test files exempt
+  per repo precedent).
+- Existing modules zero-modified: registry.py, path_request.py,
+  geometry_feasibility.py, scan_strategy/__init__.py, planning.py, adapter.py,
+  contracts.py all untouched (git status shows only new untracked files).
+
+COMMIT
+------
+feat(scan-strategy): add special-domain and electronic-state routing
+Files: pes2ts_core/scan_strategy/special_domain.py
+       tests/test_special_domain.py
+       .omo/evidence/task-29-pes-generation-graph-scan-strategy.txt (git add -f)
+       .omo/notepads/pes-generation-graph-scan-strategy/learnings.md
+NOT committed: direction_timing_cost.py, intermediate_staging.py,
+tests/test_direction_timing_cost.py, tests/test_intermediate_staging.py
+(todo 27/28 parallel workers own them).
+
+LESSONS FOR TODO 30
+-------------------
+1. todo 30 report layer must consume DEMO24_COVERAGE — never claim metals or
+   any special domain have evidence from Demo24.
+2. todo 30/31: when a proposal path would route a special-domain/e-state input
+   to NEB, call guard_route_for_ordinary_neb / assert_ordinary_neb_not_used —
+   ordinary NEB is refused, typed, never a silent fallback.
+3. Any future geometry/feasibility path that consults covalent radii on
+   arbitrary inputs should use generic_covalent_radius_sum (guarded) or
+   covalent_radius_rule_check — never raw geometry_feasibility.covalent_radius_sum
+   on metal-containing systems (design §5.2).
+4. detail_for_route_result is the expansion seam for todo-11 RouteResult
+   special_domain_exit; todo 30 can call it with elements/flags/charge/mult
+   to attach full subtype detail to proposals without modifying registry.py.
+5. Parallel todo 28 currently has 2 failing tests in its own untracked module
+   (direction_timing_cost delegates record_outcome to path_request
+   record_channel_outcome which raises PathRequestError instead of
+   DirectionTimingCostError; per-assembly comparison grouping drops asm-b).
+   Todo 29 did not touch those files per spec.
