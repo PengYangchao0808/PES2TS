@@ -1,0 +1,80 @@
+task-13: geometry feasibility gates + Jacobian rank + point-count rule
+plan: .omo/plans/pes-generation-graph-scan-strategy.md (todo 13)
+design: docs/design/PES_GENERATION_图论扫描策略选择器设计_v1.md §6.3, §8.3
+date: 2026-10-01
+env: conda pes2ts, python 3.12, numpy 2.5.3
+
+DELIVERABLES
+- pes2ts_core/scan_strategy/geometry_feasibility.py (new module; existing modules untouched)
+  * assess_geometry_feasibility(candidate, pool, bundle, materials, config, *, start_endpoint="R")
+    -> FeasibilityReport {ok, checks[{check_id,status,detail}], failures[{check_id,code,detail,suggestion}],
+      n_points, n_points_required, n_points_baseline, point_budget_exceeded,
+      total_variation_by_coord, jacobian_rank_by_endpoint, jacobian_condition_max}
+  * 11 checks (CHECK_ORDER): coordinate_definition, endpoint_degeneracy,
+    dihedral_periodic_unwrap, endpoint_bond_state, cross_component_overlap,
+    triangle_inequality, jacobian_rank, jacobian_condition, path_precheck,
+    start_geometry_match, point_count
+  * Typed failure codes: COORDINATE_SCHEMA_INVALID, DUPLICATE_ATOMS_IN_COORDINATE,
+    UNKNOWN_MAP_ID, UNIT_MISMATCH, B_DISTANCE_NONPOSITIVE, ANGLE_DEGENERATE,
+    DIHEDRAL_UNDEFINED, BROKEN_BOND_ALREADY_SEPARATED, FORMED_BOND_MISSING_AT_P,
+    BONDED_DISTANCE_IMPLAUSIBLE, CROSS_COMPONENT_OVERLAP, TRIANGLE_INEQUALITY_VIOLATION,
+    JACOBIAN_RANK_DEFICIENT, JACOBIAN_ILL_CONDITIONED, INTERPOLATION_INFEASIBLE,
+    PATH_COLLISION, START_TELEPORT, POINT_BUDGET_EXCEEDED, MATERIALS_REQUIRED,
+    POLICY_INVALID, START_ENDPOINT_INVALID
+  * Config keys consumed (verified against config/defaults.yaml, todo 2):
+    scan_strategy.point_limits.{baseline=9,max=101},
+    scan_strategy.max_step_by_kind.{distance=0.2,angle=10.0,dihedral=10.0},
+    scan_strategy.jacobian_condition_number_max=1.0e6,
+    scan_strategy.element_pair_bond_thresholds.tolerance=0.45,
+    g2.validity.collision_min_distance=0.8 (path-precheck clash floor)
+  * YAML 1.1 quirk handled at config boundary: "1.0e6" parses as str in PyYAML —
+    policy_from_config coerces numeric strings (documented; do NOT "fix" defaults.yaml)
+  * Guardrail enforced: the planning.py 0.45-8 A crude range is NEVER a gate
+    (test_crude_045_8_range_is_not_a_qualification_gate pins this;
+    source scan asserts no "0.45 <= " comparison exists in the module)
+  * D periodic unwrap: shortest_arc_delta(a,b) in [-180,180); 350°->-10° = 0 (coterminal),
+    170°->-170° = +20 (crosses cut); point-count TV uses it for D drivers
+  * Unit-scaled Jacobian: J = ∂q/∂x central FD (h=1e-4 A), rows scaled by
+    max_step_by_kind[kind]; rank(J)==n_coords at BOTH endpoints required;
+    kappa <= jacobian_condition_number_max. Shared-atom B pairs have kappa <= sqrt(3).
+  * Triangle inequality judges PLANNED values (origin r_value/p_value preferred,
+    geometry fallback) — realizable Euclidean geometries can never violate it;
+    contradictory planned H2/three-B sets are the real failure mode
+  * Point count: N_required = 1 + max_j ceil(TV_j/max_step_j - 1e-9);
+    N = max(baseline, N_required); N > point_limits.max -> POINT_BUDGET_EXCEEDED
+    + suggestion "segment_scan_or_change_path_method_or_reject; decision owned by todo 17"
+
+- tests/test_geometry_feasibility.py (35 tests, all green)
+  Coverage: cross-component overlap; wrong broken-bond endpoint; formed-bond-missing-at-P;
+  triangle-inequality (planned multi-B + H2 three-distance); A collinear 180 and near-180
+  (178.5-179.5 deg window); D collinear undefined; equivalent-H mapping acceptance
+  (two symmetry-equivalent C-H drivers, rank 2, no overlap/duplicate false positive);
+  contradictory duplicate drivers -> JACOBIAN_RANK_DEFICIENT; condition-number gate
+  (tight 1.5 threshold rejects near-collinear pair; default 1e6 accepts);
+  D unwrap 350/-10 = 0 and 170/-170 = +20 incl. point-count integration;
+  point-count hand math (TV 0.3->N=9 baseline, TV 2.2->N=12, exact multiple no inflation,
+  A/D steps + config override); N>max typed rejection (TV 23.5 -> N_req=119 > 101,
+  suggestion pinned; custom limits baseline 3/max 5); start-geometry teleport rejection
+  + consistent pass; path precheck mid-path collision; crude-range guardrail;
+  duplicate atoms; unit mismatch; non-positive B; MATERIALS_REQUIRED;
+  full-pipeline happy path (all 11 checks pass); determinism + truth-key freedom;
+  policy-invalid typed; invalid start_endpoint raises.
+
+VERIFICATION
+- pytest -q tests/test_geometry_feasibility.py -> 35 passed
+- pytest -q (full suite) -> 909 passed, 4 deselected (baseline 874 + 35 new)
+- lsp_diagnostics (error severity) on geometry_feasibility.py -> clean
+- truth-guard strings (ground_truth/truth_sources/B3LYPD3/irc_evidence/orientation/
+  endpoint_match) in module source -> none
+- config key check: load_config() scan_strategy.point_limits / max_step_by_kind /
+  jacobian_condition_number_max / element_pair_bond_thresholds.tolerance match module
+  defaults (test_point_count_rule_config_defaults_match_yaml)
+
+NOTES FOR DOWNSTREAM (todo 14/15/17)
+- FeasibilityReport.to_json() is deterministic (stable_json_dumps); to_doc() carries
+  no truth-derived keys — safe to embed in StrategyProposal evidence
+- assess is pure: config is an input mapping, never loaded inside; materials None
+  -> MATERIALS_REQUIRED + geometry checks skipped (never a silent pass)
+- Point-count n_points is the typed verdict only; segmentation/method-change/reject
+  is todo 17's decision (suggestion string already attached to the failure)
+- start_endpoint parameter accepts R/reactant/P/product; direction hooks are todo 15's
