@@ -1,0 +1,75 @@
+task-22 — 目标反应质量层（四个结果层级）(scan_strategy/target_path.py)
+date: 2026-10-01
+plan: .omo/plans/pes-generation-graph-scan-strategy.md todo 22
+commit: feat(scan-strategy): add chemical target-path quality layer
+
+WHAT WAS BUILT
+- New additive module: pes2ts_core/scan_strategy/target_path.py
+  (~1178 non-blank non-comment lines -> # allow: SIZE_OK, plan-named
+   todo-22 single chemical-quality module; precedent registry.py /
+   geometry_feasibility.py / frame_recovery.py)
+- New tests: tests/test_target_path_quality.py (26 tests, all green)
+- Public API:
+  * assess_target_path(frame_recovery_report, target_definitions,
+      evidence_bundle) -> TargetPathAssessment
+  * parse_target_definitions(raw) -> TargetDefinitionBundle
+  * parse_evidence_bundle(raw) -> TsEvidenceBundle
+
+DESIGN §11.2 FOUR INDEPENDENT TIERS (never collapsed)
+1. execution_complete — job/files complete (report.complete, n_frames>0,
+   no incomplete_frame_indices).
+2. numerically_usable — per-frame convergence, residuals within
+   constraint_tolerance (default 0.05 Å), consecutive frame indices,
+   scan-energy channel complete and method-comparable.
+3. target_path_compatible — terminal-frame target edits realized by
+   CONTINUOUS bond length (Cordero radius sum + tolerance), regions
+   reached, stereo labels match product, path continuity (no frame jumps).
+4. validated_ts — requires typed evidence references ONLY:
+   optts_ref + first_order_imaginary_ref + irc_forward_ref + irc_reverse_ref.
+   Missing artifacts are listed per key in tier.missing_evidence.
+
+HARD RULES (test-pinned)
+- Technical usable ≠ chemical completion: numerically usable path with
+  unfinished formed-bond target (2.8 Å end distance, bonded upper ~1.97 Å)
+  → numerically_usable=achieved, target_path_compatible=not_achieved
+  (plan failure scenario).
+- Bond labels continuous, never forced binary: formed ≤ radius_sum+0.45;
+  broken ≥ radius_sum+0.45+0.5 (transition width); middle zone labelled
+  unknown/transition with CODE_BOND_INCOMPLETE. order_changed bonded at
+  both ends still needs electronic_order_evidence (else
+  bonded_order_unverified + ORDER_EVIDENCE_MISSING).
+- validated_ts absent without all four evidence refs; partial evidence
+  lists exactly the missing keys; evidence refs are opaque strings.
+- No-internal-peak / monotonic association-dissociation paths and
+  endpoint-max energy profiles never grant validated_ts and never set
+  ts_candidate_from_path_shape; reason codes ENDPOINT_MAX_NOT_TS /
+  NO_INTERNAL_PEAK_TS_SEED recorded as diagnostics.
+- Stereo: final_label==p_label achieved; ==r_label → STEREO_AT_REACTANT;
+  None → STEREO_LABEL_MISSING. Region member bonds reuse continuous
+  bond labels; electronic-only regions need region_evidence.
+- Mapping inputs (report.to_doc() / target definition dicts / evidence
+  dicts) round-trip identical to dataclass inputs.
+
+FROZEN MODULES UNCHANGED (git hash-object)
+- quality.py     603df45a40127920da1fb954eb139048c5cb9987 (todo-21 pin)
+- trajectory.py  aa8c93885240c2757704d19909c675fabfa0d291 (todo-21 pin)
+- contracts.py   d9adc1e25bd8d7752031ccbc45244cf97cdd2e91
+- adapter.py     45df6f5d52066522658dc92c10790cd2bc167b56 (todo-20 pin)
+- scan_strategy/__init__.py untouched; downstream imports submodule directly.
+
+VERIFICATION
+- conda run -n pes2ts python -m pytest -q tests/test_target_path_quality.py
+  -> 26 passed
+- Full suite: 1155 passed, 4 deselected (baseline 1129 + 26 new; 0 failures)
+- lsp_diagnostics error-level: clean on both new files
+- truth_guard: assert_no_truth_access() OK
+- Purity: assessment.to_doc()/to_json() recursive key scan vs
+  FORBIDDEN_TRUTH_KEYS ∪ FORBIDDEN_EXPORT_KEYS = 0; evidence_bundle
+  refuses forbidden keys (e.g. irc_evidence) with EVIDENCE_INVALID.
+  "endpoint_match"/"orientation"/"irc_evidence" appear in module source
+  only inside the forbidden-key rejection lists (same pattern as
+  contracts_v2.FORBIDDEN_KEYS).
+- Determinism: assess_target_path twice -> identical to_json.
+
+NOTEPAD
+- Findings appended to .omo/notepads/pes-generation-graph-scan-strategy/learnings.md
