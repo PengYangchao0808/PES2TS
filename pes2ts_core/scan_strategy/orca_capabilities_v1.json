@@ -1,0 +1,127 @@
+{
+  "schema_version": "orca_capabilities_v1_registry",
+  "registry_id": "pes2ts-backend-capability-baseline",
+  "description": "Backend capability registry baseline (plan todo 16, design 9.1). Each entry declares one layer's capability claims; effective_capability intersects engine/adapter/deployment; probe receipts gate enablement (empty = unprobed = not enabled, never optimistic). Native xTB PATH and ORCA-calling-xTB are separate entries with distinct constraint semantics.",
+  "entries": [
+    {
+      "entry_id": "orca-acp-engine",
+      "layer": "engine",
+      "engine": "orca",
+      "adapter": "acp",
+      "capability": {
+        "engine_version": "6.1.0",
+        "adapter_version": "acp-pes-scan-v0",
+        "supported_modes": ["SINGLE_1D", "COUPLED_1D", "SCHEDULED_1D", "PATH_NEB"],
+        "coordinate_kinds": ["B", "A", "D"],
+        "max_scan_coordinates": 3,
+        "point_limits": {"baseline": 9, "max": 101},
+        "custom_schedule_support": true,
+        "constraint_support": {"native_scan": true, "per_point_constraints": false, "simul_scan": true},
+        "method_element_coverage": {
+          "B3LYP-D3": ["B", "Br", "C", "Cl", "F", "H", "I", "N", "O", "P", "S", "Si"]
+        },
+        "probe_receipts": []
+      },
+      "notes": "ORCA 6.1 manual-level claims (design 9.1): native B/A/D scan up to 3 coordinates; Simul_Scan syntax exists at manual level; custom B point lists exist at manual level. max_scan_coordinates=3 is the design/config native-scan bound — the contracts-surface <=4 is NOT executable capability. Per-point orchestration and every mode here are unprobed: probe_receipts empty, effective disabled until version smokes are recorded."
+    },
+    {
+      "entry_id": "acp-adapter-v0",
+      "layer": "adapter",
+      "engine": "orca",
+      "adapter": "acp",
+      "capability": {
+        "engine_version": "6.1.0",
+        "adapter_version": "acp-pes-scan-v0",
+        "supported_modes": ["SINGLE_1D"],
+        "coordinate_kinds": ["B"],
+        "max_scan_coordinates": 1,
+        "point_limits": {"baseline": 9, "max": 101},
+        "custom_schedule_support": false,
+        "constraint_support": {"native_scan": true, "per_point_constraints": false, "simul_scan": false},
+        "method_element_coverage": {},
+        "probe_receipts": []
+      },
+      "notes": "Current PES2TS-to-ACP projection reality (integration/acp/adapter.py:178-213): single uniform B distance scan only; multi-coordinate rejected (adapter.py:212-213); non-uniform point lists rejected (adapter.py:208-211); point window 3..101. Empty method_element_coverage: the adapter is a transparent method projector, not an element gate. This entry is code-observed, not smoke-probed; probe_receipts stay empty."
+    },
+    {
+      "entry_id": "orca-xtb-bridge",
+      "layer": "engine",
+      "engine": "orca",
+      "adapter": "acp",
+      "capability": {
+        "engine_version": "6.1.0",
+        "adapter_version": "acp-pes-scan-v0",
+        "supported_modes": ["SINGLE_1D", "COUPLED_1D", "SCHEDULED_1D"],
+        "coordinate_kinds": ["B", "A", "D"],
+        "max_scan_coordinates": 3,
+        "point_limits": {"baseline": 9, "max": 101},
+        "custom_schedule_support": false,
+        "constraint_support": {"native_scan": true, "per_point_constraints": false, "simul_scan": false},
+        "method_element_coverage": {
+          "xtb": ["B", "Br", "C", "Cl", "F", "H", "I", "N", "O", "P", "S", "Si"]
+        },
+        "probe_receipts": []
+      },
+      "notes": "ORCA invoking xTB as the electronic-structure method — registered SEPARATELY from native xtb-native-path (design 9.1: independent xTB and ORCA-calling-xTB must not share constraint semantics). Constraint semantics follow ORCA constrained-scan machinery, never xTB PATH metadynamics. Unprobed: probe_receipts empty."
+    },
+    {
+      "entry_id": "xtb-native-path",
+      "layer": "engine",
+      "engine": "xtb",
+      "adapter": "g2-path-runner",
+      "capability": {
+        "engine_version": "6.7.1",
+        "adapter_version": "g2-path-runner-v1",
+        "supported_modes": ["PATH_NEB"],
+        "coordinate_kinds": [],
+        "max_scan_coordinates": 0,
+        "point_limits": {"baseline": 9, "max": 101},
+        "custom_schedule_support": false,
+        "constraint_support": {"native_scan": false, "per_point_constraints": false, "simul_scan": false},
+        "method_element_coverage": {
+          "GFN2-xTB": ["B", "Br", "C", "Cl", "F", "H", "I", "N", "O", "P", "S", "Si"]
+        },
+        "probe_receipts": []
+      },
+      "notes": "Native GFN2-xTB PATH metadynamics (g2 runner). PATH mode only; NO native scan coordinates (max_scan_coordinates=0, coordinate_kinds empty). Constraint support all false: metadynamics is not constrained scanning and must never inherit ORCA constraint semantics. point_limits kept for schema uniformity only; PATH image count follows g2.path.npoint, not scan points. Unprobed: probe_receipts empty."
+    },
+    {
+      "entry_id": "g2-path-adapter",
+      "layer": "adapter",
+      "engine": "xtb",
+      "adapter": "g2-path-runner",
+      "capability": {
+        "engine_version": "6.7.1",
+        "adapter_version": "g2-path-runner-v1",
+        "supported_modes": ["PATH_NEB"],
+        "coordinate_kinds": [],
+        "max_scan_coordinates": 0,
+        "point_limits": {"baseline": 9, "max": 101},
+        "custom_schedule_support": false,
+        "constraint_support": {"native_scan": false, "per_point_constraints": false, "simul_scan": false},
+        "method_element_coverage": {},
+        "probe_receipts": []
+      },
+      "notes": "G2 xTB PATH runner adapter: projects endpoint geometries plus path.inp; no scan-coordinate projection; no ORCA constraint machinery. Empty method_element_coverage (transparent projector). Unprobed: probe_receipts empty."
+    },
+    {
+      "entry_id": "deployment-baseline",
+      "layer": "deployment",
+      "engine": "orca",
+      "adapter": "acp",
+      "capability": {
+        "engine_version": "6.1.0",
+        "adapter_version": "acp-pes-scan-v0",
+        "supported_modes": ["SINGLE_1D", "PATH_NEB"],
+        "coordinate_kinds": ["B"],
+        "max_scan_coordinates": 1,
+        "point_limits": {"baseline": 9, "max": 101},
+        "custom_schedule_support": false,
+        "constraint_support": {"native_scan": true, "per_point_constraints": false, "simul_scan": false},
+        "method_element_coverage": {},
+        "probe_receipts": []
+      },
+      "notes": "Deployment baseline: declares intent for both project stacks (ORCA/ACP single-distance scan and G2/xTB PATH); engine_version is the TARGET version, not a measured one. probe_receipts empty on every shipped layer: unprobed combinations can never yield ready. Gated smoke tasks record pass/fail receipts here (and on the matching engine/adapter entries) before any mode becomes enabled."
+    }
+  ]
+}

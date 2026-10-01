@@ -1,0 +1,117 @@
+task-16: 能力注册表 baseline (pes-generation-graph-scan-strategy)
+date: 2026-10-01
+plan: .omo/plans/pes-generation-graph-scan-strategy.md todo 16
+design: docs/design/PES_GENERATION_图论扫描策略选择器设计_v1.md §9.1
+
+== Deliverables ==
+- pes2ts_core/scan_strategy/capabilities.py (693 pure LOC, # allow: SIZE_OK)
+- pes2ts_core/scan_strategy/orca_capabilities_v1.json (package-adjacent registry, 6 entries)
+- tests/test_capabilities.py (26 tests)
+
+== Registry location decision ==
+Chose package-adjacent pes2ts_core/scan_strategy/orca_capabilities_v1.json
+over config/orca_capabilities_v1.json:
+- Repo convention check: no module ships JSON today; config/ holds only
+  defaults.yaml, which is user-mergeable via --config deep-merge.
+- Capability truth must never be user-inflatable; package-adjacent path
+  (Path(__file__).with_name) is structurally not user config.
+- Schema orca_capabilities_v1 is owned by contracts_v2 in the same package.
+- Deterministic read: json.loads of file text; Path(__file__) is cwd-independent.
+Documented in capabilities.py module docstring.
+
+== Field vocabulary (contracts_v2 wins over informal task aliases) ==
+- point_limits = {baseline, max}   (NOT {min, max, default})
+- constraint_support = {native_scan, per_point_constraints, simul_scan}
+  (NOT {cartesian, internal, per_point})
+- probe_receipts = {probe_id, date, engine_version, status: pass|fail,
+  evidence_ref} + optional {adapter_version, modes, receipt_sha256}
+- MODE_PATH_NEB defined locally: contracts_v2 inlines "PATH_NEB" in
+  CAPABILITY_MODES without a named constant; contracts_v2.py not modified.
+
+== Shipped registry entries (all probe_receipts empty = honest initial state) ==
+entry_id              layer      declared
+orca-acp-engine       engine     SINGLE_1D+COUPLED_1D+SCHEDULED_1D+PATH_NEB, B/A/D, max=3
+acp-adapter-v0        adapter    SINGLE_1D only, B only, max=1 (adapter.py:178-213 reality)
+orca-xtb-bridge       engine     SINGLE_1D+COUPLED_1D+SCHEDULED_1D (ORCA calling xtb)
+xtb-native-path       engine     PATH_NEB only, kinds=[], max=0, constraints all false
+g2-path-adapter       adapter    PATH_NEB only, kinds=[], max=0
+deployment-baseline   deployment SINGLE_1D+PATH_NEB intent, unprobed
+
+max_scan_coordinates=3 on the ORCA engine entry is the design/config native-scan
+bound; the contracts-surface "<=4 coordinates" is NOT executable capability and
+was never inflated into the registry.
+
+== Semantics ==
+- effective_capability(engine, adapter, deployment, *, registry=None):
+  args are registry entry ids (layer-checked) or inline CapabilityEntry.
+  Declared fields intersect strictly; enabled_modes additionally requires a
+  pass probe receipt on EVERY layer covering the mode at that layer's
+  engine_version (receipt.adapter_version matched when present; mode must be
+  in receipt.modes; empty modes = evidence only; any fail receipt disables).
+- UNKNOWN = NOT ENABLED. Shipped baseline: enabled set empty everywhere.
+- assert_mode_supported(cap, mode, kinds, n_coords) raises
+  BackendCapabilityError code=BACKEND_CAPABILITY_MISSING on structural
+  violation OR non-enabled mode.
+- capability_check(...) -> {status: pass|fail|unknown, missing: [...]} for
+  proposal-stage capability_check fields (todo 17). Declared-but-unprobed =>
+  "unknown"; unsmoked combinations can never yield ready.
+- method_element_coverage: strict three-way intersection (method must be
+  declared by every layer; elements intersected).
+- Validation on load: each entry's capability payload projected through
+  make_backend_capability(entry_id, "active", **payload) — reuses contracts_v2
+  validator exactly; envelope issues (duplicate ids, bad layer) local.
+- Disabled reasons formatted as "entry_id [state]: detail" (state in
+  {unprobed, fail}).
+
+== Test transcript ==
+$ conda run -n pes2ts python -m pytest -q tests/test_capabilities.py
+..........................                                               [100%]
+26 passed in 1.07s
+
+Cases covered (required + extra):
+- effective intersection (modes/kinds/max/point_limits/constraints/coverage)
+- unknown -> disabled (undeclared mode: assert raises, check status=fail)
+- BACKEND_CAPABILITY_MISSING on multi-coordinate request when
+  registry max_scan_coordinates=1: COUPLED_1D with n_coords=2 rejected
+- unsmoked mode not enabled (declared everywhere, no receipts: assert raises,
+  check status=unknown)
+- xTB/ORCA separate entries (distinct ids; xtb PATH_NEB only, kinds=[], max=0;
+  orca-xtb-bridge distinct from xtb-native-path)
+- probe receipt roundtrip (ProbeReceipt to_doc/from_doc; registry
+  dumps/loads roundtrip; shipped registry deterministic dumps)
+- shipped registry honest initial state (enabled empty; assert SINGLE_1D
+  raises with code BACKEND_CAPABILITY_MISSING)
+- fail receipt blocks enablement; receipt without modes enables nothing;
+  receipt at wrong engine_version does not enable
+- registry load rejections: bad mode, duplicate entry_id, inverted
+  point_limits, bad probe status (all CAPABILITY_REGISTRY_INVALID)
+- unknown entry id (CAPABILITY_REGISTRY_ENTRY_MISSING); layer mismatch
+  (CAPABILITY_LAYER_MISMATCH)
+- assert structural rules: kind not in coordinate_kinds; SINGLE_1D arity;
+  COUPLED_1D with 1 coordinate; PATH_NEB with scan coordinates
+- method coverage / constraint / point-limit intersections; inline entries
+- forbidden truth-key purity of registry and effective to_doc output
+
+$ conda run -n pes2ts python -m pytest -q
+874 passed, 4 deselected in 36.88s
+(baseline 829 + todo12 coordinate_pool 19 (committed f560b13) + todo16 26;
+0 failures; 4 deselected are the gated realdata/xtb families)
+
+$ lsp_diagnostics capabilities.py / test_capabilities.py (severity=error)
+No diagnostics found
+
+$ awk pure-LOC counts
+capabilities.py: 693 (SIZE_OK marker present; precedent contracts_v2 957,
+registry.py 1096 — plan-named single modules)
+test_capabilities.py: 708
+
+== NOT done (per spec) ==
+- adapter.py, contracts_v2.py unmodified (verified: git diff empty for them)
+- no real ORCA/ACP executed
+- capability not inflated from the "≤4 coordinates" contract statement
+
+== Follow-ups ==
+- Todo 17 consumes effective_capability + capability_check({status,missing}).
+- Gated ORCA/xTB smoke tasks record pass receipts (with modes + measured
+  engine_version) on the matching entries before any mode becomes enabled.
+- Todo 19 compile stage must reject inverted/empty point-limit windows.
