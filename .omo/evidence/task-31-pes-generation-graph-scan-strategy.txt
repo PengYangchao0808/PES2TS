@@ -1,0 +1,164 @@
+task-31 pes-generation-graph-scan-strategy — P3 closure acceptance (FINAL implementation todo)
+=============================================================================================
+date: 2026-10-01
+commit: test(p3): close path/staging and pilot acceptance
+plan: .omo/plans/pes-generation-graph-scan-strategy.md todo 31
+design: docs/design/PES_GENERATION_图论扫描策略选择器设计_v1.md §13.2 P3
+adjudication: docs/plans/PES2TS_扫描规划谱系合并方案_20260930.md §5 L4 + §7.4
+
+1. RESULT
+---------
+P3 offline closure: PASSED.
+tests/test_p3_closure.py — 8 tests, all green (real module calls only).
+
+Full suite: 1356 passed, 10 deselected (baseline 1348 + this todo's 8).
+LSP error-level diagnostics on tests/test_p3_closure.py: clean.
+No real NEB/ORCA/ACP execution (plan MUST NOT). Pilot NOT executed.
+
+2. UNIFIED L1-L4 GATE STATUS (assess_stage_certification)
+---------------------------------------------------------
+stage  plan_phase  offline_status  offline_evidence
+L1     P0          passed          tests/test_p0_demo24_golden.py (todo 10)
+L2     P1          passed          tests/test_scan_plan_compat_export.py + fake ACP (todo 18)
+L3     P2          passed          tests/test_p2_closure.py (todo 25)
+L4     P3          passed          tests/test_p3_closure.py (todo 31)
+
+stage  smoke_family  smoke_status  missing_env / requirements
+L3     orca          blocked       PES2TS_ORCA_EXECUTABLE (ORCA install; version into capability registry)
+L4     neb           blocked       PES2TS_ORCA_EXECUTABLE (neb_minimal gated smoke under orca marker; PATH_NEB probe receipt required)
+
+Smoke status is explicit passed|blocked — never silent, never optimistic.
+Env-ready without a matching probe receipt stays blocked (scan-only receipt
+does NOT unlock the NEB status; asserted in test_neb_smoke_status_helper).
+ACP env names (PES2TS_ACP_ROOT, PES2TS_ACP_PYTHON) recorded for the P2
+smoke surface; acp-family smoke is likewise gated/blocked in this tree.
+
+3. GATE ITEMS ADDRESSED (design §13.2 P3)
+-----------------------------------------
+[x] NEB 与 Scan 分别计成本/成功 (todo 26/28 channels)
+    test_mixed_arm_neb_and_scan_channels_stay_separate
+    - enter_neb_channels() + record_channel_outcome(): NEB success never
+      increments scan counters; scan failure never touches NEB counters.
+    - CostAccounting.enter_method(CHANNEL_SCAN|NEB) + record_outcome():
+      mixed-arm scenario (scan success + NEB success) keeps channels
+      disjoint; NEB entry stamps scan branch = native_scan_branch_exited
+      and does not inflate scan n_entered.
+    - cost_report: counted_operations.equals_actual_core_hours=false;
+      measured_time.cpu_time_status="unknown" until a receipt (never estimated).
+
+[x] 多峰/中间体不合并成一个 TS (todo 27)
+    test_two_intermediate_path_stages_three_segments_never_one_ts
+    - 2 confirmed intermediates (frames 2, 5) on a frozen PathCandidateV1
+      plan → stage_new_plan_version → 3 adjacent segments:
+      (R,I:2), (I:2,I:5), (I:5,P); ("R","P") NOT in refs.
+    - staging.never_merged_into_single_ts=true; n_segments=3;
+      3 PathCandidateV1 segment candidates; each carries segment-local
+      endpoint blocks (no candidate has the full R→P endpoint pair).
+    - TS accounting is per segment: image_chain/method_kind/n_atoms
+      verbatim per segment; intermediate_sha256 binds the version.
+    - Absent/unstable evidence → typed refusal (ENERGY_LOCAL_MINIMUM_MISSING /
+      NO_STABLE_INTERMEDIATE) — no segmentation, no fake TS.
+    - Original plan document immutable (content_sha256 unchanged).
+
+[x] 失败树与预算可重放 (todo 23/27, replay across plan versions)
+    test_failure_tree_and_budget_replay_across_plan_versions
+    - Staged version carries extensions.staging.failure_tree_replay
+      {version=failure_tree_v1, codes=FAILURE_TREE_CODE_ORDER} verbatim;
+      extensions.freeze.failure_tree.codes identical on original + staged.
+    - budget_replay.budget == original budget (denominator carried);
+      budget_accounting == BUDGET_ACCOUNTING_CATEGORIES; new_plan.budget
+      identical.
+    - active_failure_codes(FailureState(budget=exhausted)) contains
+      BUDGET_EXHAUSTED; every active code ∈ FAILURE_TREE_CODES.
+    - Free text "效果不好" rejected (FAILURE_CODE_UNKNOWN) — closed
+      vocabulary, computable predicates only.
+    - Staged scan segment candidates keep drivers verbatim;
+      g2_self_segmentation=false; drivers_changed_by_staging=false.
+
+[x] 24 条逐例闭环记录完整 (selector over demo24 fixtures)
+    test_demo24_per_case_loop_records_are_complete
+    Real propose_strategies over all 24 frozen tests/fixtures/p0_demo24
+    records (rdkit pin 2026.03.6 never-skip gate). Per-case ledger rows
+    written by the test (tmp_path p3_demo24_case_ledger.json) — this IS
+    the closure record format (schema p3_demo24_case_ledger_v1).
+
+    LEDGER FORMAT (per-case row keys):
+      reaction_id, split, proposal_status, route_exit, n_candidates,
+      candidate_modes, reason_codes, blocking_reason_codes,
+      candidate_failure_codes, release_gate, execution_eligible,
+      ready_claimed, needs_review_retained, epistemic_status,
+      proposal_content_sha256
+    Ledger envelope: schema_name, n_cases, review_dependency,
+      ready_claims, cases[]
+
+    24-CASE LEDGER SUMMARY:
+      n_cases                         24
+      proposal_status                 needs_review=7, proposed=17
+      route_exit                      needs_review=7,
+                                      executable_candidate_set_not_ready=17
+      split                           train=16, valid=8
+      release_gate_true               24
+      n_candidates_total              502
+      cases_with_blocking_codes       0
+      candidate_modes_seen            COUPLED_1D, SCHEDULED_1D, SINGLE_1D
+      ready_claims                    0
+      execution_eligible_true         0
+      needs_review_retained_all       true
+      epistemic_all_endpoint_hypothesis true
+
+    RED LINE HELD: no document claims ready status without human review.
+    execution_eligible is always False (contracts_v2 forces it); status
+    vocabulary has no "ready"; review dependency this plan does NOT lift
+    stays armed. Zero forbidden truth keys in every proposal document.
+
+    Coverage honesty (todo 29 seam): DEMO24_COVERAGE.domains_with_evidence
+    = C/H/N/O/F/Cl only; Fe and special domains without evidence.
+
+[x] 200-1000 分层试点 = declared-not-executed record
+    test_stratified_pilot_plan_is_declared_not_executed
+    Pilot plan built as a TYPED STRUCTURE (never executed):
+      schema_name             g1_stratified_pilot_plan_v1
+      status                  not_executed_prerequisite_pending
+      executed / executed_n   false / 0
+      prerequisites           [human_review] (prerequisite_status=pending)
+      size_bounds             {min: 200, max: 1000}
+      source_list             data/interim/g2_scan_ready.json
+      source_list_n           183460 (POPULATION_SCAN_READY_N)
+      stratification_basis    L0u cluster ids from g2 export docs
+                              (offline declaration only — no export read)
+      scope                   development_mechanism_coverage
+      truth_provenance        truth_assisted_p1
+      comparison_arms         5 arms under fixed shared budget
+    Population guard stays armed (real module call):
+      assert_population_unlocked(L1|L2|L3) → POPULATION_LOCKED_BEFORE_L4
+      assert_population_unlocked(L4)       → POPULATION_LOCK_REQUIRED
+    Executing the pilot is NOT part of this todo (plan MUST NOT).
+
+[x] NEB smoke gated status: blocked (env) — explicit, never silent
+    test_neb_smoke_status_helper_is_explicit_passed_or_blocked
+    test_assess_stage_certification_is_explicit_per_stage
+    - _neb_gated_smoke_status: env missing → blocked + missing_env named
+      ([PES2TS_ORCA_EXECUTABLE]) + requirements string.
+    - env ready + PATH_NEB pass receipt → passed (injected fixture).
+    - env ready + scan-only receipt → still blocked (never optimistic).
+    - L4 smoke_status mirrors the NEB gated-smoke reality.
+
+4. MUST-NOT SURFACE CHECKED
+---------------------------
+- Pilot NOT executed (executed=false, executed_n=0; guard refuses L1-L4).
+- No ready claim for any of the 24 (ready_claims=0, execution_eligible=0).
+- No real NEB/ORCA run (gated markers excluded by default addopts).
+- planning.py / adapter.py / contracts.py untouched (only new test file).
+- Zero forbidden truth keys in all proposal/staging/pilot documents.
+
+5. FILES
+--------
+tests/test_p3_closure.py (new, 8 tests)
+.gitignore note: .omo/ is gitignored → evidence force-added; notepad
+learnings.md is tracked and updated in the same commit.
+
+6. AFTER THIS TODO
+------------------
+Only the F1-F4 final verification wave remains (plan compliance audit,
+code quality review, real manual QA, scope fidelity). No further
+implementation todos.
