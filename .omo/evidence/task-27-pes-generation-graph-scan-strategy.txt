@@ -1,0 +1,119 @@
+task-27: intermediate-evidence staging and plan versioning
+plan: .omo/plans/pes-generation-graph-scan-strategy.md (todo 27)
+date: 2026-10-01
+status: PASSED
+
+WHAT WAS BUILT
+- pes2ts_core/scan_strategy/intermediate_staging.py (new module, existing modules untouched)
+- tests/test_intermediate_staging.py (37 tests, all green)
+
+DESIGN COVERAGE (§8.2 / §10.1)
+1. G1 pre-freezes intermediate exploration/adjudication RULES as typed records:
+   - frozen_intermediate_rules() -> IntermediateRuleSet
+   - rules_version: intermediate_staging_rules_v1
+   - rules_sha256: 25742542360772e8afad8bcf14a8bba9b64d79723555811e6ddb5a2020127279
+   - rule_ids:
+     R_INTERMEDIATE_CANDIDATE_FRAME_ENERGY_MINIMUM (required)
+     R_INTERMEDIATE_CONSTRAINT_RELEASE_STABLE (required)
+     R_INTERMEDIATE_TOPOLOGY_CHARGE_ELECTRONIC (required)
+     R_INTERMEDIATE_HESSIAN_FREQUENCY_FORMAL (formal conclusion channel)
+   - deterministic: two calls -> identical content_sha256 (test-locked)
+
+2. G2 returns evidence -> G1 creates NEW plan version carrying intermediate hash:
+   stage_new_plan_version(original_plan, intermediate_evidence) -> StagingResult
+   - new_plan_id: RXN_0000000001:gp-v2 (original was gp-v1)
+   - new_plan_version: 2
+   - new_plan_supersedes: RXN_0000000001:gp-v1
+   - new_plan_content_sha256: 1205658b6712f3efc74e082d58d89b019382678d0f2d6806c96cd36b2c62c041
+   - intermediate_sha256: 974e6a287ebdd3afb799edb03eda42828fa4650f32d535f0e1bba6bb246a8d1b
+   - validate_v2_document(new_plan) == []
+   - verify_generation_plan(new_plan) == []
+
+3. Segmentation criteria (design §8.2):
+   - confirmed when: energy local minimum AND constraint-release optimization
+     stable (released+converged+stable_structure) AND topology/charge/
+     electronic-state confirmed
+   - Hessian/freq formal conclusion: pending_evidence when absent/pending
+     (does NOT block operational segmentation); complete + n_imaginary==0 ->
+     confirmed; complete + n_imaginary>=1 -> HESSIAN_CONTRADICTS_STABILITY refusal
+   - segments for 1 confirmed intermediate: [('R','I:2'), ('I:2','P')]  (adjacent)
+   - multi-peak (2 confirmed): 3 adjacent segments, NEVER merged into one TS
+     (test asserts no (R,P) segment; staging block never_merged_into_single_ts=True)
+
+4. Original plan unchanged; G2 never self-segments:
+   - original dict deep-equal before/after staging; content_sha256 unchanged
+     (6758ad60d57c83b7b37ac661d0189ba02cbab360c4a7f17b157dbc3edf599d2b);
+     original status stays "frozen"; no supersedes key added to original
+   - derived superseded_original: status=superseded, supersedes=gp-v2,
+     validate_v2_document == [] (contracts_v2 chain valid, both directions)
+   - staging signature is {original_plan, intermediate_evidence, rules} only —
+     no driver-mutation surface; segment candidates copy drivers verbatim;
+     staging block: g2_self_segmentation=False, drivers_changed_by_staging=False
+   - STAGING_STAGE_ID == path_request.INTERMEDIATE_NEXT_STAGE
+     == "intermediate_evidence_staging" (todo-26 seam test-locked)
+
+5. "Coordinate temporarily unchanged" != stepwise mechanism:
+   - coordinate_unchanged_claim alone -> typed refusal
+     COORDINATE_UNCHANGED_NOT_MECHANISM (test-locked)
+   - claim never rescues missing stability/topology evidence
+   - claim + full stability evidence -> segmentation proceeds on the evidence
+
+6. Typed refusals (closed vocabulary, IntermediateStagingError.code):
+   STAGING_INPUT_INVALID, PLAN_NOT_FROZEN, NO_STABLE_INTERMEDIATE,
+   ENERGY_LOCAL_MINIMUM_MISSING, INSUFFICIENT_STABILITY_EVIDENCE,
+   INSUFFICIENT_TOPOLOGY_EVIDENCE, COORDINATE_UNCHANGED_NOT_MECHANISM,
+   HESSIAN_CONTRADICTS_STABILITY, INTERMEDIATE_GEOMETRY_MISSING,
+   GEOMETRY_SHAPE_INVALID
+   - Path-plan staging without intermediate geometry -> INTERMEDIATE_GEOMETRY_MISSING
+     (coordinates are never fabricated — design §8.2)
+
+7. Failure tree + budget replay across versions (todo-23 vocabulary link):
+   - new plan extensions.freeze.failure_tree.codes == FAILURE_TREE_CODE_ORDER
+     (26 closed codes, version=failure_tree_v1) — replayable predicates
+   - extensions.staging.budget_replay.from_plan_id == RXN_0000000001:gp-v1
+   - budget carried verbatim (budget_equal: True)
+   - active_failure_codes(FailureState(budget=exhausted, intermediate_candidate=True))
+     includes BUDGET_EXHAUSTED + INTERMEDIATE_CANDIDATE, all inside the frozen
+     vocabulary of the staged version (test-locked)
+
+TEST RESULTS
+$ conda run -n pes2ts python -m pytest -q tests/test_intermediate_staging.py
+..................................... [100%]
+37 passed in 1.40s
+
+$ conda run -n pes2ts python -m pytest -q
+1318 passed, 10 deselected in 44.65s
+(1219 todo-26 baseline + 37 this todo + 62 parallel todo-28/29 worker files
+ not part of this commit)
+
+TEST SURFACE (tests/test_intermediate_staging.py, 37 tests)
+- frozen rule set: determinism, four rule families, typed records, purity
+- adjudication: confirmed / hessian pending / hessian confirmed / hessian
+  contradicted / insufficient stability / insufficient topology /
+  coordinate-unchanged-alone / energy-minimum-missing / mapping round-trip
+- segments: single intermediate adjacent pairs; multi-peak 3 adjacent pairs
+  never merged; intermediate hash sensitivity
+- staging scan plan: new version + intermediate hash + segments + drivers
+  verbatim + contract-valid + verify clean
+- staging path plan: multi-peak segment-local endpoint blocks (R->I1, I1->I2,
+  I2->P); frozen path dims unchanged; missing-geometry refusal
+- typed refusals: stability/topology/unchanged/empty/all-refused/non-frozen/
+  unknown-code construction
+- immutability + supersede chain: original dict unchanged; superseded copy
+  validates; chain direction both ways; broken supersedes rejected by contracts
+- failure/budget replay: vocabulary equality, budget carry, predicate replay
+- G1-side structure: signature surface, staging flags, carried candidates
+- determinism + purity: byte-identical re-staging; zero forbidden truth keys
+
+STATIC
+- lsp error-level: only stable_json_dumps JSONValue-variance noise (same
+  family as contracts_v2/plan_freeze; pytest is the repo gate)
+- truth_guard: 19 passed (module has no truth strings / dynamic-exec)
+- pure LOC ~1100 -> # allow: SIZE_OK (plan-named todo-27 single module)
+
+NOT PAD
+- .omo/notepads/pes-generation-graph-scan-strategy/learnings.md appended
+  with todo-27 section (git-tracked, included in commit)
+
+COMMIT
+feat(scan-strategy): add intermediate-evidence staging and plan versioning
