@@ -1,0 +1,87 @@
+task: todo 20 — ACP 适配器扩展：多坐标/A/D/非均匀 的显式支持或拒绝
+plan: .omo/plans/pes-generation-graph-scan-strategy.md (todo 20)
+date: 2026-10-01
+commit: feat(acp): extend adapter for multi-coordinate and A/D scans
+
+FILES
+- pes2ts_core/integration/acp/multicoord.py (NEW, ~642 pure LOC, # allow: SIZE_OK —
+  plan-named todo-20 single ACP-extension module; precedent compile_orca.py/compat_export.py)
+- tests/test_acp_multicoord_adapter.py (NEW, 20 tests)
+- adapter.py / trajectory.py / contracts.py / planning.py: UNTOUCHED
+
+BYTE-FREEZE PROOF (git hash-object, before == after)
+- pes2ts_core/integration/acp/adapter.py   45df6f5d52066522658dc92c10790cd2bc167b56
+- pes2ts_core/integration/acp/trajectory.py aa8c93885240c2757704d19909c675fabfa0d291
+
+PUBLIC SURFACE (multicoord.py)
+- multicoord_request_payload(compiled: CompiledRequest, case_materials, config) -> dict
+  * capability gate FIRST via capabilities.capability_check; fail -> MulticoordAdapterError
+    code BACKEND_CAPABILITY_MISSING; declared-but-unprobed -> CAPABILITY_UNPROBED
+  * payload carries ALL drivers: coordinates[] entries {coordinate_id, kind,
+    atom_map_ids, atom_indices, unit, start_value, end_value, values (per-point),
+    schedule_values}; metadata.driver_ids; n_drivers == len(compiled.coordinates)
+  * compiled.atom_rows must equal materials.atom_map_ids else ATOM_ORDER_INVALID
+  * projection-layer extras: simultaneous && !simul_scan -> SIMUL_SCAN_UNSUPPORTED;
+    recipe_kind=per_point && !custom_schedule -> CUSTOM_SCHEDULE_UNSUPPORTED;
+    !per_point_constraints -> PER_POINT_CONSTRAINTS_UNSUPPORTED
+  * adapter_version=pes2ts_acp_multicoord_v1, schema=pes2ts_acp_multicoord_request_v1
+  * data projection only — never submits
+- parse_multicoord_result(*, compiled, execution_id, acp_task_id, raw_frames)
+  -> MulticoordAttemptResult (schema pes2ts_acp_multicoord_result_v1)
+  * per-frame target_by_driver / actual_by_driver / residual_by_driver keyed by
+    driver_id ("driver-01".. from driver_id_for — same scheme as payload)
+  * missing target/actual for any driver -> frame.missing_driver_ids + complete=False;
+    zero frames -> result.complete=False; structural frame issues -> FRAMES_INVALID
+  * todo 21 extends recovery on this surface (retries/monitors/diagnostics)
+- MulticoordAdapterError(ACPMappingError) with .code (machine-checkable, family-compatible)
+
+ACCEPTANCE EVIDENCE (tests/test_acp_multicoord_adapter.py, 20 passed)
+- multi-coordinate payload contains all drivers with units+maps+values:
+  test_multicoord_payload_carries_all_drivers_with_units_maps_values
+  (2-B COUPLED: both drivers, angstrom, indices [0,1]/[2,3], values == compiled values,
+   Simul_Scan true in geom_fragments)
+- A/D kinds represented:
+  test_multicoord_payload_represents_a_and_d_kinds (A+D COUPLED: degree units,
+   arity-3/4 maps+indices preserved)
+- non-uniform per-point lists:
+  test_multicoord_payload_preserves_nonuniform_per_point_lists (SCHEDULED_1D per-point
+   recipe: 4 distinct point hashes, Constraints blocks carry BOTH drivers)
+- capability refusal on default registry (BACKEND_CAPABILITY_MISSING):
+  test_default_registry_refuses_coupled_multicoord_backend_capability_missing
+  test_default_registry_refuses_a_and_d_kinds_backend_capability_missing
+  test_default_registry_refuses_nonuniform_scheduled_backend_capability_missing
+  (single-driver non-uniform on default -> CAPABILITY_UNPROBED:
+   test_default_registry_refuses_single_nonuniform_with_capability_unprobed)
+- with synthetic probe receipts (injected registry) the payload builds:
+  test_multicoord_payload_carries_all_drivers_with_units_maps_values /
+  _represents_a_and_d_kinds / _preserves_nonuniform_per_point_lists
+  (three-layer synthetic registry with passing probe receipts covering the modes)
+- explicit refusal never downgrades:
+  test_probed_registry_builds_payload_and_refusal_never_downgrades
+  test_payload_refusal_when_simul_scan_flag_false_for_coupled
+  test_payload_refusal_when_custom_schedule_false_for_per_point_recipe
+  test_payload_refuses_compiled_atom_order_mismatch
+- result parse surface (per-frame all-driver actuals):
+  test_parse_multicoord_result_recovers_all_driver_actuals
+  test_parse_multicoord_result_marks_missing_driver_incomplete
+  test_parse_multicoord_result_rejects_structural_frame_issues
+  test_multicoord_surfaces_are_deterministic_and_truth_free
+- existing adapter regression:
+  test_current_adapter_refuses_multicoordinate_scan_plan
+  (ACPMappingError match "single distance coordinate")
+  test_current_adapter_refuses_nonuniform_points_scan_plan
+  (ACPMappingError match "non-uniform plan needs an adapter extension")
+  test_adapter_regression_scan_plan_to_acp_request_byte_identical
+  (full expected structure derived from test_contracts.py simple_case +
+   build_minimal_scan_plan; stable_json_dumps sha256
+   4ee2bbeb51cb649220b1617fe537e58fb93b49ca6f31b1eec171a608985228b4 pinned)
+  test_shipped_registry_capability_check_shape_for_multi_and_ad
+  test_multicoord_module_does_not_modify_adapter_contract_surface
+- old single-B test files unchanged (test_contracts.py / test_acp_cli_backend.py /
+  test_scan_plan_compat_export.py run as-is in the full suite)
+
+FULL SUITE
+- command: /root/miniforge3/envs/pes2ts/bin/python -m pytest -q
+- result: 1106 passed, 4 deselected (baseline 1086 + this todo's 20), 0 failed
+- lsp error-level diagnostics: clean (multicoord.py + test file)
+- no real ACP/ORCA execution (offline only)
