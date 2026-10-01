@@ -1,0 +1,145 @@
+# task-24-pes-generation-graph-scan-strategy — P2/P3 gated 冒烟骨架（acp/orca markers + never-skip）
+# Plan: .omo/plans/pes-generation-graph-scan-strategy.md todo 24
+# Date: 2026-10-01
+# Env: conda pes2ts (python 3.12), cwd = PES2TS repo root
+# Status: BLOCKED — environment not ready in this working tree (plan: 环境未就绪记 blocked
+#         并附需求清单，不阻塞代码落地)
+
+## Requirements list (project-side provision pending)
+
+1. ACP root dir — ACP source checkout containing `src/acp/cli.py`
+   (example from README: E:/Calculations/Common_Script/Auto_Calc_Platform/ACP_V1_20260811)
+   → env var `PES2TS_ACP_ROOT`
+2. ACP env python — python interpreter of that ACP environment
+   (README example: <ACP-environment-python.exe>)
+   → env var `PES2TS_ACP_PYTHON`
+3. ORCA install + version — real ORCA executable on this machine
+   → env var `PES2TS_ORCA_EXECUTABLE`
+4. (Optional override) probe-receipts dir — default `.omo/evidence/`
+   → env var `PES2TS_SMOKE_RECEIPTS_DIR`
+
+None of 1-3 are set in this working tree (`env | grep PES2TS_(ACP|ORCA|SMOKE)` empty).
+Real ORCA/ACP execution was NOT run here (per plan MUST NOT).
+
+## Files created
+
+- `tests/test_scan_strategy_acp_smoke.py` — `@pytest.mark.acp`, 1 test
+  (`test_acp_single_b_scan_smoke`). Never-skip: missing env → pytest.fail
+  naming `PES2TS_ACP_ROOT` + `PES2TS_ACP_PYTHON`. With env present the body:
+  validates ACP install (src/acp/cli.py + python + ACPCLIBackend construction),
+  captures versions (acp python, acp.cli --help returncode, adapter versions
+  `pes2ts_acp_multicoord_v1` + `acp-pes-scan-v0`), runs representative single-B
+  (H2 stretch) through BOTH paths — multicoord (compile_orca →
+  multicoord_request_payload) and compat (sealed ReactionCase →
+  build_minimal_scan_plan → scan_plan_to_acp_request) — then writes a
+  ProbeReceipt JSON + smoke-evidence JSON under the configurable receipts dir
+  (default `.omo/evidence/`, NOT auto-committing, NOT merged into
+  orca_capabilities_v1.json).
+- `tests/test_scan_strategy_orca_smoke.py` — `@pytest.mark.orca`, 5 tests
+  (one per sub-family, design §13.3):
+  - `test_orca_single_b_smoke`       — H2 stretch, SINGLE_1D native Scan
+  - `test_orca_double_b_simul_smoke` — water double O–H, COUPLED_1D Simul_Scan
+  - `test_orca_ad_scan_smoke`        — 4-atom A+D, COUPLED_1D degrees
+  - `test_orca_nonuniform_per_point_smoke` — H2 SCHEDULED_1D custom λ list →
+    per-point %geom Constraints (all points executed)
+  - `test_orca_neb_minimal_smoke`    — H2 PathCandidateV1 minimal %geom Path
+    (n_images=3)
+  Each: never-skip naming `PES2TS_ORCA_EXECUTABLE`; captures ORCA version line
+  (`--version`/`-v`, loud fail if unreadable); compiles via compile_orca with a
+  session probed capability carrying the REAL version string; assembles a
+  minimal ORCA input from compiled artifacts; runs the real binary; asserts
+  exit 0 + `ORCA TERMINATED NORMALLY`; writes ProbeReceipt + evidence JSON
+  (adapter_version `orca-direct-smoke`, method `HF STO-3G`, nprocs=1).
+  Known gap recorded: todo-19 `_constraint_block` leaves `%geom` open — smoke
+  assembly closes it (comment in `_assemble_scan_input`); fix belongs to
+  todo 25/26, not this scaffolding.
+
+## Marker registration + default deselection (verified)
+
+### Command
+conda run -n pes2ts python -m pytest --markers 2>&1 | grep -E "pytest.mark.(acp|orca)"
+
+### Output
+@pytest.mark.acp: requires PES2TS_ACP_ROOT and an ACP python interpreter
+@pytest.mark.orca: requires PES2TS_ORCA_EXECUTABLE
+
+### Command
+conda run -n pes2ts python -m pytest -q --collect-only -m acp
+→ tests/test_scan_strategy_acp_smoke.py::test_acp_single_b_scan_smoke
+  1/1197 tests collected (1196 deselected)
+
+### Command
+conda run -n pes2ts python -m pytest -q --collect-only -m orca
+→ tests/test_scan_strategy_orca_smoke.py::{single_b,double_b_simul,ad_scan,
+  nonuniform_per_point,neb_minimal}
+  5/1197 tests collected (1192 deselected)
+
+### Command (default suite — addopts excludes acp/orca)
+conda run -n pes2ts python -m pytest -q
+→ 1187 passed, 10 deselected in 70.58s
+  (baseline 1187 + 0 new executed; deselected 4 old realdata/xtb + 6 new gated)
+
+## Loud-failure demonstration (env unset → pytest.fail, nonzero exit)
+
+### Command A
+env -u PES2TS_ACP_ROOT -u PES2TS_ACP_PYTHON -u PES2TS_ORCA_EXECUTABLE \
+  conda run -n pes2ts python -m pytest -q -m acp tests/test_scan_strategy_acp_smoke.py
+
+### Output A (exit code 1)
+FAILED tests/test_scan_strategy_acp_smoke.py::test_acp_single_b_scan_smoke
+Failed: ACP smoke environment not ready: set PES2TS_ACP_ROOT and
+PES2TS_ACP_PYTHON (PES2TS_ACP_ROOT = ACP source checkout containing
+src/acp/cli.py; PES2TS_ACP_PYTHON = python interpreter of that ACP
+environment); a skip here would be a false pass
+1 failed — EXIT=1
+
+### Command B
+env -u PES2TS_ORCA_EXECUTABLE \
+  conda run -n pes2ts python -m pytest -q -m orca tests/test_scan_strategy_orca_smoke.py
+
+### Output B (exit code 1)
+FAILED ...{5 orca tests}
+Failed: No ORCA executable found: set PES2TS_ORCA_EXECUTABLE to the real
+ORCA binary (ORCA install + version required for the gated orca smoke);
+a skip here would be a false pass
+5 failed — EXIT=1
+
+Both messages name the exact env var(s). Never-skip semantics match the
+xtb precedent at tests/test_g2_xtb_smoke.py:46-55.
+
+## Static checks
+
+- py_compile both files → OK
+- lsp_diagnostics (error severity) on both files → clean
+- Pure LOC (non-blank, non-comment): acp 343, orca 577 — both >250; test files
+  are plan-named gated scaffolding (todo 24 names exactly these two files;
+  one test function per gated sub-family). Repo precedent: test_compile_orca.py
+  793 LOC / test_acp_multicoord_adapter.py 759 LOC, no SIZE marks on tests.
+  Production modules untouched by this todo.
+
+## What was NOT done (blocked)
+
+- No real ACP PESsearch submission (needs ACP root + python + config;
+  24 demo cases still needs_review).
+- No real ORCA execution (needs PES2TS_ORCA_EXECUTABLE).
+- Probe receipts NOT written to .omo/evidence/ by tests (env absent → fail
+  before receipt step). Receipts will land when an env-holder runs the gated
+  smoke with env set; they are evidence artifacts only — the shipped
+  registry orca_capabilities_v1.json keeps probe_receipts=[] until a
+  deliberate registry update (todo 16 discipline: never optimistic).
+- Capability enablement unchanged: shipped registry still refuses every mode
+  (unprobed); these smokes are the gated path that will record the receipts.
+
+## Plan cross-refs
+
+- Verification strategy §44-46: never-skip沿用 xtb precedent; P2/P3 gated
+  smoke = explicit task; env 未就绪记 blocked 不阻塞代码落地. DONE.
+- Todo 24 acceptance: 默认套件排除 ✓; 显式 -m acp/-m orca 时缺环境响亮失败 ✓;
+  有环境时只跑代表性有效组合并落证据 ✓ (bodies importable + type-correct,
+  untested here by design).
+- Blocks todo 25 (P2 闭环验收 consumes these gated smokes as the
+  passed/blocked evidence surface).
+
+## Commit
+
+test(scan-strategy): add gated acp/orca never-skip smoke scaffolding

@@ -326,3 +326,16 @@
 - 全量套件：**1187 passed, 4 deselected**（1155 基线 + 本 todo 32；0 失败）。lsp error 级清零（plan_freeze/cli/contracts_v2）；truth_guard 全绿（plan_freeze 无真值字符串/dynamic-exec）。
 - Evidence: `.omo/evidence/task-23-pes-generation-graph-scan-strategy.txt`；Commit: `feat(scan-strategy): add GenerationPlanV2 freeze, budget, and failure tree`。
 - 教训（给 todo 24-27）：(1) freeze 后 verify 会把 plans 树纳入对账——二次 freeze 前树必须自洽（幂等重跑 OK）；(2) todo 27 中间体分段 = 新 plan_version + supersedes 链，本 todo 已备好 plan_version/supersedes 参数与 contracts 修复；(3) CLI 产物路径 `scan_plans/<digits(rid)//g1_v2.shard_size:05d>/<rid>.json`；(4) `compiled=None` recipe 形态不含 atom_order——需要冻结原子序时必须传 CompiledRequest 或含 atom_rows 的 mapping；(5) 真实 ORCA 冒烟（todo 24）通过后，freeze 生产路径应改为传 compile_orca 产物而非 None。
+
+## 2026-10-01 todo 24 — P2/P3 gated 冒烟骨架（acp/orca never-skip）— PASSED (blocked env)
+- 新建 `tests/test_scan_strategy_acp_smoke.py`（@pytest.mark.acp，1 test）+ `tests/test_scan_strategy_orca_smoke.py`（@pytest.mark.orca，5 tests，设计 §13.3 五子族各一例）。生产模块零改动。
+- **never-skip 语义（沿用 test_g2_xtb_smoke.py:46-55）**：环境缺失 → `pytest.fail` 点名精确 env 变量，绝不 skip。响亮失败实测：ACP 消息含 `PES2TS_ACP_ROOT` + `PES2TS_ACP_PYTHON`（exit 1）；ORCA 消息含 `PES2TS_ORCA_EXECUTABLE`（5 failed, exit 1）。
+- **标记/默认排除（todo 2 已注册）**：`pytest --markers` 输出 `@pytest.mark.acp:` / `@pytest.mark.orca:`；`--collect-only -m acp` → 1 test、`-m orca` → 5 tests；默认套件 **1187 passed, 10 deselected**（4 旧 realdata/xtb + 6 新 gated）。
+- **Probe receipt helper**：`_record_family_evidence`/`_write_probe_receipt_and_evidence` 写 ProbeReceipt JSON + smoke-evidence JSON 到可配置目录（env `PES2TS_SMOKE_RECEIPTS_DIR`，默认 `.omo/evidence/`）——只落盘，绝不 auto-commit、绝不合并进 shipped `orca_capabilities_v1.json`（保持 probe_receipts=[] 诚实态）。
+- **有环境时的代表性组合**：ACP = 单 B（H2 拉伸）走 multicoord（compile_orca → multicoord_request_payload）+ compat（sealed case → build_minimal_scan_plan → scan_plan_to_acp_request）双路径 + ACPCLIBackend 构造校验安装；ORCA = 单 B H2 / 双 B Simul_Scan 水 / A–D 四原子 / 非均匀逐点（SCHEDULED_1D 逐点 Constraints 全点执行）/ NEB 最小（PathCandidateV1 n_images=3），各记录 ORCA version line + 运行证据。方法 `HF STO-3G`、nprocs=1（冒烟速度，非化学认证）。
+- **能力栈模式**：session-local 三层 registry（tmp_path 写 json → load → effective_capability），engine_version 用真实捕获的版本串；receipt.modes 覆盖所测模式。shipped registry 仍 unprobed——gated smoke 是未来记录 pass 回执的路径，不是自动开启。
+- **发现（记录给 todo 25/26，未在本 todo 修）**：compile_orca `_constraint_block` 产出 `%geom/Constraints/{...}/end` 但 **未闭合外层 %geom**（离线测试只断言 fragment 文本）。ORCA 冒烟在 `_assemble_scan_input` 内补偿闭合（带注释）；todo 25/26 应修 compile_orca 源头或确认 ORCA 容忍。
+- 静态：py_compile OK；lsp error 级清零（两文件）。纯 LOC：acp 343 / orca 577（>250——测试文件为 plan 点名的 gated 脚手架，仓库先例 test_compile_orca.py 793 LOC 无 SIZE 标记）。
+- 本机环境未就绪（`PES2TS_ACP_ROOT`/`PES2TS_ACP_PYTHON`/`PES2TS_ORCA_EXECUTABLE` 全空）→ 记 **blocked** + 需求清单，不阻塞代码落地（plan 验证策略 §45）。真实 ORCA/ACP 未执行。
+- Evidence: `.omo/evidence/task-24-pes-generation-graph-scan-strategy.txt`；Commit: `test(scan-strategy): add gated acp/orca never-skip smoke scaffolding`。
+- 教训（给 todo 25）：(1) P2 闭环验收用 `-m acp`/`-m orca` 显式跑 gated 冒烟并把 passed/blocked 写进状态面——本 todo 已备好 6 个 test 节点；(2) ORCA 冒烟通过后，把真实版本回执（engine_version=实测 ORCA 版本、modes=[SINGLE_1D/COUPLED_1D/SCHEDULED_1D/PATH_NEB]）合并进 registry 是显式人工动作，不是测试自动副作用；(3) 非均匀逐点冒烟逐点起 ORCA 进程（5 次），env-holder 可接受；若嫌慢可缩 λ 点数但须 ≥ point_limits.baseline（session 栈设 3）。
