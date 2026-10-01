@@ -1,0 +1,121 @@
+task-18 pes-generation-graph-scan-strategy — legacy single-B compatibility export + P1 acceptance
+date: 2026-10-01
+env: conda pes2ts, python 3.12, rdkit 2026.03.6
+
+SCOPE
+  pes2ts_core/scan_strategy/compat_export.py (new): export_legacy_scan_plan(
+      generation_plan_v2_doc, materials, config) -> sealed v1 ScanPlan dict.
+  tests/test_scan_plan_compat_export.py (new, 43 tests).
+  contracts.py / adapter.py / planning.py: byte-frozen, untouched.
+
+API
+  export_legacy_scan_plan(generation_plan_v2_doc, materials, config) -> dict
+  - Input: sealed g1_generation_plan_v2, status="frozen", every candidate a
+    ScanCandidateV2 SINGLE_1D with exactly one B distance driver (angstrom,
+    2 unique maps in the snapshot atom order).
+  - materials: boundary-parsed case snapshot — sealed ReactionCase document OR
+    projection mapping {atom_map_ids, dataset_version, reaction_id, case_id,
+    split, content_sha256, r_coordinates, p_coordinates}.  Invalid →
+    MATERIALS_INVALID.
+  - Binding: plan.reaction_id/case_id/split == materials identity;
+    plan.source_case_sha256 == materials.content_sha256
+    (SOURCE_CASE_BINDING_MISMATCH / IDENTITY_MISMATCH otherwise).
+  - Indices: computed from the frozen atom order; driver.index0, when present,
+    must equal the computed indices (INDEX_ORDER_MISMATCH otherwise).
+  - Points: q(λ)=q_start+s(λ)(q_end−q_start); endpoints rounded to 6 dp first,
+    then interpolated — the resulting list satisfies the adapter's uniformity
+    predicate by construction (same formula, same rounded endpoints).
+  - retry_policy derived from candidate budget (scan_retry_count =
+    max(0, max_attempts−1), failure_policy=retry_previous, optimizer_retries=1,
+    reuse_previous_geometry=True); method = {engine, method} from plan.backend
+    (engine must be orca/xtb); experiment_id from config or
+    "scan-strategy-compat-v1"; candidate_strategy
+    "graph_scan_single_1d_compat_v1"; candidate_id "{plan_id}:c{NNN}",
+    request_id "{candidate_id}:attempt1"; start_endpoint R→reactant / P→product;
+    observer_pairs_map projected from 2-map monitors excluding the driver pair.
+
+TYPED REFUSALS (CompatExportError ⊂ ACPMappingError, .code attribute)
+  NEEDS_REVIEW_OR_PROPOSAL_REFUSED  — StrategyProposal input (any status);
+      proposals are never execution-eligible; Demo24 stays needs_review.
+  PLAN_NOT_FROZEN / PLAN_DOCUMENT_INVALID / PLAN_DIGEST_MISMATCH
+  MULTI_COORDINATE_UNSUPPORTED       — COUPLED_1D/SCHEDULED_1D or !=1 driver;
+      never projected onto a first driver.
+  DRIVER_KIND_UNSUPPORTED            — A/D kinds rejected (B distance only).
+  NONUNIFORM_POINTS                  — non-uniform point lists rejected, never
+      linearized (adapter: uniform points only).
+  POINTS_OUT_OF_BOUNDS               — 3..101 contract bounds enforced.
+  PATH_CANDIDATE_UNSUPPORTED         — PathCandidateV1/NEB payloads rejected.
+  INDEX_ORDER_MISMATCH / SOURCE_CASE_BINDING_MISMATCH / IDENTITY_MISMATCH
+  BACKEND_ENGINE_UNSUPPORTED / BACKEND_METHOD_MISSING / GEOMETRY_MISSING /
+  SCAN_RANGE_DEGENERATE / UNIT_UNSUPPORTED / DRIVER_MAPS_INVALID /
+  DRIVER_MAP_UNKNOWN / NO_LAMBDA_GRID / SCHEDULE_VALUE_COUNT_MISMATCH /
+  INVALID_START_ENDPOINT / EMPTY_CANDIDATES / MATERIALS_INVALID / POINTS_INVALID
+
+TESTS (43, all green)
+  test_compat_export_error_is_acp_mapping_error_family
+  test_single_1d_export_passes_contracts_validate_and_adapter_preflight
+      selector → freeze-shaped SINGLE_1D plan → export → validate_document==[]
+      + dumps_document + scan_plan_to_acp_request payload checks
+      (atoms/n_points/start/end match the exported coordinate).
+  test_exported_scanplan_roundtrips_fake_acp_losslessly
+      real ACPCLIBackend against fake acp.cli (pattern from
+      tests/test_acp_cli_backend.py:26-79, exercising actual cli_backend
+      functions — not mocks): run_scan → validate_cli_result →
+      cli_result_to_execution_record → collect_cli_path_bundle →
+      apply_scan_path_quality; frame count == n_points, target coordinates
+      match plan points (<1e-4), atom order preserved, RESULT geometry refs,
+      quality status usable (target_coordinates_match_plan,
+      no_atom_collisions).
+  test_export_is_deterministic (content_sha256 equal, dumps equal minus
+      created_at)
+  test_multi_coordinate_plan_is_typed_rejection_not_projection (parametrized
+      COUPLED_1D + SCHEDULED_1D; ACPMappingError + code, never a projection)
+  test_ad_driver_kinds_are_typed_rejection (parametrized A + D)
+  test_nonuniform_schedule_values_are_typed_rejection
+  test_nonuniform_lambda_grid_is_typed_rejection
+  test_point_count_bounds_are_honored (parametrized 2 → reject, 102 → reject)
+  test_point_count_bounds_within_contract_pass_preflight (parametrized 3, 101
+      → export + validate_document + adapter preflight pass)
+  test_path_candidate_is_typed_rejection
+  test_non_frozen_plan_is_refused (superseded doc → typed refusal)
+  test_source_case_sha256_mismatch_is_typed_refusal
+  test_atom_order_feeds_indices_and_index0_must_agree (order (3,1,2,4) →
+      maps [2,3] → indices [2,0]; stale index0 → INDEX_ORDER_MISMATCH)
+  test_needs_review_proposal_never_produces_ready_export
+  test_demo24_never_exports_ready_from_needs_review_proposals (parametrized
+      24 fixture records; rdkit pin never-skip; every selector proposal →
+      typed refusal NEEDS_REVIEW_OR_PROPOSAL_REFUSED; execution_eligible
+      always False)
+
+FULL SUITE
+  conda run -n pes2ts python -m pytest -q
+  → 1055 passed, 4 deselected in 40.90s (baseline 1012 + 43 new).
+  truth_guard + new tests: 62 passed. lsp error-level clean on both files.
+  compat_export.py: 518 pure LOC → `# allow: SIZE_OK` marker (plan-named
+  todo-18 single module; precedent contracts_v2/selector/registry).
+
+FINDINGS
+  1. contracts_v2 superseded-plan gap (out of scope, NOT fixed): validate's
+     allowed-set is BASE_REQUIRED|OBJECT_FIELDS|{extensions} — OPTIONAL_FIELDS
+     keys are never added, so a `supersedes` key is always "unknown field",
+     while superseded status requires it. Net effect: superseded
+     GenerationPlans are unvalidatable. Export still refuses non-frozen docs
+     (PLAN_DOCUMENT_INVALID / PLAN_NOT_FROZEN). Relevant to todo 23 freeze.
+  2. apply_scan_path_quality returns {"path_bundle", "quality_assessment"};
+     per-check booleans live under quality_assessment["checks"], not at top
+     level (test_acp_cli_backend only reads path_bundle.status).
+  3. make_generation_plan requires plan_id BOTH as the positional object_id
+     AND as a plan_id field (OBJECT_GENERATION_PLAN required fields).
+  4. contracts_v2 requires schedule_kind on SCHEDULED_1D candidates.
+  5. P1 export does not consult the capability registry — capability gating
+     stays with freeze (todo 23) + capabilities.py; the export trusts a
+     frozen plan's shape only and refuses proposals/non-frozen docs outright.
+      Unprobed-mode honesty remains the selector/proposal layer's job.
+  6. Fake-ACP naive frame generation (atom b snapped to atom a's x-axis line)
+     collides with spectators for P-start scans on straight-line fixtures;
+     the test fixture uses y-offset spectator geometry so both R-start and
+     P-start roundtrips stay collision-free under quality checks.
+
+EVIDENCE
+  .omo/evidence/task-18-pes-generation-graph-scan-strategy.txt
+  Commit: feat(scan-strategy): add legacy single-B compatibility export and P1 acceptance
