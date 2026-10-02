@@ -41,17 +41,17 @@ from test_selector_core import (  # noqa: E402
 
 from pes2ts_core.contracts import FORBIDDEN_TRUTH_KEYS
 from pes2ts_core.g1.v2_verify import FORBIDDEN_EXPORT_KEYS
-from pes2ts_core.scan_strategy.compile_orca import (
+from pes2ts_core.generation.planning.compile_orca import (
     CODE_CAPABILITY_UNPROBED,
     OrcaCompileError,
     compile_orca_path_request,
 )
-from pes2ts_core.scan_strategy.contracts_v2 import (
+from pes2ts_core.generation.planning.contracts_v2 import (
     CANDIDATE_KIND_PATH,
     PATH_METHOD_KINDS,
     validate_v2_document,
 )
-from pes2ts_core.scan_strategy.path_request import (
+from pes2ts_core.generation.planning.path_request import (
     BRANCH_NATIVE_SCAN_EXITED,
     CHANNEL_NEB,
     CHANNEL_SCAN,
@@ -72,7 +72,7 @@ from pes2ts_core.scan_strategy.path_request import (
     record_channel_outcome,
     request_json,
 )
-from pes2ts_core.scan_strategy.plan_freeze import (
+from pes2ts_core.generation.planning.plan_freeze import (
     PlanFreezeError,
     freeze_path_candidate_plan,
     verify_generation_plan,

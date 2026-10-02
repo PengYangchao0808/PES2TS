@@ -47,13 +47,13 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any, Final
 
-from pes2ts_core.scan_strategy.contracts_v2 import (
+from pes2ts_core.generation.planning.contracts_v2 import (
     MODE_COUPLED_1D,
     MODE_SCHEDULED_1D,
     MODE_SINGLE_1D,
     SCHEDULE_KINDS as CONTRACT_SCHEDULE_KINDS,
 )
-from pes2ts_core.scan_strategy.coordinate_pool import (
+from pes2ts_core.generation.planning.coordinate_pool import (
     GEOM_HH,
     GEOM_PARTNER,
     KIND_A,
@@ -68,7 +68,7 @@ from pes2ts_core.scan_strategy.coordinate_pool import (
     DriverSetCandidate,
     EventCoverage,
 )
-from pes2ts_core.scan_strategy.geometry_feasibility import (
+from pes2ts_core.generation.planning.geometry_feasibility import (
     DEFAULT_POINT_BASELINE,
     DEFAULT_POINT_MAX,
     FeasibilityReport,
@@ -835,6 +835,10 @@ def _assert_not_difference_coordinate(record: CoordinateRecord) -> None:
     )
     for text in haystacks:
         lowered = text.lower()
+        if lowered == "torsion_difference" and record.kind == KIND_D:
+            # This is an endpoint change of one torsion, not a difference of
+            # two driven distance coordinates.
+            continue
         for fragment in _FORBIDDEN_GEOMETRY_FRAGMENTS:
             if fragment in lowered:
                 raise ValueError(

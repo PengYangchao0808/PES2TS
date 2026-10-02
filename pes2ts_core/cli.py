@@ -89,15 +89,15 @@ from pes2ts_core.g1.p2_verify import verify_p2
 from pes2ts_core.g1.strata_auth import rebuild_authoritative_strata
 from pes2ts_core.g1.truth_schema import EXIT_TRUTH_FLAG_REQUIRED
 from pes2ts_core.g1.verify import verify_g1
-from pes2ts_core.g2 import EXIT_G2_FAILED
-from pes2ts_core.g2.pipeline import (
+from pes2ts_core.generation.execution.xtb_path import EXIT_G2_FAILED
+from pes2ts_core.generation.execution.xtb_path.pipeline import (
     InfrastructureError,
     prepare_ids,
     run_ids,
     select_reaction_ids,
 )
-from pes2ts_core.g2.runner import XtbNotFoundError
-from pes2ts_core.g2.verify import verify_g2
+from pes2ts_core.generation.execution.xtb_path.runner import XtbNotFoundError
+from pes2ts_core.generation.execution.xtb_path.verify import verify_g2
 from pes2ts_core.logging_setup import setup_logging
 from pes2ts_core.utils.parquet_io import read_parquet
 from pes2ts_core.version import __version__
@@ -761,7 +761,7 @@ def _g1_v2_sanitize_exports_handler(args: argparse.Namespace, config: dict[str, 
 
 def _g1_v2_scan_plan_handler(_args: argparse.Namespace, config: dict[str, Any]) -> int:
     """Write the scan-proposal tree skeleton, summary, and manifest."""
-    from pes2ts_core.scan_strategy.cli import scan_plan_proposals
+    from pes2ts_core.generation.planning.cli import scan_plan_proposals
 
     result = scan_plan_proposals(config)
     print(
@@ -773,7 +773,7 @@ def _g1_v2_scan_plan_handler(_args: argparse.Namespace, config: dict[str, Any]) 
 
 def _g1_v2_scan_verify_handler(_args: argparse.Namespace, config: dict[str, Any]) -> int:
     """Re-read the scan-proposal tree; exit 22 on any verification problem."""
-    from pes2ts_core.scan_strategy.cli import verify_scan_proposals
+    from pes2ts_core.generation.planning.cli import verify_scan_proposals
 
     result = verify_scan_proposals(config)
     if result.problems:
@@ -792,7 +792,7 @@ def _g1_v2_scan_verify_handler(_args: argparse.Namespace, config: dict[str, Any]
 
 def _g1_v2_scan_freeze_handler(_args: argparse.Namespace, config: dict[str, Any]) -> int:
     """Gate scan proposals into frozen plans; refuse without consumable exports."""
-    from pes2ts_core.scan_strategy.cli import freeze_scan_plans
+    from pes2ts_core.generation.planning.cli import freeze_scan_plans
 
     result = freeze_scan_plans(config)
     if not result.plan_gate_pass:

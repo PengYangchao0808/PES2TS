@@ -14,7 +14,7 @@ from typing import Any
 
 import pytest
 
-from pes2ts_core.g2.runner import (
+from pes2ts_core.generation.execution.xtb_path.runner import (
     PATH_INP_FILENAME,
     XtbNotFoundError,
     XTB_LOG_FILENAME,

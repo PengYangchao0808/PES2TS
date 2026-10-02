@@ -32,7 +32,7 @@ from dataclasses import dataclass
 from typing import Any, Final
 
 from pes2ts_core.contracts import seal_document
-from pes2ts_core.scan_strategy.contracts_v2 import (
+from pes2ts_core.generation.planning.contracts_v2 import (
     CANDIDATE_KIND_PATH,
     CANDIDATE_KIND_SCAN,
     OBJECT_GENERATION_PLAN,
@@ -40,7 +40,7 @@ from pes2ts_core.scan_strategy.contracts_v2 import (
     make_generation_plan,
     validate_v2_document,
 )
-from pes2ts_core.scan_strategy.path_request import (
+from pes2ts_core.generation.planning.path_request import (
     RECIPE_PATH_REQUEST_V1 as _RECIPE_PATH_REQUEST_V1,
 )
 from pes2ts_core.utils.hashing import sha256_bytes, stable_json_dumps

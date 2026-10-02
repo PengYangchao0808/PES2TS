@@ -51,7 +51,7 @@ from pes2ts_core.integration.acp.frame_recovery import (
     FrameRecoveryReport,
     MonitorRecord,
 )
-from pes2ts_core.scan_strategy.geometry_feasibility import covalent_radius_sum
+from pes2ts_core.generation.planning.geometry_feasibility import covalent_radius_sum
 from pes2ts_core.utils.hashing import stable_json_dumps
 
 __all__ = [

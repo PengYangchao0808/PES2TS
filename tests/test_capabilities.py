@@ -6,7 +6,7 @@ import pytest
 
 from pes2ts_core.contracts import FORBIDDEN_TRUTH_KEYS
 from pes2ts_core.g1.v2_verify import FORBIDDEN_EXPORT_KEYS
-from pes2ts_core.scan_strategy import capabilities as caps
+from pes2ts_core.generation.planning import capabilities as caps
 
 ORGANIC = ["B", "Br", "C", "Cl", "F", "H", "I", "N", "O", "P", "S", "Si"]
 

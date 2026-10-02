@@ -26,7 +26,7 @@ from pes2ts_core.g1.event_coupling import (
 )
 from pes2ts_core.g1.reaction_edit_graph import build_reaction_edit_graph
 from pes2ts_core.g1.v2_verify import FORBIDDEN_EXPORT_KEYS
-from pes2ts_core.scan_strategy.coordinate_pool import (
+from pes2ts_core.generation.planning.coordinate_pool import (
     KIND_A,
     KIND_B,
     KIND_D,
@@ -41,7 +41,7 @@ from pes2ts_core.scan_strategy.coordinate_pool import (
     OriginRecord,
     build_coordinate_pool,
 )
-from pes2ts_core.scan_strategy.geometry_feasibility import (
+from pes2ts_core.generation.planning.geometry_feasibility import (
     CHECK_ORDER,
     CODE_ANGLE_DEGENERATE,
     CODE_BROKEN_BOND_ALREADY_SEPARATED,
@@ -73,7 +73,7 @@ from pes2ts_core.scan_strategy.geometry_feasibility import (
     shortest_arc_delta,
     unit_scaled_jacobian,
 )
-from pes2ts_core.scan_strategy.registry import route_strategies
+from pes2ts_core.generation.planning.registry import route_strategies
 
 FORBIDDEN = {key.lower() for key in FORBIDDEN_TRUTH_KEYS} | {
     key.lower() for key in FORBIDDEN_EXPORT_KEYS
@@ -1075,8 +1075,8 @@ def test_start_geometry_match_passes_when_consistent() -> None:
 # ---------------------------------------------------------------------------
 # 13. Path precheck: interpolation collision.
 # ---------------------------------------------------------------------------
-def test_path_precheck_collision_midway_rejected() -> None:
-    """Given endpoint geometries whose interpolation collides mid-path, reject."""
+def test_path_precheck_chord_collision_is_warning_not_physical_rejection() -> None:
+    """A colliding straight chord does not prove the relaxed path collides."""
     bundle = _hand_bundle(
         [(1, 2, 1), (1, 3, 1)], [(1, 2, 1), (1, 3, 1)], elements={1: "C", 2: "C", 3: "C"}
     )
@@ -1106,13 +1106,13 @@ def test_path_precheck_collision_midway_rejected() -> None:
         candidate, _pool((record,), candidate), bundle, materials, {}
     )
 
-    assert not report.ok
+    assert report.ok
     path_codes = {
         CODE_PATH_COLLISION,
         CODE_INTERPOLATION_INFEASIBLE,
     } & set(_codes(report))
-    assert path_codes, _codes(report)
-    assert _check_status(report, "path_precheck") == STATUS_FAIL
+    assert not path_codes, _codes(report)
+    assert _check_status(report, "path_precheck") == "warning"
 
 
 # ---------------------------------------------------------------------------
@@ -1136,7 +1136,7 @@ def test_crude_045_8_range_is_not_a_qualification_gate() -> None:
     # The module must not implement the planning.py range as a gate.
     import inspect
 
-    from pes2ts_core.scan_strategy import geometry_feasibility as module
+    from pes2ts_core.generation.planning import geometry_feasibility as module
 
     source = inspect.getsource(module)
     assert "0.45 <= " not in source  # no crude-range comparison gate
@@ -1222,7 +1222,7 @@ def test_b_distance_nonpositive_rejected() -> None:
     )
 
     assert not report.ok
-    from pes2ts_core.scan_strategy.geometry_feasibility import (
+    from pes2ts_core.generation.planning.geometry_feasibility import (
         CODE_B_DISTANCE_NONPOSITIVE,
     )
 
@@ -1240,7 +1240,7 @@ def test_materials_required_typed_when_missing() -> None:
     )
 
     assert not report.ok
-    from pes2ts_core.scan_strategy.geometry_feasibility import CODE_MATERIALS_REQUIRED
+    from pes2ts_core.generation.planning.geometry_feasibility import CODE_MATERIALS_REQUIRED
 
     assert CODE_MATERIALS_REQUIRED in _codes(report)
     skipped = [c for c in report.checks if c.status == STATUS_SKIPPED]
@@ -1318,7 +1318,7 @@ def test_policy_invalid_config_typed() -> None:
         candidate, _pool((record,), candidate), bundle, materials, bad_config
     )
     assert not report.ok
-    from pes2ts_core.scan_strategy.geometry_feasibility import CODE_POLICY_INVALID
+    from pes2ts_core.generation.planning.geometry_feasibility import CODE_POLICY_INVALID
 
     assert CODE_POLICY_INVALID in _codes(report)
     assert all(c.status == STATUS_SKIPPED for c in report.checks)

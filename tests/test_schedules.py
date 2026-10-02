@@ -24,13 +24,13 @@ from pes2ts_core.g1.event_coupling import (
 )
 from pes2ts_core.g1.reaction_edit_graph import build_reaction_edit_graph
 from pes2ts_core.g1.v2_verify import FORBIDDEN_EXPORT_KEYS
-from pes2ts_core.scan_strategy.contracts_v2 import (
+from pes2ts_core.generation.planning.contracts_v2 import (
     MODE_COUPLED_1D,
     MODE_SCHEDULED_1D,
     MODE_SINGLE_1D,
     SCHEDULE_KINDS as CONTRACT_SCHEDULE_KINDS,
 )
-from pes2ts_core.scan_strategy.coordinate_pool import (
+from pes2ts_core.generation.planning.coordinate_pool import (
     GEOM_HH,
     GEOM_PARTNER,
     KIND_A,
@@ -48,9 +48,9 @@ from pes2ts_core.scan_strategy.coordinate_pool import (
     OriginRecord,
     build_coordinate_pool,
 )
-from pes2ts_core.scan_strategy.geometry_feasibility import FeasibilityReport
-from pes2ts_core.scan_strategy.registry import route_strategies
-from pes2ts_core.scan_strategy.schedules import (
+from pes2ts_core.generation.planning.geometry_feasibility import FeasibilityReport
+from pes2ts_core.generation.planning.registry import route_strategies
+from pes2ts_core.generation.planning.schedules import (
     CODE_DIFFERENCE_COORDINATE_FORBIDDEN,
     CODE_DRIVER_ID_UNRESOLVED,
     CODE_H_DOUBLE_DISTANCE_COLLAPSED,

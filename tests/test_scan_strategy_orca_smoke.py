@@ -2,7 +2,7 @@
 
 Never-skip semantics follow ``tests/test_g2_xtb_smoke.py:46-55``: with
 ``PES2TS_ORCA_EXECUTABLE`` set to a real ORCA binary, each representative
-sub-family compiles through ``pes2ts_core.scan_strategy.compile_orca`` (todo
+sub-family compiles through ``pes2ts_core.generation.planning.compile_orca`` (todo
 19), assembles a minimal runnable ORCA input from the compiled artifacts,
 executes the real binary on a tiny molecule, and records the ORCA version
 line plus run evidence as capability-registry probe receipts.
@@ -36,9 +36,9 @@ from typing import Any
 import pytest
 
 from pes2ts_core.integration.acp.multicoord import ADAPTER_VERSION_MULTICOORD
-from pes2ts_core.scan_strategy import capabilities as caps
-from pes2ts_core.scan_strategy import compile_orca as co
-from pes2ts_core.scan_strategy.capabilities import ProbeReceipt
+from pes2ts_core.generation.planning import capabilities as caps
+from pes2ts_core.generation.planning import compile_orca as co
+from pes2ts_core.generation.planning.capabilities import ProbeReceipt
 from pes2ts_core.utils.hashing import stable_json_dumps
 
 ENV_EXECUTABLE = "PES2TS_ORCA_EXECUTABLE"

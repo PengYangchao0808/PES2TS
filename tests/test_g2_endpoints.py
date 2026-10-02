@@ -24,7 +24,7 @@ import pytest
 from pes2ts_core.g0.rejections import RejectionCode
 from pes2ts_core.g0.rp_checks import ELEMENT_SYMBOLS
 from pes2ts_core.g1.index_map import COVALENT_RADII
-from pes2ts_core.g2.endpoints import (
+from pes2ts_core.generation.assembly.endpoints import (
     EndpointError,
     ComponentGeometry,
     anchor_maps,

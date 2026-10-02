@@ -18,7 +18,7 @@ dynamic-execution primitives.  The allowlist is intentionally tiny:
   checked normally, and the handler itself must not use subprocess/importlib.
 
 A second, narrower list exempts modules from *only* the
-``DYNAMIC_EXEC_RISK`` findings: ``pes2ts_core/g2/runner.py`` must spawn the
+``DYNAMIC_EXEC_RISK`` findings: ``pes2ts_core/generation/execution/xtb_path/runner.py`` must spawn the
 external GFN2-xTB binary via ``subprocess``, so its dynamic-execution
 primitives are sanctioned, but it is still scanned in full for quarantined
 path strings, truth-file names, and truth imports.
@@ -73,7 +73,7 @@ DEFAULT_ALLOWLIST: Final[tuple[str, ...]] = (
 #: (quarantined-path strings, truth-file names, truth imports) still applies
 #: to these modules in full.
 DYNAMIC_EXEC_ALLOWLIST: Final[tuple[str, ...]] = (
-    "pes2ts_core/g2/runner.py",
+    "pes2ts_core/generation/execution/xtb_path/runner.py",
 )
 
 #: Modules permitted to import ``subprocess`` only (project-relative). The

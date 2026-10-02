@@ -25,8 +25,8 @@ from pes2ts_core.g1.event_coupling import (
 )
 from pes2ts_core.g1.reaction_edit_graph import build_reaction_edit_graph
 from pes2ts_core.g1.v2_verify import FORBIDDEN_EXPORT_KEYS
-from pes2ts_core.scan_strategy.contracts_v2 import COVERAGE_KINDS
-from pes2ts_core.scan_strategy.coordinate_pool import (
+from pes2ts_core.generation.planning.contracts_v2 import COVERAGE_KINDS
+from pes2ts_core.generation.planning.coordinate_pool import (
     COVERAGE_COUPLED_MONITOR,
     COVERAGE_DIRECT,
     COVERAGE_UNCOVERED,
@@ -63,7 +63,7 @@ from pes2ts_core.scan_strategy.coordinate_pool import (
     build_coordinate_pool,
     constraint_rank,
 )
-from pes2ts_core.scan_strategy.registry import route_strategies
+from pes2ts_core.generation.planning.registry import route_strategies
 from pes2ts_core.utils.hashing import stable_json_dumps
 
 FORBIDDEN = {key.lower() for key in FORBIDDEN_TRUTH_KEYS} | {

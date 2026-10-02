@@ -30,17 +30,17 @@ from rdkit import rdBase
 
 from pes2ts_core.contracts import FORBIDDEN_TRUTH_KEYS
 from pes2ts_core.g1.v2_verify import FORBIDDEN_EXPORT_KEYS
-from pes2ts_core.scan_strategy.graph_rebuild import (
+from pes2ts_core.generation.planning.graph_rebuild import (
     load_endpoint_materials_from_export,
     rebuild_endpoint_graphs,
 )
-from pes2ts_core.scan_strategy.selector import (
+from pes2ts_core.generation.planning.selector import (
     RankInputs,
     all_release_gates_pass,
     propose_strategies,
     rank_rank_inputs,
 )
-from pes2ts_core.scan_strategy.contracts_v2 import validate_v2_document
+from pes2ts_core.generation.planning.contracts_v2 import validate_v2_document
 from pes2ts_core.utils.hashing import stable_json_dumps
 
 ROOT = Path(__file__).resolve().parents[1]

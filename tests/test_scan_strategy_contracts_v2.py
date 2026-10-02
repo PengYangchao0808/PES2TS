@@ -7,7 +7,7 @@ import pytest
 
 from pes2ts_core.contracts import FORBIDDEN_TRUTH_KEYS, ContractError
 from pes2ts_core.g1.v2_verify import FORBIDDEN_EXPORT_KEYS
-from pes2ts_core.scan_strategy.contracts_v2 import (
+from pes2ts_core.generation.planning.contracts_v2 import (
     CANDIDATE_KIND_PATH,
     CANDIDATE_KIND_SCAN,
     FORBIDDEN_KEYS,

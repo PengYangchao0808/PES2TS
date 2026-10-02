@@ -42,9 +42,9 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, replace
 from typing import Any, Final
 
-from pes2ts_core.scan_strategy.contracts_v2 import DIRECTIONS, ENDPOINTS
-from pes2ts_core.scan_strategy.direction_assembly import SPLICE_POLICY, AnchorReason
-from pes2ts_core.scan_strategy.path_request import (
+from pes2ts_core.generation.planning.contracts_v2 import DIRECTIONS, ENDPOINTS
+from pes2ts_core.generation.planning.direction_assembly import SPLICE_POLICY, AnchorReason
+from pes2ts_core.generation.planning.path_request import (
     BRANCH_NATIVE_SCAN,
     BRANCH_NATIVE_SCAN_EXITED,
     CHANNEL_NEB,
@@ -56,7 +56,7 @@ from pes2ts_core.scan_strategy.path_request import (
     enter_neb_channels,
     record_channel_outcome,
 )
-from pes2ts_core.scan_strategy.plan_freeze import BudgetLedger
+from pes2ts_core.generation.planning.plan_freeze import BudgetLedger
 from pes2ts_core.utils.hashing import JSONValue, stable_json_dumps
 
 # ---------------------------------------------------------------------------

@@ -28,8 +28,8 @@ never spliced without verification — this module never claims curve
 equivalence (``SPLICE_POLICY`` below; splicing accounting is todo 28).
 
 Multi-component assembly: rigid alignment reuses the G2 Kabsch primitives
-(:func:`pes2ts_core.g2.endpoints.kabsch_transform` /
-:func:`pes2ts_core.g2.endpoints.place_single`); finite approach
+(:func:`pes2ts_core.generation.assembly.endpoints.kabsch_transform` /
+:func:`pes2ts_core.generation.assembly.endpoints.place_single`); finite approach
 configurations translate driver-relevant fragments along the driver axis;
 a nonbonded collision check gates readiness; spectator components keep their
 stored placement and are flagged, never silently dropped.  Source files that
@@ -56,12 +56,12 @@ from typing import Any, Final, Protocol
 
 from pes2ts_core.g0.rp_checks import ELEMENT_SYMBOLS
 from pes2ts_core.g1.index_map import COVALENT_RADII
-from pes2ts_core.g2.endpoints import (
+from pes2ts_core.generation.assembly.endpoints import (
     ComponentGeometry,
     place_single,
 )
-from pes2ts_core.scan_strategy.contracts_v2 import DIRECTIONS, ENDPOINTS
-from pes2ts_core.scan_strategy.registry import (
+from pes2ts_core.generation.planning.contracts_v2 import DIRECTIONS, ENDPOINTS
+from pes2ts_core.generation.planning.registry import (
     STRATEGY_CONNECTIVITY_EXCHANGE,
     STRATEGY_LOCAL_CONNECTIVITY,
 )
@@ -1299,6 +1299,12 @@ def assemble_start_side(
         min_nonbonded = best_config_ok.min_nonbonded_distance
         n_severe = 0
         collision_ok_final = True
+        # Publish the coordinates whose safety we just certified. Reporting
+        # the approach as safe while returning the original clashing geometry
+        # made downstream scans start from a different assembly.
+        flat_coords = dict(flat_coords)
+        for map_id in best_config_ok.moved_maps:
+            flat_coords[map_id] = _shift(flat_coords[map_id], best_config_ok.axis, best_config_ok.shift)
     else:
         min_nonbonded = base_min
         n_severe = base_severe

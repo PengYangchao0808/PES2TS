@@ -36,13 +36,13 @@ from pes2ts_core.integration.acp.multicoord import (
     multicoord_request_payload,
     parse_multicoord_result,
 )
-from pes2ts_core.scan_strategy import capabilities as caps
-from pes2ts_core.scan_strategy import compile_orca as co
-from pes2ts_core.scan_strategy.contracts_v2 import (
+from pes2ts_core.generation.planning import capabilities as caps
+from pes2ts_core.generation.planning import compile_orca as co
+from pes2ts_core.generation.planning.contracts_v2 import (
     make_strategy_proposal,
     validate_v2_document,
 )
-from pes2ts_core.scan_strategy.plan_freeze import (
+from pes2ts_core.generation.planning.plan_freeze import (
     FAILURE_PREDICATES,
     FAILURE_TREE_CODES,
     BudgetLedger,
@@ -54,8 +54,8 @@ from pes2ts_core.scan_strategy.plan_freeze import (
     is_failure_code,
     verify_generation_plan,
 )
-from pes2ts_core.scan_strategy.selector import propose_strategies
-from pes2ts_core.scan_strategy.target_path import (
+from pes2ts_core.generation.planning.selector import propose_strategies
+from pes2ts_core.generation.planning.target_path import (
     CODE_TARGET_INCOMPLETE,
     EVIDENCE_FIRST_ORDER_IMAGINARY,
     EVIDENCE_IRC_FORWARD,

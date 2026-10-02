@@ -56,7 +56,7 @@ import numpy as np
 from pes2ts_core.g0.rp_checks import ELEMENT_SYMBOLS
 from pes2ts_core.g1.endpoint_graph import EndpointGraphBundle
 from pes2ts_core.g1.index_map import COVALENT_RADII
-from pes2ts_core.scan_strategy.coordinate_pool import (
+from pes2ts_core.generation.planning.coordinate_pool import (
     KIND_A,
     KIND_B,
     KIND_D,
@@ -102,6 +102,7 @@ CHECK_ORDER: Final[tuple[str, ...]] = (
 
 STATUS_PASS: Final[str] = "pass"
 STATUS_FAIL: Final[str] = "fail"
+STATUS_WARNING: Final[str] = "warning"
 STATUS_SKIPPED: Final[str] = "skipped"
 
 CODE_COORDINATE_SCHEMA_INVALID: Final[str] = "COORDINATE_SCHEMA_INVALID"
@@ -906,14 +907,12 @@ def assess_geometry_feasibility(
         policy=policy,
     )
     if path_issues:
-        record(CHECK_PATH_PRECHECK, STATUS_FAIL, "; ".join(path_issues))
-        for issue in path_issues:
-            code = (
-                CODE_PATH_COLLISION
-                if issue.startswith("collision")
-                else CODE_INTERPOLATION_INFEASIBLE
-            )
-            fail(CHECK_PATH_PRECHECK, code, issue)
+        # A Cartesian chord is not the constrained optimization path. A
+        # collision/degeneracy on that chord is a risk requiring real backend
+        # preoptimization, not proof that the endpoint-defined scan is invalid.
+        # Endpoint collisions, coordinate definitions and Jacobian checks above
+        # remain hard failures.
+        record(CHECK_PATH_PRECHECK, STATUS_WARNING, "; ".join(path_issues))
     else:
         record(
             CHECK_PATH_PRECHECK,

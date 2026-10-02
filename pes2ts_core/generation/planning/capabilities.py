@@ -80,7 +80,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Final
 
-from pes2ts_core.scan_strategy.contracts_v2 import (
+from pes2ts_core.generation.planning.contracts_v2 import (
     CAPABILITY_MODES,
     DRIVER_KINDS,
     MODE_COUPLED_1D,

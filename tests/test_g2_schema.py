@@ -9,7 +9,7 @@ import pytest
 
 from pes2ts_core.config_loader import load_config
 from pes2ts_core.g0.rejections import RejectionCode
-from pes2ts_core.g2 import (
+from pes2ts_core.generation.execution.xtb_path import (
     EXIT_G2_FAILED,
     G2_DIRNAME,
     G2_PATHS_DIRNAME,
@@ -17,7 +17,7 @@ from pes2ts_core.g2 import (
     SCHEMA_MANIFEST,
     SCHEMA_PATH,
 )
-from pes2ts_core.g2.status import (
+from pes2ts_core.generation.execution.xtb_path.status import (
     DEFAULT_REVERSE_RETRY_TRIGGERS,
     FAILURE_PRECEDENCE,
     G2_FAILURE_CODES,
@@ -139,7 +139,7 @@ def test_user_config_deep_merges_over_g2_defaults(tmp_path: Path) -> None:
 
 
 def test_g2_contract_modules_carry_no_truth_references() -> None:
-    for relative in ("pes2ts_core/g2/__init__.py", "pes2ts_core/g2/status.py"):
+    for relative in ("pes2ts_core/generation/execution/xtb_path/__init__.py", "pes2ts_core/generation/execution/xtb_path/status.py"):
         text = (PROJECT_ROOT / relative).read_text(encoding="utf-8")
         assert "ground_truth" not in text, relative
         assert "truth_sources" not in text, relative

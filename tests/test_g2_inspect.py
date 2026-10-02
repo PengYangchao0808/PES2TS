@@ -28,8 +28,8 @@ import math
 import pytest
 
 from pes2ts_core.g0.rejections import RejectionCode
-from pes2ts_core.g2.inspect import Verdict, evaluate_validity, frame_metrics
-from pes2ts_core.g2.xtb_output import Frame
+from pes2ts_core.generation.execution.xtb_path.inspect import Verdict, evaluate_validity, frame_metrics
+from pes2ts_core.generation.execution.xtb_path.xtb_output import Frame
 
 MAP_ORDER = (1, 2, 3)
 ELEMENTS = {1: "C", 2: "O", 3: "H"}

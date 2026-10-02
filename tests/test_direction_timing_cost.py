@@ -32,11 +32,11 @@ import pytest
 
 from pes2ts_core.contracts import FORBIDDEN_TRUTH_KEYS
 from pes2ts_core.g1.v2_verify import FORBIDDEN_EXPORT_KEYS
-from pes2ts_core.scan_strategy.direction_assembly import (
+from pes2ts_core.generation.planning.direction_assembly import (
     AnchorReason,
     SPLICE_POLICY,
 )
-from pes2ts_core.scan_strategy.direction_timing_cost import (
+from pes2ts_core.generation.planning.direction_timing_cost import (
     CHANNEL_NEB,
     CHANNEL_SCAN,
     CODE_DIRECTION_MISMATCH,
@@ -74,12 +74,12 @@ from pes2ts_core.scan_strategy.direction_timing_cost import (
     enter_neb_snapshot,
     zeroed_channels,
 )
-from pes2ts_core.scan_strategy.path_request import (
+from pes2ts_core.generation.planning.path_request import (
     BRANCH_NATIVE_SCAN_EXITED,
     METHOD_CHANNELS,
     enter_neb_channels,
 )
-from pes2ts_core.scan_strategy.plan_freeze import BudgetLedger
+from pes2ts_core.generation.planning.plan_freeze import BudgetLedger
 from pes2ts_core.utils.hashing import stable_json_dumps
 
 FORBIDDEN: frozenset[str] = frozenset(
@@ -330,7 +330,7 @@ def test_direction_mismatch_and_bad_method_kind_rejected() -> None:
 
 def test_endpoint_and_direction_vocabulary_from_contracts() -> None:
     # The ledger vocabulary stays aligned with contracts_v2 (single source).
-    from pes2ts_core.scan_strategy.contracts_v2 import DIRECTIONS, ENDPOINTS
+    from pes2ts_core.generation.planning.contracts_v2 import DIRECTIONS, ENDPOINTS
 
     assert set(METHOD_CHANNELS) == {CHANNEL_NEB, CHANNEL_SCAN}
     assert DIRECTIONS == ("R_to_P", "P_to_R")

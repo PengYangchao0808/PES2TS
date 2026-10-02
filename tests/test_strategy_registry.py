@@ -33,7 +33,7 @@ from pes2ts_core.g1.event_coupling import (
 )
 from pes2ts_core.g1.reaction_edit_graph import build_reaction_edit_graph
 from pes2ts_core.g1.v2_verify import FORBIDDEN_EXPORT_KEYS
-from pes2ts_core.scan_strategy.registry import (
+from pes2ts_core.generation.planning.registry import (
     ORGANIC_ELEMENTS,
     OUTCOME_EXECUTABLE_CANDIDATE_SET,
     OUTCOME_NEEDS_REVIEW,
@@ -709,7 +709,7 @@ def _load_manifest() -> dict[str, Any]:
 
 def _rebuild_p0(snapshot: Mapping[str, Any]) -> dict[str, Any]:
     from pes2ts_core.g1.endpoint_context import EndpointElectronic as _EE
-    from pes2ts_core.scan_strategy.graph_rebuild import (
+    from pes2ts_core.generation.planning.graph_rebuild import (
         load_endpoint_materials_from_export,
         rebuild_endpoint_graphs,
     )

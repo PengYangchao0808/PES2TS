@@ -34,7 +34,7 @@ import pytest
 
 from pes2ts_core.contracts import FORBIDDEN_TRUTH_KEYS
 from pes2ts_core.g1.v2_verify import FORBIDDEN_EXPORT_KEYS
-from pes2ts_core.scan_strategy.scientific_report import (
+from pes2ts_core.generation.planning.scientific_report import (
     ARM_COUPLED_1D,
     ARM_GRAPH_SINGLE_B,
     ARM_OLD_SINGLE_B,

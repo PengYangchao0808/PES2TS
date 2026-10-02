@@ -36,9 +36,9 @@ from numpy.typing import NDArray
 from pes2ts_core.g0.rejections import RejectionCode
 from pes2ts_core.g0.rp_checks import ELEMENT_SYMBOLS
 from pes2ts_core.g1.index_map import COVALENT_RADII
-from pes2ts_core.g2.endpoints import kabsch_transform
-from pes2ts_core.g2.status import FAILURE_PRECEDENCE, STATUS_FAILED, STATUS_VALID
-from pes2ts_core.g2.xtb_output import Frame
+from pes2ts_core.generation.assembly.endpoints import kabsch_transform
+from pes2ts_core.generation.execution.xtb_path.status import FAILURE_PRECEDENCE, STATUS_FAILED, STATUS_VALID
+from pes2ts_core.generation.execution.xtb_path.xtb_output import Frame
 from pes2ts_core.utils.hashing import JSONValue
 
 #: Plan ``g2.validity.endpoint_rmsd_max`` fallback.

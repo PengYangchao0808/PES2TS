@@ -57,12 +57,12 @@ from pes2ts_core.g1.event_coupling import (
 )
 from pes2ts_core.g1.reaction_edit_graph import ReactionEditGraph
 from pes2ts_core.g1.v2_schema import HH_EVENT_KINDS
-from pes2ts_core.scan_strategy.contracts_v2 import (
+from pes2ts_core.generation.planning.contracts_v2 import (
     COVERAGE_KINDS,
     DRIVER_KINDS,
     MAX_SCAN_DRIVERS,
 )
-from pes2ts_core.scan_strategy.registry import RouteResult, StrategyCandidate
+from pes2ts_core.generation.planning.registry import RouteResult, StrategyCandidate
 from pes2ts_core.utils.hashing import stable_json_dumps
 
 # ---------------------------------------------------------------------------
@@ -371,6 +371,7 @@ def build_coordinate_pool(
     coupling: EventCouplingGraph,
     bundle: EndpointGraphBundle,
     materials: EndpointMaterials | Mapping[str, Any] | None = None,
+    *, connectivity_only: bool = False,
 ) -> CoordinatePool:
     """Build the coordinate pool + driver-set candidates of one reaction.
 
@@ -397,6 +398,12 @@ def build_coordinate_pool(
     _emit_hydrogen_coordinates(drafts, coupling, elements, membership)
     _emit_ring_coordinates(drafts, events, bundle)
     _emit_conformational_coordinates(drafts, bundle, elements, normalized_materials)
+    if connectivity_only:
+        active_pairs = {e.pair for e in edit_graph.edits if e.edit_kind in {"formed", "broken"}}
+        # Geometry suggestions remain passive; guards require a frozen promotion.
+        drafts = [d._replace(role=ROLE_MONITOR)
+                  if d.role == ROLE_DRIVER and (d.kind != KIND_B or tuple(sorted(d.atom_maps)) not in active_pairs)
+                  else d for d in drafts if d.origin.edit_kind != "order_changed"]
     records = _merge_and_assign_ids(drafts)
 
     candidates = _build_driver_candidates(

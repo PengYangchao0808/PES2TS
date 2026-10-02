@@ -37,9 +37,9 @@ from pes2ts_core.integration.acp.multicoord import (
     multicoord_request_payload,
 )
 from pes2ts_core.planning import build_minimal_scan_plan
-from pes2ts_core.scan_strategy import capabilities as caps
-from pes2ts_core.scan_strategy import compile_orca as co
-from pes2ts_core.scan_strategy.capabilities import ProbeReceipt
+from pes2ts_core.generation.planning import capabilities as caps
+from pes2ts_core.generation.planning import compile_orca as co
+from pes2ts_core.generation.planning.capabilities import ProbeReceipt
 from pes2ts_core.utils.hashing import stable_json_dumps
 
 ENV_ROOT = "PES2TS_ACP_ROOT"

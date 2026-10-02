@@ -36,6 +36,7 @@ from pes2ts_core.utils.jsonio import read_json
 from pes2ts_core.utils.parquet_io import read_parquet
 from pes2ts_core.utils.truth_guard import (
     DEFAULT_ALLOWLIST,
+    DYNAMIC_EXEC_ALLOWLIST,
     DYNAMIC_EXEC_RISK,
     TRUTH_FILE_REF,
     TRUTH_IMPORT,
@@ -292,7 +293,7 @@ def test_g2_tree_is_clean_under_default_allowlists() -> None:
     # relative paths are computed against the scan root's parent, so the
     # scan must root at the package for the allowlist names to match
     package_root = Path(__file__).resolve().parents[1] / "pes2ts_core"
-    g2_root = package_root / "g2"
+    g2_root = package_root / "generation" / "execution" / "xtb_path"
     # When
     findings = [
         finding
@@ -307,8 +308,9 @@ def test_dynamic_exec_allowlist_suppresses_only_dynamic_exec(tmp_path: Path) -> 
     # Given: a module at the dynamic-exec allowlisted relative path using
     # subprocess/importlib/eval — the sanctioned g2 runner shape
     root = tmp_path / "pes2ts_core"
-    (root / "g2").mkdir(parents=True)
-    runner = root / "g2" / "runner.py"
+    # Bind to the live allowlist so a package move cannot silently un-couple this.
+    runner = root / Path(DYNAMIC_EXEC_ALLOWLIST[0]).relative_to("pes2ts_core")
+    runner.parent.mkdir(parents=True)
     runner.write_text(
         "import subprocess\n"
         "import importlib\n"
@@ -335,8 +337,9 @@ def test_dynamic_exec_allowlist_module_still_reports_truth_refs(tmp_path: Path) 
     # Given: a module on the dynamic-exec allowlist that also embeds a
     # quarantined-path string (the injection case)
     root = tmp_path / "pes2ts_core"
-    (root / "g2").mkdir(parents=True)
-    runner = root / "g2" / "runner.py"
+    # Bind to the live allowlist so a package move cannot silently un-couple this.
+    runner = root / Path(DYNAMIC_EXEC_ALLOWLIST[0]).relative_to("pes2ts_core")
+    runner.parent.mkdir(parents=True)
     runner.write_text(
         "import subprocess\n"
         "TOKEN = 'data/ground_truth/ts.parquet'\n",
@@ -381,7 +384,7 @@ def test_real_g2_runner_when_present_is_fully_clean() -> None:
         Path(__file__).resolve().parents[1] / "pes2ts_core" / "g2" / "runner.py"
     )
     if not runner.is_file():
-        pytest.skip("pes2ts_core/g2/runner.py does not exist yet (task 5)")
+        pytest.skip("pes2ts_core/generation/execution/xtb_path/runner.py does not exist yet (task 5)")
     # When
     findings = [finding for finding in scan_truth_access() if finding.file == str(runner)]
     # Then: dynamic exec is exempt and no truth reference is present

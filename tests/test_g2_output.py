@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pytest
 
-from pes2ts_core.g2.xtb_output import (
+from pes2ts_core.generation.execution.xtb_path.xtb_output import (
     XtbOutputError,
     check_npath_consistency,
     enumerate_trial_segments,

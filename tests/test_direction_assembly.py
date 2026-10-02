@@ -10,9 +10,9 @@ import numpy as np
 import pytest
 
 from pes2ts_core.contracts import FORBIDDEN_TRUTH_KEYS
-from pes2ts_core.g2.endpoints import ComponentGeometry, place_single
+from pes2ts_core.generation.assembly.endpoints import ComponentGeometry, place_single
 from pes2ts_core.g1.v2_verify import FORBIDDEN_EXPORT_KEYS
-from pes2ts_core.scan_strategy.direction_assembly import (
+from pes2ts_core.generation.planning.direction_assembly import (
     ANCHOR_DRIVER_BONDED_AT_START,
     ANCHOR_LAYER1_REVIEW_PRIORITY,
     ANCHOR_TIE_BIDIRECTIONAL,
@@ -52,7 +52,7 @@ from pes2ts_core.scan_strategy.direction_assembly import (
     policy_from_config,
     resolve_direction_assembly,
 )
-from pes2ts_core.scan_strategy.registry import (
+from pes2ts_core.generation.planning.registry import (
     STRATEGY_CONNECTIVITY_EXCHANGE,
     STRATEGY_H_TRANSFER,
     STRATEGY_LOCAL_CONNECTIVITY,
@@ -509,7 +509,7 @@ def test_kabsch_place_single_hand_case() -> None:
         assert placed[map_][1] == pytest.approx(coord[1], abs=1e-9)
         assert placed[map_][2] == pytest.approx(coord[2], abs=1e-9)
     # right-handed: Kabsch result keeps det(rotation)=+1 via reflection correction
-    from pes2ts_core.g2.endpoints import kabsch_transform
+    from pes2ts_core.generation.assembly.endpoints import kabsch_transform
 
     moving_arr = np.array([moving.coords[m] for m in (1, 2, 3)], dtype=float)
     onto_arr = np.array([onto.coords[m] for m in (1, 2, 3)], dtype=float)

@@ -33,7 +33,7 @@ from pes2ts_core.g1.endpoint_graph import (
 from pes2ts_core.g1.parse import parse_reaction
 from pes2ts_core.g1.reaction_edit_graph import build_reaction_edit_graph
 from pes2ts_core.g1.v2_verify import FORBIDDEN_EXPORT_KEYS
-from pes2ts_core.scan_strategy.graph_rebuild import (
+from pes2ts_core.generation.planning.graph_rebuild import (
     load_endpoint_materials_from_export,
     rebuild_endpoint_graphs,
 )

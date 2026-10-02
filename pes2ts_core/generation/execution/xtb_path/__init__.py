@@ -2,14 +2,14 @@
 
 This module owns the G2 directory, schema, and exit-code contract constants
 shared by every G2 stage writer and reader, and re-exports the status and
-failure-code contracts from :mod:`pes2ts_core.g2.status`.
+failure-code contracts from :mod:`pes2ts_core.generation.execution.xtb_path.status`.
 """
 
 from __future__ import annotations
 
 from typing import Final
 
-from pes2ts_core.g2.status import (
+from pes2ts_core.generation.execution.xtb_path.status import (
     DEFAULT_REVERSE_RETRY_TRIGGERS,
     FAILURE_PRECEDENCE,
     G2_FAILURE_CODES,

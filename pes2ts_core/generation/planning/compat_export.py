@@ -43,7 +43,7 @@ from typing import Any
 
 from pes2ts_core.contracts import make_document, seal_document
 from pes2ts_core.integration.acp.adapter import ACPMappingError
-from pes2ts_core.scan_strategy.contracts_v2 import (
+from pes2ts_core.generation.planning.contracts_v2 import (
     CANDIDATE_KIND_PATH,
     CANDIDATE_KIND_SCAN,
     MODE_SINGLE_1D,

@@ -41,13 +41,13 @@ from typing import Any, Final
 from pes2ts_core.contracts import FORBIDDEN_TRUTH_KEYS as _V1_TRUTH_KEYS
 from pes2ts_core.g1.endpoint_graph import EndpointGraphBundle
 from pes2ts_core.g1.v2_verify import FORBIDDEN_EXPORT_KEYS as _V2_EXPORT_KEYS
-from pes2ts_core.scan_strategy.contracts_v2 import (
+from pes2ts_core.generation.planning.contracts_v2 import (
     CANDIDATE_KIND_PATH,
     DIRECTIONS,
     ENDPOINTS,
     PATH_METHOD_KINDS,
 )
-from pes2ts_core.scan_strategy.coordinate_pool import EndpointMaterials
+from pes2ts_core.generation.planning.coordinate_pool import EndpointMaterials
 from pes2ts_core.utils.hashing import stable_json_dumps
 
 # ---------------------------------------------------------------------------

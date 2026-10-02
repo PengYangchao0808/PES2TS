@@ -15,8 +15,8 @@ from pathlib import Path
 from typing import Any
 
 from pes2ts_core.g1.build import reaction_change_path, shard_name
-from pes2ts_core.g2 import G2_DIRNAME, G2_PATHS_DIRNAME, SCHEMA_MANIFEST, SCHEMA_PATH
-from pes2ts_core.g2.status import G2_STATUSES, STATUS_VALID
+from pes2ts_core.generation.execution.xtb_path import G2_DIRNAME, G2_PATHS_DIRNAME, SCHEMA_MANIFEST, SCHEMA_PATH
+from pes2ts_core.generation.execution.xtb_path.status import G2_STATUSES, STATUS_VALID
 from pes2ts_core.utils.hashing import sha256_bytes, sha256_file, stable_json_dumps
 from pes2ts_core.utils.jsonio import read_json
 from pes2ts_core.utils.parquet_io import read_parquet

@@ -51,19 +51,19 @@ from typing import Any, Final
 
 from pes2ts_core.contracts import seal_document
 from pes2ts_core.g1.v2_schema import MAPPING_PROVENANCE
-from pes2ts_core.scan_strategy.direction_timing_cost import COST_NOTE_COUNTED_VS_MEASURED
-from pes2ts_core.scan_strategy.path_request import (
+from pes2ts_core.generation.planning.direction_timing_cost import COST_NOTE_COUNTED_VS_MEASURED
+from pes2ts_core.generation.planning.path_request import (
     CHANNEL_NEB,
     NEB_ENTER_EXITS_SCAN_BRANCH,
     PATH_REQUEST_VERSION,
 )
-from pes2ts_core.scan_strategy.plan_freeze import (
+from pes2ts_core.generation.planning.plan_freeze import (
     FAILURE_TREE_VERSION,
     PLAN_FREEZE_VERSION,
     REGISTRY_VERSION,
     SCHEDULE_VERSION,
 )
-from pes2ts_core.scan_strategy.special_domain import DEMO24_COVERAGE
+from pes2ts_core.generation.planning.special_domain import DEMO24_COVERAGE
 from pes2ts_core.utils.hashing import JSONValue, sha256_bytes, stable_json_dumps
 
 # ---------------------------------------------------------------------------

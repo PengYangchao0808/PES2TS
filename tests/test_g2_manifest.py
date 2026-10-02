@@ -1,4 +1,4 @@
-"""TDD tests for ``pes2ts_core.g2.artifacts`` (task 8).
+"""TDD tests for ``pes2ts_core.generation.execution.xtb_path.artifacts`` (task 8).
 
 Covers the per-reaction path document, the frames parquet, the batch summary
 parquet, the ``g2_manifest_v1`` manifest (injectable ``generated_at``, ``run``
@@ -16,7 +16,7 @@ from typing import Any, Final
 
 import pytest
 from pes2ts_core.g1.document import CATEGORY_NAMES
-from pes2ts_core.g2 import SCHEMA_COVERAGE, SCHEMA_MANIFEST, SCHEMA_PATH, artifacts
+from pes2ts_core.generation.execution.xtb_path import SCHEMA_COVERAGE, SCHEMA_MANIFEST, SCHEMA_PATH, artifacts
 from pes2ts_core.utils.hashing import sha256_bytes, stable_json_dumps
 from pes2ts_core.utils.jsonio import read_json
 from pes2ts_core.utils.parquet_io import read_parquet

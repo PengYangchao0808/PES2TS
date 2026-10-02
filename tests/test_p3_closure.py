@@ -47,8 +47,8 @@ from rdkit import rdBase
 
 from pes2ts_core.contracts import FORBIDDEN_TRUTH_KEYS
 from pes2ts_core.g1.v2_verify import FORBIDDEN_EXPORT_KEYS
-from pes2ts_core.scan_strategy.contracts_v2 import validate_v2_document
-from pes2ts_core.scan_strategy.direction_timing_cost import (
+from pes2ts_core.generation.planning.contracts_v2 import validate_v2_document
+from pes2ts_core.generation.planning.direction_timing_cost import (
     CHANNEL_NEB,
     CHANNEL_SCAN,
     BRANCH_NATIVE_SCAN,
@@ -56,14 +56,14 @@ from pes2ts_core.scan_strategy.direction_timing_cost import (
     COST_NOTE_COUNTED_VS_MEASURED,
     cost_accounting,
 )
-from pes2ts_core.scan_strategy.intermediate_staging import (
+from pes2ts_core.generation.planning.intermediate_staging import (
     CODE_NO_STABLE_INTERMEDIATE,
     IntermediateStagingError,
     adjudicate_intermediate,
     build_adjacent_segments,
     stage_new_plan_version,
 )
-from pes2ts_core.scan_strategy.path_request import (
+from pes2ts_core.generation.planning.path_request import (
     METHOD_CHANNELS,
     NEB_ENTER_EXITS_SCAN_BRANCH,
     SCAN_CHANNEL_COST_NOTE,
@@ -71,7 +71,7 @@ from pes2ts_core.scan_strategy.path_request import (
     enter_neb_channels,
     record_channel_outcome,
 )
-from pes2ts_core.scan_strategy.plan_freeze import (
+from pes2ts_core.generation.planning.plan_freeze import (
     BUDGET_ACCOUNTING_CATEGORIES,
     FAILURE_TREE_CODE_ORDER,
     FAILURE_TREE_CODES,
@@ -83,13 +83,13 @@ from pes2ts_core.scan_strategy.plan_freeze import (
     is_failure_code,
     verify_generation_plan,
 )
-from pes2ts_core.scan_strategy.scientific_report import (
+from pes2ts_core.generation.planning.scientific_report import (
     POPULATION_SCAN_READY_N,
     ScientificReportError,
     assert_population_unlocked,
 )
-from pes2ts_core.scan_strategy.selector import all_release_gates_pass, propose_strategies
-from pes2ts_core.scan_strategy.special_domain import DEMO24_COVERAGE
+from pes2ts_core.generation.planning.selector import all_release_gates_pass, propose_strategies
+from pes2ts_core.generation.planning.special_domain import DEMO24_COVERAGE
 from pes2ts_core.utils.hashing import stable_json_dumps
 
 # Sibling-test fixture reuse (tests/ is on sys.path under pytest prepend mode).
@@ -522,7 +522,7 @@ def test_failure_tree_and_budget_replay_across_plan_versions() -> None:
         assert is_failure_code(code) is True
         assert code in FAILURE_TREE_CODES
     # Free-text refusal is never a failure code (todo 23 discipline).
-    from pes2ts_core.scan_strategy.plan_freeze import assert_failure_code
+    from pes2ts_core.generation.planning.plan_freeze import assert_failure_code
 
     assert is_failure_code("效果不好") is False
     with pytest.raises(PlanFreezeError) as excinfo:
@@ -549,7 +549,7 @@ def test_failure_tree_and_budget_replay_across_plan_versions() -> None:
 def test_demo24_per_case_loop_records_are_complete(tmp_path: Path) -> None:
     """Selector over 24 frozen fixtures → typed per-case ledger; no ready claims."""
     from pes2ts_core.config_loader import load_config
-    from pes2ts_core.scan_strategy.graph_rebuild import (
+    from pes2ts_core.generation.planning.graph_rebuild import (
         load_endpoint_materials_from_export,
         rebuild_endpoint_graphs,
     )
@@ -845,6 +845,6 @@ def test_staging_refuses_without_stable_intermediate_evidence() -> None:
         stage_new_plan_version(original, [])
     assert excinfo.value.code == CODE_NO_STABLE_INTERMEDIATE
     # Refusal codes are a closed typed vocabulary (never free text).
-    from pes2ts_core.scan_strategy.intermediate_staging import STAGING_REFUSAL_CODES
+    from pes2ts_core.generation.planning.intermediate_staging import STAGING_REFUSAL_CODES
 
     assert excinfo.value.code in STAGING_REFUSAL_CODES

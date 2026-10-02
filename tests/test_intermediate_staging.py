@@ -36,11 +36,11 @@ from test_path_request import SHA_A, _request  # noqa: E402
 
 from pes2ts_core.contracts import FORBIDDEN_TRUTH_KEYS
 from pes2ts_core.g1.v2_verify import FORBIDDEN_EXPORT_KEYS
-from pes2ts_core.scan_strategy.contracts_v2 import (
+from pes2ts_core.generation.planning.contracts_v2 import (
     CANDIDATE_KIND_PATH,
     validate_v2_document,
 )
-from pes2ts_core.scan_strategy.intermediate_staging import (
+from pes2ts_core.generation.planning.intermediate_staging import (
     CODE_COORDINATE_UNCHANGED_NOT_MECHANISM,
     CODE_ENERGY_LOCAL_MINIMUM_MISSING,
     CODE_HESSIAN_CONTRADICTS_STABILITY,
@@ -78,11 +78,11 @@ from pes2ts_core.scan_strategy.intermediate_staging import (
     parse_intermediate_evidence,
     stage_new_plan_version,
 )
-from pes2ts_core.scan_strategy.path_request import (
+from pes2ts_core.generation.planning.path_request import (
     INTERMEDIATE_NEXT_STAGE,
     flag_intermediate_minimum,
 )
-from pes2ts_core.scan_strategy.plan_freeze import (
+from pes2ts_core.generation.planning.plan_freeze import (
     BUDGET_ACCOUNTING_CATEGORIES,
     FAILURE_TREE_CODE_ORDER,
     FAILURE_TREE_VERSION,

@@ -9,7 +9,7 @@ selector:
   set the written manifest is deterministic (identical bytes except the
   volatile ``generated_at``).
 - ``verify_scan_proposals`` re-reads the proposals tree, validates every
-  document through :func:`pes2ts_core.scan_strategy.contracts_v2.validate_v2_document`
+  document through :func:`pes2ts_core.generation.planning.contracts_v2.validate_v2_document`
   plus a digest re-seal load check, and reconciles the manifest counts.
   Clean → exit 0 with ``problems=0``; dirty → exit 22 listing problems.
 - ``freeze_scan_plans`` is the gated freeze: verification runs first; the
@@ -23,11 +23,11 @@ selector:
   consumable export is written under the plans tree (an empty directory
   skeleton is permitted).  A passing gate writes frozen
   ``g1_generation_plan_v2`` documents via
-  :func:`pes2ts_core.scan_strategy.plan_freeze.freeze_generation_plan`, the
+  :func:`pes2ts_core.generation.planning.plan_freeze.freeze_generation_plan`, the
   plan manifest, and the plan summary.
 - ``verify_scan_proposals`` also re-reads the plans tree when present:
   every plan document goes through
-  :func:`pes2ts_core.scan_strategy.plan_freeze.verify_generation_plan`, and
+  :func:`pes2ts_core.generation.planning.plan_freeze.verify_generation_plan`, and
   the plan manifest/summary are reconciled when a plan manifest exists.
 
 Artifact paths come from the ``scan_strategy`` config section, resolved
@@ -44,8 +44,8 @@ from pathlib import Path
 from typing import Any, Final
 
 from pes2ts_core.contracts import seal_document
-from pes2ts_core.scan_strategy.contracts_v2 import validate_v2_document
-from pes2ts_core.scan_strategy.plan_freeze import (
+from pes2ts_core.generation.planning.contracts_v2 import validate_v2_document
+from pes2ts_core.generation.planning.plan_freeze import (
     freeze_generation_plan,
     verify_generation_plan,
 )
@@ -146,14 +146,32 @@ def _now() -> str:
     return datetime.now(UTC).isoformat(timespec="seconds")
 
 
-def _proposal_inputs(_config: Mapping[str, Any]) -> list[str]:
-    """Return the reaction ids to propose over.
-
-    The selector core (todo 17) wires this to the approved proposal input
-    population; the todo-4 skeleton deliberately iterates an empty set so the
-    plan/verify/freeze artifact contract lands before any chemistry input.
-    """
-    return []
+def _proposal_inputs(config: Mapping[str, Any]) -> list[dict[str, Any]]:
+    """Load an explicit frozen endpoint input manifest; no implicit population run."""
+    raw = config["scan_strategy"].get("input_manifest")
+    if not raw:
+        return []
+    path = Path(str(raw)).resolve()
+    manifest = read_json(path)
+    if not isinstance(manifest, dict) or manifest.get("schema_version") != "g1_scan_input_manifest_v1":
+        raise ValueError("scan_strategy.input_manifest must be g1_scan_input_manifest_v1")
+    records = manifest.get("records")
+    if not isinstance(records, list) or not records:
+        raise ValueError("scan input manifest requires non-empty records")
+    out = []
+    seen = set()
+    for record in records:
+        source = (path.parent / record["snapshot"]).resolve()
+        expected = record.get("sha256")
+        if not isinstance(expected, str) or sha256_file(source) != expected:
+            raise ValueError("scan endpoint snapshot digest mismatch")
+        snapshot = read_json(source)
+        rid = snapshot["reaction_id"]
+        if rid != record["reaction_id"] or rid in seen:
+            raise ValueError("scan endpoint manifest has duplicate or mismatched reaction identity")
+        seen.add(rid)
+        out.append(snapshot)
+    return sorted(out, key=lambda s: s["reaction_id"])
 
 
 def _iter_proposal_documents(paths: ScanArtifactPaths) -> list[Path]:
@@ -190,16 +208,28 @@ def scan_plan_proposals(config: Mapping[str, Any]) -> ScanProposalResult:
     paths = scan_artifact_paths(config)
     paths.proposals_dir.mkdir(parents=True, exist_ok=True)
 
-    inputs = sorted(_proposal_inputs(config))
-    if inputs:
-        raise NotImplementedError(
-            "per-reaction proposal documents arrive with the selector core (todo 17)"
-        )
+    inputs = _proposal_inputs(config)
     n_written = 0
+    rows = []
+    from pes2ts_core.generation.planning.graph_rebuild import load_endpoint_materials_from_export, rebuild_endpoint_graphs
+    from pes2ts_core.generation.planning.selector import propose_strategies
+    for snapshot in inputs:
+        bundle = rebuild_endpoint_graphs(snapshot["reaction_smiles"], load_endpoint_materials_from_export(snapshot))
+        maps = snapshot["maps"]
+        materials = {side: {m: snapshot[side][i] for i,m in enumerate(maps)}
+                     for side in ("r_coordinates", "p_coordinates")}
+        materials["endpoint_electronic"] = snapshot["endpoint_electronic"]
+        proposal = propose_strategies(bundle, materials, config,
+                                     reaction_id=snapshot["reaction_id"], split=snapshot.get("split", "unassigned"))
+        write_json(paths.proposals_dir / f"{snapshot['reaction_id']}.json", proposal)
+        rows.append({"reaction_id": snapshot["reaction_id"], "status": proposal["status"],
+                     "family": proposal["family"], "execution_eligible": False,
+                     "n_candidates": len(proposal["candidates"]), "content_sha256": proposal["content_sha256"]})
+        n_written += 1
 
     write_parquet(
         paths.proposal_summary,
-        {column: [] for column in PROPOSAL_SUMMARY_COLUMNS},
+        {column: [row[column] for row in rows] for column in PROPOSAL_SUMMARY_COLUMNS},
     )
     manifest: dict[str, Any] = {
         "schema_version": PROPOSAL_MANIFEST_SCHEMA,
@@ -453,7 +483,7 @@ def _freeze_ready_candidate(candidate: Any) -> bool:
 
 def _freeze_ready_proposal(document_path: Path) -> bool:
     """True when one proposal document passes the freeze gate predicates."""
-    from pes2ts_core.scan_strategy.selector import all_release_gates_pass
+    from pes2ts_core.generation.planning.selector import all_release_gates_pass
 
     try:
         document = read_json(document_path)

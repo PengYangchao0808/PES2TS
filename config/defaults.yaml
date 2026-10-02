@@ -89,6 +89,7 @@ g1_v2:
 # docs/design/PES_GENERATION_图论扫描策略选择器设计_v1.md §6/§8/§9 and
 # .omo/plans/pes-generation-graph-scan-strategy.md (todo 2, Interface commitments).
 scan_strategy:
+  generation_scope: connectivity_only
   context_radius: 2               # TODO: calibrate — event-coupling neighborhood shell (设计 §4)
   max_scan_coordinates: 3         # TODO: calibrate — ORCA 6.1 native B/A/D upper bound (设计 §8/§9.1)
   point_limits:                   # TODO: calibrate — n_points contract bounds (设计 §8.3)

@@ -1,4 +1,4 @@
-"""Tests for pes2ts_core.scan_strategy.target_path (plan todo 22).
+"""Tests for pes2ts_core.generation.planning.target_path (plan todo 22).
 
 Covers the design §11.2 four independent result tiers:
 - numerically usable + unfinished target edits → target_path_compatible=false
@@ -26,7 +26,7 @@ from pes2ts_core.integration.acp.frame_recovery import (
     EnergyChannelRow,
     SCHEMA_FRAME_RECOVERY,
 )
-from pes2ts_core.scan_strategy.target_path import (
+from pes2ts_core.generation.planning.target_path import (
     BOND_BROKEN,
     BOND_FORMED,
     BOND_NO_ORDER_EVIDENCE,

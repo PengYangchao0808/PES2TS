@@ -45,8 +45,8 @@ from pes2ts_core.g0.rejections import (
 )
 from pes2ts_core.g0.strata import COHORT_STRATIFIED_FILENAME, COHORT_TRIAL_FILENAME
 from pes2ts_core.g1.build import reaction_change_path, shard_name
-from pes2ts_core.g2 import G2_DIRNAME, G2_PATHS_DIRNAME, SCHEMA_PATH
-from pes2ts_core.g2.artifacts import (
+from pes2ts_core.generation.execution.xtb_path import G2_DIRNAME, G2_PATHS_DIRNAME, SCHEMA_PATH
+from pes2ts_core.generation.execution.xtb_path.artifacts import (
     build_summary,
     config_digest,
     reaction_document,
@@ -55,14 +55,14 @@ from pes2ts_core.g2.artifacts import (
     write_manifest,
     write_summary,
 )
-from pes2ts_core.g2.endpoints import (
+from pes2ts_core.generation.assembly.endpoints import (
     EndpointError,
     assemble_endpoints,
     side_bond_pairs,
     write_endpoint_files,
 )
-from pes2ts_core.g2.inspect import Metric, Verdict, evaluate_validity, frame_metrics
-from pes2ts_core.g2.runner import (
+from pes2ts_core.generation.execution.xtb_path.inspect import Metric, Verdict, evaluate_validity, frame_metrics
+from pes2ts_core.generation.execution.xtb_path.runner import (
     END_XYZ_FILENAME,
     PATH_INP_FILENAME,
     START_XYZ_FILENAME,
@@ -71,12 +71,12 @@ from pes2ts_core.g2.runner import (
     run_xtb_path,
     write_path_inp,
 )
-from pes2ts_core.g2.status import (
+from pes2ts_core.generation.execution.xtb_path.status import (
     DEFAULT_REVERSE_RETRY_TRIGGERS,
     G2_STATUSES,
     STATUS_VALID,
 )
-from pes2ts_core.g2.xtb_output import (
+from pes2ts_core.generation.execution.xtb_path.xtb_output import (
     Frame,
     XtbOutputError,
     check_npath_consistency,

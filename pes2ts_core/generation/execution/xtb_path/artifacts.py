@@ -15,8 +15,8 @@ from typing import Any, Final
 import pyarrow as pa
 
 from pes2ts_core.g1.document import CATEGORY_NAMES
-from pes2ts_core.g2 import SCHEMA_COVERAGE, SCHEMA_MANIFEST, SCHEMA_PATH
-from pes2ts_core.g2.status import STATUS_VALID
+from pes2ts_core.generation.execution.xtb_path import SCHEMA_COVERAGE, SCHEMA_MANIFEST, SCHEMA_PATH
+from pes2ts_core.generation.execution.xtb_path.status import STATUS_VALID
 from pes2ts_core.utils.hashing import JSONValue, sha256_bytes, stable_json_dumps
 from pes2ts_core.utils.jsonio import write_json
 from pes2ts_core.utils.parquet_io import write_parquet

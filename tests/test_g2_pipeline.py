@@ -25,8 +25,8 @@ import pytest
 from pes2ts_core.config_loader import load_config
 from pes2ts_core.g0.rejections import LEDGER_FILENAME, RejectionCode
 from pes2ts_core.g1.build import reaction_change_path, shard_name
-from pes2ts_core.g2 import SCHEMA_PATH
-from pes2ts_core.g2.pipeline import (
+from pes2ts_core.generation.execution.xtb_path import SCHEMA_PATH
+from pes2ts_core.generation.execution.xtb_path.pipeline import (
     InfrastructureError,
     prepare_ids,
     run_ids,

@@ -1,4 +1,4 @@
-"""Tests for pes2ts_core.scan_strategy.compile_orca (plan todo 19).
+"""Tests for pes2ts_core.generation.planning.compile_orca (plan todo 19).
 
 Covers: capability-gate-first ordering, atom_rows index resolution (never
 map−1), B/A/D units + D periodic shortest-arc, Simul_Scan probe-receipt gate,
@@ -16,8 +16,8 @@ from typing import Any
 
 import pytest
 
-from pes2ts_core.scan_strategy import capabilities as caps
-from pes2ts_core.scan_strategy import compile_orca as co
+from pes2ts_core.generation.planning import capabilities as caps
+from pes2ts_core.generation.planning import compile_orca as co
 
 # ---------------------------------------------------------------------------
 # Capability-registry fixtures (probe-receipt injection; todo-16 vocabulary).

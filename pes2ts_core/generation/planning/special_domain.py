@@ -40,8 +40,8 @@ from dataclasses import dataclass
 from typing import Any, Final
 
 from pes2ts_core.g1.endpoint_graph import EndpointGraphBundle
-from pes2ts_core.scan_strategy.geometry_feasibility import covalent_radius_sum
-from pes2ts_core.scan_strategy.registry import (
+from pes2ts_core.generation.planning.geometry_feasibility import covalent_radius_sum
+from pes2ts_core.generation.planning.registry import (
     ORGANIC_ELEMENTS,
     OUTCOME_SPECIAL_DOMAIN_EXIT,
     SPEC_DOMAIN,
@@ -111,19 +111,19 @@ CATEGORY_METHOD_FAMILY: Final[str] = "method_family"
 
 # Future specialized modules — pointers only; nothing is implemented here.
 POINTER_METAL_COORDINATION: Final[str] = (
-    "pes2ts_core/scan_strategy/specialized/metal_coordination.py (future)"
+    "pes2ts_core/generation/planning/specialized/metal_coordination.py (future)"
 )
 POINTER_SURFACE_PERIODIC: Final[str] = (
-    "pes2ts_core/scan_strategy/specialized/surface_periodic.py (future)"
+    "pes2ts_core/generation/planning/specialized/surface_periodic.py (future)"
 )
 POINTER_ELECTRON_EXCHANGE: Final[str] = (
-    "pes2ts_core/scan_strategy/specialized/electron_exchange.py (future)"
+    "pes2ts_core/generation/planning/specialized/electron_exchange.py (future)"
 )
 POINTER_EXCITED_STATE: Final[str] = (
-    "pes2ts_core/scan_strategy/specialized/excited_state.py (future)"
+    "pes2ts_core/generation/planning/specialized/excited_state.py (future)"
 )
 POINTER_ELECTRONIC_STATE_FLOW: Final[str] = (
-    "pes2ts_core/scan_strategy/specialized/electronic_state_flow.py (future)"
+    "pes2ts_core/generation/planning/specialized/electronic_state_flow.py (future)"
 )
 
 #: Why the generic §5.2 selector + ordinary NEB cannot serve these domains.

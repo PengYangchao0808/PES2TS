@@ -22,14 +22,14 @@ import pytest
 from pes2ts_core.contracts import FORBIDDEN_TRUTH_KEYS
 from pes2ts_core.g1.endpoint_context import EndpointElectronic
 from pes2ts_core.g1.v2_verify import FORBIDDEN_EXPORT_KEYS
-from pes2ts_core.scan_strategy.registry import (
+from pes2ts_core.generation.planning.registry import (
     ORGANIC_ELEMENTS,
     OUTCOME_EXECUTABLE_CANDIDATE_SET,
     OUTCOME_SPECIAL_DOMAIN_EXIT,
     SPEC_DOMAIN,
     SPEC_ELECTRONIC_STATE,
 )
-from pes2ts_core.scan_strategy.special_domain import (
+from pes2ts_core.generation.planning.special_domain import (
     ATTEMPTED_METHOD_ORDINARY_NEB,
     CATEGORY_METHOD_FAMILY,
     CATEGORY_REPRESENTATION,

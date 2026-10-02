@@ -1,6 +1,6 @@
 """Real-binary GFN2-xTB PATH smoke test (plan task 17, ``xtb`` marker).
 
-Runs :func:`pes2ts_core.g2.runner.run_xtb_path` on the REAL GFN2-xTB binary
+Runs :func:`pes2ts_core.generation.execution.xtb_path.runner.run_xtb_path` on the REAL GFN2-xTB binary
 against the small C7OH8 endpoint fixture (15 atoms, single component, neutral
 closed shell) with the default ``g2.path`` parameters from
 ``config/defaults.yaml`` (alp=0.5, npoint=50). The run takes roughly 10-30 s.
@@ -27,9 +27,9 @@ import yaml
 
 from pes2ts_core.g0.rp_checks import ELEMENT_SYMBOLS
 from pes2ts_core.g1.index_map import COVALENT_RADII
-from pes2ts_core.g2.inspect import evaluate_validity
-from pes2ts_core.g2.runner import run_xtb_path
-from pes2ts_core.g2.xtb_output import (
+from pes2ts_core.generation.execution.xtb_path.inspect import evaluate_validity
+from pes2ts_core.generation.execution.xtb_path.runner import run_xtb_path
+from pes2ts_core.generation.execution.xtb_path.xtb_output import (
     Frame,
     parse_path_log,
     parse_path_xyz,

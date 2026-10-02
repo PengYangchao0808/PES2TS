@@ -1,6 +1,6 @@
 """Offline P1 acceptance for the legacy single-B compatibility export (todo 18).
 
-Locks the ``pes2ts_core/scan_strategy/compat_export.py`` bridge:
+Locks the ``pes2ts_core/generation/planning/compat_export.py`` bridge:
 
 * a synthetic ready case → selector → freeze-shaped SINGLE_1D plan exports a
   v1 ``ScanPlan`` that passes ``contracts.validate_document``/``dumps_document``
@@ -36,7 +36,7 @@ from pes2ts_core.integration.acp.cli_backend import (
     validate_cli_result,
 )
 from pes2ts_core.integration.acp.quality import apply_scan_path_quality
-from pes2ts_core.scan_strategy.compat_export import (
+from pes2ts_core.generation.planning.compat_export import (
     DRIVER_KIND_UNSUPPORTED,
     INDEX_ORDER_MISMATCH,
     MULTI_COORDINATE_UNSUPPORTED,
@@ -49,16 +49,16 @@ from pes2ts_core.scan_strategy.compat_export import (
     CompatExportError,
     export_legacy_scan_plan,
 )
-from pes2ts_core.scan_strategy.contracts_v2 import (
+from pes2ts_core.generation.planning.contracts_v2 import (
     make_generation_plan,
     make_strategy_proposal,
     validate_v2_document,
 )
-from pes2ts_core.scan_strategy.graph_rebuild import (
+from pes2ts_core.generation.planning.graph_rebuild import (
     load_endpoint_materials_from_export,
     rebuild_endpoint_graphs,
 )
-from pes2ts_core.scan_strategy.selector import propose_strategies
+from pes2ts_core.generation.planning.selector import propose_strategies
 from pes2ts_core.utils.hashing import stable_json_dumps
 
 ROOT = Path(__file__).resolve().parents[1]

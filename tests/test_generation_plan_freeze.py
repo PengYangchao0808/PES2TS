@@ -1,4 +1,4 @@
-"""Tests for pes2ts_core.scan_strategy.plan_freeze (plan task 23).
+"""Tests for pes2ts_core.generation.planning.plan_freeze (plan task 23).
 
 Covers: freeze producing a contract-valid ``g1_generation_plan_v2``;
 ``content_sha256`` covering every execution-behavior dimension (rule
@@ -22,12 +22,12 @@ import yaml
 from pes2ts_core.cli import EXIT_G1_BUILD_FAILED, main
 from pes2ts_core.config_loader import load_config
 from pes2ts_core.contracts import seal_document
-from pes2ts_core.scan_strategy.contracts_v2 import (
+from pes2ts_core.generation.planning.contracts_v2 import (
     make_generation_plan,
     make_strategy_proposal,
     validate_v2_document,
 )
-from pes2ts_core.scan_strategy.plan_freeze import (
+from pes2ts_core.generation.planning.plan_freeze import (
     BUDGET_ACCOUNTING_CATEGORIES,
     FAILURE_PREDICATES,
     FAILURE_TREE_CODES,

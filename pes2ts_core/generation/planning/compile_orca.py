@@ -47,12 +47,12 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any, Final
 
-from pes2ts_core.scan_strategy.capabilities import (
+from pes2ts_core.generation.planning.capabilities import (
     BACKEND_CAPABILITY_MISSING,
     EffectiveCapability,
     capability_check,
 )
-from pes2ts_core.scan_strategy.contracts_v2 import (
+from pes2ts_core.generation.planning.contracts_v2 import (
     CANDIDATE_KIND_PATH,
     CANDIDATE_KIND_SCAN,
     DRIVER_KINDS,
@@ -61,7 +61,7 @@ from pes2ts_core.scan_strategy.contracts_v2 import (
     MODE_SINGLE_1D,
     PATH_METHOD_KINDS,
 )
-from pes2ts_core.scan_strategy.coordinate_pool import (
+from pes2ts_core.generation.planning.coordinate_pool import (
     KIND_A,
     KIND_B,
     KIND_D,
@@ -69,7 +69,7 @@ from pes2ts_core.scan_strategy.coordinate_pool import (
     UNIT_ANGSTROM,
     UNIT_DEGREE,
 )
-from pes2ts_core.scan_strategy.geometry_feasibility import (
+from pes2ts_core.generation.planning.geometry_feasibility import (
     bond_angle_deg,
     dihedral_deg,
     shortest_arc_delta,
@@ -497,6 +497,7 @@ def _constraint_block(
         lines.append(
             "{ " + f"{coord.kind} {indices} {_fmt(coord.values[point_index])}" + " }"
         )
+    lines.append("end")
     lines.append("end")
     return "\n".join(lines)
 

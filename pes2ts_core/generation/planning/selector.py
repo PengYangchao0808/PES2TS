@@ -2,7 +2,7 @@
 
 Pure orchestration layer: integrates the Wave-2 modules into one pipeline and
 emits a sealed ``g1_strategy_proposal_v1`` document via
-:func:`pes2ts_core.scan_strategy.contracts_v2.make_strategy_proposal`.
+:func:`pes2ts_core.generation.planning.contracts_v2.make_strategy_proposal`.
 
 Pipeline (design §5.1/§6.2/§8.3/§10.1):
 
@@ -44,25 +44,25 @@ from pes2ts_core.g1.event_coupling import (
     build_event_coupling_graph,
 )
 from pes2ts_core.g1.reaction_edit_graph import ReactionEditGraph, build_reaction_edit_graph
-from pes2ts_core.scan_strategy.capabilities import (
+from pes2ts_core.generation.planning.capabilities import (
     EffectiveCapability,
     capability_check,
     effective_capability,
 )
-from pes2ts_core.scan_strategy.contracts_v2 import (
+from pes2ts_core.generation.planning.contracts_v2 import (
     MODE_COUPLED_1D,
     MODE_SCHEDULED_1D,
     MODE_SINGLE_1D,
     make_strategy_proposal,
 )
-from pes2ts_core.scan_strategy.coordinate_pool import (
+from pes2ts_core.generation.planning.coordinate_pool import (
     CoordinatePool,
     CoordinateRecord,
     DriverSetCandidate,
     EndpointMaterials,
     build_coordinate_pool,
 )
-from pes2ts_core.scan_strategy.direction_assembly import (
+from pes2ts_core.generation.planning.direction_assembly import (
     ComponentMaterial,
     DirectionAssemblyInputs,
     DriverBondSpec,
@@ -72,15 +72,15 @@ from pes2ts_core.scan_strategy.direction_assembly import (
     fb_counts_from_edit_graph,
     resolve_direction_assembly,
 )
-from pes2ts_core.scan_strategy.geometry_feasibility import (
+from pes2ts_core.generation.planning.geometry_feasibility import (
     assess_geometry_feasibility,
     policy_from_config as feasibility_policy_from_config,
 )
-from pes2ts_core.scan_strategy.registry import (
+from pes2ts_core.generation.planning.registry import (
     STRATEGY_REGISTRY,
     route_strategies,
 )
-from pes2ts_core.scan_strategy.schedules import (
+from pes2ts_core.generation.planning.schedules import (
     CandidateWithFeasibility,
     PrunedCandidate,
     ScheduleSpec,
@@ -88,6 +88,7 @@ from pes2ts_core.scan_strategy.schedules import (
     build_schedules,
     uniform_lambda_grid,
 )
+from pes2ts_core.generation.planning.primary import select_primary_candidate
 
 __all__ = [
     "RankInputs",
@@ -397,8 +398,11 @@ def _monitor_payload(
             target_record = pool.coordinate(target_id)
         except KeyError:
             continue
-        target_maps = set(target_record.atom_maps)
-        if set(maps) <= target_maps or target_maps <= set(maps):
+        # A distance, angle and torsion sharing atoms are different measurements.
+        # Only an identical coordinate can supply a numeric target.
+        if target_record.kind == record.kind and tuple(target_record.atom_maps) in (
+            tuple(maps), tuple(reversed(maps))
+        ):
             target_token = "+".join(str(m) for m in target_record.atom_maps)
             target_test = f"target:{target_record.kind}:{target_token}"
             break
@@ -490,6 +494,23 @@ class _AssembledCandidate:
     assembly_key: str
     capability_status: str
     capability_missing: tuple[str, ...]
+    endpoint_materials: EndpointMaterials | None = None
+    geometry_warnings: tuple[str, ...] = ()
+
+
+def _assembled_materials(direction: Any, original: EndpointMaterials | None) -> EndpointMaterials | None:
+    """Use the exact assembly geometry downstream, including approach placements."""
+    if original is None:
+        return None
+
+    def side(record: Any, fallback: Mapping[int, tuple[float, float, float]]) -> dict[int, tuple[float, float, float]]:
+        if record is None:
+            return dict(fallback)
+        return dict(record.coordinates)
+
+    if direction.start_endpoint == "R":
+        return EndpointMaterials(side(direction.assembly, original.r_coordinates), side(direction.target_assembly, original.p_coordinates))
+    return EndpointMaterials(side(direction.target_assembly, original.r_coordinates), side(direction.assembly, original.p_coordinates))
 
 
 def _assemble_candidates(
@@ -533,15 +554,17 @@ def _assemble_candidates(
             tuple(sorted(pool.coordinate(cid).atom_maps)) for cid in driver_ids
         )
         driver_identity = tuple(
-            (pool.coordinate(cid).kind, tuple(sorted(pool.coordinate(cid).atom_maps)))
+            (pool.coordinate(cid).kind, min(tuple(pool.coordinate(cid).atom_maps),
+                                           tuple(reversed(pool.coordinate(cid).atom_maps))))
             for cid in driver_ids
         )
         for direction in directions:
+            assembled_materials = _assembled_materials(direction, materials)
             feasibility = assess_geometry_feasibility(
                 pool_candidate,
                 pool,
                 bundle,
-                materials,
+                assembled_materials,
                 config if config is not None else {},
                 start_endpoint=direction.start_endpoint,
             )
@@ -600,9 +623,8 @@ def _assemble_candidates(
                         "|".join(direction.readiness_blockers),
                     )
                 )
-            if scheduled is not None:
-                for note in scheduled.integrity_notes:
-                    common_failures.append(_reason("SCHEDULE_INTEGRITY", note))
+            # Successful integrity notes are diagnostics. Actual integrity
+            # violations are raised by build_schedules and handled above.
 
             # Active schedules and schedule-level prunes are both recorded;
             # only pruned rows carry PRUNED_BY_BUDGET (§8.3: never silent).
@@ -718,6 +740,8 @@ def _assemble_candidates(
                         capability_missing=tuple(
                             str(item) for item in check.get("missing") or ()
                         ),
+                        endpoint_materials=assembled_materials,
+                        geometry_warnings=tuple(c.detail for c in feasibility.checks if c.status == "warning"),
                     )
                 )
     return views, skipped
@@ -774,7 +798,7 @@ def _candidate_payload(
     )
     monitor_ids = pool_candidate.monitor_coordinate_ids
     monitors = [
-        _monitor_payload(pool.coordinate(cid), monitor_ids, pool)
+        _monitor_payload(pool.coordinate(cid), pool_candidate.target_test_coordinate_ids, pool)
         for cid in monitor_ids
     ]
     payload: dict[str, Any] = {
@@ -800,6 +824,12 @@ def _candidate_payload(
         "fallback_ids": list(route_fallbacks),
         "expected_cost": view.n_points * len(driver_ids),
         "extensions": {
+            "geometry_precheck_warnings": list(view.geometry_warnings),
+            "schedule_integrity_notes": list(view.scheduled.integrity_notes) if view.scheduled else [],
+            "assembled_endpoint_coordinates": {
+                "R": {str(k): list(v) for k, v in view.endpoint_materials.r_coordinates.items()},
+                "P": {str(k): list(v) for k, v in view.endpoint_materials.p_coordinates.items()},
+            } if view.endpoint_materials else None,
             "driver_coordinate_ids": list(driver_ids),
             "route_strategy_id": pool_candidate.route_strategy_id,
             "n_points": view.n_points,
@@ -914,6 +944,11 @@ def propose_strategies(
     edit_graph = build_reaction_edit_graph(
         bundle, aromatic_regions=aromatic if aromatic else None
     )
+    archived_edit_graph = edit_graph
+    connectivity_only = (config or {}).get("scan_strategy", {}).get("generation_scope") == "connectivity_only"
+    if connectivity_only:
+        from pes2ts_core.generation.planning.connectivity import connectivity_view
+        edit_graph = connectivity_view(edit_graph)
     context = build_endpoint_context(
         bundle,
         edit_graph,
@@ -987,6 +1022,7 @@ def propose_strategies(
             coupling,
             bundle,
             materials_norm,
+            connectivity_only=connectivity_only,
         )
         elements = _elements_by_map(bundle)
         edit_atom_set = _edit_atoms(edit_graph)
@@ -995,13 +1031,13 @@ def propose_strategies(
             fb_counts=fb_counts_from_edit_graph(edit_graph),
             r_profile=EndpointProfile(
                 "R",
-                electronic_review_complete=False,
-                geometry_review_complete=False,
+                electronic_review_complete=bool((config or {}).get("scan_strategy", {}).get("endpoint_review", {}).get("R", {}).get("electronic", False)),
+                geometry_review_complete=bool((config or {}).get("scan_strategy", {}).get("endpoint_review", {}).get("R", {}).get("geometry", False)),
             ),
             p_profile=EndpointProfile(
                 "P",
-                electronic_review_complete=False,
-                geometry_review_complete=False,
+                electronic_review_complete=bool((config or {}).get("scan_strategy", {}).get("endpoint_review", {}).get("P", {}).get("electronic", False)),
+                geometry_review_complete=bool((config or {}).get("scan_strategy", {}).get("endpoint_review", {}).get("P", {}).get("geometry", False)),
             ),
             driver_sets=_driver_sets(pool),
             r_side=(
@@ -1141,6 +1177,7 @@ def propose_strategies(
     rule_trace = [{"rule_id": rid} for rid in route.rule_trace]
     rule_trace.append({"rule_id": R_SELECTOR_PIPELINE_V1})
 
+    primary_selection = select_primary_candidate(candidates_payload, bundle, connectivity_only=connectivity_only)
     return make_strategy_proposal(
         resolved_reaction_id,
         status,
@@ -1157,5 +1194,8 @@ def propose_strategies(
         candidates=candidates_payload,
         reasons=reasons,
         blocking_reasons=blocking_reasons,
-        extensions={"selector": gate_extension},
+        extensions={"selector": gate_extension, "primary_selection": primary_selection,
+                    "generation_scope": "connectivity_only" if connectivity_only else "legacy_all_edits",
+                    "derived_changes_archive": [e.to_record() for e in archived_edit_graph.edits if e.edit_kind == "order_changed"],
+                    "release_gate_scope": "strategy_reference_closure_only_not_execution_readiness"},
     )

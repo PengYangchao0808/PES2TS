@@ -20,14 +20,14 @@ from pathlib import Path
 
 import pytest
 
-import pes2ts_core.scan_strategy.graph_rebuild as graph_rebuild_module
+import pes2ts_core.generation.planning.graph_rebuild as graph_rebuild_module
 from pes2ts_core.contracts import FORBIDDEN_TRUTH_KEYS
 from pes2ts_core.g1.endpoint_graph import EndpointGraphBundle
 from pes2ts_core.g1.endpoint_materials import CODE_MATERIALS_SCHEMA
 from pes2ts_core.g1.graph_payload import graph_payload
 from pes2ts_core.g1.parse import parse_reaction
 from pes2ts_core.g1.v2_verify import FORBIDDEN_EXPORT_KEYS
-from pes2ts_core.scan_strategy.graph_rebuild import (
+from pes2ts_core.generation.planning.graph_rebuild import (
     CODE_EXPORT_SCHEMA,
     CODE_SMILES_INVALID,
     PROVENANCE_KEY,

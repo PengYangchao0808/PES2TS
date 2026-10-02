@@ -1,4 +1,4 @@
-"""Tests for the independent G2 tree verification (:mod:`pes2ts_core.g2.verify`)."""
+"""Tests for the independent G2 tree verification (:mod:`pes2ts_core.generation.execution.xtb_path.verify`)."""
 
 from __future__ import annotations
 
@@ -8,14 +8,14 @@ from typing import Any
 import pytest
 
 from pes2ts_core.g1.build import reaction_change_path
-from pes2ts_core.g2.artifacts import (
+from pes2ts_core.generation.execution.xtb_path.artifacts import (
     build_summary,
     reaction_document,
     write_frames_parquet,
     write_manifest,
     write_summary,
 )
-from pes2ts_core.g2.verify import G2Verification, verify_g2
+from pes2ts_core.generation.execution.xtb_path.verify import G2Verification, verify_g2
 from pes2ts_core.utils.hashing import sha256_bytes, sha256_file, stable_json_dumps
 from pes2ts_core.utils.jsonio import write_json
 

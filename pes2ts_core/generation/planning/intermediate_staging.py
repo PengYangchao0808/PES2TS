@@ -62,17 +62,17 @@ from pes2ts_core.contracts import (
 from pes2ts_core.g1.v2_verify import (
     FORBIDDEN_EXPORT_KEYS as _V2_EXPORT_KEYS,
 )
-from pes2ts_core.scan_strategy.contracts_v2 import (
+from pes2ts_core.generation.planning.contracts_v2 import (
     CANDIDATE_KIND_PATH,
     OBJECT_GENERATION_PLAN,
     SCHEMA_GENERATION_PLAN,
     make_generation_plan,
     validate_v2_document,
 )
-from pes2ts_core.scan_strategy.path_request import (
+from pes2ts_core.generation.planning.path_request import (
     INTERMEDIATE_NEXT_STAGE,
 )
-from pes2ts_core.scan_strategy.plan_freeze import (
+from pes2ts_core.generation.planning.plan_freeze import (
     BUDGET_ACCOUNTING_CATEGORIES,
     FAILURE_TREE_CODE_ORDER,
     FAILURE_TREE_VERSION,
