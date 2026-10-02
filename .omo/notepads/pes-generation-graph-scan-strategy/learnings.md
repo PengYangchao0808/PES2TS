@@ -436,3 +436,14 @@
 - **NEB smoke blocked (env)**：`_neb_gated_smoke_status`——env 缺失→blocked+`[PES2TS_ORCA_EXECUTABLE]`+requirements；env 齐+PATH_NEB pass receipt→passed（注入）；env 齐+仅 scan receipt→仍 blocked（never optimistic）；L4 smoke_status 镜像 NEB 现实。ORCA smoke helper 同纪律（需 orca probe_id receipt）。
 - 教训（给 F1-F4 wave）：(1) 24 条 demo24 在 selector 层全部 execution_eligible=false——needs_review 依赖本计划不解除，账本 `needs_review_retained=true` 钉死；(2) 混合臂分账直接消费 path_request 词汇（direction_timing_cost 只 import 不复制）；(3) 试点是 declared record 不是执行任务——size_bounds/source_list/prereq/status 四要素齐即可，population guard 单独断言；(4) test 文件 709 纯 LOC 超 250——closure 验收 harness 先例（test_p2_closure.py 860 行），plan 点名单一验收文件；(5) 本 todo 后仅剩 F1-F4 final verification wave。
 - Evidence: `.omo/evidence/task-31-pes-generation-graph-scan-strategy.txt`；Commit: `test(p3): close path/staging and pilot acceptance`。
+
+## 2026-10-01 ORCHESTRATION SUMMARY (all 31 todos)
+- Waves 0-4 complete: 31/31 todos, commits a6c9277..006e907 (one per todo)
+- Test growth: 666 -> 1356 passed (+690), 10 deselected (4 gated families: realdata/xtb/acp/orca)
+- New code: pes2ts_core/scan_strategy/ (16 modules) + g1/ 5 graph modules + integration/acp/ 2 additive modules + ~30 test files + tests/fixtures/p0_demo24/
+- Frozen verified byte-identical: planning.py, adapter.py, contracts.py, trajectory.py, quality.py, ranking.py
+- Gated smokes: acp/orca never-skip, BLOCKED (env requirements recorded: PES2TS_ACP_ROOT/PES2TS_ACP_PYTHON/PES2TS_ORCA_EXECUTABLE)
+- Stage certification: L1/L2/L3/L4 offline PASSED; ORCA smoke (L3) + NEB smoke (L4) BLOCKED pending env
+- Demo24: 24/24 needs_review retained; ready=0 (human review not lifted by design)
+- Known deferred defects (recorded, non-blocking): schedules vs coordinate_pool torsion_difference integrity friction; ring-attack torsion duplicate-terminal maps; %geom Constraints end-block syntax in compile_orca
+- Security: 4+ prompt-injection attempts against subagents observed and defeated (see issues.md)
