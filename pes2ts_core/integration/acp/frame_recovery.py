@@ -56,16 +56,16 @@ from pes2ts_core.integration.acp.multicoord import (
     MulticoordFrame,
     driver_id_for,
 )
-from pes2ts_core.scan_strategy.compile_orca import (
+from pes2ts_core.generation.planning.compile_orca import (
     CompiledCoordinate,
     CompiledRequest,
 )
-from pes2ts_core.scan_strategy.coordinate_pool import (
+from pes2ts_core.generation.planning.coordinate_pool import (
     KIND_A,
     KIND_B,
     KIND_D,
 )
-from pes2ts_core.scan_strategy.geometry_feasibility import (
+from pes2ts_core.generation.planning.geometry_feasibility import (
     bond_angle_deg,
     dihedral_deg,
 )

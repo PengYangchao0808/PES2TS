@@ -36,12 +36,12 @@ from dataclasses import dataclass
 from typing import Any
 
 from pes2ts_core.integration.acp.adapter import ACPMappingError
-from pes2ts_core.scan_strategy.capabilities import (
+from pes2ts_core.generation.planning.capabilities import (
     BACKEND_CAPABILITY_MISSING,
     EffectiveCapability,
     capability_check,
 )
-from pes2ts_core.scan_strategy.compile_orca import (
+from pes2ts_core.generation.planning.compile_orca import (
     RECIPE_PER_POINT,
     CompiledCoordinate,
     CompiledRequest,

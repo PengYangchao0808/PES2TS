@@ -35,8 +35,8 @@ from pes2ts_core.integration.acp.multicoord import (
     parse_multicoord_result,
 )
 from pes2ts_core.planning import build_minimal_scan_plan
-from pes2ts_core.scan_strategy import capabilities as caps
-from pes2ts_core.scan_strategy import compile_orca as co
+from pes2ts_core.generation.planning import capabilities as caps
+from pes2ts_core.generation.planning import compile_orca as co
 from pes2ts_core.utils.hashing import stable_json_dumps
 
 # ---------------------------------------------------------------------------

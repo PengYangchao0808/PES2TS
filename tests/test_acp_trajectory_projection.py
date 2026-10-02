@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import sys
 
 import pytest
 
@@ -18,6 +19,8 @@ from pes2ts_core.ranking import rank_path_bundle
 def _acp_contract_root(tmp_path: Path) -> Path:
     frames_path = tmp_path / "src" / "acp" / "results" / "frames.py"
     frames_path.parent.mkdir(parents=True)
+    (frames_path.parent / "__init__.py").write_text("", encoding="utf-8")
+    (frames_path.parent.parent / "__init__.py").write_text("", encoding="utf-8")
     frames_path.write_text(
         """from dataclasses import dataclass, field
 from typing import Any
@@ -58,7 +61,17 @@ def _case_and_path():
 
 @pytest.fixture(scope="module")
 def acp_contract_root(tmp_path_factory):
-    return _acp_contract_root(tmp_path_factory.mktemp("acp-contract"))
+    # Native integration tests preload ACP; isolate this synthetic checkout.
+    saved = {k: v for k, v in sys.modules.items() if k == "acp" or k.startswith("acp.")}
+    for name in saved:
+        sys.modules.pop(name, None)
+    try:
+        yield _acp_contract_root(tmp_path_factory.mktemp("acp-contract"))
+    finally:
+        for name in list(sys.modules):
+            if name == "acp" or name.startswith("acp."):
+                sys.modules.pop(name, None)
+        sys.modules.update(saved)
 
 
 def test_projects_path_through_acp_frame_contract_and_keeps_energy_channels_separate(acp_contract_root):
