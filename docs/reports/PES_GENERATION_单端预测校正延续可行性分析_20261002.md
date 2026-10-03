@@ -2,6 +2,8 @@
 
 日期：2026-10-02。范围：评估建议、核查当前代码与上一轮证据、提出下一轮实验与接口；本次没有修改算法或提交新的量化计算。
 
+> 路径注记（2026-10-03）：本文引用的旧模块路径已随 G-R 布局迁移：`pes2ts_core/scan_strategy/` → `pes2ts_core/generation/planning/`，`pes2ts_core/g2/` → `pes2ts_core/generation/execution/xtb_path/`（`endpoints` → `pes2ts_core/generation/assembly/`），`ranking.py` → `pes2ts_core/ranking/`；正文历史引用保留，不改写。
+
 ## 1. 判断与上一轮证据
 
 建议实施，但应将目标定义为“单端、事件驱动、可诊断的局部约束极小值分支跟踪”。它有望改善当前逐点独立启动造成的构象跳跃，并支持未知中间体候选生成；不能保证全局连续、最低能路径、唯一机理或必然找到一级鞍点。

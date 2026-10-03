@@ -4,7 +4,7 @@ import json
 import sys
 import numpy as np
 
-ROOT=Path(__file__).resolve().parents[1]; sys.path.insert(0,str(ROOT))
+ROOT=Path(__file__).resolve().parents[2]; sys.path.insert(0,str(ROOT))
 ACP=Path('/mnt/e/Calculations/Common_Script/Auto_Calc_Platform/ACP_V1_20260811')
 sys.path.insert(0,str(ACP/'src'))
 from cccp.config import load_config

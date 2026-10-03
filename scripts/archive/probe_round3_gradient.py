@@ -4,13 +4,14 @@ import json
 import os
 import sys
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, os.environ.get("ACP_SOURCE", "/mnt/e/Calculations/Common_Script/Auto_Calc_Platform/ACP_V1_20260811/src"))
 os.environ["PATH"] = "/opt/openmpi418/bin:/opt/orca_6_1_1:"+os.environ.get("PATH", "")
 os.environ.setdefault("OMPI_ALLOW_RUN_AS_ROOT", "1")
 os.environ.setdefault("OMPI_ALLOW_RUN_AS_ROOT_CONFIRM", "1")
-from pes2ts_core.integration.acp.gradient_backend import ORCAGradientBackend
+from gradient_backend_cccp import ORCAGradientBackend
 
 rid = sys.argv[1] if len(sys.argv)>1 else "RXN_0000047010"
 source = ROOT/"outputs/PES2TS_Demo24_continuation_round2_20261002"/rid/"endpoint"

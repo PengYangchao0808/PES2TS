@@ -13,15 +13,16 @@ import traceback
 
 import numpy as np
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, os.environ.get("ACP_SOURCE", "/mnt/e/Calculations/Common_Script/Auto_Calc_Platform/ACP_V1_20260811/src"))
 os.environ["PATH"] = "/opt/openmpi418/bin:/opt/orca_6_1_1:"+os.environ.get("PATH", "")
 os.environ.setdefault("OMPI_ALLOW_RUN_AS_ROOT", "1")
 os.environ.setdefault("OMPI_ALLOW_RUN_AS_ROOT_CONFIRM", "1")
 
-from pes2ts_core.integration.acp.continuation_backend import ORCAContinuationBackend, write_json
-from pes2ts_core.integration.acp.gradient_backend import ORCALocalCorrector
+from continuation_backend import ORCAContinuationBackend, write_json
+from gradient_backend_cccp import ORCALocalCorrector
 from pes2ts_core.generation.planning.candidate_selection import rank_continuation_candidates
 from pes2ts_core.generation.planning.connectivity_plan import input_screen
 from pes2ts_core.generation.planning.continuation import ContinuationPolicy, geometry_quality, run_continuation, target_values

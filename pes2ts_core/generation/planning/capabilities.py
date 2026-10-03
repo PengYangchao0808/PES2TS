@@ -65,6 +65,14 @@ Enablement semantics (never optimistic)
   (``orca-xtb-bridge``) are separate entries with distinct ids and constraint
   semantics; xTB PATH declares no native scan coordinates
   (``max_scan_coordinates=0``, empty ``coordinate_kinds``).
+- Per ADR-0002, xTB PATH executes **through ACP**: the ``xtb-native-path``
+  and ``g2-path-adapter`` entries carry ``adapter="acp"`` (repointed from the
+  retired local ``g2-path-runner``), and ``acp-xtb-path-adapter`` is the
+  canonical adapter-layer record of the ACP-executed XTB_PATH method
+  (``method_kind="XTB_PATH"`` planning-plane dispatch, compiled as a recipe).
+  All three keep empty ``probe_receipts``: unprobed ACP xTB-path capability
+  stays ``unknown``/refused until a real captured ACP version/executable sha
+  smoke receipt exists — never silently enabled.
 """
 
 # allow: SIZE_OK — plan-named todo-16 single capability-registry module

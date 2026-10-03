@@ -9,9 +9,10 @@ import xml.etree.ElementTree as ET
 import numpy as np
 from rdkit import Chem
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
-from pes2ts_core.integration.acp.continuation_backend import write_json
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from continuation_backend import write_json
 from pes2ts_core.generation.planning.synchronized_path import align, digest, value
 from pes2ts_core.generation.planning.graph_rebuild import load_endpoint_materials_from_export, rebuild_endpoint_graphs
 from pes2ts_core.generation.planning.connectivity import required_pairs

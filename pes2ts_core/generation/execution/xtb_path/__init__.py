@@ -26,8 +26,8 @@ SCHEMA_PATH: Final[str] = "g2_path_v1"
 SCHEMA_MANIFEST: Final[str] = "g2_manifest_v1"
 #: Schema version stamped into every G2 coverage artifact.
 SCHEMA_COVERAGE: Final[str] = "g2_coverage_v1"
-#: Exit code: a G2 stage hit an infrastructure error (missing inputs, a
-#: missing xTB executable, or a failed ``g2 verify``).
+#: Exit code: a G2 stage hit an infrastructure error (missing inputs, missing
+#: ACP execution wiring, or a failed ``g2 verify``).
 EXIT_G2_FAILED: Final[int] = 24
 
 __all__ = [

@@ -78,7 +78,7 @@ ACP 提供任务执行、资源预算、日志、失败恢复和溯源；RPH 可
 
 ```text
 pes2ts_core/contracts/       # 五种合同的 schema、读写与版本兼容检查
-pes2ts_core/g2/              # PES generation：计划执行、帧收集、路径质检
+pes2ts_core/generation/    # PES generation：计划/执行/装配/质检（原 g2/ 与 scan_strategy/ 已并入）
 pes2ts_core/ranking/         # PES ranking：拒绝、规则基线、Top-k；只依赖 contracts
 pes2ts_core/evaluation/      # 隔离真值、OptTS/Freq/IRC 结果、分母与成本统计
 pes2ts_core/integration/     # ACP 作业适配、RPH 候选适配与端到端清单

@@ -178,6 +178,7 @@ def test_shipped_registry_loads_with_honest_initial_state():
         "orca-xtb-bridge",
         "xtb-native-path",
         "g2-path-adapter",
+        "acp-xtb-path-adapter",
         "deployment-baseline",
     ]
     assert all(not entry.probe_receipts for entry in registry.entries)
@@ -201,6 +202,40 @@ def test_shipped_registry_loads_with_honest_initial_state():
     assert adapter.constraint_support == caps.ConstraintSupport(
         native_scan=True, per_point_constraints=False, simul_scan=False
     )
+
+
+def test_shipped_xtb_path_entries_execute_through_acp():
+    registry = caps.load_capability_registry()
+    xtb_engine = registry.entry("xtb-native-path")
+    legacy_adapter = registry.entry("g2-path-adapter")
+    acp_adapter = registry.entry("acp-xtb-path-adapter")
+
+    for entry in (xtb_engine, legacy_adapter, acp_adapter):
+        assert entry.adapter == "acp"
+        assert entry.engine == "xtb"
+        assert entry.supported_modes == ("PATH_NEB",)
+        assert entry.coordinate_kinds == ()
+        assert entry.max_scan_coordinates == 0
+        assert entry.constraint_support == caps.ConstraintSupport(
+            native_scan=False, per_point_constraints=False, simul_scan=False
+        )
+        assert entry.probe_receipts == ()
+    assert acp_adapter.layer == "adapter"
+    assert acp_adapter.method_element_coverage == {}
+
+    effective = caps.effective_capability(
+        "xtb-native-path", "acp-xtb-path-adapter", "deployment-baseline",
+        registry=registry,
+    )
+    assert effective.supported_modes == frozenset({"PATH_NEB"})
+    assert effective.enabled_modes == frozenset()
+    assert any("unprobed" in reason for reason in effective.disabled_reasons)
+    with pytest.raises(caps.BackendCapabilityError) as excinfo:
+        caps.assert_mode_supported(effective, "PATH_NEB", (), 0)
+    assert excinfo.value.code == caps.BACKEND_CAPABILITY_MISSING
+    check = caps.capability_check(effective, "PATH_NEB", (), 0)
+    assert check["status"] == "unknown"
+    assert check["missing"]
 
 
 def test_shipped_baseline_effective_capability_disables_everything():
@@ -623,21 +658,21 @@ def test_assert_rejects_coupled_with_single_coordinate(tmp_path):
 
 def test_assert_rejects_path_mode_with_scan_coordinates(tmp_path):
     engine = _entry_doc(
-        "eng", "engine", "xtb", "g2-path-runner",
+        "eng", "engine", "xtb", "acp",
         modes=["PATH_NEB"], kinds=[], max_coords=0,
-        engine_version="6.7.1", adapter_version="g2-path-runner-v1",
+        engine_version="6.7.1", adapter_version="pes2ts_xtb_path_request_v1",
         receipts=[_receipt(modes=("PATH_NEB",), engine_version="6.7.1")],
     )
     adapter = _entry_doc(
-        "adp", "adapter", "xtb", "g2-path-runner",
+        "adp", "adapter", "xtb", "acp",
         modes=["PATH_NEB"], kinds=[], max_coords=0,
-        engine_version="6.7.1", adapter_version="g2-path-runner-v1",
+        engine_version="6.7.1", adapter_version="pes2ts_xtb_path_request_v1",
         receipts=[_receipt(modes=("PATH_NEB",), engine_version="6.7.1")],
     )
     deployment = _entry_doc(
-        "dep", "deployment", "xtb", "g2-path-runner",
+        "dep", "deployment", "xtb", "acp",
         modes=["PATH_NEB"], kinds=[], max_coords=0,
-        engine_version="6.7.1", adapter_version="g2-path-runner-v1",
+        engine_version="6.7.1", adapter_version="pes2ts_xtb_path_request_v1",
         receipts=[_receipt(modes=("PATH_NEB",), engine_version="6.7.1")],
     )
     registry = _load(tmp_path, _registry_doc([engine, adapter, deployment]))

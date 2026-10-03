@@ -23,8 +23,12 @@ Implements design §8 (mode table) and §9.2 (compilation sketch) of
   ``Simul_Scan true`` (same λ index); ``SCHEDULED_1D`` custom lists and any
   non-linear schedule → sealed per-point ``%geom Constraints`` generation
   recipe (one input per λ point, per-point sha256 recorded — not inline file
-  dumps).  ``PathCandidateV1`` → minimal ``%geom Path`` shape (endpoint xyz
-  blocks + image count; elaborated by todo 26).
+  dumps).  ``PathCandidateV1`` with ``method_kind="NEB"`` (or absent) →
+  minimal ``%geom Path`` shape (endpoint xyz blocks + image count; elaborated
+  by todo 26).  ``PathCandidateV1`` with ``method_kind="XTB_PATH"`` is
+  **rejected here**: per ADR-0002 xTB PATH executes through the ACP
+  XTB_PATH backend as a recipe (``compiled.kind="recipe"``) — a planning-
+  plane dispatch, never ORCA ``%geom Path`` / per-point hashes.
 - **All drivers recovered.**  Every driver coordinate of the candidate appears
   in the compiled request; there is no first-driver projection.
 - **No implicit grids.**  Only the schedule's λ-derived points are compiled
@@ -56,6 +60,8 @@ from pes2ts_core.generation.planning.contracts_v2 import (
     CANDIDATE_KIND_PATH,
     CANDIDATE_KIND_SCAN,
     DRIVER_KINDS,
+    METHOD_NEB,
+    METHOD_XTB_PATH,
     MODE_COUPLED_1D,
     MODE_SCHEDULED_1D,
     MODE_SINGLE_1D,
@@ -90,6 +96,7 @@ __all__ = [
     "CODE_LAMBDA_GRID_INVALID",
     "CODE_PATH_GEOMETRY_INVALID",
     "CODE_PATH_METHOD_INVALID",
+    "CODE_PATH_METHOD_NOT_ORCA",
     "CODE_PER_POINT_CONSTRAINTS_UNSUPPORTED",
     "CODE_POINT_WINDOW_INVALID",
     "CODE_SCHEDULE_VALUE_MISMATCH",
@@ -130,6 +137,7 @@ CODE_SCHEDULE_VALUE_MISMATCH: Final[str] = "SCHEDULE_VALUE_MISMATCH"
 CODE_POINT_WINDOW_INVALID: Final[str] = "POINT_WINDOW_INVALID"
 CODE_PATH_GEOMETRY_INVALID: Final[str] = "PATH_GEOMETRY_INVALID"
 CODE_PATH_METHOD_INVALID: Final[str] = "PATH_METHOD_INVALID"
+CODE_PATH_METHOD_NOT_ORCA: Final[str] = "PATH_METHOD_NOT_ORCA"
 
 #: Driver kind → arity (B=2, A=3, D=4 atoms).
 KIND_ARITY: Final[dict[str, int]] = {KIND_B: 2, KIND_A: 3, KIND_D: 4}
@@ -931,6 +939,14 @@ def _compile_path(
         raise OrcaCompileError(
             CODE_PATH_METHOD_INVALID,
             f"method_kind={method_kind!r}; expected one of {', '.join(PATH_METHOD_KINDS)}",
+        )
+    resolved_method = method_kind if method_kind is not None else METHOD_NEB
+    if resolved_method != METHOD_NEB:
+        raise OrcaCompileError(
+            CODE_PATH_METHOD_NOT_ORCA,
+            f"method_kind={resolved_method!r}; xTB PATH executes through the ACP "
+            "XTB_PATH backend as a recipe (compiled.kind='recipe', ADR-0002) — "
+            "this ORCA compiler never produces %geom Path or per-point hashes for it",
         )
     # capability gate FIRST
     _refuse_capability(capability, "PATH_NEB", (), 0)

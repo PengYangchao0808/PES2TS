@@ -2,6 +2,8 @@
 
 日期：2026-10-02。依据：报告目录中的开发记录、第二轮逐案结果及原始几何、当前执行代码。以第二轮结果为当前状态，旧报告用于解释问题演变。本次重新统计保存的结果，没有启动新的量化计算或回归测试。
 
+> 路径注记（2026-10-03）：本文引用的旧模块路径已随 G-R 布局迁移：`pes2ts_core/scan_strategy/` → `pes2ts_core/generation/planning/`，`pes2ts_core/g2/` → `pes2ts_core/generation/execution/xtb_path/`（`endpoints` → `pes2ts_core/generation/assembly/`），`ranking.py` → `pes2ts_core/ranking/`；正文历史引用保留，不改写。
+
 ## 一、结论
 
 **当前首要问题是：已能准确施加成断键距离约束，但约束松弛仍不能稳定地沿同一构象分支推进。** 起点有效性、目标函数选择和科学验证尚有独立缺口。

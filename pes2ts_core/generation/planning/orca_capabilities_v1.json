@@ -1,7 +1,7 @@
 {
   "schema_version": "orca_capabilities_v1_registry",
   "registry_id": "pes2ts-backend-capability-baseline",
-  "description": "Backend capability registry baseline (plan todo 16, design 9.1). Each entry declares one layer's capability claims; effective_capability intersects engine/adapter/deployment; probe receipts gate enablement (empty = unprobed = not enabled, never optimistic). Native xTB PATH and ORCA-calling-xTB are separate entries with distinct constraint semantics.",
+  "description": "Backend capability registry baseline (plan todo 16, design 9.1). Each entry declares one layer's capability claims; effective_capability intersects engine/adapter/deployment; probe receipts gate enablement (empty = unprobed = not enabled, never optimistic). Native xTB PATH and ORCA-calling-xTB are separate entries with distinct constraint semantics; xTB PATH executes through ACP (ADR-0002) via the acp-xtb-path-adapter entry.",
   "entries": [
     {
       "entry_id": "orca-acp-engine",
@@ -68,10 +68,10 @@
       "entry_id": "xtb-native-path",
       "layer": "engine",
       "engine": "xtb",
-      "adapter": "g2-path-runner",
+      "adapter": "acp",
       "capability": {
         "engine_version": "6.7.1",
-        "adapter_version": "g2-path-runner-v1",
+        "adapter_version": "pes2ts_xtb_path_request_v1",
         "supported_modes": ["PATH_NEB"],
         "coordinate_kinds": [],
         "max_scan_coordinates": 0,
@@ -83,16 +83,16 @@
         },
         "probe_receipts": []
       },
-      "notes": "Native GFN2-xTB PATH metadynamics (g2 runner). PATH mode only; NO native scan coordinates (max_scan_coordinates=0, coordinate_kinds empty). Constraint support all false: metadynamics is not constrained scanning and must never inherit ORCA constraint semantics. point_limits kept for schema uniformity only; PATH image count follows g2.path.npoint, not scan points. Unprobed: probe_receipts empty."
+      "notes": "Native GFN2-xTB PATH metadynamics, executed through ACP (ADR-0002; adapter repointed from g2-path-runner to acp, see acp-xtb-path-adapter). PATH mode only; NO native scan coordinates (max_scan_coordinates=0, coordinate_kinds empty). Constraint support all false: metadynamics is not constrained scanning and must never inherit ORCA constraint semantics. point_limits kept for schema uniformity only; PATH image count follows the frozen path_recipe, not scan points. Unprobed: probe_receipts empty — capability stays unknown until a real ACP xTB-path smoke receipt exists."
     },
     {
       "entry_id": "g2-path-adapter",
       "layer": "adapter",
       "engine": "xtb",
-      "adapter": "g2-path-runner",
+      "adapter": "acp",
       "capability": {
         "engine_version": "6.7.1",
-        "adapter_version": "g2-path-runner-v1",
+        "adapter_version": "pes2ts_xtb_path_request_v1",
         "supported_modes": ["PATH_NEB"],
         "coordinate_kinds": [],
         "max_scan_coordinates": 0,
@@ -102,7 +102,26 @@
         "method_element_coverage": {},
         "probe_receipts": []
       },
-      "notes": "G2 xTB PATH runner adapter: projects endpoint geometries plus path.inp; no scan-coordinate projection; no ORCA constraint machinery. Empty method_element_coverage (transparent projector). Unprobed: probe_receipts empty."
+      "notes": "Legacy-named G2 xTB PATH adapter entry, repointed to acp per ADR-0002 (execution no longer runs the local g2-path-runner; xTB PATH executes through ACP). Projects endpoint geometries plus the frozen path_recipe; no scan-coordinate projection; no ORCA constraint machinery. Empty method_element_coverage (transparent projector). See acp-xtb-path-adapter for the canonical ACP-executed XTB_PATH adapter record. Unprobed: probe_receipts empty."
+    },
+    {
+      "entry_id": "acp-xtb-path-adapter",
+      "layer": "adapter",
+      "engine": "xtb",
+      "adapter": "acp",
+      "capability": {
+        "engine_version": "6.7.1",
+        "adapter_version": "pes2ts_xtb_path_request_v1",
+        "supported_modes": ["PATH_NEB"],
+        "coordinate_kinds": [],
+        "max_scan_coordinates": 0,
+        "point_limits": {"baseline": 9, "max": 101},
+        "custom_schedule_support": false,
+        "constraint_support": {"native_scan": false, "per_point_constraints": false, "simul_scan": false},
+        "method_element_coverage": {},
+        "probe_receipts": []
+      },
+      "notes": "ACP-executed XTB_PATH method adapter (ADR-0002): the planning plane dispatches method_kind=XTB_PATH path candidates here as a compiled recipe (path_recipe assembly/recipe parameters owned by PES2TS; ACP XtbPathSearch executes faithfully, validates but supplies no defaults). PATH mode only; no native scan coordinates; constraint semantics all false. Transparent projector: empty method_element_coverage. Honest initial state: probe_receipts empty — capability_check/effective enablement stays unknown (never silently enabled) until a real captured ACP version/executable sha smoke receipt is recorded against this entry."
     },
     {
       "entry_id": "deployment-baseline",
@@ -121,7 +140,7 @@
         "method_element_coverage": {},
         "probe_receipts": []
       },
-      "notes": "Deployment baseline: declares intent for both project stacks (ORCA/ACP single-distance scan and G2/xTB PATH); engine_version is the TARGET version, not a measured one. probe_receipts empty on every shipped layer: unprobed combinations can never yield ready. Gated smoke tasks record pass/fail receipts here (and on the matching engine/adapter entries) before any mode becomes enabled."
+      "notes": "Deployment baseline: declares intent for both project stacks (ORCA/ACP single-distance scan and xTB PATH via ACP per ADR-0002); engine_version is the TARGET version, not a measured one. probe_receipts empty on every shipped layer: unprobed combinations can never yield ready. Gated smoke tasks record pass/fail receipts here (and on the matching engine/adapter entries) before any mode becomes enabled."
     }
   ]
 }

@@ -93,15 +93,21 @@ def test_default_reverse_retry_triggers_are_exact() -> None:
 
 
 def test_g2_config_defaults_load_with_contract_values() -> None:
-    g2 = load_config()["g2"]
+    config = load_config()
+    g2 = config["g2"]
     assert g2["eligible_path"] is None
     assert g2["shard_size"] == 1000
-    assert g2["keep_trials"] is False
-    assert g2["xtb"]["executable"] is None
-    assert g2["xtb"]["fallback_paths"] == ["/opt/xtb/bin/xtb", "/usr/local/bin/xtb"]
+    assert "keep_trials" not in g2
+    # Local-runner keys were removed with runner.py (ADR-0002 X2'-C): xTB PATH
+    # executes through ACP, wired by the acp.* section.
+    assert "executable" not in g2["xtb"]
+    assert "fallback_paths" not in g2["xtb"]
     assert g2["xtb"]["threads"] == 4
     assert g2["xtb"]["timeout_seconds"] == 1800
     assert g2["xtb"]["seed"] == 42
+    assert config["acp"] == {
+        "root": None, "python": None, "config_path": None, "register": True,
+    }
     assert g2["path"] == {
         "nrun": 1,
         "npoint": 50,

@@ -638,7 +638,7 @@ def test_scheduled_refused_without_per_point_constraints_capability(tmp_path) ->
 
 
 # ---------------------------------------------------------------------------
-# Path / NEB minimal shape.
+# Path / NEB minimal shape; XTB_PATH dispatches to ACP (never ORCA).
 # ---------------------------------------------------------------------------
 def _path_geometry(n_atoms: int = 4) -> tuple[list[list[float]], list[list[float]]]:
     reactant = [[0.0, 0.0, 0.0], [1.5, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]
@@ -685,6 +685,42 @@ def test_neb_rejects_bad_image_count(tmp_path) -> None:
     with pytest.raises(co.OrcaCompileError) as excinfo:
         co.compile_orca(candidate, (1, 2, 3, 4), capability)
     assert excinfo.value.code == co.CODE_PATH_GEOMETRY_INVALID
+
+
+def test_xtb_path_is_recipe_dispatch_never_orca_path(tmp_path) -> None:
+    capability = _smoke(tmp_path, probed=True)
+    reactant, product = _path_geometry(4)
+    candidate = _path_candidate(4, reactant, product, 5)
+    candidate["method_kind"] = "XTB_PATH"
+    candidate.pop("image_chain", None)
+    candidate["path_recipe"] = {"path_inp_text": "$path\n nrun=1\n$end\n", "gfn_level": 2}
+    with pytest.raises(co.OrcaCompileError) as excinfo:
+        co.compile_orca(candidate, (1, 2, 3, 4), capability)
+    assert excinfo.value.code == co.CODE_PATH_METHOD_NOT_ORCA
+    assert "ACP" in str(excinfo.value)
+    assert "recipe" in str(excinfo.value)
+
+
+def test_xtb_path_refused_before_capability_gate(tmp_path) -> None:
+    capability = _smoke(tmp_path, probed=False)
+    reactant, product = _path_geometry(4)
+    candidate = _path_candidate(4, reactant, product, 5)
+    candidate["method_kind"] = "XTB_PATH"
+    candidate.pop("image_chain", None)
+    candidate["path_recipe"] = {"gfn_level": 2}
+    with pytest.raises(co.OrcaCompileError) as excinfo:
+        co.compile_orca(candidate, (1, 2, 3, 4), capability)
+    assert excinfo.value.code == co.CODE_PATH_METHOD_NOT_ORCA
+
+
+def test_unknown_path_method_kind_still_rejected(tmp_path) -> None:
+    capability = _smoke(tmp_path, probed=True)
+    reactant, product = _path_geometry(4)
+    candidate = _path_candidate(4, reactant, product, 5)
+    candidate["method_kind"] = "GRID"
+    with pytest.raises(co.OrcaCompileError) as excinfo:
+        co.compile_orca(candidate, (1, 2, 3, 4), capability)
+    assert excinfo.value.code == co.CODE_PATH_METHOD_INVALID
 
 
 # ---------------------------------------------------------------------------

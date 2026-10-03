@@ -289,9 +289,10 @@ def test_cli_truth_index_handler_rejects_subprocess(tmp_path: Path) -> None:
 
 
 def test_g2_tree_is_clean_under_default_allowlists() -> None:
-    # Given: the shipped g2 subtree, including the task-5 runner; scan-root
-    # relative paths are computed against the scan root's parent, so the
-    # scan must root at the package for the allowlist names to match
+    # Given: the shipped execution tree (ACP backend/pipeline; the local xTB
+    # runner was deleted by ADR-0002 X2'-C); scan-root relative paths are
+    # computed against the scan root's parent, so the scan must root at the
+    # package for the allowlist names to match
     package_root = Path(__file__).resolve().parents[1] / "pes2ts_core"
     g2_root = package_root / "generation" / "execution" / "xtb_path"
     # When
@@ -300,16 +301,41 @@ def test_g2_tree_is_clean_under_default_allowlists() -> None:
         for finding in scan_truth_access(package_root=package_root)
         if g2_root in Path(finding.file).parents
     ]
-    # Then: dynamic exec is exempt and no truth reference is present
+    # Then: no dynamic-exec exemption is needed and no truth reference exists
     assert findings == []
 
 
-def test_dynamic_exec_allowlist_suppresses_only_dynamic_exec(tmp_path: Path) -> None:
-    # Given: a module at the dynamic-exec allowlisted relative path using
-    # subprocess/importlib/eval — the sanctioned g2 runner shape
+def test_dynamic_exec_allowlist_is_empty_and_unlisted_modules_stay_flagged(
+    tmp_path: Path,
+) -> None:
+    # Given: the shipped allowlist is empty post-X2'-C (runner deleted)
+    assert DYNAMIC_EXEC_ALLOWLIST == ()
     root = tmp_path / "pes2ts_core"
-    # Bind to the live allowlist so a package move cannot silently un-couple this.
-    runner = root / Path(DYNAMIC_EXEC_ALLOWLIST[0]).relative_to("pes2ts_core")
+    module = root / "generation" / "execution" / "xtb_path" / "pipeline.py"
+    module.parent.mkdir(parents=True)
+    module.write_text(
+        "import subprocess\n"
+        "import importlib\n"
+        "VALUE = eval('1')\n",
+        encoding="utf-8",
+    )
+
+    # When: scanned with the default (empty) allowlist
+    findings = scan_truth_access(package_root=root)
+
+    # Then: every dynamic-exec finding fires — nothing is exempt
+    assert {finding.kind for finding in findings} == {DYNAMIC_EXEC_RISK}
+    assert all(finding.file == str(module) for finding in findings)
+
+
+def test_dynamic_exec_suppression_only_applies_to_listed_modules(
+    tmp_path: Path,
+) -> None:
+    # Given: a module at an explicitly allowlisted relative path using
+    # subprocess/importlib/eval — the shape the old g2 runner had
+    root = tmp_path / "pes2ts_core"
+    sanctioned = "pes2ts_core/generation/execution/xtb_path/legacy_runner.py"
+    runner = root / Path(sanctioned).relative_to("pes2ts_core")
     runner.parent.mkdir(parents=True)
     runner.write_text(
         "import subprocess\n"
@@ -319,8 +345,10 @@ def test_dynamic_exec_allowlist_suppresses_only_dynamic_exec(tmp_path: Path) -> 
         encoding="utf-8",
     )
 
-    # When: scanned with the default allowlists
-    findings = scan_truth_access(package_root=root)
+    # When: scanned with an explicit dynamic-exec allowlist entry
+    findings = scan_truth_access(
+        package_root=root, dynamic_exec_allowlist=(sanctioned,)
+    )
 
     # Then: every dynamic-exec finding is exempt and nothing else fires
     assert findings == []
@@ -333,12 +361,12 @@ def test_dynamic_exec_allowlist_suppresses_only_dynamic_exec(tmp_path: Path) -> 
     assert all(finding.file == str(runner) for finding in findings)
 
 
-def test_dynamic_exec_allowlist_module_still_reports_truth_refs(tmp_path: Path) -> None:
-    # Given: a module on the dynamic-exec allowlist that also embeds a
-    # quarantined-path string (the injection case)
+def test_dynamic_exec_suppression_still_reports_truth_refs(tmp_path: Path) -> None:
+    # Given: a module on an explicit dynamic-exec allowlist that also embeds
+    # a quarantined-path string (the injection case)
     root = tmp_path / "pes2ts_core"
-    # Bind to the live allowlist so a package move cannot silently un-couple this.
-    runner = root / Path(DYNAMIC_EXEC_ALLOWLIST[0]).relative_to("pes2ts_core")
+    sanctioned = "pes2ts_core/generation/execution/xtb_path/legacy_runner.py"
+    runner = root / Path(sanctioned).relative_to("pes2ts_core")
     runner.parent.mkdir(parents=True)
     runner.write_text(
         "import subprocess\n"
@@ -347,7 +375,9 @@ def test_dynamic_exec_allowlist_module_still_reports_truth_refs(tmp_path: Path) 
     )
 
     # When
-    findings = scan_truth_access(package_root=root)
+    findings = scan_truth_access(
+        package_root=root, dynamic_exec_allowlist=(sanctioned,)
+    )
 
     # Then: the truth reference is still reported and the suppression does
     # not leak to the truth checks
@@ -355,7 +385,57 @@ def test_dynamic_exec_allowlist_module_still_reports_truth_refs(tmp_path: Path) 
         (TRUTH_PATH_REF, str(runner))
     ]
     with pytest.raises(TruthAccessViolation):
-        assert_no_truth_access(package_root=root)
+        assert_no_truth_access(
+            package_root=root, dynamic_exec_allowlist=(sanctioned,)
+        )
+
+
+def test_subprocess_import_allowlist_suppresses_only_subprocess_import(
+    tmp_path: Path,
+) -> None:
+    # Given: a module at a SUBPROCESS_IMPORT_ALLOWLIST relative path importing
+    # subprocess (the sanctioned ACP transport shape)
+    from pes2ts_core.utils.truth_guard import SUBPROCESS_IMPORT_ALLOWLIST
+
+    assert SUBPROCESS_IMPORT_ALLOWLIST, "ACP transports must stay allowlisted"
+    root = tmp_path / "pes2ts_core"
+    sanctioned = SUBPROCESS_IMPORT_ALLOWLIST[0]
+    module = root / Path(sanctioned).relative_to("pes2ts_core")
+    module.parent.mkdir(parents=True)
+    module.write_text(
+        "import subprocess\nVALUE = eval('1')\n", encoding="utf-8"
+    )
+
+    # When: scanned with the default allowlists
+    findings = scan_truth_access(package_root=root)
+
+    # Then: the subprocess import is suppressed; every other dynamic-exec
+    # primitive is still flagged
+    assert [finding.kind for finding in findings] == [DYNAMIC_EXEC_RISK]
+    assert all("eval" in finding.detail for finding in findings)
+
+
+def test_real_acp_execution_modules_are_fully_clean() -> None:
+    # Given: the real ACP execution modules that replaced the local runner
+    package_root = Path(__file__).resolve().parents[1] / "pes2ts_core"
+    watched = (
+        "pes2ts_core/generation/execution/xtb_path/acp_backend.py",
+        "pes2ts_core/generation/execution/xtb_path/pipeline.py",
+        "pes2ts_core/integration/acp/xtb_path_request.py",
+        "pes2ts_core/integration/acp/xtb_path_transport.py",
+        "pes2ts_core/integration/acp/orca_gradient_request.py",
+        "pes2ts_core/integration/acp/orca_gradient_transport.py",
+        "pes2ts_core/integration/acp/gradient_backend.py",
+    )
+    # When
+    findings = [
+        finding
+        for finding in scan_truth_access(package_root=package_root)
+        if any(watched_name in finding.file for watched_name in watched)
+    ]
+    # Then: no truth reference, and subprocess appears only on the reviewed
+    # transport allowlist
+    assert findings == []
 
 
 @pytest.mark.parametrize("member", DEFAULT_ALLOWLIST)
@@ -376,19 +456,6 @@ def test_default_allowlist_members_remain_fully_exempt(
 
     # When / Then: the full allowlist still exempts every check for its members
     assert scan_truth_access(package_root=root) == []
-
-
-def test_real_g2_runner_when_present_is_fully_clean() -> None:
-    # Given: the real runner module (absent until task 5 lands it)
-    runner = (
-        Path(__file__).resolve().parents[1] / "pes2ts_core" / "g2" / "runner.py"
-    )
-    if not runner.is_file():
-        pytest.skip("pes2ts_core/generation/execution/xtb_path/runner.py does not exist yet (task 5)")
-    # When
-    findings = [finding for finding in scan_truth_access() if finding.file == str(runner)]
-    # Then: dynamic exec is exempt and no truth reference is present
-    assert findings == []
 
 
 def test_quarantine_writes_artifacts_relocates_sources_and_is_idempotent(

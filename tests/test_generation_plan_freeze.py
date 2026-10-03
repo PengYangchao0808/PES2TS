@@ -38,6 +38,7 @@ from pes2ts_core.generation.planning.plan_freeze import (
     assert_failure_code,
     compiled_binding_from_candidate,
     freeze_generation_plan,
+    freeze_path_candidate_plan,
     is_failure_code,
     verify_generation_plan,
 )
@@ -467,6 +468,83 @@ def test_compiled_none_seals_candidate_recipe() -> None:
     assert plan["compiled"]["kind"] == "recipe"
     assert plan["compiled"]["recipe"]["recipe_kind"] == "pes2ts_candidate_recipe_v1"
     assert verify_generation_plan(plan) == []
+
+
+# ---------------------------------------------------------------------------
+# Path freezes: NEB keeps the image-chain recipe; XTB_PATH seals an ACP
+# recipe binding without an image chain (ADR-0001/ADR-0002, X3'-C).
+# ---------------------------------------------------------------------------
+def _path_candidate(method_kind: str | None, **extra: Any) -> dict[str, Any]:
+    candidate: dict[str, Any] = {
+        "candidate_kind": "PathCandidateV1",
+        "candidate_id": "cand-path-0000",
+        "n_atoms": 2,
+        "endpoint_geometries": {
+            "reactant": [[0.0, 0.0, 0.0], [0.74, 0.0, 0.0]],
+            "product": [[0.0, 0.0, 0.0], [1.50, 0.0, 0.0]],
+        },
+        "start_endpoint": "R",
+        "direction": "R_to_P",
+        "anchor_reason": "PATH_PROTOCOL",
+        "failure_reasons": [],
+    }
+    if method_kind is not None:
+        candidate["method_kind"] = method_kind
+    candidate.update(extra)
+    return candidate
+
+
+def _freeze_path(candidate: dict[str, Any], **kwargs: Any) -> dict[str, Any]:
+    kwargs.setdefault("endpoint_graph_sha256", SHA_B)
+    return freeze_path_candidate_plan(
+        candidate,
+        reaction_id="RXN_0000000001",
+        case_id="case-0001",
+        split="train",
+        source_case_sha256="a" * 64,
+        **kwargs,
+    )
+
+
+def test_freeze_neb_path_seals_image_chain_recipe() -> None:
+    candidate = _path_candidate("NEB", image_chain={"n_images": 5})
+    plan = _freeze_path(candidate)
+    assert validate_v2_document(plan) == []
+    assert verify_generation_plan(plan) == []
+    recipe = plan["compiled"]["recipe"]
+    assert plan["compiled"]["kind"] == "recipe"
+    assert recipe["method_kind"] == "NEB"
+    assert recipe["n_images"] == 5
+    assert recipe["image_chain"] == {"n_images": 5}
+    assert plan["backend"]["engine"] == "orca"
+
+
+def test_freeze_neb_path_without_method_kind_still_seals_image_chain() -> None:
+    candidate = _path_candidate(None, image_chain={"n_images": 5})
+    plan = _freeze_path(candidate)
+    assert verify_generation_plan(plan) == []
+    assert plan["compiled"]["recipe"]["method_kind"] == "NEB"
+
+
+def test_freeze_xtb_path_seals_acp_recipe_without_image_chain() -> None:
+    candidate = _path_candidate(
+        "XTB_PATH",
+        path_recipe={"path_inp_text": "$path\n nrun=1\n npoint=50\n$end\n", "gfn_level": 2},
+    )
+    assert "image_chain" not in candidate
+    plan = _freeze_path(candidate)
+    assert validate_v2_document(plan) == []
+    assert verify_generation_plan(plan) == []
+    assert plan["compiled"]["kind"] == "recipe"
+    recipe = plan["compiled"]["recipe"]
+    assert recipe["method_kind"] == "XTB_PATH"
+    assert recipe["engine"] == "xtb"
+    assert recipe["adapter_version"] == "pes2ts_xtb_path_request_v1"
+    assert recipe["path_recipe"]["gfn_level"] == 2
+    assert "image_chain" not in recipe
+    assert "n_images" not in recipe
+    assert plan["backend"]["engine"] == "xtb"
+    assert plan["backend"]["method"] == "GFN2-xTB"
 
 
 # ---------------------------------------------------------------------------

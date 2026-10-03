@@ -6,7 +6,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from run_demo24_round3 import ROOT,OLD,OUT,read,write_json,material
-from pes2ts_core.integration.acp.seed_validation import ValidationBudgets,validate_seed
+from seed_validation import ValidationBudgets,validate_seed
 from pes2ts_core.generation.planning.candidate_selection import rank_continuation_candidates
 from pes2ts_core.generation.planning.synchronized_path import digest
 

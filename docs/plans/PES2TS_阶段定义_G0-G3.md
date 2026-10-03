@@ -5,7 +5,7 @@
 > 取代关系：取代《统一开发顺序与阶段验收》中的 S0–S8/demo 阶段表；S0–S8 内容降为历史映射（见 §5）
 > 上游依赖：无
 > 下游消费者：整体开发与发布方案、G2 生成攻坚计划、文档修订台账
-> 当前版本：v1 @ 2026-10-02
+> 当前版本：v2 @ 2026-10-03（Classic / Rank / Gen、严格验证与训练边界修订）
 
 ---
 
@@ -24,18 +24,20 @@ G2  PES generation（当前战场）
     2.0 endpoint assembly
     2.1 method selection & plan freeze
     2.2 execution (xTB PATH / ORCA Scan·Constraints·single-point gradient)
-    2.3 per-frame recovery + quality
+    2.3 per-frame recovery + quality + rule candidates + validation evidence
     2.4 execution unification (Track A/B)
     2.T small-batch test (24 cases)   ← 原 "demo"，仅为 G2 的测试
-    ▸ exit: 24 cases run under the unified system + ≥1 strictly verified TS
+    ▸ exit: 24 cases with audited terminal outcomes under ACP + ≥1 strictly verified generated target TS
 
 G3  Scale-out & first-generation RANKING
-    3.0 1000-reaction PES end-to-end runthrough
-    3.1 first-generation RANKING + metrics
+    3.0 frozen 1000-reaction cohort + complete funnel + labeled subset
+    3.1 learned RANKING on fixed paths + cost metrics
     3.2 independent validation sampling
 ```
 
 **核心裁决**：`demo` 不是阶段，`Demo24` 更名为 **G2.T 小批测试集**。物理验证（OptTS/频率/双向 IRC）不是独立阶段，而是 **G2/G3 每批的验收门**。
+
+**算法路线映射（2026-10-03）**：Classic = G2 的物理基线与 G3.0 规模化；Rank = G3.1–3.2 固定 generation 后学习排序；Gen = Rank 验收后的 G3 研究扩展。G2 必须已有能量峰/启发式候选提取以完成验证链，推迟到 G3 的是学习型排名。详见 [G2 后续开发方案](PES2TS_G2后续开发方案_Classic到Rank到Gen_20261003.md) 与 [ACP 配套计划](PES2TS_G2_ACP能力补齐与联合验收计划_20261003.md)。
 
 ---
 
@@ -67,20 +69,26 @@ G3  Scale-out & first-generation RANKING
   | 2.0 端点装配 | 多组分刚体装配 + 碰撞分离 + 打分 | ✅（i X 共享服务） |
   | 2.1 方法选择与计划冻结 | 图论选择器 → StrategyProposal → GenerationPlanV2 | 🔶 合同完整，未真正接线全量 |
   | 2.2 执行 | Track A xTB PATH；Track B ORCA Scan/Constraints/单点梯度 | 🔶 A 可全量；B 受阻 |
-  | 2.3 逐帧回收+质量 | multicoord → frame_recovery → target_path 四层 | 🔶 已落地未接线 |
-  | 2.4 方法统一 | ExecutionBackend 协议 | ⬜ 见 ADR-0001 / X 工作流 |
+  | 2.3 回收、质量与验证证据 | 逐帧 → 部分/完整路径资格 → 规则候选 → ACP 验证 → 图身份/成本 | 🔶 有模块，严格闭环未完成 |
+  | 2.4 执行统一 | ExecutionBackend + ACP 唯一计算后端 | 🔶 接缝已建；迁移与能力补齐见 ADR-0002 |
   | 2.T 小批测试(24) | 24 条端到端 | 🔶 进行中（round0–round3） |
-- **当前状态**：🔶 进行中。Track A 可跑；Track B 延续不稳定（24 条 6/24 连续、0 验证 TS）；两轨未统一；实验层未提交。
-- **退出条件**：24 条在统一体系下跑通 + **≥1 条严格验证 TS**。
+- **当前状态**：🔶 进行中。第二轮 6/24 连续、尚无已确认目标 TS；第三轮 strict 四例记录为 1 完整、2 LOCALITY_LIMIT、1 缓存身份错误，参考 TS 校准记录仍 IRC 失败。局部校正/梯度原型已有，正式 ACP 全入口收敛与科学验证尚未完成。证据入口见 G2 后续方案 §2。
+- **退出条件**：冻结的 24 条均经 ACP 统一体系取得可审计终态与完整失败/成本账本；**≥1 条非参考种子生成的严格目标 TS**；配方/回放证书和真实能力冒烟通过。拒绝或部分路径算已处理，不能算完整路径/科学成功，三类数量分列。
+- 此处“跑通”明确指自动流程闭环；不意味着 24/24 化学成功。≥1 是工程最低门，不构成普适可靠性结论。完整连续路径率、目标成功率和适用范围必须随发布披露。
 
-### G3 · 规模化与第一代 RANKING
-- **定义**：把 G2 方法规模化到 1000 条，并在其上写第一代排序。
+> **G2.4 执行统一注记（2026-10-03）：** 子阶段 2.4「方法统一」的裁决现见 [ADR-0002 计算后端统一经 ACP 执行](../design/decisions/ADR-0002-计算后端统一经ACP执行.md)（**Accepted**）：所有计算后端（XTB_PATH、ORCA scan/constraints/NEB、continuation）统一经外部 ACP 执行；ADR-0001 的执行本地化条款与 X1/X2 退出条件被**部分取代**，接缝/计划/记录/词表仍有效。实施按《[PES2TS_ACP执行统一与旧代码清理方案_20261003](PES2TS_ACP执行统一与旧代码清理方案_20261003.md)》X1′–X5′ 推进（**planned / ADR-0002**；本地 xTB runner 删除与全后端 ACP 化尚未完成）。G-R 模块布局迁移已完成：`scan_strategy/` → `generation/planning/`，`g2/` → `generation/execution/xtb_path/`，`endpoints` → `generation/assembly/`。
+
+### G3 · 规模化与第一代学习型 RANKING
+- **定义**：把 Classic 扩到冻结的 1000 反应输入队列，建立验证标签子集，再在固定 generation 上学习排序。
 - **子阶段**：
-  - 3.0：1000 条 PES 端到端跑通（完整漏斗入账）。
-  - 3.1：第一代 RANKING（路径可用性/拒绝 → 帧排序 → SeedProposal）+ 指标。
+  - 3.0：1000 条输入的完整漏斗；有效路径、候选数和已验证标签数分别统计。1000 是规模化目标，不通过剔除失败凑“1000 成功”。
+  - 3.1：固定路径上比较能量峰、事件峰、启发式与学习型 RANKING；输出 SeedProposal + 目标成功概率/成本指标。
   - 3.2：独立验证抽样（OptTS/频率/IRC）。
-- **当前状态**：⬜ 未开始（仅 v1 合成演示 ranker）。
-- **退出条件**：1000 条有效路径 + 排序与验证指标可复现。
+- **当前状态**：⬜ 学习型排名未开始；已有 v1 规则 ranker，先在 G2 接通真实验证。
+- **退出条件**：1000 输入队列终态/成本完整；有效路径与真实标签覆盖明确；同预算独立排序/验证指标可复现。此定义替代旧“1000 条有效路径”作为唯一门，防止只保留成功样本。
+- **后续扩展**：Rank 通过后再学习 generation 和在线停止，不新增并列主干阶段。帧数不等于标签数，训练启动还需标签质量和独立划分门。
+
+**标签边界**：ValidationResult 不得反馈当前推理或 valid/test 调参；允许由隔离构建器导出 train 分区标签用于离线训练，再冻结模型评测。Demo24 已使用真值开发，整集作为开发回归；保留历史划分记录并增加污染标记，新的独立队列承担泛化评估。
 
 ---
 
@@ -112,9 +120,9 @@ G3  Scale-out & first-generation RANKING
 |---|---|---|---|
 | **C · 清理** | C0/C1/C2 | 收口未提交实验层、去重、归档脚本、文档收敛 | 前置于多数阶段 |
 | **R · generation 核心研究** | R0–R4 | 量化非驻点→驻点接受门→分支态+信任域→软 guard/NEB→起点一致性+验证接线 | 阻塞 G2 质量 |
-| **X · 执行收敛** | X0–X4 | 接缝协议→xtb 后端正名→统一门→结果投影→纳入 ORCA/continuation+按需选方法 | G2.4 |
+| **X · 执行收敛** | X0 + X1′–X5′ | 接缝→ACP xTB→证书/投影→全 QC 迁 ACP→可视化与清理 | G2.4 |
 
-详见《PES2TS_整体开发与发布方案_v2》§5 与 ADR-0001。
+详见《PES2TS_整体开发与发布方案_v2》§5 与 ADR-0001；G2.4 执行统一的最新裁决与实施计划见 [ADR-0002](../design/decisions/ADR-0002-计算后端统一经ACP执行.md) 与《[PES2TS_ACP执行统一与旧代码清理方案_20261003](PES2TS_ACP执行统一与旧代码清理方案_20261003.md)》（X1′–X5′）。
 
 ---
 
@@ -141,5 +149,5 @@ G3  Scale-out & first-generation RANKING
 | scan-active / archived | 作驱动 / 仅归档 的编辑 |
 | G1→G2 boundary | G1 保证 + G2 不得假设 的契约（§3） |
 | G2.T | G2 的 24 条小批测试（原 demo） |
-| 严格验证 TS | OptTS + 单虚频 + 双向 IRC 达标 |
+| 严格验证 TS | 无生成约束的 OptTS 收敛、相关单虚频、双向 IRC、端点极小值及完整 R/P 化学身份通过 |
 | C/R/X | 清理 / 生成研究 / 执行收敛 三条工作流 |

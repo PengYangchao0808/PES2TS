@@ -8,8 +8,8 @@ import time
 
 import numpy as np
 
-from pes2ts_core.integration.acp.continuation_backend import write_json
-from pes2ts_core.integration.acp.gradient_backend import ORCAGradientBackend
+from continuation_backend import write_json
+from gradient_backend_cccp import ORCAGradientBackend
 from pes2ts_core.generation.planning.candidate_selection import bind_candidate
 from pes2ts_core.generation.planning.gradient_evidence import BOHR_ANGSTROM
 from pes2ts_core.generation.planning.synchronized_path import digest

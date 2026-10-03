@@ -2,6 +2,8 @@
 
 日期：2026-10-01。状态：设计方案，尚未实现模型、修改生产算法或提交新计算。依据：当前 PES2TS 与本机 ACP 源码、上一轮 Demo24 几何审计，以及 ORCA 6.1/6.1.1 官方文档。以下优化、学习与边界算法是本项目建议及数学推导，不是对 ORCA 内部源代码实现的逐行描述。
 
+> 路径注记（2026-10-03）：本文引用的旧模块路径已随 G-R 布局迁移：`pes2ts_core/scan_strategy/` → `pes2ts_core/generation/planning/`，`pes2ts_core/g2/` → `pes2ts_core/generation/execution/xtb_path/`（`endpoints` → `pes2ts_core/generation/assembly/`），`ranking.py` → `pes2ts_core/ranking/`；正文历史引用保留，不改写。
+
 ## 1. 对目标的准确表述
 
 本项目需要学习一个条件化的多坐标目标曲线：

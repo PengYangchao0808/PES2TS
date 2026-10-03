@@ -18,16 +18,19 @@ dynamic-execution primitives.  The allowlist is intentionally tiny:
   checked normally, and the handler itself must not use subprocess/importlib.
 
 A second, narrower list exempts modules from *only* the
-``DYNAMIC_EXEC_RISK`` findings: ``pes2ts_core/generation/execution/xtb_path/runner.py`` must spawn the
-external GFN2-xTB binary via ``subprocess``, so its dynamic-execution
-primitives are sanctioned, but it is still scanned in full for quarantined
-path strings, truth-file names, and truth imports.
+``DYNAMIC_EXEC_RISK`` findings.  It is EMPTY since ADR-0002 X2'-C deleted the
+local xTB runner (``pes2ts_core/generation/execution/xtb_path/runner.py``),
+the one module that needed it: xTB PATH execution now goes through the ACP
+CLI adapters on ``SUBPROCESS_IMPORT_ALLOWLIST`` below, and no shipped module
+currently requires a dynamic-execution exemption.
 
 A third, narrowest list permits the reviewed ACP CLI adapters
-(``pes2ts_core/integration/acp/cli_backend.py`` and
-``pes2ts_core/integration/acp/stage_cli.py``) to import ``subprocess`` for
-the sanctioned ACP process boundary; every other dynamic-execution primitive
-(``importlib``, ``eval``, ``exec``) and every truth check still apply to them.
+(``pes2ts_core/integration/acp/cli_backend.py``,
+``pes2ts_core/integration/acp/stage_cli.py``, and the XtbPathSearch transport
+``pes2ts_core/integration/acp/xtb_path_transport.py``) to import ``subprocess``
+for the sanctioned ACP process boundary; every other dynamic-execution
+primitive (``importlib``, ``eval``, ``exec``) and every truth check still
+apply to them.
 
 Importing ``pes2ts_core.g0.truth_quarantine`` from elsewhere stays allowed: it
 returns relocation metadata, never trajectory data.  Importing the
@@ -68,13 +71,12 @@ DEFAULT_ALLOWLIST: Final[tuple[str, ...]] = (
 )
 
 #: Modules exempt ONLY from ``DYNAMIC_EXEC_RISK`` findings (project-relative).
-#: The g2 runner must spawn the external xTB binary via ``subprocess``, so
-#: its dynamic-execution primitives are sanctioned; every other check
-#: (quarantined-path strings, truth-file names, truth imports) still applies
-#: to these modules in full.
-DYNAMIC_EXEC_ALLOWLIST: Final[tuple[str, ...]] = (
-    "pes2ts_core/generation/execution/xtb_path/runner.py",
-)
+#: Empty since ADR-0002 X2'-C deleted the local xTB runner — the one module
+#: that spawned the external GFN2-xTB binary via ``subprocess``.  ACP
+#: execution goes through the ``SUBPROCESS_IMPORT_ALLOWLIST`` adapters below;
+#: every other check (quarantined-path strings, truth-file names, truth
+#: imports) still applies to every module in full.
+DYNAMIC_EXEC_ALLOWLIST: Final[tuple[str, ...]] = ()
 
 #: Modules permitted to import ``subprocess`` only (project-relative). The
 #: reviewed ACP CLI adapters launch the ACP engine as an argv-only child
@@ -83,6 +85,8 @@ DYNAMIC_EXEC_ALLOWLIST: Final[tuple[str, ...]] = (
 SUBPROCESS_IMPORT_ALLOWLIST: Final[tuple[str, ...]] = (
     "pes2ts_core/integration/acp/cli_backend.py",
     "pes2ts_core/integration/acp/stage_cli.py",
+    "pes2ts_core/integration/acp/xtb_path_transport.py",
+    "pes2ts_core/integration/acp/orca_gradient_transport.py",
 )
 
 TRUTH_PATH_MARKERS: Final[tuple[str, ...]] = ("ground_truth", "truth_sources")

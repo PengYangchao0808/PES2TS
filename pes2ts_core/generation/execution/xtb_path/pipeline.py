@@ -6,18 +6,23 @@ independently implemented).  :func:`prepare_ids` assembles and persists the
 deterministic endpoints per reaction; every typed failure appends one
 ``stage="g2_path"`` ledger record with an idempotent signature.
 :func:`run_ids` resumes around terminal ``reaction_path.json`` documents
-(idempotency = no new xTB calls and unchanged sha256 of ``reaction_path.json``
-/``frames.parquet``/``xtb_path.log``), runs the frozen forward xTB PATH step,
-retries start/end-reversed from ``run_reverse/`` when the forward verdict code
-is in the configured trigger set, renormalizes a recovered reverse path
-(reverse frame order, recalibrate ``energy_rel_kcal`` against the new frame 0,
-keep ``energy_rel_kcal_raw``), and closes the batch with the summary, manifest
-(``run`` counter block), and coverage artifacts.
+(idempotency = no new ACP calls and unchanged sha256 of ``reaction_path.json``
+/``frames.parquet``/the terminal ACP artifacts), runs the xTB PATH step
+EXECUTED THROUGH ACP (``acp_backend.run_xtb_path_acp_attempt``; ADR-0002 —
+the local xTB runner is deleted), retries start/end-reversed from
+``run_reverse/`` when the forward verdict code is in the configured trigger
+set, renormalizes a recovered reverse path (reverse frame order, recalibrate
+``energy_rel_kcal`` against the new frame 0, keep ``energy_rel_kcal_raw``),
+and closes the batch with the summary, manifest (``run`` counter block), and
+coverage artifacts.  ACP wiring (``acp.root``/``acp.python``/``acp.config_path``)
+is mandatory: a missing ``acp.root`` raises :class:`InfrastructureError` —
+there is no silent local fallback.
 
 Per-reaction layout under ``<paths.interim>/g2/paths/<shard>/<id>/``:
-``endpoints.json``, ``R.xyz``, ``P.xyz``, ``run/`` (``start.xyz``, ``end.xyz``,
-``path.inp``, ``xtb_path.log``, ``xtbpath.xyz``, ``xtbpath_ts.xyz``),
-``run_reverse/`` (reversed attempt), ``frames.parquet``, ``reaction_path.json``.
+``endpoints.json``, ``R.xyz``, ``P.xyz``, ``run/`` (the ACP attempt root:
+``WORK/pes2ts/`` request/receipt/log plus ``RESULT/pes_search/`` raw
+trajectory, profile, and manifest), ``run_reverse/`` (reversed attempt),
+``frames.parquet``, ``reaction_path.json``.
 """
 
 # allow: SIZE_OK -- the plan freezes one pipeline module owning selection,
@@ -29,12 +34,12 @@ from __future__ import annotations
 
 import json
 import logging
-import tempfile
 from collections import Counter
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Final
+from uuid import uuid4
 
 from pes2ts_core.g0.inventory import INVENTORY_PARQUET_FILENAME
 from pes2ts_core.g0.rejections import (
@@ -46,6 +51,7 @@ from pes2ts_core.g0.rejections import (
 from pes2ts_core.g0.strata import COHORT_STRATIFIED_FILENAME, COHORT_TRIAL_FILENAME
 from pes2ts_core.g1.build import reaction_change_path, shard_name
 from pes2ts_core.generation.execution.xtb_path import G2_DIRNAME, G2_PATHS_DIRNAME, SCHEMA_PATH
+from pes2ts_core.generation.execution.xtb_path.acp_backend import run_xtb_path_acp_attempt
 from pes2ts_core.generation.execution.xtb_path.artifacts import (
     build_summary,
     config_digest,
@@ -62,15 +68,6 @@ from pes2ts_core.generation.assembly.endpoints import (
     write_endpoint_files,
 )
 from pes2ts_core.generation.execution.xtb_path.inspect import Metric, Verdict, evaluate_validity, frame_metrics
-from pes2ts_core.generation.execution.xtb_path.runner import (
-    END_XYZ_FILENAME,
-    PATH_INP_FILENAME,
-    START_XYZ_FILENAME,
-    XTB_LOG_FILENAME,
-    resolve_executable,
-    run_xtb_path,
-    write_path_inp,
-)
 from pes2ts_core.generation.execution.xtb_path.status import (
     DEFAULT_REVERSE_RETRY_TRIGGERS,
     G2_STATUSES,
@@ -79,22 +76,18 @@ from pes2ts_core.generation.execution.xtb_path.status import (
 from pes2ts_core.generation.execution.xtb_path.xtb_output import (
     Frame,
     XtbOutputError,
-    check_npath_consistency,
-    enumerate_trial_segments,
-    parse_path_log,
-    parse_path_xyz,
     parse_start_xyz,
-    parse_ts_xyz,
 )
+from pes2ts_core.integration.acp.xtb_path_request import build_path_inp_text
 from pes2ts_core.utils.hashing import sha256_file
-from pes2ts_core.utils.jsonio import atomic_writer, read_json, write_json
+from pes2ts_core.utils.jsonio import read_json, write_json
 from pes2ts_core.utils.parquet_io import read_parquet
 
 logger = logging.getLogger(__name__)
 
 
 class InfrastructureError(RuntimeError):
-    """A missing input, artifact, or executable (mapped to exit 24 at the CLI)."""
+    """A missing input, artifact, or ACP wiring (mapped to exit 24 at the CLI)."""
 
 
 STAGE: Final[str] = "g2_path"
@@ -113,8 +106,6 @@ RUN_DIRNAME: Final[str] = "run"
 REVERSE_RUN_DIRNAME: Final[str] = "run_reverse"
 FRAMES_FILENAME: Final[str] = "frames.parquet"
 DOCUMENT_FILENAME: Final[str] = "reaction_path.json"
-PATH_XYZ_FILENAME: Final[str] = "xtbpath.xyz"
-TS_XYZ_FILENAME: Final[str] = "xtbpath_ts.xyz"
 DIRECTION_FORWARD: Final[str] = "forward"
 DIRECTION_REVERSE: Final[str] = "reverse"
 #: CLI cohort mode -> ``g0 cohorts`` artifact filename.
@@ -122,6 +113,22 @@ COHORT_FILENAMES: Final[dict[str, str]] = {
     "trial": COHORT_TRIAL_FILENAME, "stratified": COHORT_STRATIFIED_FILENAME,
 }
 DEFAULT_SHARD_SIZE: Final[int] = 1000
+#: ACP attempt artifacts digested into the document ``sources`` block; keys
+#: are posix paths relative to the terminal run dir, which ``g2 verify``
+#: resolves under ``run``/``run_reverse`` exactly like the old flat
+#: run-directory filenames.  Only files that actually exist are recorded.
+_ACP_SOURCE_KEYS: Final[tuple[str, ...]] = (
+    "WORK/pes2ts/path_config.json",
+    "RESULT/result_manifest.json",
+    "RESULT/pes_search/pes_profile.json",
+    "RESULT/pes_search/xtbpath.xyz",
+)
+#: PES2TS-owned ACP attempt-slot files cleared before a fresh attempt: the
+#: ACP CLI transport keeps ONE immutable attempt receipt per output root, and
+#: every pipeline attempt is fresh (resume short-circuits on the terminal
+#: document), so stale slot state from a prior ``--force``/retry pass must go.
+_ACP_SLOT_FILES: Final[tuple[str, ...]] = ("cli_attempt.claim", "cli_receipt.json")
+_DEFAULT_XTB_TIMEOUT_SECONDS: Final[float] = 1800.0
 
 LedgerFailure = tuple[str, str, str, str]
 
@@ -368,11 +375,6 @@ def _terminal_document(path: Path) -> Mapping[str, Any] | None:
     return document
 
 
-def _atomic_copy(source: Path, target: Path) -> None:
-    with atomic_writer(target) as handle:
-        handle.write(source.read_bytes())
-
-
 def _reaction_context(
     reaction_id: str,
     rxn_dir: Path,
@@ -431,55 +433,83 @@ def _judge(frames: tuple[Frame, ...] | None, xtb_failure: str | None, ctx: _Reac
     )
 
 
+def _acp_wiring(config: Mapping[str, Any]) -> dict[str, Any]:
+    """Return the ACP wiring kwargs for one attempt.
+
+    ``acp.root`` (the ACP checkout) is mandatory — an empty/missing value
+    raises :class:`InfrastructureError`; G2 executes xTB PATH through ACP
+    only, with no silent local fallback.  ``acp.python`` (the ACP environment
+    interpreter) and ``acp.config_path`` are optional.  ``acp.register``
+    (default ``true``) decides whether the CLI run is registered into the ACP
+    jobs store so the Workbench can serve it; a registration failure fails
+    the attempt loudly (see ``xtb_path_transport.run_xtb_path_attempt``).
+    """
+    acp = config.get("acp")
+    block = acp if isinstance(acp, Mapping) else {}
+    root = block.get("root")
+    if not root or not str(root).strip():
+        raise InfrastructureError(
+            "acp.root is not configured; set acp.root to the ACP checkout "
+            "(e.g. .../ACP_V1_20260811) — G2 xTB PATH execution goes through "
+            "ACP only; there is no local fallback"
+        )
+    python = block.get("python")
+    config_path = block.get("config_path")
+    register_raw = block.get("register")
+    return {
+        "acp_root": str(root),
+        "python_executable": None if python in (None, "") else str(python),
+        "acp_config_path": None if config_path in (None, "") else str(config_path),
+        "register": True if register_raw is None else bool(register_raw),
+    }
+
+
+def _reset_acp_attempt_state(run_dir: Path) -> None:
+    """Clear a previous ACP attempt slot so a fresh attempt may be claimed.
+
+    The ACP CLI transport keeps ONE immutable attempt per output root
+    (``WORK/pes2ts/cli_receipt.json`` + claim).  The pipeline always executes
+    a fresh attempt whenever it reaches :func:`_run_attempt` (resume
+    short-circuits on the terminal document), so stale slot state left by a
+    prior ``--force`` rerun or a reverse-retry pass is cleared first — the ACP
+    analogue of the local runner overwriting its own run-directory outputs.
+    """
+    work = run_dir / "WORK" / "pes2ts"
+    if not work.is_dir():
+        return
+    for name in _ACP_SLOT_FILES:
+        (work / name).unlink(missing_ok=True)
+
+
 def _run_attempt(
     ctx: _ReactionContext, run_dirname: str, direction: str
 ) -> tuple[tuple[Frame, ...] | None, str | None, dict[str, Any]]:
-    """One xTB PATH attempt; returns (frames, failure detail, attempt record)."""
+    """One ACP ``XtbPathSearch`` attempt; returns (frames, failure, attempt)."""
+    if direction == DIRECTION_FORWARD:
+        start_filename, end_filename = REACTANT_XYZ_FILENAME, PRODUCT_XYZ_FILENAME
+    else:
+        start_filename, end_filename = PRODUCT_XYZ_FILENAME, REACTANT_XYZ_FILENAME
+    start_xyz_text = (ctx.rxn_dir / start_filename).read_text(encoding="utf-8")
+    end_xyz_text = (ctx.rxn_dir / end_filename).read_text(encoding="utf-8")
     run_dir = ctx.rxn_dir / run_dirname
     run_dir.mkdir(parents=True, exist_ok=True)
-    if direction == DIRECTION_FORWARD:
-        start_source, end_source = REACTANT_XYZ_FILENAME, PRODUCT_XYZ_FILENAME
-    else:
-        start_source, end_source = PRODUCT_XYZ_FILENAME, REACTANT_XYZ_FILENAME
-    _atomic_copy(ctx.rxn_dir / start_source, run_dir / START_XYZ_FILENAME)
-    _atomic_copy(ctx.rxn_dir / end_source, run_dir / END_XYZ_FILENAME)
-    result = run_xtb_path(run_dir, ctx.config, charge=ctx.charge, uhf=ctx.uhf)
-    if not bool((ctx.config.get("g2") or {}).get("keep_trials", False)):
-        for segment in enumerate_trial_segments(run_dir):
-            segment.unlink()
-    attempt: dict[str, Any] = {
-        "direction": direction,
-        "returncode": result.returncode,
-        "timed_out": result.timed_out,
-        "executable_sha256": result.executable_sha256,
-        "argv": list(result.argv),
-        "xtb_version_line": result.xtb_version_line,
-        "seed_supported": result.seed_supported,
-        "seed": result.seed,
-        "omp_num_threads": result.env.get("OMP_NUM_THREADS"),
-    }
-    if result.returncode != 0 or result.timed_out:
-        detail = (
-            f"xtb PATH run failed (returncode={result.returncode}, timed_out={result.timed_out})"
-        )
-        attempt["failure_code"] = RejectionCode.G2_XTB_FAILED.value
-        return None, detail, attempt
-    try:
-        frames = parse_path_xyz(run_dir / PATH_XYZ_FILENAME, start_path=run_dir / START_XYZ_FILENAME)
-        ts_frame = parse_ts_xyz(run_dir / TS_XYZ_FILENAME)
-        log = parse_path_log(run_dir / XTB_LOG_FILENAME)
-        check_npath_consistency(log, len(frames))
-    except XtbOutputError as error:
-        detail = f"unusable xTB output: {error}"
-        attempt["failure_code"] = RejectionCode.G2_XTB_FAILED.value
-        return None, detail, attempt
-    attempt.update(
-        ts_energy_kcal=ts_frame.energy,
-        forward_barrier_kcal=log.forward_barrier_kcal,
-        backward_barrier_kcal=log.backward_barrier_kcal,
-        reaction_energy_kcal=log.reaction_energy_kcal,
+    _reset_acp_attempt_state(run_dir)
+    xtb_settings = _g2_settings(ctx.config, "xtb")
+    timeout_raw = xtb_settings.get("timeout_seconds", _DEFAULT_XTB_TIMEOUT_SECONDS)
+    outcome = run_xtb_path_acp_attempt(
+        reaction_dir=ctx.rxn_dir,
+        config=ctx.config,
+        direction=direction,
+        execution_id=f"pes2ts-g2-{uuid4().hex}",
+        attempt_id=f"attempt-{uuid4().hex}",
+        timeout_seconds=float(timeout_raw),
+        charge=ctx.charge,
+        uhf=ctx.uhf,
+        start_xyz_text=start_xyz_text,
+        end_xyz_text=end_xyz_text,
+        **_acp_wiring(ctx.config),
     )
-    return frames, None, attempt
+    return outcome.frames, outcome.failure_detail, outcome.attempt
 
 
 def _normalize(frames: tuple[Frame, ...]) -> tuple[tuple[Frame, ...], list[float]]:
@@ -519,10 +549,10 @@ def _sources(ctx: _ReactionContext, run_dir: Path) -> dict[str, str]:
         REACTANT_XYZ_FILENAME: sha256_file(ctx.rxn_dir / REACTANT_XYZ_FILENAME),
         PRODUCT_XYZ_FILENAME: sha256_file(ctx.rxn_dir / PRODUCT_XYZ_FILENAME),
     }
-    for name in (PATH_INP_FILENAME, PATH_XYZ_FILENAME, TS_XYZ_FILENAME, XTB_LOG_FILENAME):
-        candidate = run_dir / name
+    for relative in _ACP_SOURCE_KEYS:
+        candidate = run_dir / relative
         if candidate.is_file():
-            sources[name] = sha256_file(candidate)
+            sources[relative] = sha256_file(candidate)
     return sources
 
 
@@ -534,8 +564,9 @@ def _terminal_run_dir(ctx: _ReactionContext, direction: str) -> Path:
     return ctx.rxn_dir / (RUN_DIRNAME if direction == DIRECTION_FORWARD else REVERSE_RUN_DIRNAME)
 
 
-def _path_inp_text(ctx: _ReactionContext, direction: str) -> str:
-    return (_terminal_run_dir(ctx, direction) / PATH_INP_FILENAME).read_text(encoding="utf-8")
+def _path_inp_text(config: Mapping[str, Any]) -> str:
+    """The frozen ``$path`` text the ACP request carries, from ``g2.path``."""
+    return build_path_inp_text(_g2_settings(config, "path"))
 
 
 def _reaction_document(
@@ -597,8 +628,8 @@ def _execute_reaction(
     rows = None if terminal_frames is None else _metric_rows(ctx, terminal_frames, terminal_raw)
     digest = config_digest(
         ctx.config,
-        xtb_sha256=str(attempts[-1]["executable_sha256"]),
-        path_inp=_path_inp_text(ctx, direction),
+        xtb_sha256=str(attempts[-1].get("request_sha256")),
+        path_inp=_path_inp_text(ctx.config),
     )
     document = _reaction_document(
         ctx,
@@ -623,42 +654,34 @@ def _execute_reaction(
 def _xtb_fingerprint(
     config: Mapping[str, Any], last_attempt: Mapping[str, Any] | None
 ) -> dict[str, Any]:
-    """Provenance block for the manifest ``xtb`` field.
+    """Provenance block for the manifest ``xtb`` field (ACP-executed runs).
 
-    ``version``/``argv``/``omp_num_threads``/``seed_supported``/``seed`` come
-    from the last attempt of the last attempted reaction in sorted selected
-    order — freshly run or resumed from the persisted terminal document, so
-    an idempotent re-run reproduces the fresh run's block (all ``None`` only
-    when the batch holds no attempt at all).  ``sha256`` is the executable
-    digest recorded by that attempt, recomputed from the resolved binary when
-    no attempt ran; ``path_inp`` is always regenerated from the config.
-    ``config_digest`` keeps consuming only ``sha256``/``path_inp``.
+    ``request_sha256``/``manifest_sha256`` come from the last attempt of the
+    last attempted reaction in sorted selected order — freshly run or resumed
+    from the persisted terminal document, so an idempotent re-run reproduces
+    the fresh run's block (all ``None`` only when the batch holds no attempt
+    at all).  ``path_inp`` is the frozen ``$path`` text the ACP request
+    carries, regenerated from ``g2.path``.  The executable digest, argv,
+    version line, OMP/seed fields are not surfaced by the ACP CLI transport
+    and stay ``None`` (never fabricated).  ``config_digest`` keeps consuming
+    only ``sha256``/``path_inp``.
     """
-    executable = resolve_executable(config)
-    with tempfile.TemporaryDirectory() as scratch:
-        inp = Path(scratch) / PATH_INP_FILENAME
-        write_path_inp(inp, config)
-        path_inp = inp.read_text(encoding="utf-8")
-    if last_attempt is None:
-        return {
-            "sha256": sha256_file(executable),
-            "path_inp": path_inp,
-            "version": None,
-            "argv": None,
-            "omp_num_threads": None,
-            "seed_supported": None,
-            "seed": None,
-        }
-    argv = last_attempt.get("argv")
-    return {
-        "sha256": str(last_attempt["executable_sha256"]),
-        "path_inp": path_inp,
-        "version": last_attempt.get("xtb_version_line"),
-        "argv": list(argv) if argv is not None else None,
-        "omp_num_threads": last_attempt.get("omp_num_threads"),
-        "seed_supported": last_attempt.get("seed_supported"),
-        "seed": last_attempt.get("seed"),
+    fingerprint: dict[str, Any] = {
+        "sha256": None,
+        "request_sha256": None,
+        "manifest_sha256": None,
+        "path_inp": _path_inp_text(config),
+        "version": None,
+        "argv": None,
+        "omp_num_threads": None,
+        "seed_supported": None,
+        "seed": None,
     }
+    if last_attempt is not None:
+        fingerprint["request_sha256"] = last_attempt.get("request_sha256")
+        fingerprint["manifest_sha256"] = last_attempt.get("manifest_sha256")
+        fingerprint["version"] = last_attempt.get("xtb_version_line")
+    return fingerprint
 
 
 def _write_batch_artifacts(
@@ -719,7 +742,7 @@ def run_ids(ids: Sequence[str], *, config: Mapping[str, Any], force: bool = Fals
     """Run the xTB PATH stage for every selected reaction and close the batch.
 
     Ids with a terminal ``reaction_path.json`` are skipped unless *force*
-    (idempotency: no new xTB calls, unchanged terminal artifact digests).  An
+    (idempotency: no new ACP calls, unchanged terminal artifact digests).  An
     id without prepared endpoints raises :class:`InfrastructureError` naming
     the ``g2 prepare`` hint -- never a silent skip.  Terminal failures append
     one idempotent ledger record; the batch always ends with summary, manifest,

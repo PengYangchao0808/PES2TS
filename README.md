@@ -363,7 +363,7 @@ forcing a transfer is `g0 fetch --force` on a fresh tree.
 | 21 | `EXIT_PIPELINE_FAILED` | `g0 run-all` did not complete every stage (the run report names the failing stage). |
 | 22 | `EXIT_G1_BUILD_FAILED` | A `g1` stage failed (e.g. a document that cannot be re-read by `g1 verify`, or an authoritative strata rebuild requested from a partial build). |
 | 23 | `EXIT_TRUTH_FLAG_REQUIRED` | A truth-assisted `g1` subcommand (`join-audit`, `resolve-map`) was invoked without the explicit `--allow-truth` flag, or the audited accessor refused the read. |
-| 24 | `EXIT_G2_FAILED` | A `g2` stage hit an infrastructure error (missing inventory/eligible/cohort/G1 inputs, missing xTB executable), or `g2 verify` found any inconsistency. |
+| 24 | `EXIT_G2_FAILED` | A `g2` stage hit an infrastructure error (missing inventory/eligible/cohort/G1 inputs, missing ACP execution wiring), or `g2 verify` found any inconsistency. |
 
 ## Configuration keys
 
@@ -473,14 +473,16 @@ the reactants and products, so isolation is structural rather than advisory:
    accessors), plus `cli.py` **only** inside the
    `truth_index` handler. The default test suite asserts the shipped package is
    clean.
-5. **Scoped dynamic-exec exception.** Stage G2 runs the external GFN2-xTB
-   binary, so `pes2ts_core/g2/runner.py` inevitably uses `subprocess`. Modules
-   on the separate `DYNAMIC_EXEC_ALLOWLIST` (currently just the runner) are
-   exempt **only** from the `DYNAMIC_EXEC_RISK` findings (`subprocess`/`importlib`
-   imports and `eval`/`exec`/`__import__` usage); they are still scanned in full
-   for quarantined-path strings, truth-file names, and truth imports, so a truth
-   reference injected into the runner is still reported. No other module's
-   checks are weakened, and the full allowlist semantics are unchanged.
+5. **Dynamic-execution exemptions.** xTB PATH execution now goes through the
+   ACP CLI (ADR-0002): the reviewed ACP adapters
+   (`pes2ts_core/integration/acp/cli_backend.py`, `stage_cli.py`, and the
+   XtbPathSearch transport `xtb_path_transport.py`) sit on the narrow
+   `SUBPROCESS_IMPORT_ALLOWLIST` and may import `subprocess` only; every other
+   dynamic-execution primitive and every truth check still applies to them in
+   full. The broader `DYNAMIC_EXEC_ALLOWLIST` — which used to exempt the local
+   xTB runner — is now **empty** since that runner was deleted (X2′-C); no
+   shipped module needs a dynamic-execution exemption, and the default test
+   suite asserts the shipped package is clean.
 
 ### Residual limits
 
@@ -940,7 +942,7 @@ documents `data/interim/g1/reaction_change/<shard>/<reaction_id>.json`.
 | --- | --- | --- | --- |
 | `endpoints.json` | `data/interim/g2/paths/<shard>/<reaction_id>/` | `g2 prepare` | Assembly record: `groups`, `placements`, `separations`, `metrics`, `candidates`, the map-ordered atom tables, `multiplicity_basis`. |
 | `R.xyz` / `P.xyz` | same | `g2 prepare` | Map-ordered endpoint frames (`element x y z`, 6 decimals); the comment line carries the reaction id and the direction marker. |
-| `run/` | same | `g2 run` | `start.xyz`, `end.xyz`, `path.inp`, `xtb_path.log`, `xtbpath.xyz`, `xtbpath_ts.xyz`; the `xtbpath_<n>.xyz` trial segments are kept only when `g2.keep_trials=true`. A reverse retry lives in `run_reverse/` with the same layout. |
+| `run/` | same | `g2 run` | `start.xyz`, `end.xyz`, `path.inp`, `xtb_path.log`, `xtbpath.xyz`, `xtbpath_ts.xyz`; trial segments (`xtbpath_<n>.xyz`) are ACP-owned RESULT artifacts — never parsed, never deleted by PES2TS, and `xtbpath.xyz` is the sole parsing authority. A reverse retry lives in `run_reverse/` with the same layout. |
 | `frames.parquet` | same | `g2 run` | One row per path frame: `reaction_id`, `frame_index`, `energy_rel_kcal`, `energy_rel_kcal_raw`, `rmsd_to_start`, `rmsd_to_end`, `step_max`, `step_rmsd`, `min_nonbonded_distance`, `event_distances` (JSON string). |
 | `reaction_path.json` | same | `g2 run` | `schema_version="g2_path_v1"`: status, failure code, direction and `direction_recovered`, scalar frame summary, validity verdict, attempt history, and source digests. No coordinate or energy arrays. |
 | `g2_summary.parquet` | `data/interim/` | `g2 run` | One row per selected reaction: `reaction_id`, `status`, `failure_code`, `direction`, `direction_recovered`, `n_frames`, `n_attempts`, `energy_min`, `energy_max`. |
@@ -1094,24 +1096,26 @@ terminal artifacts byte-identical.
 
 G2 modules carry no truth imports, no `ground_truth`/`truth_sources` strings,
 and no truth-file names; the static AST guard scans them like every other
-module. The single scoped exception is `pes2ts_core/g2/runner.py`, which must
-launch an external process: it is on the dynamic-exec allowlist, so
-`subprocess`/`importlib`/`eval`/`exec` findings are suppressed **for that file
-only**, while its quarantined-path, truth-file, and truth-import checks stay
-active (see *Ground-truth isolation*).
+module. xTB PATH execution goes through the ACP CLI adapters
+(`pes2ts_core/integration/acp/`), which sit on the narrow
+`SUBPROCESS_IMPORT_ALLOWLIST` (subprocess import only; every truth check stays
+active); the former local runner and its `DYNAMIC_EXEC_ALLOWLIST` entry were
+deleted per [ADR-0002](docs/design/decisions/ADR-0002-计算后端统一经ACP执行.md)
+(X2′-C).
 
 ### G2 configuration keys
 
 | Key | Default | Purpose |
 | --- | --- | --- |
+| `acp.root` | `null` | ACP checkout root (e.g. `.../ACP_V1_20260811`); mandatory for `g2 run` — a null/empty value exits 24 (no local xTB fallback). |
+| `acp.python` | `null` | Python interpreter of the ACP environment (the one that provides xTB for ACP to launch). |
+| `acp.config_path` | `null` | Optional ACP config YAML, passed to the ACP CLI as `--config`. |
+| `acp.register` | `true` | Append `--register` to the ACP CLI so a completed run registers in the ACP jobs store (`acp_jobs.db` under `ACP_RUN_ROOT`, shared with the ACP server) and resolves in the Workbench (`/api/v1/jobs/{id}/s2/profile`). ACP registers only after workflow success, so a non-zero exit with a valid RESULT means registration failed: the attempt fails loudly with a typed `--register`/`ACP_RUN_ROOT` error (RESULT stays on disk), never a silent "completed" the Workbench cannot show. `false` = headless runs with no jobs store. |
 | `g2.eligible_path` | `null` | Eligible id list; `null` means `<paths.interim>/g2_eligible.json`. |
 | `g2.shard_size` | `1000` | Reactions per `paths/<shard>/` directory (same shard naming as G1). |
-| `g2.keep_trials` | `false` | Keep (and register) the `xtbpath_<n>.xyz` trial segment files; `xtbpath.xyz` stays the sole parsing authority. |
-| `g2.xtb.executable` | `null` | xTB binary; `null` means `shutil.which("xtb")`, then `g2.xtb.fallback_paths`. |
-| `g2.xtb.fallback_paths` | `["/opt/xtb/bin/xtb", "/usr/local/bin/xtb"]` | Executable search fallback order. |
-| `g2.xtb.threads` | `4` | `-P` value and `OMP_NUM_THREADS` for each run. |
-| `g2.xtb.timeout_seconds` | `1800` | Per-attempt wall-clock budget; a timeout kills the whole process group and records `timed_out=true`. |
-| `g2.xtb.seed` | `42` | Seed passed only when the binary advertises a seed flag; seed support is recorded either way. |
+| `g2.xtb.threads` | `4` | Threads requested per ACP `XtbPathSearch` attempt; feeds the frozen `pes2ts_xtb_path_request_v1` recipe via `acp_backend.py`/`pipeline.py` (`-P`/`OMP_NUM_THREADS` inside ACP). |
+| `g2.xtb.timeout_seconds` | `1800` | Per-attempt wall-clock budget; a timeout kills the ACP CLI process group and records `timed_out=true`. |
+| `g2.xtb.seed` | `42` | Seed in the frozen request recipe; passed only when the xTB binary advertises a seed flag, seed support is recorded either way. |
 | `g2.path.nrun` | `1` | `$path` block: number of PATH runs. |
 | `g2.path.npoint` | `50` | `$path` block: interpolation points (raised from 25 after the pilot). |
 | `g2.path.anopt` | `10` | `$path` block: anchor optimization cycles. |
@@ -1231,33 +1235,42 @@ splitting, budget exhaustion), the audited bulk truth accessors, and a
 synthetic end-to-end P1→P2→verify→gate pipeline with CLI contracts. The
 G2 suite adds endpoint-assembly placement/separation/collision fixtures, the
 strict xTB output parser against real pinned PATH fixtures, frame metrics and
-validity predicates (including the superposed-endpoint regression), the runner
-subprocess contract (fake binaries), and the reverse-retry direction
-normalization. Tally: **666 passed, 4 deselected**
-(the 4 deselected are the gated families below).
+validity predicates (including the superposed-endpoint regression), the ACP
+attempt seam (fake-ACP helper driving the pipeline, plus the fake-ACP
+transport/backend contracts), and the reverse-retry direction
+normalization. Tally: see the latest CI/local run (the G2 runner tests were
+replaced by ACP-seam coverage when the local runner was deleted, ADR-0002
+X2′-C).
 
-Checks that need Zenodo or the ~12 GB download are marked `realdata`, and the
-one check that needs the real GFN2-xTB binary is marked `xtb`; both families
-are excluded by default via `pytest.ini`
-(`addopts = -m "not realdata and not xtb"`). List them with:
+Checks that need Zenodo or the ~12 GB download are marked `realdata`, the
+real-ACP xTB PATH smoke is marked `acp`, and any remaining real-binary checks
+are marked `xtb`/`orca`; all four families are excluded by default via
+`pytest.ini`
+(`addopts = -m "not realdata and not xtb and not acp and not orca"`). List
+them with:
 
 ```bash
-conda run -n pes2ts python -m pytest -q -m "realdata or xtb" --collect-only
+conda run -n pes2ts python -m pytest -q -m "realdata or xtb or acp or orca" --collect-only
 ```
 
-Four gated tests exist: `test_fetch.py::test_realdata_manifest_and_no_redownload`,
+The gated real-input families include `test_fetch.py::test_realdata_manifest_and_no_redownload`,
 `test_dedup.py::test_real_inventory_full_pass_within_budget`,
 `test_neardup.py::test_real_data_audit_completes`, and
-`test_g2_xtb_smoke.py::test_real_xtb_path_smoke`. The xtb-gated smoke test
-drives `pes2ts_core.g2.runner.run_xtb_path` on the real binary against the
-small C7OH8 fixture (~10–30 s) and asserts a valid path verdict; it resolves
-the executable from the `PES2TS_XTB_EXECUTABLE` environment variable first,
-then `PATH` (`shutil.which("xtb")`), and **fails with an explicit
-`XtbNotFoundError`-style message when neither resolves — it never skips**, so a
-missing binary cannot masquerade as a pass. Run it with:
+`test_g2_xtb_smoke.py::test_real_acp_xtb_path_smoke`. The ACP-gated smoke
+test drives
+`pes2ts_core.generation.execution.xtb_path.acp_backend.run_xtb_path_acp_attempt`
+on a real ACP checkout (`XtbPathSearch` workflow launching GFN2-xTB) against
+the small C7OH8 fixture and asserts a valid path verdict; it resolves the
+checkout from the `PES2TS_ACP_ROOT` environment variable and the interpreter
+from `PES2TS_ACP_PYTHON` (optional `PES2TS_ACP_CONFIG` for the ACP config
+YAML), and **fails with an explicit message naming the missing variables when
+neither resolves — it never skips**, so a missing ACP cannot masquerade as a
+pass. Run it with:
 
 ```bash
-PES2TS_XTB_EXECUTABLE=/path/to/xtb conda run -n pes2ts python -m pytest -q -m xtb
+PES2TS_ACP_ROOT=/path/to/ACP_V1_20260811 \
+PES2TS_ACP_PYTHON=/path/to/acp-env/python \
+conda run -n pes2ts python -m pytest -q -m acp
 ```
 
 Determinism philosophy: every JSON/Parquet artifact is reproducible from the

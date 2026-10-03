@@ -12,8 +12,12 @@ Typed document factories for the graph-theoretic PES scan-strategy selector
   payload is a discriminated union ``ScanCandidateV2 | PathCandidateV1``
   (discriminator ``candidate_kind``).  ``ScanCandidateV2`` covers
   ``SINGLE_1D`` / ``COUPLED_1D`` / ``SCHEDULED_1D`` scan modes;
-  ``PathCandidateV1`` covers NEB-style path requests (endpoint geometries +
-  image-chain parameters; minimal now, elaborated by the PathRequest todo).
+  ``PathCandidateV1`` covers path requests method-conditionally (ADR-0001/
+  ADR-0002): ``NEB`` carries endpoint geometries + an ``image_chain``
+  parameter block (ORCA ``%geom Path`` shape); ``XTB_PATH`` carries the same
+  endpoints plus a ``path_recipe`` assembly/recipe parameter block and **no**
+  image chain (execution is a planning-plane dispatch to the ACP XTB_PATH
+  backend, never ORCA per-point hashes).
 - ``orca_capabilities_v1`` (``BackendCapability``): backend capability
   registry record matching the ``orca_capabilities_v1.json`` shape.
 
@@ -106,7 +110,14 @@ ENDPOINTS: Final[tuple[str, ...]] = ("R", "P")
 SCHEDULE_KINDS: Final[tuple[str, ...]] = ("linear", "event_A_early", "event_A_late", "smoothstep")
 CAPABILITY_CHECK_STATUSES: Final[frozenset[str]] = frozenset({"pass", "fail", "unknown"})
 CAPABILITY_MODES: Final[tuple[str, ...]] = (*SCAN_MODES, "PATH_NEB")
-PATH_METHOD_KINDS: Final[tuple[str, ...]] = ("NEB",)
+#: Path method vocabulary (ADR-0001/ADR-0002).  ``NEB`` compiles to the ORCA
+#: ``%geom Path`` shape; ``XTB_PATH`` is a planning-plane dispatch executed
+#: through the ACP XTB_PATH backend as a recipe (never ORCA per-point hashes).
+#: Adding a member never invalidates previously sealed documents: validation
+#: is per-candidate and method-conditional, and old NEB plans are not re-sealed.
+METHOD_NEB: Final[str] = "NEB"
+METHOD_XTB_PATH: Final[str] = "XTB_PATH"
+PATH_METHOD_KINDS: Final[tuple[str, ...]] = (METHOD_NEB, METHOD_XTB_PATH)
 COMPILED_KINDS: Final[tuple[str, ...]] = ("hashes", "recipe")
 EPISTEMIC_ENDPOINT_HYPOTHESIS: Final[str] = "endpoint_hypothesis"
 #: Upper bound of native scan coordinates (config ``scan_strategy.max_scan_coordinates``).
@@ -117,7 +128,7 @@ _SCAN_ONLY_KEYS: Final[frozenset[str]] = frozenset({
     "mode", "drivers", "lambda_values", "schedule_id", "schedule_kind", "assembly_id",
 })
 _PATH_ONLY_KEYS: Final[frozenset[str]] = frozenset({
-    "endpoint_geometries", "image_chain", "method_kind",
+    "endpoint_geometries", "image_chain", "method_kind", "path_recipe",
 })
 
 # ---------------------------------------------------------------------------
@@ -170,14 +181,19 @@ SCAN_CANDIDATE_OPTIONAL: Final[frozenset[str]] = frozenset({
     "schedule_kind", "run_if", "pass_if", "fallback_ids", "expected_cost", "extensions",
 })
 
-#: Frozen plan NEB/path payload (minimal; elaborated by the PathRequest todo).
+#: Frozen plan path payload.  Method-conditional (ADR-0001/ADR-0002):
+#: ``image_chain`` is required only for ``NEB``; ``XTB_PATH`` carries a
+#: ``path_recipe`` assembly/recipe parameter block instead (no image chain,
+#: no ORCA per-point hashes — execution defers to the ACP XTB_PATH backend).
+#: Absent ``method_kind`` means ``NEB``, so already-frozen NEB documents that
+#: omit it keep validating unchanged.
 PATH_CANDIDATE_REQUIRED: Final[frozenset[str]] = frozenset({
     "candidate_kind", "candidate_id", "n_atoms", "endpoint_geometries",
-    "image_chain", "start_endpoint", "direction", "anchor_reason", "failure_reasons",
+    "start_endpoint", "direction", "anchor_reason", "failure_reasons",
 })
 PATH_CANDIDATE_OPTIONAL: Final[frozenset[str]] = frozenset({
-    "method_kind", "required_capabilities", "budget", "run_if", "pass_if",
-    "fallback_ids", "expected_cost", "extensions",
+    "method_kind", "image_chain", "path_recipe", "required_capabilities",
+    "budget", "run_if", "pass_if", "fallback_ids", "expected_cost", "extensions",
 })
 
 SHA256_PATTERN: Final[re.Pattern[str]] = re.compile(r"[0-9a-f]{64}")
@@ -486,7 +502,14 @@ def _geometry_block_issues(block: Any, n_atoms: Any, path: str, issues: list[str
 
 
 def _path_candidate_issues(candidate: dict[str, Any], path: str, issues: list[str]) -> None:
-    """Validate one frozen-plan ``PathCandidateV1`` payload (minimal NEB shape)."""
+    """Validate one frozen-plan ``PathCandidateV1`` payload (method-conditional).
+
+    ``NEB`` (or an absent ``method_kind``, for already-frozen documents)
+    requires the ``image_chain`` parameter block; ``XTB_PATH`` requires a
+    non-empty ``path_recipe`` assembly/recipe block and rejects ``image_chain``
+    (ADR-0002: xTB PATH executes through ACP as a recipe, never ORCA
+    ``%geom Path`` / per-point hashes).
+    """
     if candidate.get("candidate_kind") != CANDIDATE_KIND_PATH:
         issues.append(f"{path}.candidate_kind: expected '{CANDIDATE_KIND_PATH}'")
     _check_allowed_keys(candidate, PATH_CANDIDATE_REQUIRED, PATH_CANDIDATE_OPTIONAL, path, issues)
@@ -504,16 +527,34 @@ def _path_candidate_issues(candidate: dict[str, Any], path: str, issues: list[st
     else:
         for side in ("reactant", "product"):
             _geometry_block_issues(geometries.get(side), n_atoms, f"{path}.endpoint_geometries.{side}", issues)
-    image_chain = candidate.get("image_chain")
-    if not isinstance(image_chain, dict):
-        issues.append(f"{path}.image_chain: must be an object")
-    else:
-        n_images = image_chain.get("n_images")
-        if not _is_int(n_images) or n_images < 1:
-            issues.append(f"{path}.image_chain.n_images: must be a positive integer")
     method_kind = candidate.get("method_kind")
     if method_kind is not None and method_kind not in PATH_METHOD_KINDS:
         issues.append(f"{path}.method_kind: must be one of {', '.join(PATH_METHOD_KINDS)}")
+    resolved_method = method_kind if method_kind is not None else METHOD_NEB
+    if resolved_method == METHOD_XTB_PATH and method_kind in PATH_METHOD_KINDS:
+        if "image_chain" in candidate and candidate["image_chain"] is not None:
+            issues.append(
+                f"{path}.image_chain: NEB-only field on an XTB_PATH candidate "
+                "(xTB PATH carries path_recipe, executed through ACP per ADR-0002)"
+            )
+        path_recipe = candidate.get("path_recipe")
+        if not isinstance(path_recipe, dict) or not path_recipe:
+            issues.append(
+                f"{path}.path_recipe: XTB_PATH candidates require a non-empty "
+                "recipe/assembly parameter block"
+            )
+    else:
+        image_chain = candidate.get("image_chain")
+        if not isinstance(image_chain, dict):
+            issues.append(f"{path}.image_chain: must be an object (required for NEB)")
+        else:
+            n_images = image_chain.get("n_images")
+            if not _is_int(n_images) or n_images < 1:
+                issues.append(f"{path}.image_chain.n_images: must be a positive integer")
+        if "path_recipe" in candidate and candidate["path_recipe"] is not None:
+            issues.append(
+                f"{path}.path_recipe: XTB_PATH-only field on a {resolved_method} candidate"
+            )
     if "required_capabilities" in candidate and candidate["required_capabilities"] is not None:
         _string_list_issues(candidate["required_capabilities"], f"{path}.required_capabilities", issues)
     if candidate.get("budget") is not None and "budget" in candidate:
@@ -721,6 +762,18 @@ def _plan_issues(document: dict[str, Any]) -> list[str]:
     else:
         for i, candidate in enumerate(candidates):
             _plan_candidate_issues(candidate, f"$.candidates[{i}]", issues)
+        compiled = document.get("compiled")
+        has_xtb_path = any(
+            isinstance(candidate, dict)
+            and candidate.get("candidate_kind") == CANDIDATE_KIND_PATH
+            and candidate.get("method_kind") == METHOD_XTB_PATH
+            for candidate in candidates
+        )
+        if has_xtb_path and isinstance(compiled, dict) and compiled.get("kind") != "recipe":
+            issues.append(
+                "$.compiled: XTB_PATH path candidates require a recipe binding "
+                "(compiled.kind='recipe'); ORCA per-point hashes never apply (ADR-0002)"
+            )
     supersedes = document.get("supersedes")
     if supersedes is not None and not _is_nonempty_str(supersedes):
         issues.append("$.supersedes: must be a non-empty string when present")
@@ -928,6 +981,8 @@ __all__ = [
     "EPISTEMIC_ENDPOINT_HYPOTHESIS",
     "FORBIDDEN_KEYS",
     "MAX_SCAN_DRIVERS",
+    "METHOD_NEB",
+    "METHOD_XTB_PATH",
     "MODE_COUPLED_1D",
     "MODE_SCHEDULED_1D",
     "MODE_SINGLE_1D",

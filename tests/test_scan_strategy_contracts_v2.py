@@ -11,6 +11,9 @@ from pes2ts_core.generation.planning.contracts_v2 import (
     CANDIDATE_KIND_PATH,
     CANDIDATE_KIND_SCAN,
     FORBIDDEN_KEYS,
+    METHOD_NEB,
+    METHOD_XTB_PATH,
+    PATH_METHOD_KINDS,
     dumps_v2_document,
     loads_v2_document,
     make_backend_capability,
@@ -95,6 +98,26 @@ def _path_candidate(candidate_id: str = "plan:p001", **extra):
         "direction": "R_to_P",
         "anchor_reason": "CONNECTIVITY_EXCHANGE",
         "failure_reasons": [],
+    }
+    candidate.update(extra)
+    return candidate
+
+
+def _xtb_path_candidate(candidate_id: str = "plan:p-xtb", **extra):
+    candidate = {
+        "candidate_kind": CANDIDATE_KIND_PATH,
+        "candidate_id": candidate_id,
+        "n_atoms": 3,
+        "endpoint_geometries": {
+            "reactant": [[0.0, 0.0, 0.0], [1.1, 0.0, 0.0], [3.5, 0.0, 0.0]],
+            "product": [[0.0, 0.0, 0.0], [1.8, 0.0, 0.0], [2.8, 0.0, 0.0]],
+        },
+        "start_endpoint": "R",
+        "direction": "R_to_P",
+        "anchor_reason": "CONNECTIVITY_EXCHANGE",
+        "failure_reasons": [],
+        "method_kind": METHOD_XTB_PATH,
+        "path_recipe": {"path_inp_text": "$path\n nrun=1\n$end\n", "gfn_level": 2},
     }
     candidate.update(extra)
     return candidate
@@ -401,3 +424,91 @@ def test_capability_rejects_unknown_modes_and_inverted_point_limits():
     bad_limits = _capability_fields(point_limits={"baseline": 101, "max": 9})
     with pytest.raises(ContractError, match="point_limits"):
         make_backend_capability("cap:orca-baseline", "active", **bad_limits)
+
+
+# ---------------------------------------------------------------------------
+# XTB_PATH as a first-class path method (ADR-0001/ADR-0002, X3'-C).
+# ---------------------------------------------------------------------------
+def test_path_method_kinds_include_xtb_path():
+    assert PATH_METHOD_KINDS == ("NEB", "XTB_PATH")
+    assert METHOD_NEB == "NEB"
+    assert METHOD_XTB_PATH == "XTB_PATH"
+
+
+def test_xtb_path_candidate_validates_without_image_chain():
+    xtb_path = _xtb_path_candidate()
+    assert "image_chain" not in xtb_path
+    doc = make_generation_plan(
+        "plan:synth-0001", "frozen",
+        **_plan_fields(
+            candidates=[_scan_candidate(), xtb_path],
+            compiled={"kind": "recipe", "recipe": {"recipe_kind": "acp_xtb_path_v1"}},
+        ),
+    )
+    assert validate_v2_document(doc) == []
+    restored = loads_v2_document(dumps_v2_document(doc))
+    path = restored["candidates"][1]
+    assert path["method_kind"] == "XTB_PATH"
+    assert "image_chain" not in path
+    assert path["path_recipe"]["gfn_level"] == 2
+
+
+def test_neb_candidate_still_requires_image_chain():
+    plan = make_generation_plan("plan:synth-0001", "frozen", **_plan_fields())
+    assert validate_v2_document(plan) == []
+    missing_chain = copy.deepcopy(plan)
+    del missing_chain["candidates"][1]["image_chain"]
+    issues = validate_v2_document(missing_chain)
+    assert any("image_chain" in issue for issue in issues)
+    explicit_neb = copy.deepcopy(plan)
+    explicit_neb["candidates"][1]["method_kind"] = METHOD_NEB
+    del explicit_neb["candidates"][1]["image_chain"]
+    issues = validate_v2_document(explicit_neb)
+    assert any("image_chain" in issue for issue in issues)
+
+
+def test_xtb_path_rejects_image_chain_and_requires_path_recipe():
+    plan_fields = _plan_fields(
+        candidates=[_scan_candidate(), _xtb_path_candidate()],
+        compiled={"kind": "recipe", "recipe": {"recipe_kind": "acp_xtb_path_v1"}},
+    )
+    with_image_chain = make_generation_plan("plan:synth-0001", "frozen", **plan_fields)
+    bad = copy.deepcopy(with_image_chain)
+    bad["candidates"][1]["image_chain"] = {"n_images": 5}
+    bad = seal_document(bad)
+    issues = validate_v2_document(bad)
+    assert any("image_chain" in issue and "XTB_PATH" in issue for issue in issues)
+
+    without_recipe = make_generation_plan("plan:synth-0001", "frozen", **plan_fields)
+    bad = copy.deepcopy(without_recipe)
+    del bad["candidates"][1]["path_recipe"]
+    bad = seal_document(bad)
+    issues = validate_v2_document(bad)
+    assert any("path_recipe" in issue for issue in issues)
+
+    empty_recipe = make_generation_plan("plan:synth-0001", "frozen", **plan_fields)
+    bad = copy.deepcopy(empty_recipe)
+    bad["candidates"][1]["path_recipe"] = {}
+    bad = seal_document(bad)
+    issues = validate_v2_document(bad)
+    assert any("path_recipe" in issue for issue in issues)
+
+
+def test_xtb_path_plan_requires_recipe_binding_not_orca_hashes():
+    xtb_path_fields = _plan_fields(
+        candidates=[_scan_candidate(), _xtb_path_candidate()],
+        compiled={"kind": "recipe", "recipe": {"recipe_kind": "acp_xtb_path_v1"}},
+    )
+    good = make_generation_plan("plan:synth-0001", "frozen", **xtb_path_fields)
+    assert good["compiled"]["kind"] == "recipe"
+    bad = copy.deepcopy(good)
+    bad["compiled"] = {"kind": "hashes", "entries": [{"point_index": 0, "input_sha256": HEX_F}]}
+    bad = seal_document(bad)
+    issues = validate_v2_document(bad)
+    assert any("recipe" in issue and "XTB_PATH" in issue for issue in issues)
+
+
+def test_neb_plan_with_hashes_binding_still_valid():
+    doc = make_generation_plan("plan:synth-0001", "frozen", **_plan_fields())
+    assert doc["compiled"]["kind"] == "hashes"
+    assert validate_v2_document(doc) == []

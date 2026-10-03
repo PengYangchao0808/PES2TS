@@ -96,8 +96,8 @@ from pes2ts_core.generation.execution.xtb_path.pipeline import (
     run_ids,
     select_reaction_ids,
 )
-from pes2ts_core.generation.execution.xtb_path.runner import XtbNotFoundError
 from pes2ts_core.generation.execution.xtb_path.verify import verify_g2
+from pes2ts_core.integration.acp.cli_backend import ACPCLIError
 from pes2ts_core.logging_setup import setup_logging
 from pes2ts_core.utils.parquet_io import read_parquet
 from pes2ts_core.version import __version__
@@ -859,7 +859,7 @@ def _g2_prepare_handler(args: argparse.Namespace, config: dict[str, Any]) -> int
     try:
         ids = _select_g2_ids(args, config)
         report = prepare_ids(ids, config=config)
-    except (InfrastructureError, XtbNotFoundError, ValueError) as exc:
+    except (InfrastructureError, ACPCLIError, ValueError) as exc:
         logger.error("%s", exc)
         return EXIT_G2_FAILED
     logger.info(
@@ -877,7 +877,7 @@ def _g2_run_handler(args: argparse.Namespace, config: dict[str, Any]) -> int:
     try:
         ids = _select_g2_ids(args, config)
         report = run_ids(ids, config=config, force=bool(getattr(args, "force", False)))
-    except (InfrastructureError, XtbNotFoundError, ValueError) as exc:
+    except (InfrastructureError, ACPCLIError, ValueError) as exc:
         logger.error("%s", exc)
         return EXIT_G2_FAILED
     logger.info(

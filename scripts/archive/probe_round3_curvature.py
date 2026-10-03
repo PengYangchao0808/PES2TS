@@ -2,7 +2,7 @@
 from concurrent.futures import ThreadPoolExecutor
 import numpy as np
 from run_demo24_round3 import ROOT, OLD, OUT, material, read, write_json
-from pes2ts_core.integration.acp.gradient_backend import ORCAGradientBackend
+from gradient_backend_cccp import ORCAGradientBackend
 from pes2ts_core.generation.planning.constrained_curvature import directional_curvature
 from pes2ts_core.generation.planning.synchronized_path import align
 

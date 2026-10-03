@@ -248,6 +248,7 @@ def _hand_plan(
     plan_id: str = "plan-compat-hand",
     backend: Mapping[str, Any] | None = None,
     candidate_kind: str = "ScanCandidateV2",
+    path_method_kind: str | None = None,
 ) -> dict[str, Any]:
     if drivers is None:
         drivers = [{"kind": "B", "maps": [2, 3], "unit": "angstrom", "schedule_values": None, "index0": None}]
@@ -274,7 +275,7 @@ def _hand_plan(
     if mode == "SCHEDULED_1D":
         candidate["schedule_kind"] = "linear"
     if candidate_kind == "PathCandidateV1":
-        candidate = {
+        path_candidate: dict[str, Any] = {
             "candidate_kind": "PathCandidateV1",
             "candidate_id": "cand-hand-000",
             "n_atoms": 4,
@@ -282,12 +283,22 @@ def _hand_plan(
                 "reactant": [list(R_XYZ[i]) for i in (1, 2, 3, 4)],
                 "product": [list(P_XYZ[i]) for i in (1, 2, 3, 4)],
             },
-            "image_chain": {"n_images": 5},
             "start_endpoint": start_endpoint,
             "direction": direction,
             "anchor_reason": "HAND_TEST",
             "failure_reasons": [],
         }
+        if path_method_kind == "XTB_PATH":
+            path_candidate["method_kind"] = "XTB_PATH"
+            path_candidate["path_recipe"] = {
+                "path_inp_text": "$path\n nrun=1\n$end\n",
+                "gfn_level": 2,
+            }
+        else:
+            path_candidate["image_chain"] = {"n_images": 5}
+            if path_method_kind is not None:
+                path_candidate["method_kind"] = path_method_kind
+        candidate = path_candidate
     resolved_backend = dict(backend or {"engine": "xtb", "adapter_version": "acp-adapter-v0", "method": "GFN2-xTB"})
     return make_generation_plan(
         plan_id,
@@ -594,6 +605,20 @@ def test_path_candidate_is_typed_rejection() -> None:
     with pytest.raises(CompatExportError) as excinfo:
         export_legacy_scan_plan(plan_v2, mats, _config())
     assert excinfo.value.code == PATH_CANDIDATE_UNSUPPORTED
+
+
+def test_xtb_path_candidate_is_typed_rejection() -> None:
+    mats = _hand_materials()
+    plan_v2 = _hand_plan(
+        mats, candidate_kind="PathCandidateV1", path_method_kind="XTB_PATH"
+    )
+    assert validate_v2_document(plan_v2) == []
+    assert "image_chain" not in plan_v2["candidates"][0]
+    assert plan_v2["candidates"][0]["method_kind"] == "XTB_PATH"
+    with pytest.raises(CompatExportError) as excinfo:
+        export_legacy_scan_plan(plan_v2, mats, _config())
+    assert excinfo.value.code == PATH_CANDIDATE_UNSUPPORTED
+    assert "XTB_PATH" in str(excinfo.value)
 
 
 def test_non_frozen_plan_is_refused() -> None:

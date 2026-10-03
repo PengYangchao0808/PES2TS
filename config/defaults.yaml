@@ -121,13 +121,32 @@ scan_strategy:
   plan_manifest: g1_v2_scan_plan_manifest.json
   freeze_manifest: g1_v2_scan_freeze.json
 
+# ACP execution wiring (ADR-0002): G2 xTB PATH executes through the ACP CLI
+# only.  acp.root must point at the ACP checkout (e.g. .../ACP_V1_20260811);
+# a null/empty root makes `g2 run` fail with exit 24 — no local fallback.
+acp:
+  root: null
+  python: null              # python interpreter of the ACP environment
+  config_path: null         # optional ACP config yaml (passed as --config)
+  register: true            # append --register so completed CLI runs register in
+                            # the ACP jobs store (acp_jobs.db under ACP_RUN_ROOT,
+                            # shared with the ACP server) and resolve in the
+                            # Workbench (/api/v1/jobs/{id}/s2/profile).  ACP
+                            # registers only after a successful workflow, so a
+                            # non-zero exit with a valid RESULT means
+                            # registration failed: the attempt fails loudly with
+                            # a typed --register/ACP_RUN_ROOT error, never a
+                            # silent "completed" the Workbench cannot show.
+                            # false = headless runs with no jobs store.
+
 g2:
   eligible_path: null            # null => <paths.interim>/g2_eligible.json
   shard_size: 1000
-  keep_trials: false             # xtbpath_<n>.xyz segment files kept only when true
+  # Trial segments (xtbpath_<n>.xyz) are ACP-owned RESULT artifacts; xtbpath.xyz
+  # is the sole parsing authority.  No PES2TS config switch retains them.
   xtb:
-    executable: null             # null => shutil.which("xtb") => fallback_paths
-    fallback_paths: ["/opt/xtb/bin/xtb", "/usr/local/bin/xtb"]
+    # Feeds the frozen pes2ts_xtb_path_request_v1 recipe via acp_backend.py and
+    # pipeline.py — not interchangeable with the acp.* section above.
     threads: 4
     timeout_seconds: 1800
     seed: 42

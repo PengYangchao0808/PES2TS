@@ -1,23 +1,29 @@
-"""TDD tests for the G2 run-orchestration pipeline (plan task 9).
+"""TDD tests for the G2 run-orchestration pipeline (plan task 9, ACP seam).
 
 Covers :func:`select_reaction_ids`, :func:`prepare_ids`, and :func:`run_ids`
-against a self-contained fake xTB binary (scenario-selected via an env var):
-the nine frozen scenarios (valid forward, forward-fail/reverse-success with
-energy renormalization, both-fail, ineligible ledger, idempotent resume,
-``--force`` rerun, failure+force history, missing ``xtbpath.xyz``, and the
-no-retry-on-``G2_XTB_FAILED`` rule), the post-F-wave ``npath``-mismatch
-scenario, and the selection/prepare typed failures.
-All fixtures are synthetic and written under ``tmp_path`` roots.
+against a self-contained fake ACP ``XtbPathSearch`` helper (scenario-selected
+via an env var; ``pes2ts_core.generation.execution.xtb_path.pipeline.
+run_xtb_path_acp_attempt`` is monkeypatched, so no ACP checkout or xTB binary
+is ever launched): the nine frozen scenarios (valid forward,
+forward-fail/reverse-success with energy renormalization, both-fail,
+ineligible ledger, idempotent resume, ``--force`` rerun, failure+force
+history, missing raw trajectory, and the no-retry-on-``G2_XTB_FAILED`` rule),
+the unusable-ACP-output scenario, the ACP-wiring infrastructure error, and
+the selection/prepare typed failures.  All fixtures are synthetic and written
+under ``tmp_path`` roots.
 """
 
 # allow: SIZE_OK -- the plan names exactly one test file for the pipeline
-# task; the nine frozen fake-xTB scenarios plus selection/prepare unit
+# task; the nine frozen fake-ACP scenarios plus selection/prepare unit
 # coverage and their fixture builders.
 
 from __future__ import annotations
 
+import hashlib
+import itertools
 import json
-from collections.abc import Callable
+import math
+import os
 from pathlib import Path
 from typing import Any, Final
 
@@ -26,12 +32,15 @@ from pes2ts_core.config_loader import load_config
 from pes2ts_core.g0.rejections import LEDGER_FILENAME, RejectionCode
 from pes2ts_core.g1.build import reaction_change_path, shard_name
 from pes2ts_core.generation.execution.xtb_path import SCHEMA_PATH
+from pes2ts_core.generation.execution.xtb_path import pipeline as pipeline_module
+from pes2ts_core.generation.execution.xtb_path.acp_backend import XtbPathAttemptOutcome
 from pes2ts_core.generation.execution.xtb_path.pipeline import (
     InfrastructureError,
     prepare_ids,
     run_ids,
     select_reaction_ids,
 )
+from pes2ts_core.generation.execution.xtb_path.xtb_output import Frame
 from pes2ts_core.utils.hashing import sha256_file
 from pes2ts_core.utils.jsonio import read_json, write_json
 from pes2ts_core.utils.parquet_io import read_parquet, write_parquet
@@ -51,36 +60,35 @@ CATEGORY_NAMES: Final[tuple[str, ...]] = (
     "pure_formed", "pure_broken", "both", "order_change_only",
     "has_order_change", "h_migration", "multi_component",
 )
-
-FAKE_XTB: Final[str] = '''#!/usr/bin/env python3
-"""Fake GFN2-xTB PATH binary; scenario selected via $FAKE_XTB_SCENARIO."""
-import itertools
-import math
-import os
-import sys
-
-FRAME_COUNT = 8
+FRAME_COUNT: Final[int] = 8
+_G2_NULL_ATTEMPT_KEYS: Final[tuple[str, ...]] = (
+    "executable_sha256", "argv", "xtb_version_line", "seed_supported",
+    "seed", "omp_num_threads",
+)
 
 
-def read_xyz(name):
-    with open(name, encoding="utf-8") as handle:
-        lines = handle.read().splitlines()
+def _read_xyz_text(text: str) -> list[tuple[str, float, float, float]]:
+    lines = text.splitlines()
     count = int(lines[0].split()[0])
-    atoms = []
+    atoms: list[tuple[str, float, float, float]] = []
     for line in lines[2:2 + count]:
         parts = line.split()
         atoms.append((parts[0], float(parts[1]), float(parts[2]), float(parts[3])))
     return atoms
 
 
-def spread(atoms):
+def _spread(atoms: list[tuple[str, float, float, float]]) -> float:
     return max(math.dist(a[1:], b[1:]) for a, b in itertools.combinations(atoms, 2))
 
 
-def interpolated(start, end, count):
+def _interpolated(
+    start: list[tuple[str, float, float, float]],
+    end: list[tuple[str, float, float, float]],
+    count: int,
+) -> list[list[tuple[str, float, float, float]]]:
     frames = []
     for index in range(count):
-        t = index / (count - 1)
+        t = index / (count - 1) if count > 1 else 0.0
         atoms = []
         for (element, sx, sy, sz), (_, ex, ey, ez) in zip(start, end):
             atoms.append((element, sx + t * (ex - sx), sy + t * (ey - sy), sz + t * (ez - sz)))
@@ -88,49 +96,144 @@ def interpolated(start, end, count):
     return frames
 
 
-def write_frames(path, frames, base):
-    with open(path, "w", encoding="utf-8") as handle:
-        for atoms in frames:
-            energy = 25.0 * (spread(atoms) - base)
-            handle.write(f"{len(atoms)}\\n energy: {energy:.6f} xtb: 6.7.1 (fake)\\n")
-            for element, x, y, z in atoms:
-                handle.write(f"{element} {x:.6f} {y:.6f} {z:.6f}\\n")
+def _write_acp_artifacts(
+    run_dir: Path, *, request: dict[str, Any], trajectory: str,
+) -> Path:
+    work = run_dir / "WORK" / "pes2ts"
+    work.mkdir(parents=True, exist_ok=True)
+    (work / "path_config.json").write_text(
+        json.dumps(request, ensure_ascii=False, sort_keys=True), encoding="utf-8"
+    )
+    result = run_dir / "RESULT" / "pes_search"
+    result.mkdir(parents=True, exist_ok=True)
+    trajectory_path = result / "xtbpath.xyz"
+    trajectory_path.write_text(trajectory, encoding="utf-8")
+    profile = {"schema_version": "pes_profile_v2", "workflow": "XtbPathSearch",
+               "status": "completed"}
+    (result / "pes_profile.json").write_text(
+        json.dumps(profile, sort_keys=True), encoding="utf-8"
+    )
+    manifest = {"version": 2, "workflow": "XtbPathSearch", "status": "completed"}
+    (run_dir / "RESULT" / "result_manifest.json").write_text(
+        json.dumps(manifest, sort_keys=True), encoding="utf-8"
+    )
+    return trajectory_path
 
 
-def main():
-    if "--help" in sys.argv:
-        print("fake xtb PATH binary")
-        return 0
-    scenario = os.environ.get("FAKE_XTB_SCENARIO", "good")
-    counter = os.environ.get("FAKE_XTB_COUNTER")
+def _fake_acp_attempt(
+    *,
+    reaction_dir: Path,
+    config: dict[str, Any] | Any,
+    direction: str,
+    execution_id: str,
+    attempt_id: str,
+    timeout_seconds: float,
+    charge: int,
+    uhf: int,
+    start_xyz_text: str,
+    end_xyz_text: str,
+    acp_root: Any = None,
+    python_executable: Any = None,
+    acp_config_path: Any = None,
+    register: bool | None = None,
+) -> XtbPathAttemptOutcome:
+    """Fake ``run_xtb_path_acp_attempt``; scenario via ``$FAKE_ACP_SCENARIO``."""
+    scenario = os.environ.get("FAKE_ACP_SCENARIO", "good")
+    counter = os.environ.get("FAKE_ACP_COUNTER")
     if counter:
         with open(counter, "a", encoding="utf-8") as handle:
-            handle.write(os.path.basename(os.getcwd()) + "\\n")
-    reverse = os.path.basename(os.getcwd()) == "run_reverse"
-    if scenario == "bad" or (scenario == "both_fail" and reverse):
-        print("fake xtb: intentional failure")
-        return 3
-    with open("xtb_path.log", "w", encoding="utf-8") as handle:
-        handle.write("* xtb version 6.7.1 (fake)\\n")
-        handle.write("   forward barrier (kcal): 12.500000\\n")
-        handle.write("   backward barrier (kcal): 12.500000\\n")
-        handle.write("   reaction energy  (kcal): 25.000000\\n")
-        if scenario == "npath_mismatch":
-            handle.write("   npath: 99\\n")
+            handle.write(direction + "\n")
+    run_dir = Path(reaction_dir) / ("run" if direction == "forward" else "run_reverse")
+    request: dict[str, Any] = {
+        "schema_version": "pes2ts_xtb_path_request_v1",
+        "reaction_id": Path(reaction_dir).name,
+        "source": {
+            "source_type": "xyz_text_pair",
+            "start_xyz": start_xyz_text,
+            "end_xyz": end_xyz_text,
+            "charge": charge,
+            "multiplicity": uhf + 1,
+        },
+    }
+    request_sha = hashlib.sha256(
+        (direction + start_xyz_text + end_xyz_text).encode("utf-8")
+    ).hexdigest()
+    base_attempt: dict[str, Any] = {
+        "direction": direction,
+        "returncode": 0,
+        "timed_out": False,
+        "request_sha256": request_sha,
+        "manifest_sha256": None,
+        "acp_execution_id": execution_id,
+        "acp_attempt_id": attempt_id,
+        "wall_seconds": 0.05,
+        "acp_status": "completed",
+        "acp_reused": False,
+        "acp_attempt_dir": str(run_dir),
+        "acp_log_ref": "WORK/pes2ts/acp_cli.log",
+        "acp_error": None,
+        "native_frame_energy_unit": "relative_kcal_per_mol",
+        "raw_trajectory_path": None,
+        "raw_trajectory_sha256": None,
+    }
+    for key in _G2_NULL_ATTEMPT_KEYS:
+        base_attempt[key] = None
+
+    def _failure(
+        detail: str, *, returncode: int | None = None, acp_status: str = "failed",
+    ) -> XtbPathAttemptOutcome:
+        attempt = dict(base_attempt)
+        attempt.update(
+            returncode=returncode,
+            acp_status=acp_status,
+            acp_error=detail,
+            failure_code=RejectionCode.G2_XTB_FAILED.value,
+        )
+        return XtbPathAttemptOutcome(frames=None, failure_detail=detail, attempt=attempt)
+
+    if scenario == "bad" or (scenario == "both_fail" and direction == "reverse"):
+        return _failure(
+            "ACP XtbPathSearch attempt status is 'failed' (fake)", returncode=3
+        )
     if scenario == "missing":
-        return 0
-    start, end = read_xyz("start.xyz"), read_xyz("end.xyz")
-    count = 4 if scenario in ("short", "both_fail") and not reverse else FRAME_COUNT
-    frames = interpolated(start, end, count)
-    base = min(spread(start), spread(end))
-    write_frames("xtbpath.xyz", frames, base)
-    write_frames("xtbpath_ts.xyz", [frames[len(frames) // 2]], base)
-    return 0
-
-
-if __name__ == "__main__":
-    sys.exit(main())
-'''
+        return _failure(
+            "ACP completed attempt did not record a raw trajectory path",
+            returncode=0, acp_status="completed",
+        )
+    if scenario == "npath_mismatch":
+        return _failure(
+            "unusable ACP xTB path output: npath mismatch (fake)",
+            returncode=0, acp_status="completed",
+        )
+    start, end = _read_xyz_text(start_xyz_text), _read_xyz_text(end_xyz_text)
+    short_forward = scenario in ("short", "both_fail") and direction == "forward"
+    count = 4 if short_forward else FRAME_COUNT
+    atoms_frames = _interpolated(start, end, count)
+    base = min(_spread(start), _spread(end))
+    frames: list[Frame] = []
+    trajectory_lines: list[str] = []
+    for atoms in atoms_frames:
+        energy = 25.0 * (_spread(atoms) - base)
+        frames.append(Frame(
+            elements=tuple(atom[0] for atom in atoms),
+            coordinates=tuple(tuple(atom[1:]) for atom in atoms),
+            energy=energy,
+        ))
+        trajectory_lines.append(
+            f"{len(atoms)}\n energy: {energy:.6f} xtb: 6.7.1 (fake-acp)\n"
+        )
+        for element, x, y, z in atoms:
+            trajectory_lines.append(f"{element} {x:.6f} {y:.6f} {z:.6f}\n")
+    trajectory = "".join(trajectory_lines)
+    trajectory_path = _write_acp_artifacts(run_dir, request=request, trajectory=trajectory)
+    trajectory_sha = hashlib.sha256(trajectory.encode("utf-8")).hexdigest()
+    attempt = dict(base_attempt)
+    attempt.update(
+        manifest_sha256=trajectory_sha,
+        raw_trajectory_path=str(trajectory_path),
+        raw_trajectory_sha256=trajectory_sha,
+    )
+    return XtbPathAttemptOutcome(frames=tuple(frames), failure_detail=None, attempt=attempt)
 
 
 def _rows(count: int, elements: tuple[str, ...]) -> list[dict[str, Any]]:
@@ -211,13 +314,6 @@ def _write_inputs(
         write_json(path, _g1_document(reaction_id))
 
 
-def _fake_xtb(tmp_path: Path) -> Path:
-    script = tmp_path / "fake_xtb.py"
-    script.write_text(FAKE_XTB, encoding="utf-8")
-    script.chmod(0o755)
-    return script
-
-
 def _config(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, scenario: str,
     eligible_ids: tuple[str, ...] = (REACTION_A,), cohort_ids: tuple[str, ...] | None = None,
@@ -228,10 +324,15 @@ def _config(
     manifests = tmp_path / "manifests"
     config["paths"]["interim"] = str(interim)
     config["paths"]["manifests"] = str(manifests)
-    config["g2"]["xtb"]["executable"] = str(_fake_xtb(tmp_path))
+    config["acp"] = {
+        "root": str(tmp_path / "fake_acp_root"),
+        "python": None,
+        "config_path": None,
+    }
     config["g2"]["xtb"]["timeout_seconds"] = 60
-    monkeypatch.setenv("FAKE_XTB_SCENARIO", scenario)
-    monkeypatch.setenv("FAKE_XTB_COUNTER", str(tmp_path / "xtb_calls.log"))
+    monkeypatch.setenv("FAKE_ACP_SCENARIO", scenario)
+    monkeypatch.setenv("FAKE_ACP_COUNTER", str(tmp_path / "acp_calls.log"))
+    monkeypatch.setattr(pipeline_module, "run_xtb_path_acp_attempt", _fake_acp_attempt)
     _write_inputs(
         interim,
         eligible_ids=eligible_ids,
@@ -264,12 +365,12 @@ def _frame_energies(path: Path) -> tuple[list[dict[str, Any]], list[float]]:
 
 
 def _counter_calls(tmp_path: Path) -> int:
-    path = tmp_path / "xtb_calls.log"
+    path = tmp_path / "acp_calls.log"
     return len(path.read_text(encoding="utf-8").splitlines()) if path.is_file() else 0
 
 
 # --------------------------------------------------------------------------
-# Integration scenarios 1-9 (fake xTB)
+# Integration scenarios 1-9 (fake ACP)
 # --------------------------------------------------------------------------
 
 
@@ -286,27 +387,43 @@ def test_run_valid_forward_produces_terminal_artifacts(tmp_path, monkeypatch):
     assert document["direction_recovered"] is False
     assert document["failure_code"] is None
     attempt = document["attempts"][0]
-    assert attempt["xtb_version_line"] == "* xtb version 6.7.1 (fake)"
-    assert attempt["seed_supported"] is False
-    assert attempt["seed"] is None
-    assert attempt["omp_num_threads"] == "4"
+    assert attempt["direction"] == "forward"
+    assert attempt["acp_status"] == "completed"
+    assert attempt["returncode"] == 0
+    assert attempt["timed_out"] is False
+    assert attempt["request_sha256"]
+    assert attempt["manifest_sha256"]
+    assert attempt["acp_execution_id"].startswith("pes2ts-g2-")
+    assert attempt["acp_attempt_id"].startswith("attempt-")
+    for key in _G2_NULL_ATTEMPT_KEYS:
+        assert key in attempt, key
+        assert attempt[key] is None, key
     rows, energies = _frame_energies(rxn_dir / "frames.parquet")
-    assert len(rows) >= 8
+    assert len(rows) >= FRAME_COUNT
     assert all(row["energy_rel_kcal_raw"] == pytest.approx(row["energy_rel_kcal"]) for row in rows)
-    for name in ("endpoints.json", "R.xyz", "P.xyz", "run/start.xyz", "run/end.xyz",
-                 "run/path.inp", "run/xtb_path.log", "run/xtbpath.xyz", "run/xtbpath_ts.xyz"):
+    for name in ("endpoints.json", "R.xyz", "P.xyz",
+                 "run/WORK/pes2ts/path_config.json",
+                 "run/RESULT/result_manifest.json",
+                 "run/RESULT/pes_search/pes_profile.json",
+                 "run/RESULT/pes_search/xtbpath.xyz"):
         assert (rxn_dir / name).is_file(), name
-    assert (rxn_dir / "run/start.xyz").read_bytes() == (rxn_dir / "R.xyz").read_bytes()
+    request_on_disk = json.loads(
+        (rxn_dir / "run/WORK/pes2ts/path_config.json").read_text(encoding="utf-8")
+    )
+    assert request_on_disk["source"]["start_xyz"] == (rxn_dir / "R.xyz").read_text(encoding="utf-8")
+    assert request_on_disk["source"]["end_xyz"] == (rxn_dir / "P.xyz").read_text(encoding="utf-8")
     manifest = read_json(Path(config["paths"]["manifests"]) / "g2_path_manifest.json")
     assert manifest["run"] == {"n_selected": 1, "n_attempted": 1, "n_skipped": 0}
     xtb = manifest["xtb"]
-    assert xtb["sha256"] == sha256_file(Path(config["g2"]["xtb"]["executable"]))
-    assert xtb["version"] == "* xtb version 6.7.1 (fake)"
-    assert xtb["argv"][0] == str(Path(config["g2"]["xtb"]["executable"]).resolve())
-    assert xtb["argv"][1:4] == ["start.xyz", "--path", "end.xyz"]
-    assert xtb["omp_num_threads"] == "4"
-    assert xtb["seed_supported"] is False
+    assert xtb["sha256"] is None
+    assert xtb["request_sha256"] == attempt["request_sha256"]
+    assert xtb["manifest_sha256"] == attempt["manifest_sha256"]
+    assert xtb["version"] is None
+    assert xtb["argv"] is None
+    assert xtb["omp_num_threads"] is None
+    assert xtb["seed_supported"] is None
     assert xtb["seed"] is None
+    assert "$path" in xtb["path_inp"] and "npoint=50" in xtb["path_inp"]
     assert (Path(config["paths"]["manifests"]) / "g2_coverage.json").is_file()
 
 
@@ -315,7 +432,7 @@ def test_reverse_retry_recovers_and_normalizes_energy(tmp_path, monkeypatch):
     prepare_ids([REACTION_A], config=config)
     run_ids([REACTION_A], config=config)
     forward_rows, forward_profile = _frame_energies(_reaction_dir(config, REACTION_A) / "frames.parquet")
-    monkeypatch.setenv("FAKE_XTB_SCENARIO", "short")
+    monkeypatch.setenv("FAKE_ACP_SCENARIO", "short")
     report = run_ids([REACTION_A], config=config, force=True)
     assert report.n_attempted == 1
     rxn_dir = _reaction_dir(config, REACTION_A)
@@ -324,7 +441,10 @@ def test_reverse_retry_recovers_and_normalizes_energy(tmp_path, monkeypatch):
     assert document["direction"] == "reverse"
     assert document["direction_recovered"] is True
     assert len(document["attempts"]) == 2
+    assert document["attempts"][0]["direction"] == "forward"
     assert document["attempts"][0]["failure_code"] == RejectionCode.G2_PATH_DISCONTINUOUS.value
+    assert document["attempts"][1]["direction"] == "reverse"
+    assert (rxn_dir / "run_reverse/RESULT/pes_search/xtbpath.xyz").is_file()
     reverse_rows, reverse_profile = _frame_energies(rxn_dir / "frames.parquet")
     assert len(reverse_rows) == len(forward_rows)
     assert reverse_rows[0]["energy_rel_kcal"] == pytest.approx(0.0, abs=1e-6)
@@ -371,10 +491,9 @@ def test_run_is_idempotent_without_force(tmp_path, monkeypatch):
     prepare_ids([REACTION_A], config=config)
     run_ids([REACTION_A], config=config)
     rxn_dir = _reaction_dir(config, REACTION_A)
-    before = {
-        name: sha256_file(rxn_dir / name)
-        for name in ("reaction_path.json", "frames.parquet", "run/xtb_path.log")
-    }
+    stable_names = ("reaction_path.json", "frames.parquet",
+                    "run/RESULT/pes_search/xtbpath.xyz")
+    before = {name: sha256_file(rxn_dir / name) for name in stable_names}
     calls = _counter_calls(tmp_path)
     fresh_xtb = read_json(Path(config["paths"]["manifests"]) / "g2_path_manifest.json")["xtb"]
     report = run_ids([REACTION_A], config=config)
@@ -384,23 +503,19 @@ def test_run_is_idempotent_without_force(tmp_path, monkeypatch):
     manifest = read_json(Path(config["paths"]["manifests"]) / "g2_path_manifest.json")
     assert manifest["run"] == {"n_selected": 1, "n_attempted": 0, "n_skipped": 1}
     # Provenance is stable across an idempotent re-run: the skipped reaction's
-    # persisted terminal document still supplies the xtb block, byte-equal to
+    # persisted terminal document still supplies the ACP block, byte-equal to
     # the fresh run's (modulo the volatile keys, which the xtb block excludes).
     assert manifest["xtb"] == fresh_xtb
-    assert manifest["xtb"]["version"] == "* xtb version 6.7.1 (fake)"
-    assert manifest["xtb"]["argv"][0] == str(Path(config["g2"]["xtb"]["executable"]).resolve())
-    assert manifest["xtb"]["omp_num_threads"] == "4"
-    assert manifest["xtb"]["seed_supported"] is False
-    assert manifest["xtb"]["seed"] is None
-    assert manifest["xtb"]["sha256"] == sha256_file(Path(config["g2"]["xtb"]["executable"]))
-    after = {
-        name: sha256_file(rxn_dir / name)
-        for name in ("reaction_path.json", "frames.parquet", "run/xtb_path.log")
-    }
+    assert manifest["xtb"]["version"] is None
+    assert manifest["xtb"]["sha256"] is None
+    assert manifest["xtb"]["request_sha256"] == fresh_xtb["request_sha256"]
+    assert manifest["xtb"]["manifest_sha256"] == fresh_xtb["manifest_sha256"]
+    assert "$path" in manifest["xtb"]["path_inp"]
+    after = {name: sha256_file(rxn_dir / name) for name in stable_names}
     assert after == before
 
 
-def test_force_reruns_and_invokes_xtb_again(tmp_path, monkeypatch):
+def test_force_reruns_and_invokes_acp_again(tmp_path, monkeypatch):
     config = _config(tmp_path, monkeypatch, scenario="good")
     prepare_ids([REACTION_A], config=config)
     run_ids([REACTION_A], config=config)
@@ -418,7 +533,7 @@ def test_force_after_failure_keeps_ledger_history_and_updates_batch(tmp_path, mo
     manifests = Path(config["paths"]["manifests"])
     prepare_ids([REACTION_A], config=config)
     run_ids([REACTION_A], config=config)
-    monkeypatch.setenv("FAKE_XTB_SCENARIO", "good")
+    monkeypatch.setenv("FAKE_ACP_SCENARIO", "good")
     report = run_ids([REACTION_A], config=config, force=True)
     assert report.n_attempted == 1
     document = read_json(_reaction_dir(config, REACTION_A) / "reaction_path.json")
@@ -433,7 +548,7 @@ def test_force_after_failure_keeps_ledger_history_and_updates_batch(tmp_path, mo
     assert manifest["by_code"] == {}
 
 
-def test_missing_xtbpath_fails_typed_and_ledgers_once(tmp_path, monkeypatch):
+def test_missing_raw_trajectory_fails_typed_and_ledgers_once(tmp_path, monkeypatch):
     config = _config(tmp_path, monkeypatch, scenario="missing")
     manifests = Path(config["paths"]["manifests"])
     prepare_ids([REACTION_A], config=config)
@@ -452,14 +567,14 @@ def test_missing_xtbpath_fails_typed_and_ledgers_once(tmp_path, monkeypatch):
     assert len(entries) == 1
 
 
-def test_xtb_failure_does_not_trigger_reverse(tmp_path, monkeypatch):
+def test_acp_failure_does_not_trigger_reverse(tmp_path, monkeypatch):
     config = _config(tmp_path, monkeypatch, scenario="missing")
     prepare_ids([REACTION_A], config=config)
     run_ids([REACTION_A], config=config)
     assert not (_reaction_dir(config, REACTION_A) / "run_reverse").exists()
 
 
-def test_log_npath_mismatch_fails_typed_without_reverse(tmp_path, monkeypatch):
+def test_unusable_acp_output_fails_typed_without_reverse(tmp_path, monkeypatch):
     config = _config(tmp_path, monkeypatch, scenario="npath_mismatch")
     manifests = Path(config["paths"]["manifests"])
     prepare_ids([REACTION_A], config=config)
@@ -471,6 +586,24 @@ def test_log_npath_mismatch_fails_typed_without_reverse(tmp_path, monkeypatch):
     entries = [e for e in _ledger_entries(manifests) if e["reaction_id"] == REACTION_A]
     assert [entry["code"] for entry in entries] == [RejectionCode.G2_XTB_FAILED.value]
     assert not (_reaction_dir(config, REACTION_A) / "run_reverse").exists()
+
+
+def test_missing_acp_root_raises_infrastructure_error(tmp_path, monkeypatch):
+    config = _config(tmp_path, monkeypatch, scenario="good")
+    config["acp"]["root"] = None
+    prepare_ids([REACTION_A], config=config)
+    with pytest.raises(InfrastructureError, match="acp.root"):
+        run_ids([REACTION_A], config=config)
+    assert _counter_calls(tmp_path) == 0
+
+
+def test_acp_wiring_threads_register_setting():
+    wiring = pipeline_module._acp_wiring({"acp": {"root": "/acp", "register": False}})
+    assert wiring["register"] is False
+    wiring = pipeline_module._acp_wiring({"acp": {"root": "/acp", "register": True}})
+    assert wiring["register"] is True
+    wiring = pipeline_module._acp_wiring({"acp": {"root": "/acp"}})
+    assert wiring["register"] is True
 
 
 # --------------------------------------------------------------------------

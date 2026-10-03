@@ -2,7 +2,7 @@
 from pathlib import Path
 import json,sys
 import numpy as np
-ROOT=Path(__file__).resolve().parents[1]
+ROOT=Path(__file__).resolve().parents[2]
 sys.path.insert(0,'/mnt/e/Calculations/Common_Script/Auto_Calc_Platform/ACP_V1_20260811/src')
 from cccp.config import load_config
 from cccp.qc.interfaces.orca import ORCAInterface

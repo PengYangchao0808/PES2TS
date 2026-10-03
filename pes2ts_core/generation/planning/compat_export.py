@@ -10,9 +10,12 @@ Guardrails (never silently degraded):
 
 - Multi-coordinate plans (``COUPLED_1D`` / ``SCHEDULED_1D``, >1 driver),
   ``A``/``D`` driver kinds, non-uniform point lists, and ``PathCandidateV1``
-  payloads are **explicitly rejected** with :class:`CompatExportError`
-  (an ``ACPMappingError`` subclass carrying a machine-readable ``code``).
-  The export never projects a multi-coordinate plan onto its first driver.
+  payloads (``NEB`` or ``XTB_PATH``) are **explicitly rejected** with
+  :class:`CompatExportError` (an ``ACPMappingError`` subclass carrying a
+  machine-readable ``code``).  The export never projects a multi-coordinate
+  plan onto its first driver, and path candidates execute through their own
+  backends (ORCA ``%geom Path`` / ACP XTB_PATH recipe), never the legacy
+  single-B ScanPlan shape.
 - ``needs_review`` / proposal-stage documents never produce a ready export:
   only a sealed, ``status="frozen"`` ``g1_generation_plan_v2`` document is
   exportable.  The 24 Demo24 cases remain ``needs_review``; real ``ready``
@@ -399,9 +402,12 @@ def _export_candidate(
         raise CompatExportError(UNKNOWN_CANDIDATE_KIND, f"candidates[{index}] must be an object")
     kind = candidate.get("candidate_kind")
     if kind == CANDIDATE_KIND_PATH:
+        method_kind = candidate.get("method_kind") or "NEB"
         raise CompatExportError(
             PATH_CANDIDATE_UNSUPPORTED,
-            "the legacy single-B ScanPlan cannot represent PathCandidateV1/NEB payloads",
+            "the legacy single-B ScanPlan cannot represent PathCandidateV1 "
+            f"payloads (method_kind={method_kind!r}; NEB compiles to ORCA %geom "
+            "Path, XTB_PATH dispatches to the ACP XTB_PATH backend as a recipe)",
         )
     if kind != CANDIDATE_KIND_SCAN:
         raise CompatExportError(UNKNOWN_CANDIDATE_KIND, f"candidates[{index}].candidate_kind={kind!r}")

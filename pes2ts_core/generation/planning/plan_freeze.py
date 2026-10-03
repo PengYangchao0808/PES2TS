@@ -35,6 +35,8 @@ from pes2ts_core.contracts import seal_document
 from pes2ts_core.generation.planning.contracts_v2 import (
     CANDIDATE_KIND_PATH,
     CANDIDATE_KIND_SCAN,
+    METHOD_NEB,
+    METHOD_XTB_PATH,
     OBJECT_GENERATION_PLAN,
     SCHEMA_GENERATION_PLAN,
     make_generation_plan,
@@ -60,6 +62,12 @@ RECIPE_CANDIDATE_V1: Final[str] = "pes2ts_candidate_recipe_v1"
 DEFAULT_ENGINE: Final[str] = "orca"
 DEFAULT_METHOD: Final[str] = "B3LYP-D3"
 DEFAULT_ADAPTER_VERSION: Final[str] = "acp-adapter-v0"
+#: ACP-executed xTB PATH identity (ADR-0002): engine/adapter/version for
+#: ``method_kind="XTB_PATH"`` recipe seals.  ``adapter_version`` is the real
+#: request-projection constant from ``integration/acp/xtb_path_request.py``.
+DEFAULT_ENGINE_XTB_PATH: Final[str] = "xtb"
+DEFAULT_METHOD_XTB_PATH: Final[str] = "GFN2-xTB"
+DEFAULT_ADAPTER_VERSION_XTB_PATH: Final[str] = "pes2ts_xtb_path_request_v1"
 
 #: Machine-checkable quality-test identifiers frozen into every plan.
 DEFAULT_QUALITY_TEST_IDS: Final[tuple[str, ...]] = (
@@ -1037,36 +1045,60 @@ def _path_candidate_atom_rows(candidate: Mapping[str, Any]) -> list[int] | None:
 def _path_compiled_binding(
     compiled: Any, candidate: Mapping[str, Any]
 ) -> tuple[dict[str, Any], dict[str, Any], list[int] | None]:
-    """Compiled binding for a PathCandidateV1 freeze.
+    """Compiled binding for a PathCandidateV1 freeze (method-conditional).
 
-    ``compiled=None`` seals a path-generation recipe (endpoint xyz blocks in
-    the frozen atom order + ``%geom Path`` image chain; per-image recovery
-    owned by the backend).  Any other binding is delegated to the scan
-    freeze path (``CompiledRequest`` / hashes / recipe mappings).
+    ``compiled=None`` seals a path-generation recipe.  ``NEB`` seals endpoint
+    xyz blocks in the frozen atom order + ``%geom Path`` image chain (per-image
+    recovery owned by the backend).  ``XTB_PATH`` seals an ACP recipe binding
+    (``compiled.kind="recipe"``): the frozen ``path_recipe`` assembly/recipe
+    parameters, no image chain, no ORCA per-point hashes — execution defers to
+    the ACP XTB_PATH backend (ADR-0002).  Any other binding is delegated to
+    the scan freeze path (``CompiledRequest`` / hashes / recipe mappings).
     """
     if compiled is not None:
         return _compiled_binding(compiled, candidate)
     atom_rows = _path_candidate_atom_rows(candidate)
-    image_chain = candidate.get("image_chain")
-    image_chain_doc = dict(image_chain) if isinstance(image_chain, Mapping) else {}
+    method_kind = str(candidate.get("method_kind") or METHOD_NEB)
     geometries = candidate.get("endpoint_geometries")
-    recipe: dict[str, Any] = {
-        "recipe_kind": _RECIPE_PATH_REQUEST_V1,
-        "engine": DEFAULT_ENGINE,
-        "method": DEFAULT_METHOD,
-        "adapter_version": DEFAULT_ADAPTER_VERSION,
-        "method_kind": candidate.get("method_kind") or "NEB",
-        "n_atoms": candidate.get("n_atoms"),
-        "n_images": image_chain_doc.get("n_images"),
-        "image_chain": image_chain_doc,
-        "atom_rows": list(atom_rows) if atom_rows is not None else None,
-        "endpoint_geometries": dict(geometries) if isinstance(geometries, Mapping) else {},
-        "generation": (
-            "NEB path: frozen endpoint xyz blocks in the common atom order + "
-            "%geom Path image chain; per-image energies/gradients/convergence "
-            "recovered by the backend under the PathRequest recovery protocol"
-        ),
-    }
+    if method_kind == METHOD_XTB_PATH:
+        path_recipe = candidate.get("path_recipe")
+        recipe: dict[str, Any] = {
+            "recipe_kind": _RECIPE_PATH_REQUEST_V1,
+            "engine": DEFAULT_ENGINE_XTB_PATH,
+            "method": DEFAULT_METHOD_XTB_PATH,
+            "adapter_version": DEFAULT_ADAPTER_VERSION_XTB_PATH,
+            "method_kind": METHOD_XTB_PATH,
+            "n_atoms": candidate.get("n_atoms"),
+            "path_recipe": dict(path_recipe) if isinstance(path_recipe, Mapping) else {},
+            "atom_rows": list(atom_rows) if atom_rows is not None else None,
+            "endpoint_geometries": dict(geometries) if isinstance(geometries, Mapping) else {},
+            "generation": (
+                "XTB_PATH via ACP (ADR-0002): frozen endpoint xyz blocks in the "
+                "common atom order + path_recipe assembly/recipe parameters; "
+                "execution dispatched to the ACP XTB_PATH backend — never ORCA "
+                "%geom Path or per-point hashes"
+            ),
+        }
+    else:
+        image_chain = candidate.get("image_chain")
+        image_chain_doc = dict(image_chain) if isinstance(image_chain, Mapping) else {}
+        recipe = {
+            "recipe_kind": _RECIPE_PATH_REQUEST_V1,
+            "engine": DEFAULT_ENGINE,
+            "method": DEFAULT_METHOD,
+            "adapter_version": DEFAULT_ADAPTER_VERSION,
+            "method_kind": METHOD_NEB,
+            "n_atoms": candidate.get("n_atoms"),
+            "n_images": image_chain_doc.get("n_images"),
+            "image_chain": image_chain_doc,
+            "atom_rows": list(atom_rows) if atom_rows is not None else None,
+            "endpoint_geometries": dict(geometries) if isinstance(geometries, Mapping) else {},
+            "generation": (
+                "NEB path: frozen endpoint xyz blocks in the common atom order + "
+                "%geom Path image chain; per-image energies/gradients/convergence "
+                "recovered by the backend under the PathRequest recovery protocol"
+            ),
+        }
     block = {"kind": "recipe", "recipe": recipe}
     doc = {
         "kind": "recipe",

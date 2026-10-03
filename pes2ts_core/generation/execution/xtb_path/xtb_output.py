@@ -3,8 +3,9 @@
 Contract (plan task 6):
 
 - ``xtbpath.xyz`` is the ONLY authoritative frame source. ``xtbpath_<n>.xyz``
-  files are trial segments: never parsed for frames, only retained
-  (``g2.keep_trials=true``) and registered by :func:`enumerate_trial_segments`.
+  files are trial segments: never parsed for frames, only registered by
+  :func:`enumerate_trial_segments` (they are ACP-owned RESULT artifacts; no
+  PES2TS config switch retains or deletes them).
 - Comment energies (`` energy: <value> ...``) are RELATIVE kcal/mol (first
   frame ~0, later frames may be negative), never absolute total energies. A
   comment energy must be a decimal number where required (path frames, TS
@@ -247,8 +248,8 @@ def enumerate_trial_segments(run_dir: Path) -> tuple[Path, ...]:
     """Register ``xtbpath_<n>.xyz`` trial segment files, sorted by number.
 
     Trial segments are never an authoritative frame source (``xtbpath.xyz``
-    is); they are only retained (``g2.keep_trials=true``) and registered by
-    filename. The returned files must not be parsed for frames.
+    is); they are ACP-owned RESULT artifacts, registered here by filename.
+    The returned files must not be parsed for frames.
     """
     segments: list[tuple[int, Path]] = []
     for entry in run_dir.iterdir():

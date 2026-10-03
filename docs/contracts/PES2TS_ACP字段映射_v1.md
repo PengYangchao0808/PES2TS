@@ -4,6 +4,8 @@
 
 本次原生轨迹投影复核的当前 checkout 为 `E:/Calculations/Common_Script/Auto_Calc_Platform/ACP_V1_20260811`，branch `feat/task-organization`，HEAD `d8781de7310213058921752f1d56936a4146b9fe`。它不同于上述 9 月 29 日静态校验快照；每份 `acp_trajectory_graph.json` provenance 另记录加载到的 `src/acp/results/frames.py` SHA256，避免仅凭目录名假定接口版本。
 
+> **扩展预告（2026-10-03，planned / ADR-0002）：** 新的 ACP workflow `XtbPathSearch` 与共享请求 schema `pes2ts_xtb_path_request_v1` 将扩展本映射（xTB PATH 的请求/结果投影与可视化桥）。决策见 [ADR-0002](../design/decisions/ADR-0002-计算后端统一经ACP执行.md)，字段草案见《[PES2TS_ACP执行统一与旧代码清理方案_20261003](../plans/PES2TS_ACP执行统一与旧代码清理方案_20261003.md)》附录 A。本文不预写最终字段表；映射表待该方案落地后以修订版补充。
+
 ## 身份及目录
 
 | PES2TS | ACP | 规则 |
