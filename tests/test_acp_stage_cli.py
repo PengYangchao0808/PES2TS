@@ -10,7 +10,7 @@ import pytest
 from pes2ts_core.integration.acp.cli_backend import ACPCLIError
 from pes2ts_core.integration.acp.stage_cli import ACPStageResult, ACPValidationCLIBackend
 from pes2ts_core.demo import synthetic_objects
-from pes2ts_core.contracts import seal_document
+from pes2ts_core.contracts import make_document, seal_document
 from pes2ts_core.ranking import rank_path_bundle
 
 
@@ -82,3 +82,64 @@ def test_failed_batch_attempt_still_assembles_failed_validation_result() -> None
     assert outcome["validation_result"]["status"] == "failed"
     assert outcome["validation_result"]["optts"]["attempt_id"] == "attempt-batch"
     assert outcome["validation_result"]["frequency"]["status"] == "not_run"
+
+
+def _reviewed_case_and_review():
+    """Case + accepted ReviewRecord pair satisfying the stage_cli binding."""
+    docs = synthetic_objects()
+    case = docs["ReactionCase"]
+    bound_case = seal_document({**case, "source": {
+        **case["source"],
+        "review_record_id": "review:unit-gradient-binding",
+        "reviewed_from_case_sha256": case["content_sha256"]}})
+    reviewer = {"reviewer": "", "decision": "accept",
+                "dimensions": {"reaction_center": "confirmed", "atom_mapping": "confirmed",
+                               "charge_spin": "confirmed", "geometry_assembly": "confirmed"},
+                "scan_feasibility": "1D",
+                "multiplicities": {"reactant": 1, "product": 1}}
+    review = make_document("ReviewRecord", "review:unit-gradient-binding", "accepted",
+        dataset_version=case["dataset_version"], reaction_id=case["reaction_id"],
+        case_id=case["case_id"], split=case["split"],
+        case_sha256=case["content_sha256"], workbook_sha256="0"*64,
+        reviewers=[{**reviewer, "reviewer": "reviewer-one"},
+                   {**reviewer, "reviewer": "reviewer-two"}],
+        adjudication={"adjudicator": "adjudicator", "decision": "accepted",
+                      "reactant_multiplicity": 1, "product_multiplicity": 1},
+        decision_source="human",
+        extensions={"pes2ts.review_output.v1": {
+            "reviewed_case_sha256": bound_case["content_sha256"]}})
+    return bound_case, review
+
+
+def test_validation_attempt_binds_proposal_geometry_frame_and_plan(tmp_path, monkeypatch) -> None:
+    docs = synthetic_objects()
+    path = seal_document({**docs["PathBundle"], "status": "usable"})
+    base = rank_path_bundle(path, rule="highest_scan_energy", top_k=3)
+    selected = [dict(base["selected_frames"][0])]
+    selected[0] = {**selected[0], "plan_sha256": "p"*64,
+                   "completed_interval": False,
+                   "reference_geometry_used": False,
+                   "stationary_point_verified": False,
+                   "reaction_connection_verified": False}
+    proposal = seal_document({**base, "selected_frames": selected})
+    case, review = _reviewed_case_and_review()
+    backend = _backend(_fake_acp(tmp_path))
+    captured = {}
+
+    def capture(*, request, **kwargs):
+        captured.update(request)
+        return ACPStageResult("BatchOptimize", kwargs["execution_id"],
+            kwargs["attempt_id"], "failed", 1, str(kwargs["task_root"]),
+            "b"*64, None, .1, error="captured before execution")
+
+    monkeypatch.setattr(backend, "_run_stage", capture)
+    backend.run_validation(case=case, review_record=review, path=path, proposal=proposal,
+        source_frame_id=selected[0]["frame_id"], validation_id="validation:binding",
+        expected_method="HF-3c", expected_basis="", output_root=tmp_path/"out",
+        batch_execution_id="exec-b", batch_attempt_id="attempt-b",
+        irc_execution_id="exec-i", irc_attempt_id="attempt-i",
+        batch_timeout_seconds=10, irc_timeout_seconds=10)
+    assert captured["proposal_geometry_sha256"] == selected[0]["geometry_sha256"]
+    assert captured["proposal_frame_id"] == selected[0]["frame_id"]
+    assert captured["proposal_plan_sha256"] == "p"*64
+    assert "ranking" not in json.dumps(captured)

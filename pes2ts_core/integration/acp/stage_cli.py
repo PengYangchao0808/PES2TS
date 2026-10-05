@@ -200,12 +200,20 @@ class ACPValidationCLIBackend:
             "--transition-state-basis", expected_basis, "--charge", str(charge),
             "--multiplicity", str(multiplicity), "--output", str(batch_dir)]
         self._append_resource_args(batch_args, nproc, memory)
+        # G2-AB1 WP-4: the validation attempt receipt binds the proposal's
+        # geometry digest, frame identity, and (when present) the continuation
+        # plan digest — there is no ranking.json fallback anywhere.
+        selected_binding = selected[0] if isinstance(selected[0], dict) else {}
+        batch_request_binding = {"batch": batch_request,
+            "source_geometry_sha256": hashlib.sha256(input_text.encode("utf-8")).hexdigest(),
+            "proposal_geometry_sha256": selected[0].get("geometry_sha256"),
+            "proposal_frame_id": source_frame_id,
+            "proposal_plan_sha256": selected_binding.get("plan_sha256"),
+            "method": expected_method,
+            "basis": expected_basis, "profile": "opt_freq", "nproc": nproc, "memory": memory}
         batch_result = self._run_stage(workflow="BatchOptimize",
             execution_id=batch_execution_id, attempt_id=batch_attempt_id,
-            task_root=batch_dir, request={"batch": batch_request,
-                "source_geometry_sha256": hashlib.sha256(input_text.encode("utf-8")).hexdigest(),
-                "method": expected_method,
-                "basis": expected_basis, "profile": "opt_freq", "nproc": nproc, "memory": memory},
+            task_root=batch_dir, request=batch_request_binding,
             args=batch_args, timeout_seconds=batch_timeout_seconds)
         if batch_result.status != "completed":
             return self._failed_validation(validation_id=validation_id, path=path,
