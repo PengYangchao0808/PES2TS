@@ -152,6 +152,21 @@ def test_build_path_request_shape_and_uhf_mapping() -> None:
     validate_path_request(request)
 
 
+def test_build_path_request_coerces_float_timeout_to_int() -> None:
+    """A float API timeout lands in the frozen recipe as an int.
+
+    ``timeout_seconds`` is accepted as ``int | float`` for compatibility
+    (the smoke test passes the YAML-derived float), but the frozen
+    ``pes2ts_xtb_path_request_v1`` recipe contract requires an integer:
+    ACP rejects ``1800.0`` with ``[XTB_PATH_E_RECIPE] ... must be an int``.
+    """
+    request = _request(timeout_seconds=1800.0)
+    timeout = request["recipe"]["timeout_seconds"]
+    assert timeout == 1800
+    assert isinstance(timeout, int)
+    assert not isinstance(timeout, bool)
+
+
 @pytest.mark.parametrize(
     ("multiplicity", "expected_uhf"),
     [(1, 0), (2, 1), (3, 2), (5, 4)],

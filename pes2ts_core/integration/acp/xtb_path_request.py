@@ -116,7 +116,7 @@ def build_path_request(
     path_config: Mapping[str, Any],
     gfn_level: int = 2,
     threads: int = 4,
-    timeout_seconds: int = 1800,
+    timeout_seconds: int | float = 1800,
     seed: int | None = None,
     extra_args: Sequence[str] = (),
     plan_sha256: str | None = None,
@@ -169,7 +169,10 @@ def build_path_request(
         "gfn_level": gfn_level,
         "uhf": max(0, multiplicity - 1),
         "threads": threads,
-        "timeout_seconds": timeout_seconds,
+        # The public API accepts int | float for compatibility, but the
+        # frozen recipe contract requires an int: ACP rejects 1800.0 with
+        # "[XTB_PATH_E_RECIPE] recipe.timeout_seconds must be an int".
+        "timeout_seconds": int(timeout_seconds),
         "seed": seed,
         "extra_args": list(normalized_extra),
     }
