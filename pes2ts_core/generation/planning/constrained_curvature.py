@@ -7,7 +7,28 @@ from pes2ts_core.generation.planning.continuation import _jacobian
 from pes2ts_core.generation.planning.local_corrector import tangent_projector
 
 
+def curvature_probe_required(attempts, *, minimum_repeats=2):
+    """True only when the same LOCALITY_* failure shape repeated ``minimum_repeats`` times.
+
+    G2-AB1 WP-2: a curvature probe is a budgeted diagnostic for repeatedly
+    failing segments, never a routine step.
+    """
+    counts = {}
+    for attempt in attempts:
+        reason = attempt.get("reason") if isinstance(attempt, dict) else None
+        if isinstance(reason, str) and reason.startswith("LOCALITY"):
+            counts[reason] = counts.get(reason, 0)+1
+    return any(count >= minimum_repeats for count in counts.values())
+
+
 def directional_curvature(x, coordinates, gradient, direction, evaluate, *, step=.001, name="probe"):
+    """Single-direction Lagrangian curvature probe.
+
+    Standing and limits: this measures the reduced-Hessian curvature along ONE
+    projected direction only.  It cannot certify a minimum, a full spectrum,
+    or the absence of bifurcation; ``positive_definite_hessian_verified`` is
+    therefore always False here.
+    """
     x, gradient = np.asarray(x, float), np.asarray(gradient, float)
     projector, rank = tangent_projector(x, coordinates)
     vector = projector@np.asarray(direction, float).ravel()
