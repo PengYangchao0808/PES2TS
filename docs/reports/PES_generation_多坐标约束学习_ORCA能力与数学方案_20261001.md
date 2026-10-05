@@ -1,5 +1,7 @@
 # PES generation：多坐标约束学习、ORCA 能力与数学方案
 
+> **宪法指针（2026-10-04）**：本设计把 PES-G 定义为"学习条件化多坐标目标曲线 `c_θ(λ)`"并以联合平滑路径为目标。**该路线非当前 PES-G 定义**。现行为：PES-G = graph-conditioned learned predictor + QM corrector，目标是**进入 TS basin 而非重建 MEP**（见 [`PES2TS_开发宪法_v1.md`](../PES2TS_开发宪法_v1.md) §6）。本文降级为 **G-Oracle / teacher 数据生成器参考**；正文保留以备历史核对，不改写。
+
 日期：2026-10-01。状态：设计方案，尚未实现模型、修改生产算法或提交新计算。依据：当前 PES2TS 与本机 ACP 源码、上一轮 Demo24 几何审计，以及 ORCA 6.1/6.1.1 官方文档。以下优化、学习与边界算法是本项目建议及数学推导，不是对 ORCA 内部源代码实现的逐行描述。
 
 > 路径注记（2026-10-03）：本文引用的旧模块路径已随 G-R 布局迁移：`pes2ts_core/scan_strategy/` → `pes2ts_core/generation/planning/`，`pes2ts_core/g2/` → `pes2ts_core/generation/execution/xtb_path/`（`endpoints` → `pes2ts_core/generation/assembly/`），`ranking.py` → `pes2ts_core/ranking/`；正文历史引用保留，不改写。
