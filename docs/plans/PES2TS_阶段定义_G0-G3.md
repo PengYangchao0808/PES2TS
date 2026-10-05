@@ -1,43 +1,32 @@
-# PES2TS 阶段定义 G0–G3（权威）
+# PES2TS 阶段定义 G0–G4（权威）
 
 > 状态：权威（阶段与边界定义的唯一来源）
-> 层级：主干 G0/G1/G2/G3；工作流 C/R/X
+> 层级：主干 G0/G1/G2/G3/G4；工作流 C/R/X
 > 取代关系：取代《统一开发顺序与阶段验收》中的 S0–S8/demo 阶段表；S0–S8 内容降为历史映射（见 §5）
-> 上游依赖：无
-> 下游消费者：整体开发与发布方案、G2 生成攻坚计划、文档修订台账
-> 当前版本：v2 @ 2026-10-03（Classic / Rank / Gen、严格验证与训练边界修订）
+> 上游依赖：[开发宪法（内容 v2）](../PES2TS_开发宪法_v1.md)、[ADR-0010](../design/decisions/ADR-0010-PES-N反应状态价值与STOP-MOVE统一决策.md)
+> 下游消费者：完整开发流方案（整合版）、整体开发与发布方案、AGENT.md、G2 生成攻坚计划、文档修订台账
+> 当前版本：v4 @ 2026-10-05（PES-N 规划生效，历史能力状态不升级）
+> 文件名：保留历史名 `_G0-G3` 以兼容既有链接；本文件内容已扩展至 G0–G4。
 
 ---
 
 ## 1. 阶段总览
 
-```
-G0  数据底座
-    download → inventory → quarantine(真值隔离) → dedup/audit → split/freeze → cohorts
+| 阶段 | 当前未来开发任务 | 入口/出口摘要 |
+|---|---|---|
+| G0 | 数据、真值隔离与跨来源状态/转移资格 | 历史数据底座完成；增量数据及双维分裂另验收 |
+| G1 | graph→目标、原子角色、坐标与合法动作 | 边界合同、24例复核及化学控制模板 |
+| G2 | Classic / Shield / ACP原生约束优化 / 严格验证 | 24可审计终态＋≥1非参考严格目标TS；真实能力及全费用 |
+| G3.0 | 冻结1000输入漏斗，多来源ReactiveState及STOP标签 | G2闭环；标签覆盖/选择偏差/成本可查 |
+| G3.1 | 单点p_seed、精修C、Q_STOP监督及校准 | 固定候选池与跨来源/反应族评测、单点接口 |
+| G3.2 | 可选上下文，已支持动作的模仿与有界残差 | STOP基线通过；动作支持、风险校准和冻结模型 |
+| G4.0 | 相容环境转移上的保守离线value/Q | 不同动力学不混拼；行为/Classic对照与接入证据 |
+| G4.1 | 冻结模型真实QC闭环，train内采集后离线再训练 | Shield/backup/uncertainty门；同预算严格收益 |
+| G4.2 | 全系统、跨生成器/整族泛化、独立内核发布 | 成功率门下总费用改善，单点/上下文、部署及回退证据 |
 
-G1  反应图审计与成键方式统计
-    endpoint graph → edit graph ΔG(F/B/O/H) → event coupling → P1 mapping → P2 classify
-    → v2 mutually-exclusive edits + 3D audit → scan-ready whitelist export
-    ▸ exit: G1→G2 boundary contract frozen + 24-case human review closed
+G2.T 仍为 G2 的四例/24例测试，不是独立阶段；物理验证贯穿各阶段。PES-N 不是新增 G5。详细任务见 [PES-N未来开发计划](PES2TS_PES-N未来开发计划_v2_20261005.md)。
 
-G2  PES generation（当前战场）
-    2.0 endpoint assembly
-    2.1 method selection & plan freeze
-    2.2 execution (xTB PATH / ORCA Scan·Constraints·single-point gradient)
-    2.3 per-frame recovery + quality + rule candidates + validation evidence
-    2.4 execution unification (Track A/B)
-    2.T small-batch test (24 cases)   ← 原 "demo"，仅为 G2 的测试
-    ▸ exit: 24 cases with audited terminal outcomes under ACP + ≥1 strictly verified generated target TS
-
-G3  Scale-out & first-generation RANKING
-    3.0 frozen 1000-reaction cohort + complete funnel + labeled subset
-    3.1 learned RANKING on fixed paths + cost metrics
-    3.2 independent validation sampling
-```
-
-**核心裁决**：`demo` 不是阶段，`Demo24` 更名为 **G2.T 小批测试集**。物理验证（OptTS/频率/双向 IRC）不是独立阶段，而是 **G2/G3 每批的验收门**。
-
-**算法路线映射（2026-10-03）**：Classic = G2 的物理基线与 G3.0 规模化；Rank = G3.1–3.2 固定 generation 后学习排序；Gen = Rank 验收后的 G3 研究扩展。G2 必须已有能量峰/启发式候选提取以完成验证链，推迟到 G3 的是学习型排名。详见 [G2 后续开发方案](PES2TS_G2后续开发方案_Classic到Rank到Gen_20261003.md) 与 [ACP 配套计划](PES2TS_G2_ACP能力补齐与联合验收计划_20261003.md)。
+开发先 STOP 监督，再模仿/残差、离线 Q，最后冻结模型闭环；静态排序可先交付，G/R 使用同一内核。规范以开发宪法为准，本次规划改版不声称模型或新能力已实现。
 
 ---
 
@@ -48,21 +37,19 @@ G3  Scale-out & first-generation RANKING
 - **交付**：`inventory.parquet`、`split_manifest.json`、`cohort_{trial,stratified}.json`、`data/ground_truth/*`。
 - **当前状态**：✅ 完成（199,217 行；划分冻结）。
 - **退出条件**：已达成。
+- **PES-N 增量**：跨来源状态、已知动作/相容转移资格与交叉分裂另行验收，尚未由历史 G0 完成状态覆盖。
 
-### G1 · 反应图审计与成键方式统计
-- **定义**：对每条反应从无真值端点算出键变化图，做互斥语义审计与统计，并产出交给 G2 的白名单导出。
-- **子层**：
-  - 端点图 / 编辑图 ΔG（formed/broken/order_changed/H 迁移）
-  - 事件耦合图 H（把编辑聚成反应事件）
-  - P1 真值映射（`--allow-truth`，仅供诊断/分类，不入生成输入）
-  - P2 反应分类（方向敏感 + 方向不变）
-  - G1 v2 审计修复（互斥编辑 + 三维审计 + 白名单导出）
-- **交付**：`g1_change_v1`、`g1_p1_truth_v1`、`g1_p2_class_v1`、`g1_v2_edits_v1`、`g1_v2_class_v1`、`g1_v2_export_v1`、`g1_v2_gate.json`、`g2_scan_ready.json`。
-- **当前状态**：✅ 图/审计/统计完成（v1+v2，导出 183,460）；⚠️ 边界合同未显式化；24 条人工复核仍 pending。
-- **退出条件**：G1→G2 边界合同冻结（§3）+ 24 条人工复核放行。
+### G1 · 化学任务、图审计与合法动作编译
+- 复用端点图、F/B/O/H 编辑、事件耦合、映射和分类审计，当前活动范围仍以已放行 F/B 为准。
+- 新交付 ChemicalControlSpec：反应核心/几何支持/环境角色、driver/monitor/guard/target_test、坐标支持集/尺度/允许回退、电子态及来源。化学角色不等于冻结原子；G2按当前状态实例化。
+- 现有 g1_change_v1、P1/P2、v2 edits/class/export/gate 保持只读与来源身份；新增合同/旁车另版本。
+- 来源仍含 truth_assisted_p1，不能称端到端 truth-free；独立队列从端点映射及无真值预筛构建。
+- 当前历史状态：图/审计/统计已有（v2导出183,460）；边界合同/24复核仍待闭合；本次新增动作编译能力未验收。
+- 出口：§3边界及复核、控制模板版本/合法性/原子重排与允许事件证据；不预先证明任意工作方法的极小值或目标TS存在。
 
-### G2 · PES generation
+### G2 · Classic 物理闭环、Shield 与可回放基线
 - **定义**：把反应变成可审计的路径（选方法 → 编译 → 执行 → 逐帧回收 → 质量 → 验证）。
+- **本版增量**：控制器给低维坐标目标，ACP/ORCA承担原生约束优化；pre-Shield/post-quality独立，Classic作为基线和已验收backup保留。优先补严格验证/标签与真实状态—动作—费用记录，沿用既有退出门。原生后端和新增backup是否可用以收据为准。
 - **子阶段**：
   | 子阶段 | 内容 | 现状 |
   |---|---|---|
@@ -78,17 +65,24 @@ G3  Scale-out & first-generation RANKING
 
 > **G2.4 执行统一注记（2026-10-03）：** 子阶段 2.4「方法统一」的裁决现见 [ADR-0002 计算后端统一经 ACP 执行](../design/decisions/ADR-0002-计算后端统一经ACP执行.md)（**Accepted**）：所有计算后端（XTB_PATH、ORCA scan/constraints/NEB、continuation）统一经外部 ACP 执行；ADR-0001 的执行本地化条款与 X1/X2 退出条件被**部分取代**，接缝/计划/记录/词表仍有效。实施按《[PES2TS_ACP执行统一与旧代码清理方案_20261003](PES2TS_ACP执行统一与旧代码清理方案_20261003.md)》X1′–X5′ 推进（**planned / ADR-0002**；本地 xTB runner 删除与全后端 ACP 化尚未完成）。G-R 模块布局迁移已完成：`scan_strategy/` → `generation/planning/`，`g2/` → `generation/execution/xtb_path/`，`endpoints` → `generation/assembly/`。
 
-### G3 · 规模化与第一代学习型 RANKING
-- **定义**：把 Classic 扩到冻结的 1000 反应输入队列，建立验证标签子集，再在固定 generation 上学习排序。
-- **子阶段**：
-  - 3.0：1000 条输入的完整漏斗；有效路径、候选数和已验证标签数分别统计。1000 是规模化目标，不通过剔除失败凑“1000 成功”。
-  - 3.1：固定路径上比较能量峰、事件峰、启发式与学习型 RANKING；输出 SeedProposal + 目标成功概率/成本指标。
-  - 3.2：独立验证抽样（OptTS/频率/IRC）。
-- **当前状态**：⬜ 学习型排名未开始；已有 v1 规则 ranker，先在 G2 接通真实验证。
-- **退出条件**：1000 输入队列终态/成本完整；有效路径与真实标签覆盖明确；同预算独立排序/验证指标可复现。此定义替代旧“1000 条有效路径”作为唯一门，防止只保留成功样本。
-- **后续扩展**：Rank 通过后再学习 generation 和在线停止，不新增并列主干阶段。帧数不等于标签数，训练启动还需标签质量和独立划分门。
+### G3 · 规模化与 PES-N 离线监督
+- G3.0：1000输入完整漏斗，多源状态适配与冻结精修协议标注；失败/费用留存，输入数不等于标签数。
+- G3.1：小模型单点p_seed、完整精修成本与Q_STOP；独立校准/同池选点/来源和家族留出，先证明STOP监督有效。
+- G3.2：可选上下文、行为模仿与Classic有界残差候选；分离连续MOVE和离散STOP/FALLBACK。不具转移数据时只开放STOP。
+- 出口：输入漏斗/标签覆盖/来源可审计、冻结模型和单点API、预注册离线及风险接入门；不因训练完成成为生产默认。
+- 状态：未启动PES-N训练；旧规则ranker保留，模型能力未升级。
 
-**标签边界**：ValidationResult 不得反馈当前推理或 valid/test 调参；允许由隔离构建器导出 train 分区标签用于离线训练，再冻结模型评测。Demo24 已使用真值开发，整集作为开发回归；保留历史划分记录并增加污染标记，新的独立队列承担泛化评估。
+数据边界依宪法R1/R6：真值只进隔离train标签；未来严格结果不回流当前推理；Demo24为开发回归，truth-assisted映射/筛选继续披露。MD/NEB/Opt帧可用于同协议STOP，不能仅由相邻帧拼成相同环境MOVE转移。
+
+### G4 · 离线动作价值与物理闭环决策
+- G4.0：STOP和模仿基线之后，在已知动作、相容环境、全成本/终端证据的数据上研究保守离线Q；限制数据外动作，比较Classic/残差/显式Q。
+- G4.1：模型、Shield、backup及uncertainty接入证据齐备后，用冻结模型真实QC rollout；默认一步重规划，付费1–3步前瞻单独验收。仅train采集难例，离线更新后开启新运行。
+- G4.2：全系统成本/覆盖、cross-generator与reaction-family交叉留出、单点/上下文、独立内核宿主适配和资源验收。
+- 依赖：G2闭环、G3标签/模型/划分、所用ACP基元已验收；完整Hessian、键级导数和链式fallback为按需能力，不是所有模型的统一前置。
+- 出口：预注册目标成功率门下全输入总费用收益与独立泛化证据；风险拒答、Classic回退及部署可复现。
+- 状态：未启动PES-N离线Q或闭环；规范更新不升级真实能力。
+
+主输出是统一协议下的状态/动作价值；几何距离仅辅助。有限历史不保证Markov性，真实重规划不保证误差不积累，Shield不保证未观察物理结果。详见宪法§6与PES-N计划的数学条件。
 
 ---
 
@@ -98,10 +92,14 @@ G3  Scale-out & first-generation RANKING
 
 ### 3.1 G1 必须向 G2 保证（否则不放行）
 1. **白名单导出完整**：map 升序原子序、端点坐标、电荷/自旋、**互斥** F/B/O、氢伙伴变化、芳香区、反应中心、分类。
-2. **活动编辑视图**：明确哪些编辑是 `scan-active`（完全成/断键）、哪些 `archived`（键级变化）——G2 **不自行推断**。
-3. **电子态一致**：R/P 电荷与多重度确定且一致。
-4. **方法一致性标注**：端点是/不是**工作方法**（如 GFN2-xTB）的稳定极小点，供 G2 起点处理与 `METHOD_INCONSISTENT_ORIGIN` 判定。
-5. **真值无关 + 可复现身份**：content hash 绑定，零真值派生字段。
+2. **活动编辑视图**：明确 `scan-active`（完全 F/B）与 `archived`（O）；可由唯一规范适配器生成版本化旁车——下游不得各自推断或恢复 O 驱动。
+3. **电子态一致**：R/P 总电荷和所采用自旋面有明确依据；当前装配仅放行中性单重态范围，多组分总自旋不能普遍用组分多重度最大值推导。
+4. **方法来源与证据状态**：给出端点来源方法及可用证据；对尚未验证的工作方法明确 `unknown`。G2 选择方法后经 ACP 起点准备，产生几何/方法绑定的驻点、极小值和身份记录；不能仅凭优化失败写“不是极小点”。
+5. **字段隔离 + 来源分层 + 可复现身份**：content/map hash 绑定，不向在线生成输入暴露 TS/IRC 答案字段；显式声明坐标、映射、队列筛选和开发暴露来源。严格独立评测还要求端点来源映射与无真值预筛选；当前 truth-assisted 资产只按声明条件使用。
+
+全图和必要立体信息由白名单构建器输出洁净旁车，或冻结 SMILES 重建 authority；禁止在线读取含 IRC 证据的完整 edits 文档。方法 `unknown` 不阻止 G1 交付来源完整的输入，但 G2 的路径起点仍须通过对应准备门。上述为边界 v2 设计，现有 export v1/gate 不原地改写。
+
+本版边界增量：ChemicalControlSpec 记录反应原子/支持/环境角色与坐标自由度，Graph/Shield/动作规则版本、合法回退和电子态范围。具体新 schema 随实现登记，旧 gate 不自动获得新语义。
 
 ### 3.2 G2 不得假设（必须在 G2 内处理）
 - 端点几何是工作方法的稳定极小点；
@@ -110,7 +108,7 @@ G3  Scale-out & first-generation RANKING
 - 单一固定扫描方法适用于所有反应。
 
 ### 3.3 放行门（强化版 gate）
-放行产物必须同时给出 `{method, plan_ref}` 与 §3.1 的边界字段；`gate_pass=false` 时不得暴露"看似可用"的导出。
+G1 放行产物提供 §3.1 边界与版本身份；G2 在方法选择和计划冻结后补 `{method, plan_ref}`，避免要求 G1 预先证明所有未来工作方法。旧 `g1_v2_gate=true` 不代表新边界 v2 通过。新 gate/旁车单独版本化；失败或未确定状态显式返回，不暴露看似已验证的输入。
 
 ---
 
@@ -119,18 +117,18 @@ G3  Scale-out & first-generation RANKING
 | 工作流 | 阶段 | 目标 | 归属 |
 |---|---|---|---|
 | **C · 清理** | C0/C1/C2 | 收口未提交实验层、去重、归档脚本、文档收敛 | 前置于多数阶段 |
-| **R · generation 核心研究** | R0–R4 | 量化非驻点→驻点接受门→分支态+信任域→软 guard/NEB→起点一致性+验证接线 | 阻塞 G2 质量 |
+| **R · generation 核心研究** | R0–R4 | 旧基线回放→原生优化/质量门→相位/步长/保护消融→验证与数据；曲率及已验收回退按需 | 阻塞 G2 质量 |
 | **X · 执行收敛** | X0 + X1′–X5′ | 接缝→ACP xTB→证书/投影→全 QC 迁 ACP→可视化与清理 | G2.4 |
 
-详见《PES2TS_整体开发与发布方案_v2》§5 与 ADR-0001；G2.4 执行统一的最新裁决与实施计划见 [ADR-0002](../design/decisions/ADR-0002-计算后端统一经ACP执行.md) 与《[PES2TS_ACP执行统一与旧代码清理方案_20261003](PES2TS_ACP执行统一与旧代码清理方案_20261003.md)》（X1′–X5′）。
+现行职责详见《PES2TS_整体开发与发布方案_v2》（内容 v3）§3；ADR-0001 保留历史接缝决策；G2.4 执行统一的最新裁决与实施计划见 [ADR-0002](../design/decisions/ADR-0002-计算后端统一经ACP执行.md) 与《[PES2TS_ACP执行统一与旧代码清理方案_20261003](PES2TS_ACP执行统一与旧代码清理方案_20261003.md)》（X1′–X5′）。
 
 ---
 
-## 5. 旧阶梯 → G0–G3 映射（历史兼容）
+## 5. 旧阶梯 → G0–G4 映射（历史兼容）
 
 | 旧阶梯 | 出处 | 归入 |
 |---|---|---|
-| S0–S8 | 统一开发顺序与阶段验收 | 主干 G0–G3 |
+| S0–S8 | 统一开发顺序与阶段验收 | 主干 G0–G4 |
 | 层0–7 | 双项目开发与Demo方案 | = 主干 |
 | G1-0…G1-7 | G1_v2 补全实施总方案 | = L0–L4 |
 | L0–L4 / P0–P3 | 扫描规划谱系合并方案 | L0=C 收口；其余=X 工作流 |
@@ -149,5 +147,17 @@ G3  Scale-out & first-generation RANKING
 | scan-active / archived | 作驱动 / 仅归档 的编辑 |
 | G1→G2 boundary | G1 保证 + G2 不得假设 的契约（§3） |
 | G2.T | G2 的 24 条小批测试（原 demo） |
+| G4 | 相容转移的离线Q、冻结PES-N闭环及跨生成器/整族泛化 |
+| 生长（growth） | 在化学先验约束下从端点定向推进路径，而非全空间无向枚举 |
 | 严格验证 TS | 无生成约束的 OptTS 收敛、相关单虚频、双向 IRC、端点极小值及完整 R/P 化学身份通过 |
 | C/R/X | 清理 / 生成研究 / 执行收敛 三条工作流 |
+
+---
+
+## 7. 本版修订记录
+
+- **v4 @ 2026-10-05**：按 [ADR-0010](../design/decisions/ADR-0010-PES-N反应状态价值与STOP-MOVE统一决策.md)同步PES-N规划；G3先STOP监督再模仿/残差，G4先离线Q再闭环，保留G2.T/1000分母、来源与能力状态。旧v3精确快照见 [归档](../archive/20261005_pre_pesn/README.md)。
+
+- **v3 @ 2026-10-03**：新增 **G4 机理驱动的定向生长**（原 `Gen` 从“G3 研究扩展”升为独立阶段）；§1 总览与算法路线映射同步；§5 映射标题更新为 G0–G4。此变更属架构变更，已登记 [文档修订台账](PES2TS_文档修订台账.md) 与当时完整开发流 v1 的 §3.5（现见[改版前快照](../archive/20261005_pre_pesn/README.md)）；执行投影见 [`AGENT.md`](../../AGENT.md)（自 2026-10-04 起为 [开发宪法](../PES2TS_开发宪法_v1.md) 的投影）。
+- **v2.1 @ 2026-10-03**：PES-G 数学细化、方法证据与输入来源分层修订。
+- **v2 @ 2026-10-03**：Classic/Rank/Gen、严格验证与训练边界修订。
