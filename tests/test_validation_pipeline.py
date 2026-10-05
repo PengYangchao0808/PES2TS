@@ -167,3 +167,34 @@ def test_cli_validation_stages_bind_execution_attempt_and_completed_manifest():
     with pytest.raises(ContractError, match="result manifest SHA256"):
         build_validation_result(validation_id="validation:cli-unbound", path=path,
             proposal=proposal, **missing_digest)
+
+
+def test_partial_path_proposal_is_accepted_with_report_only_interval():
+    path, proposal, stages = _fixtures()
+    # A partial (completed_interval=false) gradient-seed proposal must NOT be
+    # gated: path integrity and candidate validation are reported separately.
+    selected = [dict(row) for row in proposal["selected_frames"]]
+    selected[0] = {**selected[0], "completed_interval": False,
+                   "reference_geometry_used": False, "stationary_point_verified": False,
+                   "reaction_connection_verified": False,
+                   "plan_sha256": "p"*64, "source_path_sha256": "s"*64}
+    partial = seal_document({**proposal, "selected_frames": selected,
+        "extensions": {"pes2ts.gradient_seed_proposals.v1": {
+            "completed_interval": False, "preparation_layer_status": "absent"}}})
+    result = build_validation_result(validation_id="validation:partial", path=path,
+        proposal=partial, **stages)
+    assert result["status"] == "passed"
+    provenance = result["extensions"]["pes2ts.path_provenance.v1"]
+    assert provenance["completed_interval"] is False
+    assert provenance["completed_interval_is_report_only"] is True
+    assert provenance["path_integrity_reported_separately"] is True
+    assert provenance["preparation_layer_status"] == "absent"
+
+
+def test_complete_path_and_rule_proposals_report_interval_neutrally():
+    path, proposal, stages = _fixtures()
+    result = build_validation_result(validation_id="validation:rule-proposal",
+        path=path, proposal=proposal, **stages)
+    provenance = result["extensions"]["pes2ts.path_provenance.v1"]
+    assert provenance["completed_interval"] is None
+    assert provenance["preparation_layer_status"] == "absent"

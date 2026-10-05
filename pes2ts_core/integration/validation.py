@@ -219,6 +219,25 @@ def build_validation_result(*, validation_id: str, path: dict[str, Any], proposa
     else:
         status = "passed"
     costs = _validation_costs(stage_attempts, evidence)
+    # G2-AB1 WP-4: partial-path proposals are accepted; completed_interval is
+    # a REPORT field (path integrity and candidate validation are reported
+    # separately), and the missing constitution-§8 preparation layer is
+    # explicitly typed instead of silently assumed.
+    gradient_extension = {}
+    if isinstance(proposal.get("extensions"), dict):
+        gradient_extension = proposal["extensions"].get("pes2ts.gradient_seed_proposals.v1", {})
+    completed_interval = None
+    if isinstance(gradient_extension, dict) and "completed_interval" in gradient_extension:
+        completed_interval = gradient_extension["completed_interval"]
+    elif isinstance(proposal.get("completed_interval"), bool):
+        completed_interval = proposal["completed_interval"]
+    elif isinstance(selected, list) and selected and isinstance(selected[0], dict) \
+            and isinstance(selected[0].get("completed_interval"), bool):
+        completed_interval = selected[0]["completed_interval"]
+    path_provenance = {"completed_interval": completed_interval,
+                       "completed_interval_is_report_only": True,
+                       "path_integrity_reported_separately": True,
+                       "preparation_layer_status": "absent"}
     if validation_note is None:
         notes = hard_failures or pending
         validation_note = "; ".join(notes) if notes else (
@@ -233,4 +252,5 @@ def build_validation_result(*, validation_id: str, path: dict[str, Any], proposa
         proposal_content_sha256=proposal["content_sha256"], source_frame_id=source_frame_id,
         source_geometry_sha256=actual_geometry_digest, optts=dict(optts), frequency=dict(frequency),
         irc_forward=dict(irc_forward), irc_reverse=dict(irc_reverse), validation_note=validation_note,
-        extensions={"pes2ts.validation_costs.v1": costs})
+        extensions={"pes2ts.validation_costs.v1": costs,
+                    "pes2ts.path_provenance.v1": path_provenance})
