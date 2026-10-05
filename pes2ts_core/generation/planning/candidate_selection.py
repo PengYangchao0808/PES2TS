@@ -1,11 +1,15 @@
 """Truth-free, hash-bound TS proposals from complete OR partial prefixes."""
 from __future__ import annotations
 
+import hashlib
 import math
 import numpy as np
 
 from pes2ts_core.generation.planning.gradient_evidence import BOHR_ANGSTROM, force_evidence
 from pes2ts_core.generation.planning.synchronized_path import align, digest
+
+#: Frozen bundle schema consumed by the validation entry (G2-AB1 WP-4).
+GRADIENT_SEED_PROPOSALS_SCHEMA = "pes2ts_gradient_seed_proposals_v1"
 
 
 def bind_candidate(candidate, result, plan):
@@ -27,6 +31,7 @@ def bind_candidate(candidate, result, plan):
     return {**candidate, "frame_index": index, "frame_id": frame["frame_id"],
             "geometry_sha256": geometry_hash, "source_path_sha256": path_hash,
             "plan_sha256": plan["content_sha256"], "completed_interval": result["completed_interval"],
+            "reference_geometry_used": False,
             "stationary_point_verified": False, "reaction_connection_verified": False}
 
 
@@ -74,10 +79,13 @@ def rank_continuation_candidates(result, plan, *, physical_evidence=None, top_k=
     if allow_edge_candidates and not result.get("completed_interval") and len(frames) >= 3:
         i = len(frames)-1
         if i in forces and frames[i]["lambda"] >= .1 and i not in proposals:
+            edge = forces[i]
             proposals[i] = {"frame_index": i, "energy_peak_frame": None,
-                           "evidence_class": "unbracketed_prefix_edge",
-                           "physical_gradient_norm_hartree_per_bohr": forces[i]["physical_gradient_norm_hartree_per_bohr"],
-                           "energy_hartree": frames[i]["energy_hartree"]}
+                            "evidence_class": "unbracketed_prefix_edge",
+                            "physical_gradient_norm_hartree_per_bohr": edge["physical_gradient_norm_hartree_per_bohr"],
+                            "free_gradient_norm_hartree_per_bohr": edge["perpendicular_gradient_norm_hartree_per_bohr"],
+                            "reconstructed_energy_slope_hartree_per_lambda": edge["reconstructed_energy_slope_hartree_per_lambda"],
+                            "energy_hartree": frames[i]["energy_hartree"]}
     ordered = sorted(proposals.values(), key=lambda r: (
         r["evidence_class"] != "bracketed_peak_neighbourhood",
         r["physical_gradient_norm_hartree_per_bohr"], -r["energy_hartree"], r["frame_index"]))
@@ -90,9 +98,98 @@ def rank_continuation_candidates(result, plan, *, physical_evidence=None, top_k=
         chosen.append(bind_candidate(proposal, result, plan))
         if len(chosen) >= top_k:
             break
-    return {"schema_version": "pes2ts_gradient_seed_proposals_v1", "candidate_only": True,
+    return {"schema_version": GRADIENT_SEED_PROPOSALS_SCHEMA, "candidate_only": True,
             "rule": "bound_full_gradient_within_peak_neighbourhood_then_distinct_prefix_edge",
             "source_path_sha256": digest(result), "plan_sha256": plan["content_sha256"],
             "completed_interval": result.get("completed_interval", False),
             "candidates": [{**r, "rank": i+1} for i,r in enumerate(chosen)],
             "n_bracketed_peaks": len(peaks), "reference_geometry_used": False}
+
+
+def continuation_path_bundle(result, plan, *, case_id, plan_id=None, execution_id=None):
+    """Project a continuation result into a minimal contract PathBundle.
+
+    G2-AB1 WP-4: partial continuation paths may nominate candidates, so the
+    projection marks the bundle usable-as-seed-source while carrying
+    ``completed_interval`` as a REPORT-ONLY extension field — path integrity
+    and candidate validation are reported separately and neither gates the
+    other.  ``acp_task_id`` stays null: a local continuation run is not an
+    ACP scheduler task.
+    """
+    from pes2ts_core.contracts import make_document
+    frames = []
+    for index, frame in enumerate(result.get("frames", [])):
+        energy = frame.get("energy_hartree")
+        frames.append({"frame_id": frame["frame_id"], "frame_index": index,
+                       "atom_map_ids": list(plan["atom_map_order"]),
+                       "geometry": frame["geometry"], "elements": list(plan["elements"]),
+                       "energies": ({"constrained_physical": {"value": float(energy),
+                                                               "unit": "hartree", "method_id": None}}
+                                    if energy is not None and math.isfinite(float(energy)) else {})})
+    source_path_sha256 = digest(result)
+    return make_document(
+        "PathBundle", f"path:continuation:{source_path_sha256[:16]}", "usable",
+        reaction_id=plan["reaction_id"], case_id=case_id,
+        plan_id=plan_id or f"plan:continuation:{plan['content_sha256'][:16]}",
+        candidate_id="candidate:continuation", 
+        execution_id=execution_id or f"execution:continuation:{source_path_sha256[:16]}",
+        acp_task_id=None, atom_map_ids=list(plan["atom_map_order"]),
+        n_atoms=len(plan["elements"]), energy_reference="frame_zero_constrained_physical",
+        frames=frames, supersedes=None,
+        extensions={"pes2ts.continuation_projection.v1": {
+            "source_path_sha256": source_path_sha256,
+            "plan_sha256": plan["content_sha256"],
+            "completed_interval": bool(result.get("completed_interval", False)),
+            "completed_interval_is_report_only": True,
+            "path_integrity_reported_separately": True}})
+
+
+def seed_proposal_from_gradient_ranking(path_bundle, proposals, *, rank=1):
+    """Convert the rank-th gradient seed candidate into a contract SeedProposal.
+
+    This is the ONLY bridge from ``pes2ts_gradient_seed_proposals_v1`` into
+    the formal validation chain (no ``ranking.json`` fallback): the selected
+    candidate's geometry hash must match a frame of ``path_bundle`` verbatim,
+    otherwise the conversion is a typed rejection.  The proposal records the
+    canonical candidate evidence and marks
+    ``preparation_layer_status = absent`` (constitution §8).
+    """
+    from pes2ts_core.contracts import make_document
+    from pes2ts_core.utils.hashing import stable_json_dumps
+    if proposals.get("schema_version") != GRADIENT_SEED_PROPOSALS_SCHEMA:
+        raise ValueError("INVALID_GRADIENT_SEED_PROPOSALS_SCHEMA")
+    candidates = proposals.get("candidates", [])
+    if not isinstance(rank, int) or isinstance(rank, bool) or not 1 <= rank <= len(candidates):
+        raise ValueError("NO_BOUND_CANDIDATE")
+    candidate = candidates[rank-1]
+    frame = next((row for row in path_bundle["frames"] if hashlib.sha256(
+        stable_json_dumps(row["geometry"]).encode()).hexdigest() == candidate["geometry_sha256"]), None)
+    if frame is None:
+        raise ValueError("CANDIDATE_GEOMETRY_NOT_IN_PATH_BUNDLE")
+    selected = {"rank": 1, "frame_id": frame["frame_id"], "frame_index": frame["frame_index"],
+                "score": candidate["physical_gradient_norm_hartree_per_bohr"],
+                "score_unit": "hartree/bohr",
+                "reason": candidate["evidence_class"],
+                "geometry_sha256": candidate["geometry_sha256"],
+                "evidence_class": candidate["evidence_class"],
+                "physical_gradient_norm_hartree_per_bohr": candidate["physical_gradient_norm_hartree_per_bohr"],
+                "free_gradient_norm_hartree_per_bohr": candidate["free_gradient_norm_hartree_per_bohr"],
+                "reconstructed_energy_slope_hartree_per_lambda": candidate["reconstructed_energy_slope_hartree_per_lambda"],
+                "plan_sha256": candidate["plan_sha256"],
+                "source_path_sha256": candidate["source_path_sha256"],
+                "completed_interval": bool(proposals.get("completed_interval", False)),
+                "reference_geometry_used": False,
+                "stationary_point_verified": False,
+                "reaction_connection_verified": False}
+    status = "accepted" if path_bundle["status"] == "usable" else "needs_review"
+    return make_document(
+        "SeedProposal", f"proposal:gradient:{candidate['geometry_sha256'][:20]}", status,
+        reaction_id=path_bundle["reaction_id"], case_id=path_bundle["case_id"],
+        path_id=path_bundle["object_id"], path_content_sha256=path_bundle["content_sha256"],
+        path_status=path_bundle["status"], ranking_version="gradient-seed-v1",
+        rule=proposals["rule"], top_k=len(candidates), selection_source="ranking",
+        selected_frames=[selected], rejected_reason=None,
+        review_note=None if status == "accepted" else "projected path is not usable",
+        extensions={"pes2ts.gradient_seed_proposals.v1": {
+            "preparation_layer_status": "absent",
+            "completed_interval_is_report_only": True}})
