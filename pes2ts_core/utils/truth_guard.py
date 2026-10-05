@@ -87,6 +87,10 @@ SUBPROCESS_IMPORT_ALLOWLIST: Final[tuple[str, ...]] = (
     "pes2ts_core/integration/acp/stage_cli.py",
     "pes2ts_core/integration/acp/xtb_path_transport.py",
     "pes2ts_core/integration/acp/orca_gradient_transport.py",
+    # G2-AB2 WP-3: origin free-optimization adapter — same argv-only ACP CLI
+    # child-process discipline (claim/receipt/log/timeout) as the adapters
+    # above; truth checks still apply to it in full.
+    "pes2ts_core/integration/acp/origin_backend.py",
 )
 
 TRUTH_PATH_MARKERS: Final[tuple[str, ...]] = ("ground_truth", "truth_sources")
