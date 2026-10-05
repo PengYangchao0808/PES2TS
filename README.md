@@ -1,31 +1,16 @@
 # PES2TS
 
+> **开发宪法（规范根）**：本仓全部开发行为受 [docs/PES2TS_开发宪法_v1.md](docs/PES2TS_开发宪法_v1.md) 约束；[AGENT.md](AGENT.md) 是其执行投影。任何规范冲突以宪法为准。
+
 ## Current project direction
 
-PES2TS is the integration of two separately testable projects: **PES generation**
-(G1 plans and G2 executes auditable, approximate reaction paths) and **PES
-ranking** (validates path usability and ranks calculated frames as TS seeds).
-The strict outcome is a target TS confirmed by OptTS, frequency, and two-way
-IRC; a path or high-energy frame alone is an intermediate result. The
-repository now includes v1 shared data contracts, endpoint-only ReactionCase
-conversion, a minimal one-coordinate ScanPlan, ACP request/result projections,
-a local ACP CLI attempt runner, and a replaceable synthetic path ranker with an
-offline energy/structure viewer. It also has a read-only collector for ACP
-BatchOptimize TS/frequency and IRC result artifacts; scheduler-managed task
-registration, stage execution orchestration, and validation against a real
-reaction remain later-stage integrations.
+PES2TS is a chemistry-constrained, physics-in-the-loop, cost-aware transition-state search workflow. Its planned shared **PES-N** kernel evaluates reactive states and computational actions: ranking evaluates `STOP_OPTTS`, while navigation compares STOP, graph-defined MOVE, and validated fallback options. Classic remains the baseline and backup controller; a separate chemical shield checks actions and observed results.
 
-See the [current development plan](docs/plans/PES2TS_双项目开发与Demo方案.md), the
-[unified stage acceptance order](docs/plans/PES2TS_统一开发顺序与阶段验收.md), the
-[contracts v1 field dictionary](docs/contracts/PES2TS_contracts_v1.md), the
-[ACP v1 field mapping](docs/contracts/PES2TS_ACP字段映射_v1.md), the
-[24-reaction Demo candidate set](docs/demo/PES2TS_demo24_反应挑选与复核方案.md), the
-[Demo evaluation metrics v1](docs/demo/PES2TS_Demo评估指标_v1.md), and the
-[G1 completion plan](docs/design/G1_v2_补全实施总方案.md). The older
-[step-by-step plan](docs/plans/PES2TS_逐步实施与验证方案.md) is retained as historical context.
-The [stage report](docs/reports/PES2TS_开发阶段性报告_20260930.md) and the
-[scan-planning lineage merge plan](docs/plans/PES2TS_扫描规划谱系合并方案_20260930.md)
-record the 2026-09-30 checkpoint.
+The development sequence is **Classic physical closure → supervised STOP value → imitation/residual learning → conservative offline Q → frozen-model QC rollouts**. The kernel learns seedability, refinement cost, and action value; energy/gradients and state transitions come from real QC. A target TS still requires OptTS, the correct imaginary mode, two-way IRC, and endpoint identity. Production QC in PES2TS continues through ACP.
+
+See the [current PES-N development plan](docs/plans/PES2TS_PES-N未来开发计划_v2_20261005.md), [stage definitions](docs/plans/PES2TS_阶段定义_G0-G3.md), [development and release plan](docs/plans/PES2TS_整体开发与发布方案_v2.md), and [ADR-0010](docs/design/decisions/ADR-0010-PES-N反应状态价值与STOP-MOVE统一决策.md). The charter and execution projection have been synchronized with this direction. This is a planning revision, not an implementation or QC validation claim; the new kernel and G3/G4 learning capabilities remain to be built and evaluated.
+
+Existing command examples and artifact workflows below retain their own implementation/evidence status. Legacy contracts remain readable; new reactive-state, action, model, and refinement-protocol schemas will be versioned. The [contracts v1 dictionary](docs/contracts/PES2TS_contracts_v1.md) and [ACP mapping](docs/contracts/PES2TS_ACP字段映射_v1.md) document the existing interfaces. Earlier project positioning is preserved in the [planning archive](docs/archive/20261005_pre_pesn/README.md).
 
 Run `python bin/pes2ts demo` to write the synthetic seven-object bundle and
 offline viewer to `examples/contracts_v1`. The energy curve demonstrates that
