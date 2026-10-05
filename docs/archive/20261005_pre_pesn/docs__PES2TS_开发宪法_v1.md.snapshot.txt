@@ -1,0 +1,398 @@
+# PES2TS 开发宪法 v1
+
+> 状态：权威（**唯一规范来源 / SSOT**）
+> 层级：全仓全局，凌驾于所有计划/设计/方案文档之上（报告为只读历史，不受改写，仅受指针约束）
+> 取代关系：正式确立本文件为规范 SSOT；`AGENT.md` 降级为本文件在仓库内的**执行投影**（不再独立造规范）
+> 上游依赖：无（本文件是规范根）
+> 下游消费者：`AGENT.md`、`docs/README.md`、`docs/plans/PES2TS_文档修订台账.md`、所有 plan/design/contracts、实验与发布流程
+> 当前版本：v1 @ 2026-10-04
+> 效力：本文件约束**后续所有开发行为**（代码、文档、实验、评测、发布）。与任何其他文档冲突时，一律以本文件为准。
+
+---
+
+## 0. 地位、效力与执行方式
+
+### 0.1 单一规范来源（SSOT）
+本文件是 PES2TS 的**唯一规范来源**。任何规范性的"必须/禁止"语句，只允许存在于本文件或本文件明确登记的版本化接口规范中。其余文档**只做引用**，不得重复声明规范。
+
+### 0.2 三层效力
+| 层 | 名称 | 可违背性 | 例 |
+|---|---|---|---|
+| **红线** | R1–R6 | **不可违背**；任何触碰 = 架构变更，须走 §12 | 真值隔离、物理标签唯一 |
+| **工程政策** | P1–P5 | **默认绑定**；可经**时限豁免**（§12.3）例外 | 接口版本化、typed rejection |
+| **接口规范** | I-* | 可演进，但**只以新版本**变更 | H schema、`label_state`、成本字段 |
+
+### 0.3 执行投影（防漂移）
+仓库根 `AGENT.md` 是本宪法在"AI/人类协作者自动加载面"上的**派生投影**，只允许包含：
+- 指向本文件的强制阅读指令；
+- 红线 **R1–R6 的 ID 与一句话摘要**（不得展开完整规范）；
+- PES2TS 专属的操作性规则（真值守卫路径、模块布局、阶段流表、变更审查清单）。
+
+**对齐律**：`AGENT.md` 不得引入任何新规范。若其摘要与本文件分歧，**以本文件为准**，并须立即修正 `AGENT.md`。CI 文档权威 lint 须校验两者的一致性（见 §12.4）。
+
+### 0.4 命名澄清
+- "开发宪法" = 本文件。
+- 旧称"架构守则" = `AGENT.md`（现为执行投影）。
+- 本文件不描述算法实现细节；细节在各自的版本化方案文档中，受本文件约束。
+
+### 0.5 强制前置检查（每个开发动作前）
+1. 本动作是否触碰 R1–R6？→ 是则先走 §12。
+2. 是否新增/修改接口（I-*）？→ 是则只以新版本变更并登记 §9.6。
+3. 是否引入新能力？→ 必须归属**唯一一层**（§2.3），并登记台账。
+4. 是否产生科学声明？→ 只用四层状态词（§11.5），并提供成本账本（R5）。
+
+---
+
+## 1. 身份与定位
+
+### 1.1 一句话定义（核心）
+> **PES2TS does not learn the potential-energy surface; it learns how to navigate a real quantum-mechanical surface under chemically constrained actions.**
+
+### 1.2 正式定义
+> **Chemistry-constrained, quantum-feedback, target-conditioned reaction-path navigation.**
+
+PES2TS 是 RPH Agent 中负责把**化学机理假设**转译成**量子化学路径**、定位 **TS 势阱**、并生成**严格物理证据**的核心科学引擎。
+
+### 1.3 科学流程链
+```
+化学定义允许怎么动  →  PES-G 决定下一步怎么动  →  xTB/DFT 告诉体系真实怎么响应  →  PES-R 决定哪里值得高精度精修
+```
+
+### 1.4 严格产出（不可退让的终点）
+目标反应由 **OptTS 收敛 + 频率确认目标模态的一阶鞍点 + 双向 IRC 连回目标 R/P + 完整化学身份** 确认。一条路径、一个高能帧、几何接近参考 TS、单虚频**都只是中间证据**。
+
+### 1.5 明确不是（Non-goals）
+PES2TS **不是**：
+- automated transition-state search software；
+- reactant/product → TS predictor；
+- 以 sequential decision-making TS search 为创新点的通用 RL 搜索器；
+- 用神经网络泛化势能面（learned PES surrogate）的模型；
+- HPC / 任务管理平台（那是 ACP）；
+- 文献 LLM 推理器（那是 RPH-Agent）。
+
+---
+
+## 2. 系统栈与职责边界
+
+### 2.1 栈图
+```
+RPH thinks  →  PES2TS navigates  →  ACP operates  →  CCCP computes
+```
+- **RPH-Agent**：读论文、理解实验背景、提出竞争机理 H₁,H₂,…，依据证据修正机理认识。
+- **PES2TS**：把机理假设编译成可执行路径并生成物理证据（本宪法主体）。
+- **ACP**：调度、缓存、资源、日志、provenance、错误恢复、结果管理。
+- **CCCP**：xTB / ORCA / DFT / gradient / optimization / Freq / IRC 等计算接口层。
+
+### 2.2 所有权表
+| PES2TS 拥有 | ACP 拥有 | RPH 拥有 |
+|---|---|---|
+| 机理编译、A(H)、反应坐标角色、路径接受/分支策略、候选排序、目标反应判定、化学身份 | 二进制/集群、QC 基元、**进程/资源/取消/任务调度**、WORK/RESULT、manifest、**任务/帧展示、缓存/成本基础设施** | 机理假设生成、文献推理、证据编排与展示 |
+
+### 2.3 不吸收原则
+PES2TS **不得**内化 HPC/任务管理/调度（ACP 职责）或文献 LLM 推理（RPH 职责）。任何新能力必须归属**恰好一层**；跨层能力必须拆分为"PES2TS 侧化学策略 + ACP 侧执行基元"，两侧不得各自实现同一套化学逻辑。
+> 注：`docs/plans/PES2TS_G2_ACP能力补齐与联合验收计划_20261003.md` §1 表中的"方向/调度"专指**扫描方向 / 路径调度**（化学层），不指作业调度；后者归 ACP。措辞须以此为准。
+
+### 2.4 命名空间（防同词异义）
+| 术语 | 唯一含义 |
+|---|---|
+| **PES-G** | 轨道名：generation 整体 |
+| **PES-G 学习器 / controller** | 组件名：`π_G(s_t)→a_t` |
+| **PES-R** | 轨道名：ranking 整体 |
+| **ReactionProfileHunter** | 外部参考实现（xTB PATH 命令形状来源），缩写只允许写全名或 `RPH-code` |
+| **RPH-Agent** | 文献/机理推理层（栈顶），不得与 `RPH-code` 混用 |
+| **CCCP** | 计算接口层（xTB/ORCA/DFT 等）；不是 PES2TS 模块，也不得被 PES2TS 直接 import |
+| **学习级 (learning rung)** | 算法内部代际（§6.5 / §7.4），**不是**工程阶段 |
+
+---
+
+## 3. 红线 R1–R6（不可违背）
+
+> 任何触碰 R1–R6 的改动 = **架构变更**，必须走 §12 程序。以下为完整规范；`AGENT.md` 只允许引用 ID 与一句话摘要。
+
+### R1 · 真值物理隔离
+DFT TS/IRC 真值只经 `pes2ts_core.g0.truth.truth_reader` 的 allow-list 访问器读取；`allow_truth` 强制；每次读取记 `truth_access_log.jsonl`；静态 AST guard 的 allowlist 与 `SUBPROCESS_IMPORT_ALLOWLIST` 是受保护配置。
+**禁止**：任何 TS/IRC 几何/能量/由其直接导出的字段进入生成输入、controller 状态 `s_t`、或在线推理。教师数据（如 OptTS 结果）只能在**离线隔离构建器**中用于 train 标签，之后模型冻结再评测。
+
+### R2 · 物理标签唯一
+成功标签只来自物理验证：`OptTS 收敛 → 一阶鞍点频率/模态 → 双向 IRC → 端点极小值 + 完整 R/P 化学身份`。
+**禁止**：用参考 TS 的 RMSD、能量峰、单虚频作为成功标签。RMSD 只能作诊断量。
+
+### R3 · ACP 是唯一生产执行后端（测试替身例外）
+所有**正式/生产** QC 计算（能量/梯度/Hessian/优化/频率/IRC/NEB）必须经 ACP；PES2TS 不实现任何独立计算引擎，不直接 import `cccp`，不直接启动 xTB/ORCA/Gaussian。
+**例外**：CI/离线测试允许使用**同接口的测试替身（fake ACP）**；测试替身不得进入生产路径，且必须在报告中标注。缺能力时新增/扩展 ACP 能力，**不得**在 PES2TS 内造第二条执行路径或长期保留本地引擎。
+
+### R4 · ML 控制搜索，QM 判定；A(H) 硬约束
+机器学习的权限仅在**化学允许的动作流形** `A(H)` 内。任何越出 `A(H)` 的动作必须**由构造拒绝**（成员测试 + typed rejection），不得靠约定。不得以学习势能面替代真实 QM/xTB 评估。
+
+### R5 · 全量尝试与成本留存
+所有（配置范围内的）尝试、失败、回退与成本必须归档；**禁止只对成功案例计算分母/平均成本**。任何结果必须报告：`N_energy / N_gradient / N_Hessian / N_OptTS_trials`、实测 CPU core-hours 与分配核时（缺失记 `null + reason`，不得写 0）。
+
+### R6 · 评测完整性（分裂防火墙）
+- 必须执行 **reaction-family holdout**：整类反应（如 cycloaddition / rearrangement / radical）从训练中整族移除，用于泛化声明。
+- 逆反应、同反应不同方向、邻帧、映射副本、对称副本**不得跨 train/valid/test**。
+- holdout 与 valid/test 在**查看真值前冻结**；**禁止**对 holdout 调参或反复用于模型选择。
+- 训练标签只经隔离构建器导出；`ValidationResult` 不得回流当前推理或用于 valid/test 调参。
+
+---
+
+## 4. 工程政策 P1–P5（默认绑定，可豁免）
+
+### P1 · 接口版本化
+H / A(H) / 状态 / 动作 / 拒绝 / 标签等接口只以**新版本**变更；历史产物绝不原地改写（旧 `g2_path_v1`、191,148 / 183,460 条历史产物只读，扩展用新版本或有哈希绑定的旁车）。
+> 接口「字段仍在演进」——因此宪法只固定其**存在性与校验要求**，不冻结字段。见 §9.6 接口注册表。
+
+### P2 · Typed honest rejection
+任何非成功结果必须发出结构化拒绝记录 `{stage, code, detail, source}`；不得静默丢弃、不得把"未运行"当"失败"、不得把能力未冒烟标为可用。
+
+### P3 · 可回放决策层（非逐位要求）
+给定记录的**后端版本 + seed + config hash + 输入 hash**，**决策层**必须可复现。QM/QM 接口的逐位可复现**不作要求**；但每次物理结果必须携带足够 provenance 以回放决策。`generated_at` 等为唯一允许的易变键。
+
+### P4 · 单一归属边界
+每项能力归属恰好一层；PES2TS 不吸收 ACP/RPH 能力。跨层能力须拆分（§2.3）。
+
+### P5 · 基线门
+任一学习级（learning rung）**只有在预先注册的 benchmark 上击败上一级基线后**，才允许成为默认。禁止在没有基线证据时引入 RL / 学习型生成，禁止把收益自动归因于 3D 网络或单一组件。
+
+---
+
+## 5. 输入与化学编译
+
+### 5.1 机理假设 H（版本化接口）
+第一代接口仍可只接受 `R, P, ΔG`，但接口设计须**从现在起**允许未来输入：
+```
+H = (R, P, ΔG, E, O, S, Q, M)
+```
+其中：ΔG 必须发生的成/断键；E 基本事件；O 允许的先后/同步关系；S 必要立体约束；Q/M 电荷与自旋。
+> 字段为版本化接口（P1），本宪法只固定其存在性与校验，不冻结具体字段。
+
+### 5.2 化学编译与允许动作流形 A(H)
+```
+H → ΔG → A(H) ⊂ R^k     (k = 3~10 active coords ≪ 3N)
+```
+`A(H)` 是"紧箍"：ML 永远无权在整个 Cartesian 空间 `R^{3N}` 游走。`A(H)` 的成员测试与越界拒绝是 **R4** 的强制项。
+
+### 5.3 反应坐标角色
+沿用四角色：`driver / monitor / guard / target_test`。任一坐标的角色与启用范围必须显式冻结。
+
+---
+
+## 6. PES-G：定义与目标
+
+### 6.1 定义
+> **PES-G = graph-conditioned learned predictor + quantum-mechanical corrector。**
+分账：**PES-G 决定反应推进**（reaction progress），**xTB 决定分子响应**（molecular response）。
+
+### 6.2 状态、动作与数学
+```
+s_t = (H, X_t, q_t, E_t, J_tᵀ g_t, ‖g_⊥,t‖, h_{t-k:t})
+a_t = (Δq_t, r_trust, continue/stop) ∈ A(H)
+ΔX_pred = J_H⁺ Δq_t                     # reaction-directed predictor step
+ΔX_⊥   ~ -P_⊥ g_xTB                     # xTB perpendicular response
+X_{t+1} = X_t + ΔX_pred + ΔX_⊥
+```
+
+### 6.3 目标（可证伪表述）
+> **不是**重建完整 MEP；目标是**以最少 QC 评估进入正确 TS basin**。轨迹接近 IRC 只是辅助诊断。
+
+目标函数必须归一化且可操作：
+```
+J_G = P_basin − λ · (C_xTB / C_ref)
+```
+- `P_basin`（操作化）：在标注 benchmark 上，对每个 H，生成轨迹的终端帧经**冻结的** preparation+OptTS 管线在预算 B 内得到 verified target TS 的比例。评测分布 = 每个 H（按 H 采样）。
+- `C_ref`：冻结时固定的参考预算（使 λ 无量纲、可跨反应比较）。
+- **Oracle 可达上限 `R_oracle(H)`**：用局部动作枚举/MPC 估计"是否存在合法动作序列在 B 内到达目标 TS"。**仅在 `R_oracle>0` 的 H 上比较策略**，并单独报告 manifold 覆盖率。此诊断用于区分**流形失败**（P=0 因 A(H) 不含必要运动）与**策略失败**（P=0 因 π_G 不好）——两者必须在报告中分开。
+- 目标须包含**停止条件**（达到 basin / 预算耗尽）；不得因无限采样而虚假提升。
+- 生成侧标签 = **basin entry**（较便宜、较弱）；PES-R 侧标签 = **verified TS**。二者定义不同，禁止混用。
+- `J_G` 只在有真值的 benchmark/标注子集上可评估；对无标注 H 不宣称数值。
+
+### 6.4 不追 MEP / 不与路径方法比保真
+显式放弃"生成完整高精度 MEP"的目标；只与 NEB/GSM/FSM/IDPP 等比较"进入正确 TS basin 的 QC 代价"，不比较 MEP 保真度。
+
+### 6.5 开发级（learning rung，命名空间 L-G*，非工程阶段）
+```
+L-G0 Classic      linear / smoothstep / fixed coupled continuation     基线，非创新
+L-G1 Adaptive     gradient-aware hand-crafted controller              证明反馈有价值
+L-G2 Oracle       local action enumeration / MPC                      生成 teacher 数据 (s_t, a_t*)
+L-G3 Imitation    small MLP / GNN 学 oracle action                    第一代核心模型
+L-G4 Policy       contextual bandit / RL                               后续扩展
+```
+**严禁第一天上 RL（P5）**。核心路径是 `L-G2 → L-G3`：oracle 每步生成 K 个候选动作，用便宜 xTB 打分 `S(a)=w₁P_target − w₂‖g_⊥‖ − w₃R_constraint − w₄C_collision − w₅C_branch`，得 `a_t*=argmax_a S(a)`，形成 `(s_t,a_t*)` 监督数据；部署从 `K×xTB` 降为 `1×model + 1×xTB`。
+
+### 6.6 模型级（命名空间，非阶段）
+```
+rule → GBDT/MLP → MPNN → E(3)-GNN
+```
+优先小模型；创新在 **representation + 约束控制问题**，不在参数量。若小 MLP 已足够，**不得**为"看起来高级"强上 equivariant GNN。首版网络保持小：输入以每个 active event 的局部变量为主（`q_j`、`q_j^P−q_j`、`−gᵀ∂q_j/∂X`、局部几何、反应角色），少量 message passing 后输出 `Δq_j`。
+
+---
+
+## 7. PES-R：定义与目标
+
+### 7.1 定义
+> **PES-R = cost-aware TS-basin ranker。**
+
+### 7.2 目标
+```
+P_i = P(verified target TS within budget | X_i, H, path context)
+C_i = E[DFT refinement cost]
+U_i = P_i − λ · C_i / C_ref
+```
+**不是** `argmax E_i`。推理使用**预测**成本，不得使用未来实际 OptTS 成本。`C_i` 包含失败/超时消耗，区分 OptTS-only 与完整验证链；梯度计数与核时可分别建头；λ 与归一化在 train/校准集确定，测试前冻结。
+
+### 7.3 标签（不可退让）
+> **label := 1[OptTS → Freq → IRC 给出目标 R/P]**（见 R2）。**绝不是** closest-RMSD-to-reference-TS。
+同时保存 `N_grad`、`N_OptTS`、`core-hours`。
+
+### 7.4 开发级（命名空间 L-R*，非阶段）
+```
+L-R0  经典 learning-to-rank：LambdaMART / LightGBM / XGBoost  （低维强特征先行）
+L-R1  3D-GNN（X_i + 局部 path neighborhood）                （只有 L-R0 增益后才上）
+```
+低维特征至少含：ΔE、‖g‖、‖g_⊥‖、local peak prominence、event progress、constraint residual、curvature proxy、path position、neighbor slopes、distance-to-R/P、formed/broken-bond progress。只有 3D-GNN 在 L-R0 之上继续提升，才能证明三维局部环境含标量描述符捕获不到的 TS-basin 信息。
+
+---
+
+## 8. 精修链路（Preparation Layer）
+
+xTB → DFT 之间**必须**插入准备层；禁止 `xTB 帧 → DFT OptTS` 直连：
+```
+X_i^{xTB} → constrained DFT preparation（短暂固定 q_reactive，令其他 DOF 在 DFT PES 上重新适应）
+         → OptTS → Freq → IRC(+/-) → endpoint opt → graph identity
+```
+理由：xTB 只负责导航；DFT preparation 消除低级方法偏差；OptTS 只负责局部 saddle refinement。
+> 现状核对：该准备层**当前不存在**，现有链路为 xTB 帧 → 规则排序 → 直接 DFT OptTS。落地前不得声称已具备。
+
+---
+
+## 9. 数据、溯源、成本与接口注册表
+
+### 9.1 数据飞轮（Classic = ground-truth generation machine）
+必须保留**全部候选**（不只 winner）：
+- PES-G 最珍贵：`(s_t, a_t, s_{t+1})`；
+- PES-R 最珍贵：`(X_i, OptTS outcome, C_i)`。
+Classic 不是废代码，是**真值生成机器**。
+
+### 9.2 `label_state` 七态（版本化接口）
+`verified_target / verified_non_target / optimizer_failed / validation_incomplete / execution_failed / unattempted / censored_budget`。
+`1000×20=20000` 是**帧数**，不是标签数；未运行邻帧不得称 hard negative。
+
+### 9.3 Provenance 四层
+`geometry / mapping / cohort_selection / development_exposure`。"字段隔离 ≠ 来源独立"；当前 G1 映射为 `truth_assisted_p1`，不得描述为端到端无真值独立。
+
+### 9.4 成本账本标准
+见 R5。缺失值 `null + reason`；数值 Hessian 的内部梯度只计一次；缓存命中本次成本为零但保留来源与共享关系；基准另报冷启动/分摊成本。
+
+### 9.5 长周期留存层
+Reaction（R,P,ΔG,H）/ State（X_t,q_t,E_t,g_t）/ Action（Δq_t, trust radius）/ Generation（accept/reject, reason, cost）/ Path / Ranking / Refinement / TS（freq, mode）/ IRC / Label / Cost。
+
+### 9.6 接口注册表（I-*，版本化）
+以下接口只以新版本变更，且必须登记于 `docs/plans/PES2TS_文档修订台账.md`：
+`H`、`A(H)`、`state s_t`、`action a_t`、`rejection {stage,code,detail,source}`、`label_state`、`ValidationResult`、`ExecutionBackend`、`TrajectoryRecord`、`PathBundle`、`SeedProposal`、`calculation_cost_v1`、`energy_gradient`、`bond_order_evidence_v1`、`g1_g2_boundary_v2`、`endpoint_method_evidence_v1`（G2-AB1 WP-3 拟定：只固定存在性与校验，不冻结字段）。
+
+---
+
+## 10. 阶段、里程碑与命名
+
+### 10.1 唯一交付轴：G0–G4
+**工程阶段只用 G0–G4。** 工作流只用 C/R/X。禁止再发明新字母阶梯。
+
+### 10.2 科学里程碑 M0–M5 = 阶段的"声明投影"（不是第四轴）
+M0–M5 **只用于评测/论文语境**，是 G 阶段退出判据的投影，不得出现在 plan/design 文档的状态头中；出现时必须引用本表。
+
+| 科学里程碑 | 映射工程阶段 | 退出判据（claim） |
+|---|---|---|
+| **M0 Classic Closure** | G2 退出 | 无 reference 辅助完成可靠闭环；24 终态 + ≥1 严格目标 TS |
+| **M1 Strong Baselines** | G2/G3.0 | linear / smoothstep / RMSD-PP / NT2-like / event-peak 同协议可复跑 |
+| **M2 PES-R0** | G3.1 | cost-aware 经典排序显著减少 DFT refinement 成本 |
+| **M3 PES-G0** | G4.0 | gradient-aware adaptive controller + oracle 优于 fixed schedule |
+| **M4 PES-G1 / PES-R1** | G4.1 | learned constrained controller + 3D ranker，reaction-family holdout 有增益 |
+| **M5 End-to-End** | G4.2 | G + R 联合，以 verified TS cost 为目标，总 QC 成本与失败率系统下降 |
+
+### 10.3 开发顺序 vs 论文顺序（不得混淆）
+- **开发顺序**：`Classic → Rank → Gen`（Rank 标签清晰，先出结果）。
+- **论文顺序**：`PES-G → PES-R → DFT verification`（科学流程先生成路径再选点）。
+- 表述规则：**开发 Rank first，论文讲 Gen first。**
+
+### 10.4 命名纪律（五类编号，禁止混用）
+| 类别 | 命名 | 允许出现处 |
+|---|---|---|
+| 工程阶段 | `G0–G4` | 状态头/路线图/代码模块 |
+| 工作流 | `C / R / X` | 任务派工 |
+| 算法路线 | `Classic / Rank / Gen` | 方案文档 |
+| 学习级 | `L-G0…L-G4` / `L-R0…L-R1` | 算法文档内部 |
+| 科学声明 | `M0–M5` | 评测/论文文档（须引用 §10.2） |
+| 产品身份 | `pes2ts-*-v1` 发布单元 | 发布说明 |
+
+---
+
+## 11. 评测与泛化
+
+### 11.1 两套独立 benchmark（解耦）
+- **Generation benchmark**：固定 reaction/H/QC backend，只改 Generation。报告 `P(trajectory reaches target TS basin)`、`N_xTB-gradient`、`C_generation`。
+- **Ranking benchmark**：所有算法读**完全相同**的 trajectory。报告 `Top1/Top3`，以及更重要的 `N_DFT-gradients / verified TS`、`N_OptTS / verified TS`、`core-hours / verified TS`。
+生成消融固定起点/事件/调度/验收/预算，只改校正/分支；排名消融固定同一 PathBundle/资格/精修协议/预算，只改选择次序。
+
+### 11.2 Reaction-family holdout（强制，见 R6）
+不要只 random split。整类留下（如 cycloaddition / rearrangement / radical）。模型若仍能借 `ΔG + xTB feedback` 成功导航，才证明学到的是**低层通用 reaction-control principles**。
+
+### 11.3 基线集合
+Generation：linear / smoothstep / Chemoton-style push-pull / gradient-adaptive / PES-G。
+Ranking：highest-energy / local-peak / Chemoton-2024 event-local peak / heuristic basin / classical-LTR / PES-R GNN。
+
+### 11.4 反过宣称
+"24/24" 不得写作 24/24 化学成功；"跑通" 指自动流程闭环；≥1 严格目标 TS 是工程最低门，不构成普适可靠性结论；完整路径率/目标成功率/适用域必须随发布披露。
+
+### 11.5 四层状态词（强制）
+`unknown / implemented / fixture_passed / smoke_passed` 必须分别表达。只有通过**真实冒烟与科学证据**的能力才能升级。**写入计划不改变能力状态。**
+
+---
+
+## 12. 修订、豁免与生效
+
+### 12.1 修订（架构变更）
+凡触碰 R1–R6、§5–§9 接口、§10 阶段边界者，均为架构变更，须：
+1. **声明**：改动内容、触及条目、理由、影响面。
+2. **ADR**：写/改 `docs/design/decisions/ADR-XXXX-*.md`（不原地改写既有结论）。
+3. **版本化**：新接口用新版本号；旧产物不覆盖。
+4. **证据**：fixture / 回放 / 真实冒烟 / 审计 JSON；不得以"测试全绿"替代真实能力。
+5. **同步**：本文件版本、`AGENT.md`、台账、`docs/README.md`。
+
+### 12.2 本宪法自身的修订
+version bump + 变更记录；重大不变量变更须同时更新 §3 与 `AGENT.md` 摘要。
+
+### 12.3 豁免（Waiver）
+允许对 **P1–P5** 申请**时限豁免**（R1–R6 不可豁免）：
+- 记录为 ADR，含理由、范围、到期条件、回滚计划；
+- 豁免期结束必须收回或转为正式修订；
+- **禁止**用豁免绕过 R 或用于在 holdout 上调参。
+
+### 12.4 对齐律与 CI 文档权威 lint（防漂移）
+- `AGENT.md` 只准引用红线 ID 与一句话摘要；CI 须校验 `AGENT.md` 与 §3 一致。
+- CI 须校验：所有 `docs/**/*.md` 带状态头；每主题恰有一份 `AUTHORITATIVE` 文档；已降级/取代文档带顶部指针；已取代文档不得出现在检索/嵌入索引中。
+
+### 12.5 Sunset（日落）
+被取代的规范/接口与文档，须在台账登记取代关系并设定日落；禁止静默复活旧阶梯（`S0–S8`、`L0–L4`、`M1–M3` 等）。
+
+---
+
+## 13. 术语表
+
+| 术语 | 含义 |
+|---|---|
+| H | 机理假设 `(R,P,ΔG,E,O,S,Q,M)`（版本化接口） |
+| A(H) | chemically admissible action manifold ⊂ R^k |
+| s_t / a_t | PES-G 状态 / 动作 |
+| `P_basin` | 终端帧经冻结 prep+OptTS 在预算内到 target TS 的比例 |
+| `R_oracle(H)` | 合法动作序列可达目标 TS 的上限诊断（区分流形/策略失败） |
+| basin entry vs verified TS | 生成侧弱标签 vs PES-R 严格标签 |
+| Preparation Layer | xTB 帧与 DFT OptTS 之间的约束 DFT 预弛豫 |
+| 学习级 | L-G*/L-R* 算法代际，非工程阶段 |
+| 四层状态词 | unknown / implemented / fixture_passed / smoke_passed |
+| SSOT | 单一规范来源 = 本文件 |
+
+---
+
+## 14. 与文档权威台账的关系
+本文件是规范根；`docs/plans/PES2TS_文档修订台账.md` 是**规范映射与取代登记**（哪份文档属于哪一主题、何状态、被谁取代）。台账服从本文件；两者不一致时，以本文件为准并修正台账。
+
+> **本文件自 v1 起生效，约束后续所有开发行为。**

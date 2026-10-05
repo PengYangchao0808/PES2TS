@@ -1,0 +1,35 @@
+{
+  "purpose": "Immutable pre-PES-N planning snapshot; not active specifications",
+  "files": [
+    {
+      "source": "AGENT.md",
+      "snapshot": "AGENT.md.snapshot.txt",
+      "sha256": "c77309ebc7dba928ba0326d0d9463630554a218fbb14abac15d84a7816772197"
+    },
+    {
+      "source": "README.md",
+      "snapshot": "README.md.snapshot.txt",
+      "sha256": "318799e4260b5dc88e653ca35d1b858c83543173fcbead81e747e9f2be1b1dcd"
+    },
+    {
+      "source": "docs/PES2TS_开发宪法_v1.md",
+      "snapshot": "docs__PES2TS_开发宪法_v1.md.snapshot.txt",
+      "sha256": "e3a2dbaa141681116266beb3d8c9ef2828b7a7505bfd211a98a0b4cbdc96a493"
+    },
+    {
+      "source": "docs/plans/PES2TS_阶段定义_G0-G3.md",
+      "snapshot": "docs__plans__PES2TS_阶段定义_G0-G3.md.snapshot.txt",
+      "sha256": "892594df7f4a5c607677fa3c41da675c6913061f2cf7313dbf8a88f7262095cb"
+    },
+    {
+      "source": "docs/plans/PES2TS_整体开发与发布方案_v2.md",
+      "snapshot": "docs__plans__PES2TS_整体开发与发布方案_v2.md.snapshot.txt",
+      "sha256": "51a306a8cb563133bb47935c911f8290ee0b5ae59f91e124b91c3f223a4531ce"
+    },
+    {
+      "source": "docs/plans/PES2TS_完整开发流方案_整合版_v1.md",
+      "snapshot": "docs__plans__PES2TS_完整开发流方案_整合版_v1.md.snapshot.txt",
+      "sha256": "2da97ae7c91b1c9efa946617de66fe00f048368c51f8450001d041785a4ff464"
+    }
+  ]
+}
