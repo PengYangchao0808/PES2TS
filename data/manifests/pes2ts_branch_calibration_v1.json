@@ -1,0 +1,143 @@
+{
+  "schema_version": "pes2ts_branch_calibration_v1",
+  "grid": {
+    "bias_kappa": [
+      0.05,
+      0.1,
+      0.25,
+      0.5
+    ],
+    "branch_atom_radius": [
+      0.3,
+      0.5
+    ],
+    "branch_rmsd_radius": [
+      0.15,
+      0.25,
+      0.35
+    ],
+    "cumulative_rmsd_limit": [
+      1.0,
+      2.0
+    ],
+    "cumulative_rmsd_radius": [
+      0.25,
+      0.4,
+      0.6
+    ],
+    "max_curvature_probes": [
+      1,
+      2
+    ],
+    "release_iterations": [
+      4,
+      6,
+      10
+    ]
+  },
+  "criteria": [
+    "branch_selection_ok",
+    "biased_only_honest",
+    "cumulative_gate_discriminates",
+    "probe_budget_respected"
+  ],
+  "conservative_ordering": [
+    "-bias_kappa",
+    "branch_rmsd_radius",
+    "branch_atom_radius",
+    "cumulative_rmsd_radius",
+    "release_iterations",
+    "cumulative_rmsd_limit",
+    "max_curvature_probes"
+  ],
+  "n_cells": 864,
+  "n_passing": 72,
+  "chosen_cell": {
+    "bias_kappa": 0.5,
+    "branch_atom_radius": 0.5,
+    "branch_rmsd_radius": 0.25,
+    "cumulative_rmsd_limit": 1.0,
+    "cumulative_rmsd_radius": 0.25,
+    "max_curvature_probes": 1,
+    "release_iterations": 4
+  },
+  "chosen_is_most_conservative_passing": true,
+  "rejected_example_cells": [
+    {
+      "bias_kappa": 0.05,
+      "branch_atom_radius": 0.3,
+      "branch_rmsd_radius": 0.15,
+      "cumulative_rmsd_limit": 1.0,
+      "cumulative_rmsd_radius": 0.25,
+      "max_curvature_probes": 1,
+      "release_iterations": 4
+    },
+    {
+      "bias_kappa": 0.05,
+      "branch_atom_radius": 0.3,
+      "branch_rmsd_radius": 0.15,
+      "cumulative_rmsd_limit": 1.0,
+      "cumulative_rmsd_radius": 0.25,
+      "max_curvature_probes": 1,
+      "release_iterations": 6
+    },
+    {
+      "bias_kappa": 0.05,
+      "branch_atom_radius": 0.3,
+      "branch_rmsd_radius": 0.15,
+      "cumulative_rmsd_limit": 1.0,
+      "cumulative_rmsd_radius": 0.25,
+      "max_curvature_probes": 1,
+      "release_iterations": 10
+    },
+    {
+      "bias_kappa": 0.05,
+      "branch_atom_radius": 0.3,
+      "branch_rmsd_radius": 0.15,
+      "cumulative_rmsd_limit": 1.0,
+      "cumulative_rmsd_radius": 0.25,
+      "max_curvature_probes": 2,
+      "release_iterations": 4
+    },
+    {
+      "bias_kappa": 0.05,
+      "branch_atom_radius": 0.3,
+      "branch_rmsd_radius": 0.15,
+      "cumulative_rmsd_limit": 1.0,
+      "cumulative_rmsd_radius": 0.25,
+      "max_curvature_probes": 2,
+      "release_iterations": 6
+    },
+    {
+      "bias_kappa": 0.05,
+      "branch_atom_radius": 0.3,
+      "branch_rmsd_radius": 0.15,
+      "cumulative_rmsd_limit": 1.0,
+      "cumulative_rmsd_radius": 0.25,
+      "max_curvature_probes": 2,
+      "release_iterations": 10
+    },
+    {
+      "bias_kappa": 0.05,
+      "branch_atom_radius": 0.3,
+      "branch_rmsd_radius": 0.15,
+      "cumulative_rmsd_limit": 1.0,
+      "cumulative_rmsd_radius": 0.4,
+      "max_curvature_probes": 1,
+      "release_iterations": 4
+    },
+    {
+      "bias_kappa": 0.05,
+      "branch_atom_radius": 0.3,
+      "branch_rmsd_radius": 0.15,
+      "cumulative_rmsd_limit": 1.0,
+      "cumulative_rmsd_radius": 0.4,
+      "max_curvature_probes": 1,
+      "release_iterations": 6
+    }
+  ],
+  "calibration_set_sha256": "ce0ccbe417770ec25c880d2df357be20a5adf56448d12d0e15f7822c01a9bd05",
+  "holdout_touched": false,
+  "holdout_tuning_forbidden": true,
+  "duration_seconds": 16.405
+}
