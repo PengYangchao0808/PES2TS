@@ -919,6 +919,116 @@ G2_SUBCOMMAND_HANDLERS: dict[str, G2Handler] = {
 }
 
 
+def _g2t_policies_from_config(config: dict[str, Any]):
+    """Freeze the continuation/local/branch policies from ``g2.*`` config."""
+    from dataclasses import asdict
+
+    from pes2ts_core.generation.planning.continuation import ContinuationPolicy
+    from pes2ts_core.generation.planning.local_corrector import (
+        BranchPolicy,
+        LocalCorrectorPolicy,
+    )
+    continuation = dict(config.get("g2", {}).get("continuation", {}))
+    branch = continuation.pop("branch_policy", {}) or {}
+    policy = ContinuationPolicy(**{**asdict(ContinuationPolicy()),
+                                   **{k: continuation[k] for k in
+                                      ("cumulative_rmsd_limit", "max_curvature_probes",
+                                       "max_seconds")
+                                      if k in continuation}})
+    local = dict(config.get("g2", {}).get("local_corrector", {}))
+    local_policy = LocalCorrectorPolicy(**{**asdict(LocalCorrectorPolicy()),
+                                           **{k: local[k] for k in ("max_seconds",)
+                                              if k in local}})
+    branch_policy = BranchPolicy(**{**asdict(BranchPolicy()), **branch})
+    return policy, local_policy, branch_policy
+
+
+def _g2t_manifest_handler(args: argparse.Namespace, config: dict[str, Any]) -> int:
+    """Freeze a G2.T campaign manifest (24-case snapshots + hashes + budget)."""
+    import json as _json
+
+    from pes2ts_core.generation.campaign import build_campaign_manifest
+    logger = logging.getLogger(__name__)
+    try:
+        snapshots_dir = Path(args.snapshots)
+        snapshots = sorted(snapshots_dir.glob("RXN_*.json"))
+        if not snapshots:
+            raise ValueError(f"NO_CASE_SNAPSHOTS:{snapshots_dir}")
+        policy, local_policy, branch_policy = _g2t_policies_from_config(config)
+        campaign = config.get("g2", {}).get("campaign", {}) or {}
+        budget = {key: campaign[key] for key in
+                  ("max_frames_per_path", "max_attempts_per_path",
+                   "max_wall_seconds_per_path", "max_gradient_calls_per_path",
+                   "max_total_gradient_calls", "max_session_wall_seconds")
+                  if key in campaign}
+        review_status = _json.loads(Path(args.review_status).read_text(encoding="utf-8")) \
+            if args.review_status else None
+        references = _json.loads(Path(args.reference_failures).read_text(encoding="utf-8")) \
+            if args.reference_failures else None
+        pilot = [rid.strip() for rid in (args.pilot or "").split(",") if rid.strip()]
+        manifest = build_campaign_manifest(
+            snapshots, output_path=args.output, pilot_cases=pilot,
+            continuation_policy=policy, local_policy=local_policy,
+            branch_policy=branch_policy,
+            origin_preparation=config.get("g2", {}).get("origin_preparation"),
+            budget=budget, acp_wiring=config.get("acp", {}),
+            review_status=review_status, reference_failures=references)
+    except (OSError, ValueError) as exc:
+        logger.error("g2t-manifest failed: %s", exc)
+        return EXIT_G2_FAILED
+    print(f"g2t manifest frozen: {args.output} "
+          f"({len(manifest['cases'])} cases, sha256={manifest['content_sha256'][:16]})")
+    return 0
+
+
+def _g2t_run_handler(args: argparse.Namespace, _config: dict[str, Any]) -> int:
+    """Execute (or resume) the G2.T campaign; blocked cases stay typed, exit 0."""
+    from pes2ts_core.generation.campaign import CampaignError, run_campaign
+    logger = logging.getLogger(__name__)
+    try:
+        summary = run_campaign(args.manifest, args.output_root,
+                               case_filter=args.case, resume=args.resume)
+    except (CampaignError, OSError, ValueError) as exc:
+        logger.error("g2t-run failed: %s", exc)
+        return EXIT_G2_FAILED
+    print(f"g2t-run: {summary.n_cases} case(s): "
+          f"{summary.n_executed} executed, {summary.n_skipped_idempotent} skipped, "
+          f"{summary.n_blocked} blocked; terminals {summary.terminal_counts}")
+    return 0
+
+
+def _g2t_status_handler(args: argparse.Namespace, _config: dict[str, Any]) -> int:
+    """Read-only campaign progress/terminal/cost summary."""
+    import json as _json
+
+    from pes2ts_core.generation.campaign import CampaignError, campaign_status
+    logger = logging.getLogger(__name__)
+    try:
+        status = campaign_status(args.root)
+    except (CampaignError, OSError, ValueError) as exc:
+        logger.error("g2t-status failed: %s", exc)
+        return EXIT_G2_FAILED
+    print(_json.dumps(status, ensure_ascii=False, sort_keys=True, indent=2))
+    return 0
+
+
+def _g2t_report_handler(args: argparse.Namespace, _config: dict[str, Any]) -> int:
+    """Build the first-feedback report (pes2ts_g2t_feedback_report_v1)."""
+    import json as _json
+
+    from pes2ts_core.generation.campaign_report import build_feedback_report
+    from pes2ts_core.utils.jsonio import write_json
+    logger = logging.getLogger(__name__)
+    try:
+        report = build_feedback_report(args.root, manifest_path=args.manifest)
+        write_json(Path(args.output), report)
+    except (OSError, ValueError) as exc:
+        logger.error("g2t-report failed: %s", exc)
+        return EXIT_G2_FAILED
+    print(f"g2t report written: {args.output} ({report['n_cases']} cases)")
+    return 0
+
+
 def _add_common_options(parser: argparse.ArgumentParser, *, suppress_defaults: bool) -> None:
     """Attach common options to *parser*.
 
@@ -1020,9 +1130,17 @@ def build_parser() -> argparse.ArgumentParser:
     _add_common_options(validation_run_parser, suppress_defaults=True)
     validation_run_parser.add_argument("--case", required=True, metavar="PATH", help="reviewed ReactionCase JSON")
     validation_run_parser.add_argument("--review-record", required=True, metavar="PATH", help="accepted ReviewRecord JSON")
-    validation_run_parser.add_argument("--path", required=True, metavar="PATH", help="usable PathBundle JSON")
-    validation_run_parser.add_argument("--proposal", required=True, metavar="PATH", help="accepted SeedProposal JSON")
-    validation_run_parser.add_argument("--source-frame-id", required=True)
+    validation_run_parser.add_argument("--path", metavar="PATH", help="usable PathBundle JSON (omit with --gradient-proposals)")
+    validation_run_parser.add_argument("--proposal", metavar="PATH", help="accepted SeedProposal JSON (omit with --gradient-proposals)")
+    validation_run_parser.add_argument("--source-frame-id", help="proposal first frame id (derived from --gradient-proposals)")
+    validation_run_parser.add_argument("--gradient-proposals", metavar="PATH",
+        help="pes2ts_gradient_seed_proposals_v1 bundle consumed by the formal validation entry (G2-AB1 WP-4)")
+    validation_run_parser.add_argument("--continuation-result", metavar="PATH",
+        help="pes2ts_continuation_result_v1 JSON projected into the PathBundle for --gradient-proposals")
+    validation_run_parser.add_argument("--continuation-plan", metavar="PATH",
+        help="frozen continuation PathPlan JSON for --gradient-proposals")
+    validation_run_parser.add_argument("--gradient-rank", type=int, default=1,
+        help="which ranked gradient candidate to validate (default 1)")
     validation_run_parser.add_argument("--acp-root", required=True, metavar="PATH", help="ACP source checkout")
     validation_run_parser.add_argument("--python", dest="python_executable", metavar="PATH",
                                        help="Python executable from the ACP environment")
@@ -1068,6 +1186,57 @@ def build_parser() -> argparse.ArgumentParser:
     validation_parser.add_argument("--validation-id", required=True)
     validation_parser.add_argument("--output", required=True, metavar="PATH", help="ValidationResult JSON output")
     validation_parser.set_defaults(handler=_acp_collect_validation_handler)
+    g2t_manifest_parser = top_subparsers.add_parser(
+        "g2t-manifest",
+        help="freeze a G2.T campaign manifest (case snapshots + hashes + budget)",
+    )
+    _add_common_options(g2t_manifest_parser, suppress_defaults=True)
+    g2t_manifest_parser.add_argument("--snapshots", required=True, metavar="DIR",
+                                     help="directory of RXN_*.json case snapshots")
+    g2t_manifest_parser.add_argument("--output", required=True, metavar="PATH",
+                                     help="manifest output path (pes2ts_campaign_manifest_v1)")
+    g2t_manifest_parser.add_argument("--pilot", metavar="RXN_ID[,RXN_ID...]",
+                                     help="comma-separated pilot case ids")
+    g2t_manifest_parser.add_argument("--review-status", metavar="PATH",
+                                     help="JSON {reaction_id: needs_review|accepted|rejected}")
+    g2t_manifest_parser.add_argument("--reference-failures", metavar="PATH",
+                                     help="JSON {reaction_id: {last_accepted_lambda, ...}} "
+                                          "round2/round3 known-failure references")
+    g2t_manifest_parser.set_defaults(handler=_g2t_manifest_handler)
+    g2t_run_parser = top_subparsers.add_parser(
+        "g2t-run",
+        help="execute (or resume) the G2.T campaign through the real engine chain",
+    )
+    _add_common_options(g2t_run_parser, suppress_defaults=True)
+    g2t_run_parser.add_argument("--manifest", required=True, metavar="PATH",
+                                help="frozen campaign manifest")
+    g2t_run_parser.add_argument("--output-root", required=True, metavar="DIR",
+                                help="campaign output root (bound to the manifest identity)")
+    g2t_run_parser.add_argument("--case", metavar="RXN_ID", action="append", default=None,
+                                help="restrict to this case (repeatable)")
+    g2t_run_parser.add_argument("--resume", action=argparse.BooleanOptionalAction,
+                                default=True,
+                                help="skip cases with a non-blocked terminal (default: on)")
+    g2t_run_parser.set_defaults(handler=_g2t_run_handler)
+    g2t_status_parser = top_subparsers.add_parser(
+        "g2t-status",
+        help="read-only campaign progress/terminal/cost summary",
+    )
+    _add_common_options(g2t_status_parser, suppress_defaults=True)
+    g2t_status_parser.add_argument("root", metavar="DIR", help="campaign output root")
+    g2t_status_parser.set_defaults(handler=_g2t_status_handler)
+    g2t_report_parser = top_subparsers.add_parser(
+        "g2t-report",
+        help="build the first-feedback report (pes2ts_g2t_feedback_report_v1)",
+    )
+    _add_common_options(g2t_report_parser, suppress_defaults=True)
+    g2t_report_parser.add_argument("--root", required=True, metavar="DIR",
+                                   help="campaign output root")
+    g2t_report_parser.add_argument("--output", required=True, metavar="PATH",
+                                   help="report output path")
+    g2t_report_parser.add_argument("--manifest", metavar="PATH", default=None,
+                                   help="campaign manifest (enables B1-2 reference checks)")
+    g2t_report_parser.set_defaults(handler=_g2t_report_handler)
     g0_parser = top_subparsers.add_parser(
         "g0",
         help="G0: data entry, ground-truth quarantine, and split freezing",
@@ -1434,12 +1603,40 @@ def _acp_validate_run_handler(args: argparse.Namespace, _config: dict[str, Any])
     try:
         case = loads_document(Path(args.case).read_text(encoding="utf-8"))
         review = loads_document(Path(args.review_record).read_text(encoding="utf-8"))
-        path = loads_document(Path(args.path).read_text(encoding="utf-8"))
-        proposal = loads_document(Path(args.proposal).read_text(encoding="utf-8"))
+        path = None
+        proposal = None
+        source_frame_id = args.source_frame_id
+        if args.gradient_proposals:
+            # G2-AB1 WP-4 minimal exposure: the validation entry consumes a
+            # pes2ts_gradient_seed_proposals_v1 bundle by projecting the
+            # continuation result and converting the ranked candidate through
+            # the SAME formal chain — no ranking.json fallback, no bypass.
+            if args.path or args.proposal:
+                raise ContractError("--gradient-proposals cannot be combined with --path/--proposal")
+            if not (args.continuation_result and args.continuation_plan):
+                raise ContractError("--gradient-proposals requires --continuation-result and --continuation-plan")
+            if not isinstance(args.gradient_rank, int) or args.gradient_rank < 1:
+                raise ContractError("--gradient-rank must be a positive integer")
+            from pes2ts_core.generation.planning.candidate_selection import (
+                continuation_path_bundle, seed_proposal_from_gradient_ranking,
+            )
+            continuation_result = json.loads(Path(args.continuation_result).read_text(encoding="utf-8"))
+            continuation_plan = json.loads(Path(args.continuation_plan).read_text(encoding="utf-8"))
+            gradient_bundle = json.loads(Path(args.gradient_proposals).read_text(encoding="utf-8"))
+            path = continuation_path_bundle(continuation_result, continuation_plan,
+                                            case_id=case["case_id"])
+            proposal = seed_proposal_from_gradient_ranking(path, gradient_bundle,
+                                                           rank=args.gradient_rank)
+            source_frame_id = proposal["selected_frames"][0]["frame_id"]
+        else:
+            if not (args.path and args.proposal and args.source_frame_id):
+                raise ContractError("--path, --proposal and --source-frame-id are required without --gradient-proposals")
+            path = loads_document(Path(args.path).read_text(encoding="utf-8"))
+            proposal = loads_document(Path(args.proposal).read_text(encoding="utf-8"))
         backend = ACPValidationCLIBackend(acp_root=args.acp_root,
             python_executable=args.python_executable, config_path=args.acp_config)
         stage = backend.run_validation(case=case, review_record=review, path=path,
-            proposal=proposal, source_frame_id=args.source_frame_id,
+            proposal=proposal, source_frame_id=source_frame_id,
             validation_id=args.validation_id,
             expected_method=args.method, expected_basis=args.basis,
             output_root=args.output_root, batch_execution_id=args.batch_execution_id,
