@@ -11,7 +11,7 @@ from pes2ts_core.g1.reaction_edit_graph import build_reaction_edit_graph
 from pes2ts_core.generation.planning.connectivity import connectivity_view
 from pes2ts_core.generation.planning.connectivity_plan import build_plan, choose_origin
 from pes2ts_core.generation.planning.continuation import (
-    ContinuationPolicy, project_geometry, run_continuation, validate_plan,
+    ContinuationPolicy, geometry_quality, project_geometry, run_continuation, validate_plan,
 )
 from pes2ts_core.generation.planning.graph_rebuild import load_endpoint_materials_from_export, rebuild_endpoint_graphs
 from pes2ts_core.generation.planning.primary import select_primary_candidate
@@ -217,3 +217,91 @@ def test_missing_fb_cannot_fall_back_to_incomplete_legacy_primary():
     result = select_primary_candidate([c], b, connectivity_only=True)
     assert result["primary"] is None
     assert result["reason"] == "INCOMPLETE_CONNECTIVITY_DRIVER_COVERAGE"
+
+
+def test_accepted_frames_record_branch_reference_and_replay_is_deterministic():
+    plan, initial = example(max_frames=6)
+    first = run_continuation(plan, initial, physical_backend)
+    second = run_continuation(plan, initial, physical_backend)
+    assert [f["geometry"] for f in first["frames"]] == [f["geometry"] for f in second["frames"]]
+    assert [a["reason"] for a in first["attempts"]] == [a["reason"] for a in second["attempts"]]
+    for previous, frame in zip(first["frames"], first["frames"][1:]):
+        assert frame["branch_reference_frame_id"] == previous["frame_id"]
+        assert "convergence_mode" in frame
+    assert first["frames"][0]["branch_reference_frame_id"] is None
+    # The analytic example does not drift: cumulative drift is reported and bounded.
+    for frame in first["frames"][1:]:
+        assert frame["quality"]["branch_rmsd_angstrom"] == pytest.approx(frame["quality"]["rmsd_angstrom"])
+        assert frame["quality"]["cumulative_drift_angstrom"] is not None
+
+
+def test_cross_frame_cumulative_drift_is_a_typed_rejection():
+    previous = np.array([[0., 0., 0.], [1., 0., 0.]])
+    x = np.array([[0., 0., 0.], [1., 0., 0.]])
+    origin = np.array([[0., 0., 0.], [3., 0., 0.]])
+    coords = [{"kind": "distance", "atoms": [0, 1]}]
+    policy = ContinuationPolicy(cumulative_rmsd_limit=.5)
+    quality = geometry_quality(previous, x, coords, [1.], policy, origin=origin)
+    assert quality["cumulative_drift_angstrom"] == pytest.approx(1., abs=1e-6)
+    assert quality["reason"] == "LOCALITY_CUMULATIVE"
+    bounded = geometry_quality(previous, x, coords, [1.], ContinuationPolicy(), origin=origin)
+    assert bounded["reason"] is None
+    unreported = geometry_quality(previous, x, coords, [1.], ContinuationPolicy())
+    assert unreported["cumulative_drift_angstrom"] is None
+
+
+def test_failed_attempts_carry_segment_diagnostics_evidence():
+    plan, initial = example()
+    plan["common_bond_checks"] = [{"maps": [1, 2], "atoms": [0, 1],
+                                   "minimum_distance": .5, "maximum_distance": 1.5}]
+    plan["content_sha256"] = digest({k: v for k, v in plan.items() if k != "content_sha256"})
+    result = run_continuation(plan, initial, lambda *a: {"success": False, "failure_class": "SCF_FAILED"})
+    failed = [a for a in result["attempts"] if not a["accepted"]]
+    assert failed
+    for attempt in failed:
+        diagnostics = attempt["segment_diagnostics"]
+        assert "corrector_motion" in diagnostics
+        assert "largest_moving_atoms" in diagnostics
+        assert "local_coordinate_changes" in diagnostics
+        assert diagnostics["physical_bifurcation_confirmed"] is False
+
+
+def test_curvature_probe_requires_repeated_same_shape_locality_failures():
+    from pes2ts_core.generation.planning.constrained_curvature import curvature_probe_required
+    attempts = [{"reason": "LOCALITY_ATOM"}, {"reason": "CONSTRAINT_RESIDUAL"}]
+    assert not curvature_probe_required(attempts)
+    assert not curvature_probe_required([{"reason": "LOCALITY_ATOM"}])
+    assert curvature_probe_required([{"reason": "LOCALITY_ATOM"},
+                                     {"reason": "LOCALITY_ATOM"}])
+    assert not curvature_probe_required([{"reason": "LOCALITY_ATOM"},
+                                         {"reason": "LOCALITY_BRANCH"}])
+
+
+def test_curvature_probe_fires_only_after_repeat_locality_and_within_budget():
+    plan, initial = example(initial_step=.08, max_step=.08)
+    probes = []
+
+    class ProbingBackend:
+        def __call__(self, guess, targets, attempt):
+            probes.append(None)
+            return {"success": False, "failure_class": "LOCALITY_ATOM",
+                    "physical_gradient_status": "bound",
+                    "physical_gradient_hartree_per_angstrom": [[0., 0., 0.], [0., 0., 0.]]}
+
+        def directional_curvature(self, x, coordinates, gradient, name="probe"):
+            probes.append(name)
+            return {"status": "measured", "directions_checked": 1,
+                    "positive_definite_hessian_verified": False,
+                    "physical_bifurcation_confirmed": False}
+
+    result = run_continuation(plan, initial, ProbingBackend())
+    locality_failures = [a for a in result["attempts"]
+                         if (a.get("reason") or "").startswith("LOCALITY")]
+    assert len(locality_failures) >= 2
+    probed = [a for a in result["attempts"] if a.get("curvature_probe")]
+    # Budget: policy.max_curvature_probes defaults to 2; probes fire only from
+    # the second same-shape failure onward.
+    assert 1 <= len(probed) <= 2
+    for attempt in probed:
+        assert attempt["curvature_probe"]["directions_checked"] == 1
+        assert attempt["curvature_probe"]["positive_definite_hessian_verified"] is False

@@ -39,6 +39,8 @@ class ContinuationPolicy:
     free_gradient_max_tolerance: float = .001
     relative_constraint_tolerance: float = 0.
     constraint_precision_floor: float = .00001
+    cumulative_rmsd_limit: float = 2.0  # calibrated per campaign via config g2.continuation (pes2ts_branch_calibration_v1)
+    max_curvature_probes: int = 2  # calibrated per campaign via config g2.continuation (pes2ts_branch_calibration_v1)
 
     def __post_init__(self):
         numeric = [v for v in asdict(self).values()]
@@ -190,11 +192,25 @@ def project_geometry(geometry, coordinates, targets, masses, policy, tangent=Non
     return None, {"reason": "PROJECTION_LIMIT", "iterations": iteration, "normalized_residual": error}
 
 
-def geometry_quality(previous, x, coordinates, targets, policy, previous_targets=None):
+def geometry_quality(previous, x, coordinates, targets, policy, previous_targets=None,
+                     origin=None):
+    """Frame motion/constraint quality relative to the branch reference frame.
+
+    ``branch_rmsd_angstrom`` is the motion against ``previous`` (the branch
+    reference frame); ``cumulative_drift_angstrom`` is the motion against
+    ``origin`` (the continuation start, typically frames[0]) and is only
+    reported when an origin is supplied.  A cumulative drift beyond
+    ``policy.cumulative_rmsd_limit`` is a typed LOCALITY_CUMULATIVE rejection:
+    per-frame gates alone leave the cross-frame drift unbounded (B1-2).
+    """
     aligned = align(x, previous)
     motion = np.linalg.norm(aligned - previous, axis=1)
     rmsd = float(np.sqrt(np.mean(motion**2)))
     atom_step = float(motion.max())
+    cumulative_drift = None
+    if origin is not None:
+        origin_motion = np.linalg.norm(align(x, np.asarray(origin, float))-np.asarray(origin, float), axis=1)
+        cumulative_drift = float(np.sqrt(np.mean(origin_motion**2)))
     tolerances = [policy.distance_tolerance if d["kind"] == "distance" else policy.angle_tolerance
                   for d in coordinates]
     if policy.relative_constraint_tolerance and previous_targets is not None:
@@ -206,10 +222,13 @@ def geometry_quality(previous, x, coordinates, targets, policy, previous_targets
                        for d, t in zip(coordinates, targets)]
     errors = [err/tol for err, tol in zip(absolute_errors, tolerances)]
     q = {"rmsd_angstrom": rmsd, "maximum_atom_step_angstrom": atom_step,
+         "branch_rmsd_angstrom": rmsd, "cumulative_drift_angstrom": cumulative_drift,
          "normalized_constraint_residual": max(errors), "constraint_residuals": absolute_errors,
          "effective_constraint_tolerances": tolerances}
     q["reason"] = ("CONSTRAINT_RESIDUAL" if max(errors) > 1 or not np.isfinite(errors).all()
                    else "PATH_DISCONTINUITY" if rmsd > policy.rmsd_limit or atom_step > policy.atom_step_limit
+                   else "LOCALITY_CUMULATIVE" if cumulative_drift is not None
+                        and cumulative_drift > policy.cumulative_rmsd_limit
                    else None)
     return q
 
@@ -220,6 +239,54 @@ def collision_reason(x, checks):
         if np.linalg.norm(x[a] - x[b]) < row["minimum_distance"]:
             return "NONBONDED_COLLISION"
     return None
+
+
+def _record_failure_diagnostics(attempt, plan, frames, previous, predictor, result, targets):
+    """Attach segment diagnostics (G2-AB1 WP-2) to a failed attempt.
+
+    Records corrector motion, the largest moving atoms, and local coordinate
+    changes so a rejection is traceable to atoms/coordinates instead of a bare
+    failure code.  Uses the corrector's partial geometry when available.
+    """
+    from pes2ts_core.generation.planning.continuation_diagnostics import segment_diagnostics
+    bonds = [check["atoms"] for check in plan.get("common_bond_checks", [])]
+    corrected = None
+    if isinstance(result, dict):
+        corrected = result.get("coordinates")
+    corrected = np.asarray(corrected if corrected is not None else predictor, float)
+    attempt["segment_diagnostics"] = segment_diagnostics(
+        previous, predictor, corrected, plan, targets, bonds)
+
+
+def _maybe_probe_curvature(attempt, attempts, plan, policy, guess, result, corrector, coordinates):
+    """Trigger a single-direction curvature probe only after repeated LOCALITY failures.
+
+    G2-AB1 WP-2: the probe fires only when >= 2 same-shape LOCALITY_* failures
+    (including this attempt) precede it and the per-run budget
+    (policy.max_curvature_probes) is not exhausted.  A probe result NEVER
+    claims a minimum eigenvalue or a full spectrum — it is one direction.
+    """
+    from pes2ts_core.generation.planning.constrained_curvature import curvature_probe_required
+    reason = attempt.get("reason") or ""
+    if not reason.startswith("LOCALITY"):
+        return
+    if not curvature_probe_required(attempts+[attempt]):
+        return
+    used = sum(1 for row in attempts if row.get("curvature_probe"))
+    if used >= policy.max_curvature_probes:
+        return
+    if not hasattr(corrector, "directional_curvature"):
+        return
+    gradient = None
+    if isinstance(result, dict):
+        gradient = result.get("physical_gradient_hartree_per_angstrom")
+    if gradient is None or result.get("physical_gradient_status") != "bound":
+        return
+    gradient = np.asarray(gradient, float)
+    probe = corrector.directional_curvature(guess, coordinates, -gradient,
+                                             name=attempt["attempt_id"]+"-probe")
+    if probe:
+        attempt["curvature_probe"] = probe
 
 
 def run_continuation(plan, initial_result, corrector: Callable, save: Callable | None = None):
@@ -242,12 +309,17 @@ def run_continuation(plan, initial_result, corrector: Callable, save: Callable |
         raise ValueError("INVALID_INITIAL_GEOMETRY")
     if collision_reason(x, plan.get("collision_checks", [])):
         raise ValueError("INVALID_INITIAL_COLLISION")
-    q0 = geometry_quality(x, x, coordinates, target_values(plan, 0), policy)
+    q0 = geometry_quality(x, x, coordinates, target_values(plan, 0), policy, origin=x)
     if q0["reason"]:
         raise ValueError("INITIAL_TARGET_MISMATCH")
+    from pes2ts_core.generation.planning.structure_checks import landing_identity
+    landing0 = landing_identity(x, plan)
     frames = [{"frame_id": "accepted-0000", "lambda": 0., "geometry": x.tolist(),
                "energy_hartree": initial_energy, "quality": q0, "parent_frame_id": None,
-               "frame_role": "prepared_origin", "targets": target_values(plan, 0)}]
+               "frame_role": "prepared_origin", "targets": target_values(plan, 0),
+               "branch_reference_frame_id": None, "convergence_mode": None,
+               "landing_identity_status": landing0["landing_identity_status"],
+               "landing_identity_scope": landing0["landing_identity_scope"]}]
     attempts = []
     lam = 0.
     step = policy.initial_step
@@ -281,9 +353,17 @@ def run_continuation(plan, initial_result, corrector: Callable, save: Callable |
             guess, projection = x.copy(), {"reason": None, "mode": "previous_frame_control"}
         attempt = {"attempt_id": f"attempt-{len(attempts):04d}", "parent_frame_id": frames[-1]["frame_id"],
                    "lambda": next_lam, "actual_step": actual_step, "projection": projection,
-                   "accepted": False, "targets": targets}
+                   "accepted": False, "targets": targets,
+                   "evaluation_identity_prefix": {
+                       "scheme": "pes2ts_execution_identity_v1",
+                       "plan_sha256": plan["content_sha256"],
+                       "attempt_id": f"attempt-{len(attempts):04d}",
+                       "parent_frame_id": frames[-1]["frame_id"]}}
         reason = projection["reason"]
-        if guess is not None:
+        result = None
+        if guess is not None and reason is None:
+            if hasattr(corrector, "set_branch_reference"):
+                corrector.set_branch_reference(x, frames[-1]["frame_id"])
             result = corrector(guess, targets, attempt["attempt_id"])
             elapsed += float(result.get("duration_seconds", 0))
             attempt["backend_evidence"] = {k: v for k, v in result.items() if k not in {"coordinates", "optimizer_state"}}
@@ -297,7 +377,8 @@ def run_continuation(plan, initial_result, corrector: Callable, save: Callable |
                 reason = "INVALID_BACKEND_GEOMETRY"
             else:
                 output = np.asarray(output, float)
-                quality = geometry_quality(x, output, coordinates, targets, policy, frames[-1]["targets"])
+                quality = geometry_quality(x, output, coordinates, targets, policy,
+                                           frames[-1]["targets"], origin=frames[0]["geometry"])
                 quality["corrector_rmsd_angstrom"] = float(np.sqrt(np.mean(np.sum((align(output, guess)-guess)**2, axis=1))))
                 attempt["quality"] = quality
                 from pes2ts_core.generation.planning.structure_checks import structure_issues
@@ -333,13 +414,19 @@ def run_continuation(plan, initial_result, corrector: Callable, save: Callable |
                     attempt["accepted"] = True
                     if hasattr(corrector, "on_accept"):
                         corrector.on_accept(result)
+                    from pes2ts_core.generation.planning.structure_checks import landing_identity
+                    landing = landing_identity(output, plan)
                     frames.append({"frame_id": f"accepted-{len(frames):04d}", "lambda": next_lam,
                                    "geometry": output.tolist(), "energy_hartree": energy,
                                    "quality": quality, "parent_frame_id": frames[-1]["frame_id"],
                                    "attempt_id": attempt["attempt_id"], "targets": targets,
                                    "physical_gradient_status": result.get("physical_gradient_status", "not_collected"),
                                    "physical_gradient_hartree_per_angstrom": np.asarray(gradient).tolist() if gradient is not None else None,
-                                   "frame_role": "constrained_optimization"})
+                                   "frame_role": "constrained_optimization",
+                                   "branch_reference_frame_id": frames[-1]["frame_id"],
+                                   "convergence_mode": result.get("convergence_mode"),
+                                   "landing_identity_status": landing["landing_identity_status"],
+                                   "landing_identity_scope": landing["landing_identity_scope"]})
                     x = output
                     lam = next_lam
                     smooth = smooth + 1 if quality["rmsd_angstrom"] < policy.smooth_rmsd and quality["corrector_rmsd_angstrom"] < policy.smooth_rmsd else 0
@@ -347,6 +434,10 @@ def run_continuation(plan, initial_result, corrector: Callable, save: Callable |
                         step = min(step * 1.5, policy.max_step)
                         smooth = 0
         attempt["reason"] = reason
+        if reason is not None and guess is not None:
+            _record_failure_diagnostics(attempt, plan, frames, x, guess, result, targets)
+            _maybe_probe_curvature(attempt, attempts, plan, policy, guess, result,
+                                   corrector, coordinates)
         attempts.append(attempt)
         if reason is not None:
             smooth = 0
