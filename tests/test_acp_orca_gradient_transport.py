@@ -443,7 +443,7 @@ def test_orca_gradient_backend_success_record_shape(tmp_path: Path, monkeypatch)
         charge=0, multiplicity=1, elements=ELEMENTS,
         folder=tmp_path / "evaluations", method="GFN2-xTB", basis="",
         acp_root=root, acp_python=sys.executable)
-    record = backend(GEOMETRY, "gradient-0000")
+    record = backend(GEOMETRY, "trial-0000/eval-0011223344556677")
     assert record["success"] is True
     assert record["failure_class"] is None
     assert record["energy"] == pytest.approx(ENERGY)
@@ -452,10 +452,16 @@ def test_orca_gradient_backend_success_record_shape(tmp_path: Path, monkeypatch)
     assert len(record["gradient_hartree_per_angstrom"]) == 2
     assert record["acp"]["workflow"] == "OrcaGradient"
     assert record["request_sha256"]
-    receipt = tmp_path / "evaluations" / "gradient-0000" / "result.json"
+    assert record["evaluation_identity"] == {
+        "scheme": "pes2ts_execution_identity_v1",
+        "evaluation_id": "trial-0000/eval-0011223344556677",
+        "trial": "trial-0000", "content_address": "eval-0011223344556677",
+        "content_addressed": True}
+    receipt = tmp_path / "evaluations" / "trial-0000" / "eval-0011223344556677" / "result.json"
     assert receipt.is_file()
-    cached = backend(GEOMETRY, "gradient-0000")
+    cached = backend(GEOMETRY, "trial-0000/eval-0011223344556677")
     assert cached["request_sha256"] == record["request_sha256"]
+    assert cached["evaluation_identity"]["content_address"] == "eval-0011223344556677"
 
 
 def test_orca_gradient_backend_rejects_changed_cached_input(tmp_path: Path) -> None:
@@ -464,10 +470,50 @@ def test_orca_gradient_backend_rejects_changed_cached_input(tmp_path: Path) -> N
         charge=0, multiplicity=1, elements=ELEMENTS,
         folder=tmp_path / "evaluations", acp_root=root,
         acp_python=sys.executable)
-    backend(GEOMETRY, "gradient-0000")
+    backend(GEOMETRY, "trial-0000/eval-0011223344556677")
     backend.elements = ["H", "He"]
-    with pytest.raises(ValueError, match="CACHED_GRADIENT_INPUT_MISMATCH"):
-        backend(GEOMETRY, "gradient-0000")
+    with pytest.raises(ValueError, match="IDENTITY_CONFLICT"):
+        backend(GEOMETRY, "trial-0000/eval-0011223344556677")
+
+
+def test_orca_gradient_backend_identity_conflict_reports_both_digests(tmp_path: Path) -> None:
+    root = _fake_acp(tmp_path)
+    backend = ORCAGradientBackend(
+        charge=0, multiplicity=1, elements=ELEMENTS,
+        folder=tmp_path / "evaluations", acp_root=root,
+        acp_python=sys.executable)
+    stored = backend(GEOMETRY, "trial-0000/eval-0011223344556677")
+    backend.method = "HF-3c"
+    with pytest.raises(ValueError, match="IDENTITY_CONFLICT") as excinfo:
+        backend(GEOMETRY, "trial-0000/eval-0011223344556677")
+    message = str(excinfo.value)
+    assert stored["request_sha256"] in message
+    assert "CACHED_GRADIENT_INPUT_MISMATCH" in message
+
+
+def test_orca_gradient_backend_content_address_separates_changed_geometry(tmp_path: Path) -> None:
+    root = _fake_acp(tmp_path)
+    backend = ORCAGradientBackend(
+        charge=0, multiplicity=1, elements=ELEMENTS,
+        folder=tmp_path / "evaluations", acp_root=root,
+        acp_python=sys.executable)
+    first = backend(GEOMETRY, "trial-0000/eval-0011223344556677")
+    moved = [[row[0] + 0.25, row[1], row[2]] for row in GEOMETRY]
+    second = backend(moved, "trial-0000/eval-9988776655443322")
+    assert second["success"] is True
+    assert second["request_sha256"] != first["request_sha256"]
+    assert (tmp_path / "evaluations" / "trial-0000" / "eval-0011223344556677" / "result.json").is_file()
+    assert (tmp_path / "evaluations" / "trial-0000" / "eval-9988776655443322" / "result.json").is_file()
+
+
+@pytest.mark.parametrize("bad_id", ["gradient-0000", "trial-0000", "trial-0000/eval-1/extra",
+                                    "trial-0000/eval-bad!addr", "../escape/eval-0000000000000000"])
+def test_orca_gradient_backend_rejects_non_content_addressed_ids(tmp_path: Path, bad_id) -> None:
+    backend = ORCAGradientBackend(
+        charge=0, multiplicity=1, elements=ELEMENTS,
+        folder=tmp_path / "evaluations")
+    with pytest.raises(ValueError, match="INVALID_EVALUATION_ID"):
+        backend(GEOMETRY, bad_id)
 
 
 def test_orca_gradient_backend_requires_acp_root(tmp_path: Path, monkeypatch) -> None:
@@ -476,7 +522,7 @@ def test_orca_gradient_backend_requires_acp_root(tmp_path: Path, monkeypatch) ->
         charge=0, multiplicity=1, elements=ELEMENTS,
         folder=tmp_path / "evaluations")
     with pytest.raises(ACPCLIError, match="ACP checkout root"):
-        backend(GEOMETRY, "gradient-0000")
+        backend(GEOMETRY, "trial-0000/eval-0011223344556677")
 
 
 def test_resolve_acp_wiring_precedence(monkeypatch, tmp_path: Path) -> None:

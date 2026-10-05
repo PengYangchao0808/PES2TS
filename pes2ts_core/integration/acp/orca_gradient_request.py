@@ -24,14 +24,31 @@ ACP_GRADIENT_CONFIG_FLAG: Final[str] = "--gradient-config"
 GRADIENT_PRODUCT_SCHEMA: Final[str] = "orca_gradient_product_v1"
 
 
+def canonical_request_json(request: Mapping[str, Any]) -> str:
+    """Frozen canonical JSON text for the request payload (G2-AB1 WP-1).
+
+    Frozen serialization rules — changing ANY of them is an interface change
+    and requires a new schema version plus constitution §9.6 registration:
+
+    - mapping keys sorted; UTF-8 text without ASCII escaping;
+    - ``geometry`` rows are lists of plain Python ``float`` (the builder
+      coerces ints), serialized by the json module's shortest round-trip
+      repr — never culture- or locale-dependent formatting;
+    - ``elements`` (atom order) is significant and is never reordered;
+      the digest therefore binds geometry + atom order + method + electronic
+      state (charge/multiplicity) + operation (route_extras/extra_blocks);
+    - unknown types fall back to ``str`` exactly like the ACP convention.
+    """
+    return json.dumps(request, sort_keys=True, default=str, ensure_ascii=False)
+
+
 def request_sha256(request: Mapping[str, Any]) -> str:
     """Return the SHA-256 of the canonical request payload.
 
     Mirrors the ACP ``_request_digest`` convention (sorted keys, UTF-8) so a
     PES2TS receipt and an ACP product can be compared on equal footing.
     """
-    canonical = json.dumps(request, sort_keys=True, default=str, ensure_ascii=False)
-    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+    return hashlib.sha256(canonical_request_json(request).encode("utf-8")).hexdigest()
 
 
 def build_gradient_request(*, geometry: Sequence[Sequence[float]],
@@ -164,6 +181,7 @@ __all__ = [
     "GRADIENT_PRODUCT_SCHEMA",
     "REQUEST_SCHEMA_VERSION",
     "build_gradient_request",
+    "canonical_request_json",
     "request_sha256",
     "validate_gradient_request",
 ]

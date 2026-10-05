@@ -85,7 +85,23 @@ def _portable_attempt_id(evaluation_id) -> str:
     value = str(evaluation_id)
     if _PORTABLE_ID.fullmatch(value):
         return value
+    flattened = value.replace("/", "-")
+    if _PORTABLE_ID.fullmatch(flattened):
+        return flattened
     return "eval-" + digest(value)[:32]
+
+
+def _evaluation_id_parts(evaluation_id) -> tuple[str, str]:
+    """Split a content-addressed ``trial-<NNNN>/eval-<content16>`` id.
+
+    G2-AB1 WP-1: the receipt directory is namespaced by trial and addressed by
+    content, so a replayed attempt with changed geometry writes a NEW directory
+    instead of colliding with the old receipt.
+    """
+    parts = [p for p in str(evaluation_id).split("/") if p]
+    if len(parts) != 2 or not all(_PORTABLE_ID.fullmatch(p) for p in parts):
+        raise ValueError(f"INVALID_EVALUATION_ID:{evaluation_id}")
+    return parts[0], parts[1]
 
 
 def _classify_acp_gradient_failure(*, timed_out: bool, error: str | None,
@@ -165,6 +181,7 @@ class ORCAGradientBackend:
 
     def __call__(self, geometry, evaluation_id):
         geometry_rows = np.asarray(geometry, dtype=float).tolist()
+        trial_part, content_part = _evaluation_id_parts(evaluation_id)
         request = build_gradient_request(
             geometry=geometry_rows, elements=self.elements, method=self.method,
             basis=self.basis, charge=self.charge, multiplicity=self.multiplicity,
@@ -172,12 +189,18 @@ class ORCAGradientBackend:
             nproc=self.nproc, extra_blocks=self._extra_blocks(),
             scf_convergence="tight", output_name="grad")
         binding = digest(request)
-        folder = self.folder / str(evaluation_id)
+        folder = self.folder / trial_part / content_part
         receipt = folder / "result.json"
         if receipt.exists():
             stored = json.loads(receipt.read_text(encoding="utf-8"))
             if stored["request_sha256"] != binding:
-                raise ValueError("CACHED_GRADIENT_INPUT_MISMATCH")
+                # P1/P3: same content address with different binding must stay
+                # a hard typed conflict; it is never deleted or recomputed over.
+                raise ValueError(
+                    "IDENTITY_CONFLICT:CACHED_GRADIENT_INPUT_MISMATCH:"
+                    f"evaluation_id={evaluation_id}:"
+                    f"stored_request_sha256={stored['request_sha256']}:"
+                    f"binding_request_sha256={binding}")
             return stored
         if self.acp_root is None:
             raise ACPCLIError(
@@ -219,6 +242,11 @@ class ORCAGradientBackend:
             success and not orca_logs)
         record = {"success": success, "failure_class": failure,
                   "request_sha256": binding,
+                  "evaluation_identity": {"scheme": "pes2ts_execution_identity_v1",
+                                          "evaluation_id": str(evaluation_id),
+                                          "trial": trial_part,
+                                          "content_address": content_part,
+                                          "content_addressed": True},
                   "acp_request_sha256": attempt.request_sha256,
                   "energy": energy, "gradient_evidence": evidence,
                   "gradient_hartree_per_angstrom": None,
@@ -247,18 +275,56 @@ class ORCALocalCorrector:
     """Local projected-BFGS corrector driven by the ACP gradient backend."""
 
     def __init__(self, plan, folder, *, policy=None, warm_start=False,
+                 branch_policy=None,
                  acp_root=None, acp_python=None, acp_config=None, acp_wiring=None):
+        from pes2ts_core.generation.planning.local_corrector import BranchPolicy
         self.plan, self.folder = plan, Path(folder)
         self.policy = policy or LocalCorrectorPolicy()
+        self.branch_policy = branch_policy or BranchPolicy()
         self.warm_start = warm_start
         self.inverse_curvature = None
+        self._branch_reference = None
+        self._branch_reference_frame_id = None
         self.acp_root, self.acp_python, self.acp_config = resolve_acp_wiring(
             acp_root=acp_root, acp_python=acp_python, acp_config=acp_config,
             acp_wiring=acp_wiring)
 
+    def set_branch_reference(self, geometry, frame_id):
+        """Receive the previous accepted frame (G2-AB1 WP-2 branch control)."""
+        self._branch_reference = None if geometry is None else np.asarray(geometry, float).copy()
+        self._branch_reference_frame_id = frame_id
+
     def on_accept(self, result):
         if self.warm_start and result.get("optimizer_state"):
             self.inverse_curvature = np.asarray(result["optimizer_state"]["inverse_curvature"])
+
+    def directional_curvature(self, x, coordinates, gradient, direction, name="probe"):
+        """Budgeted single-direction Lagrangian curvature probe (G2-AB1 WP-2).
+
+        Never claims a minimum eigenvalue or a full spectrum; see
+        :func:`constrained_curvature.directional_curvature`.
+        """
+        from pes2ts_core.generation.planning.constrained_curvature import directional_curvature
+        from pes2ts_core.generation.planning.local_corrector import evaluation_content_digest
+        backend = ORCAGradientBackend(
+            charge=self.plan["charge"], multiplicity=self.plan["multiplicity"],
+            elements=self.plan["elements"], folder=self.folder/"curvature_probes",
+            acp_root=self.acp_root, acp_python=self.acp_python,
+            acp_config=self.acp_config)
+        method_context = {"method": backend.method, "basis": backend.basis,
+                          "charge": backend.charge, "multiplicity": backend.multiplicity,
+                          "elements": list(backend.elements)}
+        counter = [0]
+
+        def evaluate(y, _raw_id):
+            trial_id = f"trial-{counter[0]:04d}"
+            counter[0] += 1
+            content16 = evaluation_content_digest(y, coordinates, [], method_context,
+                                                  "curvature_probe")
+            return backend(y, f"{trial_id}/eval-{content16}")
+
+        return directional_curvature(x, coordinates, gradient, direction, evaluate,
+                                      name=name)
 
     def model_inverse_curvature(self, guess):
         from itertools import combinations
@@ -296,7 +362,12 @@ class ORCALocalCorrector:
             initial_curvature = self.model_inverse_curvature(guess)
         request = {"guess": np.asarray(guess).tolist(), "targets": targets,
                    "plan_sha256": self.plan["content_sha256"], "policy": asdict(self.policy),
+                   "branch_policy": asdict(self.branch_policy),
                    "optimizer": "projected_bfgs_fixed_neighbourhood_v1"}
+        if self._branch_reference_frame_id is not None:
+            # Execution identity: a replay against a different branch reference
+            # frame is a different correction even for identical geometry.
+            request["branch_reference_frame_id"] = self._branch_reference_frame_id
         if self.warm_start:
             request["curvature_initialization"] = "valence_model_then_accepted_frame_bfgs"
             request["inverse_curvature_sha256"] = digest(initial_curvature.tolist())
@@ -306,7 +377,14 @@ class ORCALocalCorrector:
             stored = json.loads(receipt.read_text(encoding="utf-8"))
             if stored["request_sha256"] != binding:
                 raise ValueError("CACHED_LOCAL_CORRECTOR_INPUT_MISMATCH")
-            return stored
+            # G2-T3 P1-3: a whole-receipt replay runs no QC call here, so the
+            # RETURNED copy carries the top-level reuse flag cost capture reads
+            # (backend_evidence.acp.reused).  The persisted receipt is never
+            # rewritten, so the request binding stays untouched.
+            acp = stored.get("acp")
+            acp = dict(acp) if isinstance(acp, dict) else {}
+            acp["reused"] = True
+            return {**stored, "acp": acp}
         write_json(folder/"request.json", {**request, "request_sha256": binding})
         evaluator = ORCAGradientBackend(
             charge=self.plan["charge"], multiplicity=self.plan["multiplicity"],
@@ -320,8 +398,17 @@ class ORCALocalCorrector:
         result = correct_local(guess, self.plan["drivers"]+self.plan.get("guards", []), targets,
             self.plan["masses"], evaluator, policy=self.policy, geometry_check=check,
             initial_inverse_curvature=initial_curvature,
+            method_context={"method": evaluator.method, "basis": evaluator.basis,
+                            "charge": evaluator.charge, "multiplicity": evaluator.multiplicity,
+                            "elements": list(evaluator.elements)},
+            branch_reference=self._branch_reference, branch_policy=self.branch_policy,
             save=lambda state: write_json(folder/"local_checkpoint.json", state))
         result["request_sha256"] = binding
+        result["evaluation_identity_prefix"] = {"scheme": "pes2ts_execution_identity_v1",
+                                                "plan_sha256": self.plan["content_sha256"],
+                                                "attempt_id": attempt_id}
+        if self._branch_reference_frame_id is not None:
+            result["branch_reference_frame_id"] = self._branch_reference_frame_id
         write_json(receipt, result)
         return result
 
