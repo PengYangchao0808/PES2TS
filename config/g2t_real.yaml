@@ -1,0 +1,4 @@
+acp:
+  root: /mnt/e/Calculations/Common_Script/Auto_Calc_Platform/ACP_V1_20260811
+  python: /root/miniforge3/envs/rph4/bin/python
+  config_path: /mnt/e/Calculations/Common_Script/Auto_Calc_Platform/ACP_V1_20260811/config/defaults.yaml

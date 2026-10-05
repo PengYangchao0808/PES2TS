@@ -177,3 +177,49 @@ g2:
       - G2_ENERGY_INCOMPLETE
       - G2_PATH_DISCONTINUOUS
       - G2_COLLISION
+  # G2-AB2 WP-2: pilot-frozen branch-stability parameters
+  # (pes2ts_branch_calibration_v1, most-conservative passing cell of the
+  # offline analytic grid; R6: calibrated on the analytic fixtures only —
+  # never on a holdout).
+  continuation:
+    branch_policy:
+      branch_rmsd_radius: 0.25
+      branch_atom_radius: 0.50
+      cumulative_rmsd_radius: 0.25
+      bias_kappa: 0.50
+      release_iterations: 4
+    cumulative_rmsd_limit: 1.0
+    max_curvature_probes: 1
+    max_seconds: 4000.0         # T15c calibration 2026-10-04, evidence=T15b replay
+                                 # (identity 470752af): RXN_0000017762 stalled at
+                                 # lambda=0.19484 under 2400 s with 12 monotone
+                                 # accepted frames (BUDGET_EXHAUSTED); extrapolation
+                                 # from the T15b histogram: dλ/dt ~ 9.7e-5 λ/s ->
+                                 # ~3070 s to reach the round2 reference 0.298125.
+                                 # 4000 s = ~30% margin over the extrapolation.
+                                 # evaluation-cap-first semantics: 80 evals x 2.9s
+                                 # ~ 232s < 480 local; local budget unchanged.
+  # G2-AB2 WP-2 local corrector budget (T15b calibration 2026-10-04, evidence=T15-02;
+  # retained unchanged in T15c — only continuation/campaign wall moved).
+  # max_seconds 120 -> 480: the 120s wall clock bought only 41-42 of max_evaluations=80
+  # at ~2.9s/gradient; 480s lets the evaluation cap bind first (~232s needed).
+  local_corrector:
+    max_seconds: 480.0
+  # G2-AB2 WP-3: origin free-optimization adapter (ACP BatchOptimize non-TS).
+  origin_preparation:
+    method: "GFN2-xTB"
+    basis: ""
+    timeout_seconds: 600.0
+    nproc: 2
+    capability_probe: true   # fail-closed: a failed probe blocks the case typed, never a local fallback (R3)
+  # G2-AB2 WP-1: campaign budget defaults (manifest build_campaign_manifest).
+  # Per-path ceilings MUST equal the frozen ContinuationPolicy defaults below
+  # (single source of truth, validated by BUDGET_POLICY_MISMATCH).
+  campaign:
+    max_frames_per_path: 80
+    max_attempts_per_path: 160
+    max_wall_seconds_per_path: 4000.0  # T15c: MUST equal g2.continuation.max_seconds (BUDGET_POLICY_MISMATCH)
+    max_gradient_calls_per_path: 2000
+    max_total_gradient_calls: 60000
+    max_session_wall_seconds: 0.0         # 0 = no session wall budget
+    candidate_top_k: 3
