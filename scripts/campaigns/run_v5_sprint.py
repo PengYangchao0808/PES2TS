@@ -1047,10 +1047,13 @@ class SprintDriver:
                 k_pairs: list[tuple[int, int]] = []
                 for col in range(pair_index.shape[1]):
                     a, c = int(pair_index[0, col]), int(pair_index[1, col])
-                    if k_lo <= a < k_hi and k_lo <= c < k_hi and \
+                    # pair rows live on the NODE axis: segment by the
+                    # molecule's node span [n_lo, n_hi) — NEVER the key-axis
+                    # span (k_lo/k_hi index the packed key axis and would
+                    # misassign pairs across samples)
+                    if n_lo <= a < n_hi and n_lo <= c < n_hi and \
                             float(pair_edit[col]) != 0.0:
-                        k_pairs.append((key_rows[a - k_lo],
-                                        key_rows[c - k_lo]))
+                        k_pairs.append((a - n_lo, c - n_lo))
                 samples.append({
                     "group_id": rid,
                     "pos": pos_np[n_lo:n_hi],
@@ -2321,10 +2324,10 @@ class SprintDriver:
                     k_pairs: list[tuple[int, int]] = []
                     for col in range(pair_index.shape[1]):
                         a, c = int(pair_index[0, col]), int(pair_index[1, col])
-                        if k_lo <= a < k_hi and k_lo <= c < k_hi and \
+                        # node-axis segmentation (see _oracle_static_ceiling)
+                        if n_lo <= a < n_hi and n_lo <= c < n_hi and \
                                 float(pair_edit[col]) != 0.0:
-                            k_pairs.append((key_rows[a - k_lo],
-                                            key_rows[c - k_lo]))
+                            k_pairs.append((a - n_lo, c - n_lo))
                     samples.append({
                         "group_id": rid,
                         "pos": pos_np[n_lo:n_hi],
