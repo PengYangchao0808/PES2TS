@@ -734,8 +734,8 @@ class SprintDriver:
         from pes2ts_core.pesn.offline.training.device import resolve_device
         from pes2ts_core.pesn.offline.training.key_atom_bc import (
             KeyAtomBCTrainerError, KeyAtomLossConfig, KeyAtomCycleSampler,
-            cos_lambda, key_atom_bc_loss, load_lane_b_pools,
-            load_lane_b_view)
+            cos_lambda, key_atom_bc_loss_vectorized as key_atom_bc_loss,
+            load_lane_b_pools, load_lane_b_view)
         from pes2ts_core.pesn.models.key_atom_egnn import StarEGNN
 
         dev_cfg = dict(self.config.get("device") or {})
