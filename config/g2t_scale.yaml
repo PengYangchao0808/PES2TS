@@ -1,0 +1,8 @@
+# ACP wiring for the scale20k_rl2000 campaign (g2t-manifest / control rounds).
+# Same checkout and interpreter as config/g2t_real.yaml; the explicit config
+# pins the ORCA executable/library paths for WSL (see
+# ${PES2TS_ACP_CONFIG}).
+acp:
+  root: ${PES2TS_ACP_ROOT}
+  python: ${PES2TS_ACP_PYTHON}
+  config_path: ${PES2TS_ACP_CONFIG}
