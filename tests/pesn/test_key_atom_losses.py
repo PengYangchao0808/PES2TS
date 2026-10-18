@@ -308,3 +308,25 @@ def test_bounded_projection_small_u_untouched():
     ub, scale = bounded_projection(u, 0.08, key_ptr)
     assert torch.allclose(ub, u)
     assert float(scale[0]) == 1.0
+
+
+def test_vectorized_loss_matches_loop_reference():
+    """Vectorized trainer path must equal the per-frame loop reference."""
+    for trial in range(12):
+        inputs = _loss_inputs(seed=100 + trial, n_graphs=int(
+            np.random.default_rng(trial).integers(1, 5)),
+            keys_per_graph=int(np.random.default_rng(trial + 7).integers(1, 5)))
+        lam = float(np.random.default_rng(trial).uniform(0, 0.02))
+        a = key_atom_bc_loss(
+            inputs["u"], inputs["y"], inputs["degK"], inputs["key_ptr"],
+            inputs["pos"], inputs["key_index"], inputs["pair_index"],
+            config=CFG, lambda_cos=lam)
+        from pes2ts_core.pesn.offline.training.key_atom_bc import (
+            key_atom_bc_loss_vectorized,
+        )
+        b = key_atom_bc_loss_vectorized(
+            inputs["u"], inputs["y"], inputs["degK"], inputs["key_ptr"],
+            inputs["pos"], inputs["key_index"], inputs["pair_index"],
+            config=CFG, lambda_cos=lam)
+        for k in ("loss", "l_atom", "l_pair", "l_cos"):
+            assert torch.allclose(a[k], b[k], atol=1e-9), (trial, k)

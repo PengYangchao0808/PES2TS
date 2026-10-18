@@ -151,6 +151,103 @@ def cos_lambda(update: int, config: KeyAtomLossConfig) -> float:
 # Loss building blocks (plan §4 EXACT)
 # ---------------------------------------------------------------------------
 
+def key_atom_bc_loss_vectorized(
+    u: torch.Tensor,
+    y: torch.Tensor,
+    degK: torch.Tensor,
+    key_ptr: torch.Tensor,
+    pos: torch.Tensor,
+    key_index: torch.Tensor,
+    pair_index: torch.Tensor | None = None,
+    *,
+    config: KeyAtomLossConfig | None = None,
+    lambda_cos: float = 0.0,
+    frame_mask: torch.Tensor | None = None,
+) -> dict:
+    """Vectorized twin of :func:`key_atom_bc_loss` (identical math).
+
+    Segment reductions replace the per-frame Python loop; the loop version
+    stays as the reference and the trainer asserts agreement on real
+    batches (same formulas, plan §4; no per-frame GPU sync points).
+    """
+    cfg = config or KeyAtomLossConfig()
+    _require_loss(bool(torch.isfinite(u).all()),
+                  "NONFINITE_PREDICTION", "u contains non-finite values")
+    _require_loss(bool(torch.isfinite(y).all()),
+                  "NONFINITE_TEACHER", "y contains non-finite values")
+    from pes2ts_core.pesn.contracts.key_atom import global_pair_rows_to_slots
+    if pair_index is not None and pair_index.numel() > 0:
+        pair_index = global_pair_rows_to_slots(
+            pair_index, key_index, int(pos.shape[0]))
+    n_graphs = int(key_ptr.shape[0]) - 1
+    scale = float(cfg.loss_scale_angstrom)
+    device = u.device
+    dtype = u.dtype
+    lo = key_ptr[:-1]
+    hi = key_ptr[1:]
+    counts = (hi - lo).clamp(min=1)
+    active = (hi > lo)
+    if frame_mask is not None:
+        active = active & frame_mask.to(device=device, dtype=torch.bool)
+    n_used = int(active.sum())
+    _require_loss(n_used > 0, "NO_ELIGIBLE_FRAMES",
+                  "batch has no unmasked frames with key atoms")
+
+    atom_frame = torch.repeat_interleave(
+        torch.arange(n_graphs, device=device), (hi - lo).clamp(min=0))
+    # w_i = 1/max(1,degK) normalized per frame (segment softmax-free form)
+    w_raw = (1.0 / degK.to(dtype=dtype).clamp(min=1.0))
+    w_sum = torch.zeros(n_graphs, dtype=dtype, device=device)
+    w_sum.index_add_(0, atom_frame, w_raw)
+    w = w_raw / w_sum[atom_frame].clamp(min=1e-12)
+
+    e = (u - y).norm(dim=-1) / scale
+    l_atom_atoms = w * radial_huber(e, cfg.huber_delta)
+    l_atom = torch.zeros(n_graphs, dtype=dtype, device=device)
+    l_atom.index_add_(0, atom_frame, l_atom_atoms)
+
+    l_pair = torch.zeros(n_graphs, dtype=dtype, device=device)
+    if pair_index is not None and pair_index.numel() > 0:
+        pi = pair_index[0].long()
+        pj = pair_index[1].long()
+        e_l = pair_unit_vectors(pos, key_index, pair_index)
+        dj = (e_l * (u[pj] - u[pi])).sum(dim=-1)
+        dy = (e_l * (y[pj] - y[pi])).sum(dim=-1)
+        pair_h = radial_huber(
+            ((dj - dy).abs() / scale).to(dtype=dtype), cfg.huber_delta)
+        pair_frame = atom_frame[pi]
+        pair_sum = torch.zeros(n_graphs, dtype=dtype, device=device)
+        pair_sum.index_add_(0, pair_frame, pair_h)
+        pair_cnt = torch.zeros(n_graphs, dtype=dtype, device=device)
+        pair_cnt.index_add_(0, pair_frame, torch.ones_like(pair_h))
+        l_pair = pair_sum / pair_cnt.clamp(min=1.0)
+
+    g = (y.norm(dim=-1) > float(cfg.tau_norm_angstrom)).to(dtype)
+    c = soft_cosine(u, y, cfg.cos_soft_norm_angstrom).to(dtype=dtype)
+    wg = w * g
+    denom = torch.zeros(n_graphs, dtype=dtype, device=device)
+    denom.index_add_(0, atom_frame, wg)
+    num = torch.zeros(n_graphs, dtype=dtype, device=device)
+    num.index_add_(0, atom_frame, wg * (1.0 - c))
+    l_cos = num / denom.clamp(min=1e-8)
+    l_cos = torch.where(denom > 0.0, l_cos,
+                        torch.zeros_like(l_cos))
+
+    frames = l_atom + float(cfg.lambda_pair) * l_pair + float(lambda_cos) * l_cos
+    keep = active.to(dtype)
+    total = (frames * keep).sum() / n_used
+    _require_loss(bool(torch.isfinite(total)), "NONFINITE_LOSS",
+                  "total loss is not finite")
+    return {
+        "loss": total,
+        "l_atom": (l_atom * keep).sum() / n_used,
+        "l_pair": (l_pair * keep).sum() / n_used,
+        "l_cos": (l_cos * keep).sum() / n_used,
+        "lambda_cos": float(lambda_cos),
+        "n_frames": n_used,
+    }
+
+
 def radial_huber(e: torch.Tensor, delta: float = 0.25) -> torch.Tensor:
     """h_δ(e) = e²/2 (e≤δ) else δ(e−δ/2); rotation-invariant by construction
     because it consumes only the radial error e = ‖Δu‖/a_ref."""
@@ -586,15 +683,29 @@ def lr_at_update(
 # ---------------------------------------------------------------------------
 
 _LANE_B_CACHE: dict[tuple[str, str], dict] = {}
+_SPLIT_CACHE: dict[tuple, tuple] = {}
 
 
 def _split_group_reactions(split_path: str | Path, fold: int,
                            config: Mapping | None = None):
     """Read pesn_v5_split_v1 (folds/group_fold + fit50 selection) ->
-    (train_groups, dev_groups)."""
+    (train_groups, dev_groups).  Memoized per (path, mtime, fold, sel)."""
     import json as _json
 
-    doc = _json.loads(Path(split_path).read_text(encoding="utf-8"))
+    path = Path(split_path)
+    sel_key = ""
+    if config is not None:
+        paths = dict((config or {}).get("paths", {}))
+        sel_key = str(paths.get(
+            "fit50_selection",
+            "outputs/pesn/direct_egnn_v1_20261015/splits/"
+            "selection_direct_fit50.json"))
+    cache_key = (str(path), path.stat().st_mtime_ns if path.exists() else -1,
+                 int(fold), sel_key)
+    cached = _SPLIT_CACHE.get(cache_key)
+    if cached is not None:
+        return cached
+    doc = _json.loads(path.read_text(encoding="utf-8"))
     folds = doc.get("folds")
     group_fold = doc.get("group_fold")
     if not isinstance(folds, dict) or not isinstance(group_fold, dict):
@@ -620,6 +731,7 @@ def _split_group_reactions(split_path: str | Path, fold: int,
     if not train and not dev:
         raise KeyAtomBCTrainerError(
             "SPLIT_EMPTY", f"no fit50 rows parsed from {split_path}")
+    _SPLIT_CACHE[cache_key] = (train, dev)
     return train, dev
 
 
@@ -643,7 +755,8 @@ def _lane_b_runtime(config: Mapping, d0: float, split_path: str | Path):
         dataset = lane_b.V5FeatureDataset([str(p) for p in shards])
         cached = {"shards": shards, "dataset": dataset,
                   "shard_sizes": list(dataset._shard_index[1:]
-                                      - dataset._shard_index[:-1])}
+                                      - dataset._shard_index[:-1]),
+                  "sample_cache": {}}
         _LANE_B_CACHE[key] = cached
     return cached
 
@@ -711,17 +824,29 @@ def load_lane_b_pools(config: Mapping, *, fold: int, d0: float, split_path: str)
 
 
 class _SampleView:
-    """Index-mapped view over Lane B's V5FeatureDataset for sample rows."""
+    """Index-mapped view over Lane B's V5FeatureDataset for sample rows.
 
-    def __init__(self, dataset, indices):
+    Materialized sample dicts are memoized in the SHARED runtime cache:
+    pool rotation revisits the same rows across cycles and every batch
+    rebuilds a view, so warm batches skip the npz slicing entirely
+    (read-only contract downstream — collate copies into fresh tensors)."""
+
+    def __init__(self, dataset, indices, shared_cache: dict):
         self._dataset = dataset
         self._indices = list(int(i) for i in indices)
+        self._cache = shared_cache
 
     def __len__(self):
         return len(self._indices)
 
     def __getitem__(self, j: int):
-        return self._dataset[self._indices[j]]
+        gi = self._indices[j]
+        row = self._cache.get(gi)
+        if row is None:
+            row = self._dataset[gi]
+            if len(self._cache) < 200_000:
+                self._cache[gi] = row
+        return row
 
 
 def load_lane_b_view(*, config: Mapping, samples: Sequence[dict], fold: int,
@@ -731,7 +856,8 @@ def load_lane_b_view(*, config: Mapping, samples: Sequence[dict], fold: int,
 
     runtime = _lane_b_runtime(config, d0, split_path)
     indices = [_parse_sample_id(row["sample_id"], runtime) for row in samples]
-    view = _SampleView(runtime["dataset"], indices)
+    view = _SampleView(runtime["dataset"], indices,
+                       runtime["sample_cache"])
     vkey = ("vocabs", str(runtime["shards"][0].parent), f"fold{int(fold)}")
     vocabs = _LANE_B_CACHE.get(vkey)
     if vocabs is None:
@@ -1166,7 +1292,7 @@ class KeyAtomBCTrainer:
                     u, _z = self.model(batch)
                     if batch.y_teacher is None:
                         continue
-                    out = key_atom_bc_loss(
+                    out = key_atom_bc_loss_vectorized(
                         u.float(), batch.y_teacher.float(),
                         batch.degK.float(), batch.key_ptr, batch.pos,
                         batch.key_index, batch.pair_index,

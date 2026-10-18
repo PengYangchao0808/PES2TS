@@ -216,7 +216,7 @@ campaigns:
       - pes2ts_core/pesn/models/dual_ts_policy.py
   V5_SPRINT:
     title: V5 phase-1 ten-hour sprint (label screen, recheck, conditional OOF)
-    status: proposed
+    status: active
     primary_g: G3.P.0
     supporting_g: [G3.P.1, G3.P.2, G3.P.3, G0, G1]
     data_dependencies: [G0, G1]

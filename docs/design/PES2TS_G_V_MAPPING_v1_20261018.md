@@ -47,7 +47,7 @@
 | V5.0 | proposed | G3.P.1 | G0, G1, G3.P.0, G2.T | `config/campaigns/v5_0_data_math.yaml` | `data/manifests/v5/split_manifest.json` | V5-G1, M0.5-oracle |
 | V5.1 | proposed | G3.P.2 | G0, G1 | `config/campaigns/v5_1_architecture.yaml` | `data/manifests/v5/split_manifest.json` | V5-G1, V5-G2, V5-G3, V5-G4 |
 | V5.2 | proposed | G3.P.3 | G3.P.2, G3.2 | `config/campaigns/v5_2_freeze.yaml` | `data/manifests/v5/split_manifest.json` | V5-G1, V5-G2, V5-G3, V5-G4, V5-sealed |
-| V5_SPRINT | proposed | G3.P.0 | G3.P.1, G3.P.2, G3.P.3, G0, G1 | `config/campaigns/v5_sprint.yaml` | `data/manifests/v5/split_manifest.json` | V5-G1, V5-G2, V5-G3, V5-G4 |
+| V5_SPRINT | active | G3.P.0 | G3.P.1, G3.P.2, G3.P.3, G0, G1 | `config/campaigns/v5_sprint.yaml` | `data/manifests/v5/split_manifest.json` | V5-G1, V5-G2, V5-G3, V5-G4 |
 | V6.0 | proposed | G3.2 | G3.P.3 | `config/campaigns/v6_0_data.yaml` | `data/manifests/v6/split_manifest.json` | V6-OOF, V6-leakage |
 | V6.1 | proposed | G3.2 | G3.P.3 | `config/campaigns/v6_1_progress.yaml` | `data/manifests/v6/split_manifest.json` | V6-progress, V6-conformal |
 | V6.2 | proposed | G3.2 | G3.P.3 | `config/campaigns/v6_2_decoder.yaml` | `data/manifests/v6/split_manifest.json` | V6-decoder, V6-stop |
