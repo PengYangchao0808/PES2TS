@@ -1,5 +1,13 @@
 # PES2TS 文档修订台账（协同性）
 
+## 2026-10-19 增量登记：V5 第一阶段冲刺执行完成（complete_oof_1seed）
+
+- 按 [V5.0–V5.2 十小时方案 v1.1](PES2TS_V5.0-V5.2_十小时冲刺训练与验证执行方案_v1_20261018.md) 与 [ADR-0026](../design/decisions/ADR-0026-V5冲刺key-atom位移合同与OOF语义.md) 完成五阶段执行：prepare-audit（split 冻结/三跨度教师/冲突审计/特征/测速/G5.1）→ label-screen（六臂×1500 更新）→ recipe-recheck（Top-2×双折×三种子，A05/A12 双双稳定，胜者 A05=d0 0.05+anchor on）→ crossfit（测速阶梯降档 5fold×1seed 正式 OOF，3000 更新/折，`move_proposal_v5_draft1.parquet` 5088 行无删失，selection-exposed）→ report（封存 REFUSED 正确登记）。
+- 关键实测：G5.1 pass；Oracle 静态上限 ORACLE_STATIC_OK（8/8）；A05 formal 开发级 G5.2 全部 8 项阈值通过（RMSE/zero 0.742、/classic 0.663、cos 0.841、nearTS 0.662、88.9% 优于零），verdict 保守 fail_or_insufficient 仅为 9 簇<20 簇样本量门；X0 起点记忆为主导因子（A 系全胜 C 系）；与 V4.7 负结果（MSE/zero 1.132、cos 0.180）形成对照。
+- 执行中发现并修复的实现缺陷（均已提交+测试）：端点边集匹配需键级签名（仅键级变化反应）；参考块分级回退 + `native_verified_v1` 帧连续性分层（预注册阈值，实证 IRC 存档帧连续，eligible 11.7%→91.4%）；G5.4 pair 轴分段错误（key 轴混用致 Oracle 假阴性）；YAML on/off 布尔解析（报告复验 anchor 错配）；向量化损失（与循环参照 42 项等值测试）。
+- 执行报告：[PES2TS_V5第一阶段冲刺执行报告_20261018](../reports/PES2TS_V5第一阶段冲刺执行报告_20261018.md)；机器产物 `outputs/pesn/v5/sprint/`（gate_report、label_recipe_matrix、recipe_recheck、ablation_table、timing_probe、OOF parquet、sealed_eval 等 20 件，含 sha256 链）。
+- 未完成/边界（如实）：三种子 OOF 未做（测速降档）；Confirm/OOD 封存未开启；G5.2/G5.3 正式门不发 pass（样本量门）；扩量/粗到细仅计划（scale_curriculum_next_run.json）；sprint status = `complete_oof_1seed`，不宣称 V5.2 完成。
+
 ## 2026-10-19 增量登记：ADR-0026 V5 冲刺实现与战役注册
 
 - 新增 [ADR-0026 V5 冲刺 key-atom 位移合同与 OOF 语义](../design/decisions/ADR-0026-V5冲刺key-atom位移合同与OOF语义.md)：落实冲刺方案 §0"实现前版本化"要求；key-atom 任务/帧合同/三跨度教师/fit50 内部冲突审计/5-fold split/特征 36-29-19/M2 Star EGNN/径向 Huber 损失/OOF 语义正式登记。
@@ -34,7 +42,7 @@
 > 取代关系：本文持续登记；2026-10-05 当前学习主线按 ADR-0010 更新，旧日期记录保留
 > 上游依赖：[开发宪法](../PES2TS_开发宪法_v1.md)、[阶段定义](PES2TS_阶段定义_G0-G3.md)
 > 下游消费者：文档索引、执行投影、各阶段开发与审计
-> 当前版本：v3.16 @ 2026-10-19（新增 ADR-0026 V5 冲刺实现与 V5_SPRINT 战役注册；v3.15 的 G–V 映射/ADR-0025、V5–V7 v1.2 与 V5.0–V5.2 冲刺登记及历史记录保留）
+> 当前版本：v3.17 @ 2026-10-19（V5 第一阶段冲刺执行完成 complete_oof_1seed；ADR-0026 V5 冲刺实现与 V5_SPRINT 战役注册；v3.15 的 G–V 映射/ADR-0025、V5–V7 v1.2 与 V5.0–V5.2 冲刺登记及历史记录保留）
 
 ---
 
