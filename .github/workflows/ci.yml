@@ -1,0 +1,43 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+jobs:
+  base:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install base deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: G–V map check
+        run: python scripts/render_gv_map.py --check
+      - name: Docs link check
+        run: python scripts/check_docs_links.py
+      - name: Registry tests
+        run: pytest -q tests/test_gv_registry.py tests/test_config_env.py
+      - name: Base test tier (no torch)
+        run: pytest -q --ignore=tests/pesn
+
+  pesn:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install base deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Install CPU torch
+        run: pip install torch --index-url https://download.pytorch.org/whl/cpu
+      - name: Full test tier
+        run: pytest -q
