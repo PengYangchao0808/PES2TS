@@ -2143,14 +2143,14 @@ class SprintDriver:
             if not ckpt.is_file():
                 continue
             try:
+                device = torch.device(
+                    "cuda:0" if torch.cuda.is_available() else "cpu")
                 pools = load_lane_b_pools(self.config, fold=fold, d0=d0,
                                           split_path=split_path)
                 view, collate = load_lane_b_view(
                     config=self.config, samples=list(pools["dev_dense"]),
                     fold=fold, d0=d0, anchor=anchor,
-                    split_path=split_path, device="cpu")
-                device = torch.device(
-                    "cuda:0" if torch.cuda.is_available() else "cpu")
+                    split_path=split_path, device=device)
                 model = StarEGNN().to(torch.float32).to(device)
                 doc = torch.load(ckpt, map_location="cpu")
                 model.load_state_dict(doc["model"])
@@ -2270,14 +2270,14 @@ class SprintDriver:
         if not ckpt.is_file():
             return None
         try:
+            device = torch.device(
+                "cuda:0" if torch.cuda.is_available() else "cpu")
             pools = load_lane_b_pools(self.config, fold=fold, d0=d0,
                                       split_path=split_path)
             view, collate = load_lane_b_view(
                 config=self.config, samples=list(pools["dev_dense"]),
                 fold=fold, d0=d0, anchor=anchor, split_path=split_path,
-                device="cpu")
-            device = torch.device(
-                "cuda:0" if torch.cuda.is_available() else "cpu")
+                device=device)
             model = StarEGNN().to(torch.float32).to(device)
             doc = torch.load(ckpt, map_location="cpu")
             model.load_state_dict(doc["model"])

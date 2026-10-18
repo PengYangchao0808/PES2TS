@@ -234,8 +234,9 @@ class StarEGNN(nn.Module):
         n_keys = key_index.shape[0]
         n_graphs = batch.ptr.shape[0] - 1
 
-        is_key = torch.zeros(n_nodes, dtype=torch.bool, device=device)
-        is_key[key_index] = True
+        is_key = torch.zeros(n_nodes, dtype=torch.bool,
+                             device=pos.device)
+        is_key[key_index.to(pos.device)] = True
         selected = self._select_nodes(batch, is_key)
         msg_mask = self._message_edge_mask(batch, selected, is_key)
         m_src, m_dst = src[msg_mask], dst[msg_mask]
