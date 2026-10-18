@@ -19,6 +19,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import shutil
 import sys
 import time
@@ -147,14 +148,18 @@ def main() -> int:
     parser.add_argument("--reactions", required=True, metavar="RID_FILE|RID,RID,...",
                         help="JSON list file or comma-separated reaction ids")
     parser.add_argument("--output-root", required=True, type=Path)
-    parser.add_argument("--acp-root", default=str(
-        Path("/mnt/e/Calculations/Common_Script/Auto_Calc_Platform/ACP_V1_20260811")))
-    parser.add_argument("--acp-python", default="/root/miniforge3/envs/rph4/bin/python")
+    parser.add_argument("--acp-root", default=os.environ.get("PES2TS_ACP_ROOT"))
+    parser.add_argument("--acp-python", default=os.environ.get("PES2TS_ACP_PYTHON"))
     parser.add_argument("--acp-config", default=None,
                         help="ACP config YAML (defaults to <acp-root>/config/defaults.yaml)")
     parser.add_argument("--limit", type=int, default=None)
     parser.add_argument("--force", action="store_true")
     args = parser.parse_args()
+    if not args.acp_root or not args.acp_python:
+        parser.error(
+            "set PES2TS_ACP_ROOT and PES2TS_ACP_PYTHON, or pass "
+            "--acp-root/--acp-python"
+        )
 
     raw = args.reactions
     _ensure_orca_runtime()

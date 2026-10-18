@@ -21,6 +21,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import platform
 import subprocess
 import sys
@@ -42,7 +43,7 @@ from pes2ts_core.pesn.offline.training.dual_ts_campaign import (  # noqa: E402
 from pes2ts_core.utils.jsonio import write_json  # noqa: E402
 
 #: Python executable for the single-GPU training environment.
-PYTHON: Final[str] = "/root/miniforge3/envs/pes2ts-gpu/bin/python"
+PYTHON: Final[str] = os.environ.get("PES2TS_GPU_PYTHON", sys.executable)
 
 #: Campaign output root (contract §9).
 OUT_ROOT: Final[Path] = PROJECT_ROOT / (
