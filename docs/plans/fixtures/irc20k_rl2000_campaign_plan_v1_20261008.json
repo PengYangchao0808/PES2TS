@@ -1,0 +1,241 @@
+{
+  "schema_version": "pes2ts_scale_campaign_plan_draft_v1",
+  "planning_only": true,
+  "executable": false,
+  "status": "planned",
+  "date": "2026-10-08",
+  "plan_document": "docs/plans/PES2TS_IRC20k与RL2000下一阶段详细方案_v1_20261008.md",
+  "assumed_units": {
+    "irc": "canonical_reaction_groups_in_train_fit",
+    "rl": "new_unique_train_groups_with_one_real_main_episode_each",
+    "terminal_failure_counts_as_attempt": true,
+    "unattempted_counts_as_real_episode": false,
+    "paired_branches_count_as_main_episodes": false,
+    "old_transitions_count_as_new": false
+  },
+  "actual_progress": {
+    "irc_new_dataset_ready": false,
+    "rl_new_main_episodes": 0,
+    "repair_gates_passed": false,
+    "cross_reaction_support_validated": false,
+    "scientific_gain_verified": false
+  },
+  "baseline_evidence": {
+    "irc_manifest": "outputs/pesn/g3_p1/teacher_dataset/dataset_manifest.json",
+    "irc_metrics": "outputs/pesn/g3_p1/g3p1-20261007-1ed6bff1-seed42-r1/metrics.json",
+    "repair_report": "outputs/pesn/rl_repair_v1_20261008/reports/repair_batch1_report.json",
+    "independent_review": "outputs/reviews/rl_repair_batch1_20261008/review.md"
+  },
+  "cohorts": {
+    "irc_fit_targets": [
+      2000,
+      5000,
+      10000,
+      20000
+    ],
+    "irc_development_groups": 250,
+    "rl_fit_target_new_groups": 2000,
+    "rl_development_groups": 200,
+    "rl_development_checkpoint_subset": 50,
+    "sealed_iid_groups_planned": 100,
+    "sealed_family_groups_planned": 100,
+    "sealed_sample_power_confirmed": false,
+    "actual_membership_manifest": null,
+    "global_cross_task_exclusions_required": true,
+    "nested_fit_cohorts_required": true
+  },
+  "episode_budget": {
+    "max_wall_seconds": 900,
+    "max_host_requests": 120,
+    "threads_planned": 4,
+    "recovery_included": true
+  },
+  "macro_budget": {
+    "max_wall_seconds": 300,
+    "max_host_requests": 20
+  },
+  "strategies": [
+    "rule_zero",
+    "bc_residual",
+    "residual_q"
+  ],
+  "main_stages": [
+    {
+      "stage": "rl_0050",
+      "status": "planned",
+      "cumulative_unique_groups": 50,
+      "new_main_episodes": 50,
+      "wall_seconds_upper": 45000,
+      "host_requests_upper": 6000,
+      "development_groups": 50,
+      "development_episodes": 150,
+      "required_gates": [
+        "source_split_identity",
+        "repair_F1_F4",
+        "episode_successor_binding",
+        "shared_support_registry",
+        "real_replay_cost"
+      ],
+      "cross_reaction_support_required": false
+    },
+    {
+      "stage": "rl_0200",
+      "status": "planned",
+      "cumulative_unique_groups": 200,
+      "new_main_episodes": 150,
+      "wall_seconds_upper": 135000,
+      "host_requests_upper": 18000,
+      "development_groups": 50,
+      "development_episodes": 150,
+      "required_gates": [
+        "source_split_identity",
+        "repair_F1_F4",
+        "episode_successor_binding",
+        "shared_support_registry",
+        "real_replay_cost"
+      ],
+      "cross_reaction_support_required": true
+    },
+    {
+      "stage": "rl_0500",
+      "status": "planned",
+      "cumulative_unique_groups": 500,
+      "new_main_episodes": 300,
+      "wall_seconds_upper": 270000,
+      "host_requests_upper": 36000,
+      "development_groups": 50,
+      "development_episodes": 150,
+      "required_gates": [
+        "source_split_identity",
+        "repair_F1_F4",
+        "episode_successor_binding",
+        "shared_support_registry",
+        "real_replay_cost"
+      ],
+      "cross_reaction_support_required": true
+    },
+    {
+      "stage": "rl_1000",
+      "status": "planned",
+      "cumulative_unique_groups": 1000,
+      "new_main_episodes": 500,
+      "wall_seconds_upper": 450000,
+      "host_requests_upper": 60000,
+      "development_groups": 50,
+      "development_episodes": 150,
+      "required_gates": [
+        "source_split_identity",
+        "repair_F1_F4",
+        "episode_successor_binding",
+        "shared_support_registry",
+        "real_replay_cost"
+      ],
+      "cross_reaction_support_required": true
+    },
+    {
+      "stage": "rl_2000",
+      "status": "planned",
+      "cumulative_unique_groups": 2000,
+      "new_main_episodes": 1000,
+      "wall_seconds_upper": 900000,
+      "host_requests_upper": 120000,
+      "development_groups": 200,
+      "development_episodes": 600,
+      "required_gates": [
+        "source_split_identity",
+        "repair_F1_F4",
+        "episode_successor_binding",
+        "shared_support_registry",
+        "real_replay_cost"
+      ],
+      "cross_reaction_support_required": true
+    }
+  ],
+  "qc_packages": [
+    {
+      "id": "smoke",
+      "episodes": 5,
+      "macro_branches": 0,
+      "wall_seconds_upper": 4500,
+      "host_requests_upper": 600
+    },
+    {
+      "id": "paired_fit_dev",
+      "episodes": 0,
+      "macro_branches": 156,
+      "wall_seconds_upper": 46800,
+      "host_requests_upper": 3120
+    },
+    {
+      "id": "main_collection",
+      "episodes": 2000,
+      "macro_branches": 0,
+      "wall_seconds_upper": 1800000,
+      "host_requests_upper": 240000
+    },
+    {
+      "id": "development_comparisons",
+      "episodes": 1200,
+      "macro_branches": 0,
+      "wall_seconds_upper": 1080000,
+      "host_requests_upper": 144000
+    },
+    {
+      "id": "sealed_comparisons",
+      "episodes": 600,
+      "macro_branches": 0,
+      "wall_seconds_upper": 540000,
+      "host_requests_upper": 72000
+    },
+    {
+      "id": "demo24_regression",
+      "episodes": 72,
+      "macro_branches": 0,
+      "wall_seconds_upper": 64800,
+      "host_requests_upper": 8640
+    }
+  ],
+  "qc_totals": {
+    "episodes": 3877,
+    "macro_branches": 156,
+    "wall_seconds_upper": 3536100,
+    "host_requests_upper": 468360
+  },
+  "first_real_package": {
+    "wall_seconds_upper": 231300,
+    "host_requests_upper": 27720
+  },
+  "unbudgeted_separate_packages": [
+    "irc_export_and_training",
+    "bc_cql_offline_training",
+    "origin_preparation",
+    "strict_dft_validation",
+    "extra_encoder_capacity_or_seed_qc",
+    "additional_pair_diagnostics"
+  ],
+  "offline_run_limits_planned": {
+    "teacher_main_max_runs": 8,
+    "bc_cql_main_max_runs": 18,
+    "resource_budget_hours": null,
+    "resource_probe_required": true
+  },
+  "proposed_metric_targets": {
+    "direction_cosine": 0.55,
+    "activity_f1": 0.65,
+    "progress_mae": 0.14,
+    "pair_concordance_min": 0.88,
+    "paired_q_ranking_accuracy": 0.7,
+    "full_input_cost_ratio": 0.9,
+    "scan_completion_not_below_matched_baseline": true
+  },
+  "stop_rules": {
+    "hard_gate_failure": "stop_affected_batch",
+    "budget_exhausted": "stop_preserve_terminal_and_cost",
+    "two_successive_stages_no_meaningful_development_gain": "pause_rl_expansion_and_diagnose",
+    "nonzero_candidate_decisions_all_support_filtered_fraction": 0.9,
+    "force_nonzero_execution": false,
+    "read_sealed_to_tune": false
+  },
+  "runtime_output_root_planned": "outputs/pesn/scale20k_rl2000_v1_20261008",
+  "contract_and_resource_status": "draft_interfaces_and_unmeasured_training_budgets_not_runtime_ready"
+}

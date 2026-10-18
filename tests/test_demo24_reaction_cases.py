@@ -1,6 +1,20 @@
+"""Demo24 review-case builder tests (source-backed spin, pending review)."""
+
 from __future__ import annotations
 
+from pathlib import Path
+
+import pytest
+
 from pes2ts_core.contracts import loads_document, validate_document
+
+_RAW = Path(__file__).resolve().parents[1] / "data" / "raw" / "reaction_qm"
+pytestmark = pytest.mark.skipif(
+    not (_RAW / "B3LYP-RXN_train.csv").is_file()
+    or not (_RAW / "B3LYP-RXN_valid.csv").is_file(),
+    reason="raw Reaction-QM split CSV is local-only data and is not in a fresh clone",
+)
+
 from scripts.build_demo24_reaction_cases import DEFAULT_OUTPUT, MANIFEST_PATH, build_review_cases
 from scripts.audit_demo24_spin_sources import build_spin_audit
 

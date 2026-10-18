@@ -1014,7 +1014,6 @@ def _g2t_status_handler(args: argparse.Namespace, _config: dict[str, Any]) -> in
 
 def _g2t_report_handler(args: argparse.Namespace, _config: dict[str, Any]) -> int:
     """Build the first-feedback report (pes2ts_g2t_feedback_report_v1)."""
-    import json as _json
 
     from pes2ts_core.generation.campaign_report import build_feedback_report
     from pes2ts_core.utils.jsonio import write_json
@@ -1026,6 +1025,217 @@ def _g2t_report_handler(args: argparse.Namespace, _config: dict[str, Any]) -> in
         logger.error("g2t-report failed: %s", exc)
         return EXIT_G2_FAILED
     print(f"g2t report written: {args.output} ({report['n_cases']} cases)")
+    return 0
+
+
+def _g2t_native_run_handler(args: argparse.Namespace, _config: dict[str, Any]) -> int:
+    """Execute (or resume) the classic_native_xtb_scan campaign (G2-AB3)."""
+    from pes2ts_core.generation.native_campaign import (
+        NativeCampaignError,
+        run_native_campaign,
+    )
+    from pes2ts_core.generation.planning.classic_scan import NativeScanPolicy
+    logger = logging.getLogger(__name__)
+    overrides: dict[str, Any] = {}
+    if args.n_grid_points is not None:
+        overrides["n_grid_points"] = args.n_grid_points
+    if args.force_constant is not None:
+        overrides["force_constant"] = args.force_constant
+    if args.max_wall_seconds is not None:
+        overrides["max_wall_seconds"] = args.max_wall_seconds
+    policy = NativeScanPolicy(**overrides) if overrides else None
+    try:
+        summary = run_native_campaign(
+            manifest_path=args.manifest,
+            legacy_root=args.legacy_root,
+            output_root=args.output_root,
+            case_filter=args.case,
+            resume=not args.no_resume,
+            policy=policy,
+        )
+    except (NativeCampaignError, OSError, ValueError) as exc:
+        logger.error("g2t-native-run failed: %s", exc)
+        return EXIT_G2_FAILED
+    print(f"g2t-native-run: {summary['n_cases']} case(s): "
+          f"{summary['n_executed']} executed, {summary['n_skipped_idempotent']} skipped, "
+          f"{summary['n_rejected_reused']} reused typed rejections; "
+          f"terminals {summary['terminal_counts']}")
+    return 0
+
+
+def _g2t_native_report_handler(args: argparse.Namespace, _config: dict[str, Any]) -> int:
+    """Build the native-vs-legacy engine comparison report (G2-AB3 WP-9)."""
+
+    from pes2ts_core.generation.native_report import build_native_comparison_report
+    from pes2ts_core.utils.jsonio import write_json
+    logger = logging.getLogger(__name__)
+    try:
+        report = build_native_comparison_report(
+            native_root=args.native_root,
+            legacy_root=args.legacy_root,
+            manifest_path=args.manifest,
+        )
+        write_json(Path(args.output), report)
+    except (OSError, ValueError) as exc:
+        logger.error("g2t-native-report failed: %s", exc)
+        return EXIT_G2_FAILED
+    print(f"g2t native comparison report written: {args.output} "
+          f"({report['n_cases']} cases)")
+    return 0
+
+
+def _g2t_control_round_handler(args: argparse.Namespace, _config: dict[str, Any]) -> int:
+    """Run one unified-control RL round phase on the frozen E_native env."""
+    from pes2ts_core.generation.control_round import (
+        ControlRoundError,
+        load_control_round_config,
+        run_control_collection,
+        run_control_execution,
+        run_control_freeze,
+        run_control_preflight,
+        run_control_report,
+        run_control_training,
+    )
+    from pes2ts_core.generation.campaign import load_campaign_manifest
+    from pes2ts_core.integration.acp.xtb_constraints_transport import (
+        run_xtb_constopt_attempt,
+    )
+    logger = logging.getLogger(__name__)
+
+    try:
+        config = load_control_round_config(args.round_config)
+    except ControlRoundError as exc:
+        logger.error("g2t-control-round config error: %s", exc)
+        return EXIT_CONFIG_ERROR
+
+    phases = (
+        ["collect", "train", "freeze", "execute"]
+        if args.phase == "all"
+        else [args.phase]
+    )
+    if any(p in ("preflight", "collect", "execute") for p in phases) and (
+        not args.manifest or not args.legacy_root
+    ):
+        logger.error(
+            "--manifest and --legacy-root are required for preflight/collect/execute"
+        )
+        return EXIT_CONFIG_ERROR
+
+    transport = None
+    if any(p in ("collect", "execute") for p in phases):
+        manifest = load_campaign_manifest(Path(args.manifest))
+        acp_wiring = manifest["acp_wiring"]
+
+        def transport(request, attempt_dir, execution_id, attempt_id):
+            return run_xtb_constopt_attempt(
+                acp_root=acp_wiring["root"],
+                python_executable=acp_wiring.get("python"),
+                acp_config_path=acp_wiring.get("config_path"),
+                request=request,
+                output_root=attempt_dir,
+                execution_id=execution_id,
+                attempt_id=attempt_id,
+                timeout_seconds=7200.0,
+            )
+
+    training_mode = getattr(args, "training_mode", None)
+    policy_group = getattr(args, "policy_group", "residual_q")
+    resume = not getattr(args, "no_resume", False)
+    repaired_root = getattr(args, "repaired_root", None)
+    try:
+        frozen_bundle = None
+        for phase in phases:
+            if phase == "preflight":
+                summary = run_control_preflight(
+                    round_dir=args.round_dir,
+                    manifest_path=args.manifest,
+                    legacy_root=args.legacy_root,
+                    selection_path=getattr(args, "execute_selection", None)
+                    or args.selection,
+                    config=config,
+                    repaired_root=repaired_root,
+                )
+                print(f"g2t-control-round preflight: {summary['n_cases']} case(s), "
+                      f"qualified {summary['status_counts'].get('qualified', 0)}, "
+                      f"env {summary['environment_hash'][:12]}")
+            elif phase == "collect":
+                summary = run_control_collection(
+                    round_dir=args.round_dir,
+                    manifest_path=args.manifest,
+                    legacy_root=args.legacy_root,
+                    selection_path=args.selection,
+                    config=config,
+                    transport=transport,
+                    max_cases=args.max_cases,
+                    repaired_root=repaired_root,
+                    resume=resume,
+                )
+                print(f"g2t-control-round collect: {summary['n_cases']} case(s), "
+                      f"executed {summary['n_executed']}, resumed {summary['n_resumed']}, "
+                      f"env {summary['environment_hash'][:12]}")
+            elif phase == "train":
+                summary = run_control_training(
+                    round_dir=args.round_dir,
+                    config=config,
+                    selection_path=args.selection,
+                    training_mode=training_mode,
+                )
+                print(f"g2t-control-round train[{summary['training_mode']}]: "
+                      f"run_id={summary['run_id']} "
+                      f"best_epoch={summary['best_epoch']} "
+                      f"imitation={summary['n_imitation_total']} "
+                      f"transitions={summary['transition_store']['n_transitions']}")
+            elif phase == "freeze":
+                summary = run_control_freeze(
+                    round_dir=args.round_dir,
+                    config=config,
+                    selection_path=args.selection,
+                    training_mode=training_mode,
+                )
+                frozen_bundle = summary["bundle_path"]
+                print(f"g2t-control-round freeze[{summary['training_mode']}]: "
+                      f"bundle at {summary['bundle_path']} "
+                      f"(residual={summary['open_residual']}, q={summary['open_q_proxy']})")
+            elif phase == "execute":
+                bundle = args.bundle or frozen_bundle
+                if not bundle:
+                    freeze_hint = sorted(
+                        p.name for p in (Path(args.round_dir)).glob("freeze_summary_*.json")
+                    )
+                    logger.error(
+                        "execute requires --bundle (frozen freeze summaries: %s)",
+                        freeze_hint or "none",
+                    )
+                    return EXIT_CONFIG_ERROR
+                summary = run_control_execution(
+                    round_dir=args.round_dir,
+                    manifest_path=args.manifest,
+                    legacy_root=args.legacy_root,
+                    selection_path=args.selection,
+                    config=config,
+                    bundle_dir=bundle,
+                    transport=transport,
+                    max_cases=args.max_cases,
+                    repaired_root=repaired_root,
+                    resume=resume,
+                    policy_group=policy_group,
+                    execute_selection_path=getattr(args, "execute_selection", None),
+                    support_registry_path=getattr(args, "support_registry", None),
+                )
+                print(f"g2t-control-round execute[{policy_group}]: "
+                      f"{summary['n_cases']}/{summary['n_denominator']} case(s) "
+                      f"under policy {summary['policy_id']}")
+            elif phase == "report":
+                summary = run_control_report(
+                    round_dir=args.round_dir,
+                    execute_selection_path=getattr(args, "execute_selection", None)
+                    or args.selection,
+                )
+                print(f"g2t-control-round report: {summary['n_denominator']} rows x "
+                      f"{len(summary['groups'])} groups -> reports/compare_report_v1.json")
+    except (ControlRoundError, OSError, ValueError) as exc:
+        logger.error("g2t-control-round failed: %s", exc)
+        return EXIT_G2_FAILED
     return 0
 
 
@@ -1237,6 +1447,83 @@ def build_parser() -> argparse.ArgumentParser:
     g2t_report_parser.add_argument("--manifest", metavar="PATH", default=None,
                                    help="campaign manifest (enables B1-2 reference checks)")
     g2t_report_parser.set_defaults(handler=_g2t_report_handler)
+
+    g2t_native_run_parser = top_subparsers.add_parser(
+        "g2t-native-run",
+        help="execute (or resume) the classic_native_xtb_scan campaign (G2-AB3)",
+    )
+    _add_common_options(g2t_native_run_parser, suppress_defaults=True)
+    g2t_native_run_parser.add_argument("--manifest", required=True, metavar="PATH",
+                                       help="frozen campaign manifest (same one as the legacy run)")
+    g2t_native_run_parser.add_argument("--legacy-root", required=True, metavar="DIR",
+                                       help="legacy campaign root (frozen plan/origin inputs; read-only)")
+    g2t_native_run_parser.add_argument("--output-root", required=True, metavar="DIR",
+                                       help="native campaign output root (must be new/empty per run)")
+    g2t_native_run_parser.add_argument("--case", action="append", metavar="RXN_ID",
+                                       help="restrict to this case (repeatable)")
+    g2t_native_run_parser.add_argument("--no-resume", action="store_true",
+                                       help="re-run cases that already have a native terminal")
+    g2t_native_run_parser.add_argument("--n-grid-points", type=int, default=None,
+                                       help="override the frozen lambda grid size (default 21)")
+    g2t_native_run_parser.add_argument("--force-constant", type=float, default=None,
+                                       help="override the xTB restraint force constant (default 50.0 au)")
+    g2t_native_run_parser.add_argument("--max-wall-seconds", type=float, default=None,
+                                       help="override the per-case wall budget (default 900 s)")
+    g2t_native_run_parser.set_defaults(handler=_g2t_native_run_handler)
+
+    g2t_native_report_parser = top_subparsers.add_parser(
+        "g2t-native-report",
+        help="build the native-vs-legacy engine comparison report (G2-AB3)",
+    )
+    _add_common_options(g2t_native_report_parser, suppress_defaults=True)
+    g2t_native_report_parser.add_argument("--native-root", required=True, metavar="DIR",
+                                          help="native campaign output root")
+    g2t_native_report_parser.add_argument("--legacy-root", required=True, metavar="DIR",
+                                          help="legacy campaign output root")
+    g2t_native_report_parser.add_argument("--manifest", required=True, metavar="PATH",
+                                          help="frozen campaign manifest (exact case set)")
+    g2t_native_report_parser.add_argument("--output", required=True, metavar="PATH",
+                                          help="report output path")
+    g2t_native_report_parser.set_defaults(handler=_g2t_native_report_handler)
+
+    g2t_control_round_parser = top_subparsers.add_parser(
+        "g2t-control-round",
+        help="run one unified-control RL round phase on E_native",
+    )
+    _add_common_options(g2t_control_round_parser, suppress_defaults=True)
+    g2t_control_round_parser.add_argument("--phase", required=True,
+                                          choices=["preflight", "collect", "train", "freeze", "execute", "report", "all"],
+                                          help="closed-loop phase ('all' = collect->train->freeze->execute)")
+    g2t_control_round_parser.add_argument("--round-dir", required=True, metavar="DIR",
+                                          help="control round output root (one immutable round per directory)")
+    g2t_control_round_parser.add_argument("--manifest", metavar="PATH", default=None,
+                                          help="frozen campaign manifest (required for preflight/collect/execute)")
+    g2t_control_round_parser.add_argument("--legacy-root", metavar="DIR", default=None,
+                                          help="legacy campaign root (required for preflight/collect/execute)")
+    g2t_control_round_parser.add_argument("--selection", required=True, metavar="PATH",
+                                          help="frozen train-qualified reaction selection manifest")
+    g2t_control_round_parser.add_argument("--round-config", required=True, metavar="PATH",
+                                          help="control round YAML config (config/pesn/control_r1.yaml)")
+    g2t_control_round_parser.add_argument("--bundle", metavar="DIR", default=None,
+                                          help="frozen control bundle dir (execute phase; defaults to the freeze output in 'all')")
+    g2t_control_round_parser.add_argument("--max-cases", type=int, default=None,
+                                          help="cap the number of selection cases (development smoke only)")
+    g2t_control_round_parser.add_argument("--execute-selection", metavar="PATH", default=None,
+                                          help="frozen 24-case execution selection (defaults to --selection)")
+    g2t_control_round_parser.add_argument("--policy-group", default="residual_q",
+                                          choices=["rule_zero", "bc_residual", "residual_q"],
+                                          help="execute-phase control group")
+    g2t_control_round_parser.add_argument("--training-mode", default=None,
+                                          choices=["cql", "bc_only"],
+                                          help="train/freeze mode (must match the frozen round config)")
+    g2t_control_round_parser.add_argument("--repaired-root", metavar="DIR", default=None,
+                                          help="repaired-plan overlay root for the two historical startpoint cases")
+    g2t_control_round_parser.add_argument("--support-registry", metavar="PATH", default=None,
+                                          help="pesn_action_support_registry_v1 JSON gating Q execution "
+                                               "(absent = legacy source-label gate, flagged legacy_support)")
+    g2t_control_round_parser.add_argument("--no-resume", action="store_true",
+                                          help="re-run cases even when a finalized result exists (bills again)")
+    g2t_control_round_parser.set_defaults(handler=_g2t_control_round_handler)
     g0_parser = top_subparsers.add_parser(
         "g0",
         help="G0: data entry, ground-truth quarantine, and split freezing",

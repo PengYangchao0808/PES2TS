@@ -1,0 +1,75 @@
+# PES2TS unified control round 1 configuration (ADR-0017 / plan v1 §6).
+#
+# Standalone predictor-side configuration; the classic config/defaults.yaml
+# is deliberately not consulted.  Unknown sections/keys fail loudly in
+# pes2ts_core.generation.control_round.load_control_round_config.
+schema_version: pesn_control_round_config_v1
+
+seed: 42
+
+paths:
+  rounds_root: outputs/pesn/control_r1
+  artifacts_root: artifacts/pesn
+
+# Frozen E_native execution recipe overrides (NativeScanPolicy fields).
+environment:
+  n_grid_points: 21
+  force_constant: 50.0
+  opt_level: normal
+  max_cycle: 500
+  threads: 4
+  point_timeout_seconds: 300
+  physical_sp: true
+  max_seed_atom_displacement: 0.6
+  distance_residual_tolerance: 0.05
+  max_subdivisions: 2
+  max_rejections_per_target: 4
+  max_wall_seconds: 900.0
+  max_host_requests: 120
+  freeze_environment: false
+
+# Bounded residual spec (per distance driver; registered exploration).
+residual:
+  epsilon_angstrom: 0.10          # |delta_q_j| bound per driver
+  allow_sign: 0                   # -1/+1/0: shrink-only / grow-only / both
+  range_slack_angstrom: 0.10      # command range = schedule +- epsilon+slack
+
+# Candidate generation + behavior policy for collection (pre-registered).
+candidates:
+  model_scales: [0.5, 1.0]        # scaled model-residual candidates
+  n_single_coord_perturbs: 2      # bounded +/- perturbations (seeded pick)
+  max_candidates: 8
+  exploration_probability: 0.25   # epsilon-greedy over legal candidates
+  exploration_seed: 42
+  dedup_tolerance: 1e-6
+
+# pes2ts_policy_reward_spec_v2 values (undiscounted finite-budget proxy).
+reward:
+  candidate_bonus: 1.0
+  cost_reference_seconds: 900.0   # per-episode native reference cost
+  hard_failure_penalty: 0.25
+
+# Offline conservative-Q / restricted-imitation training (rounds between
+# runs; online weights stay frozen inside a round).
+control_train:
+  batch_transitions: 16
+  max_epochs: 60
+  patience: 8
+  lr: 3.0e-4
+  weight_decay: 1.0e-4
+  clip: 1.0
+  cql_alpha: 1.0                  # conservative Q regularizer weight
+  imitation_weight: 0.5
+  target_sync_epochs: 4           # target-net hard sync cadence (param copy)
+  freeze_encoder: true            # first round trains heads only
+  encoder_init_bundle: null       # optional v1 teacher bundle to reuse
+
+model:
+  hidden: 64
+  n_layers: 3
+  n_basis: 16
+  use_coordinate_attention: false # ablation switch, off in the v1 baseline
+  context_dim: 7                  # CONTROL_CONTEXT_DIM in contracts.control
+
+bundle:
+  model_id: pesn-control-v0.1.0-rc.1

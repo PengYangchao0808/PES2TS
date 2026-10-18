@@ -1,0 +1,83 @@
+# PES2TS Demo24 real-RL round 1 configuration (Demo24 plan §6 / ADR-0017).
+#
+# Explicit Demo24 copy of the control_r1 baseline (the original
+# config/pesn/control_r1.yaml stays untouched); independent output root and
+# distinct research model ids so nothing overwrites teacher rc.1 or any
+# earlier control package.  Unknown sections/keys fail loudly in
+# pes2ts_core.generation.control_round.load_control_round_config.
+schema_version: pesn_control_round_config_v1
+
+seed: 42
+
+paths:
+  rounds_root: outputs/pesn/demo24_rl_v1_20261007/round0
+  artifacts_root: artifacts/pesn
+
+# Frozen E_native execution recipe (plan §6: 21 grid points, 900 s / 120
+# host requests / 4 threads per scan episode; optimization, bare SP,
+# subdivision, and recovery share the same budget).
+environment:
+  n_grid_points: 21
+  force_constant: 50.0
+  opt_level: normal
+  max_cycle: 500
+  threads: 4
+  point_timeout_seconds: 300
+  physical_sp: true
+  max_seed_atom_displacement: 0.6
+  distance_residual_tolerance: 0.05
+  max_subdivisions: 2
+  max_rejections_per_target: 4
+  max_wall_seconds: 900.0
+  max_host_requests: 120
+  freeze_environment: false
+
+# Bounded residual spec (per distance driver).
+residual:
+  epsilon_angstrom: 0.10
+  allow_sign: 0
+  range_slack_angstrom: 0.10
+
+# Candidate generation + behaviour policy for collection (pre-registered).
+candidates:
+  model_scales: [0.5, 1.0]
+  n_single_coord_perturbs: 2
+  max_candidates: 8
+  exploration_probability: 0.25
+  exploration_seed: 42
+  dedup_tolerance: 1e-6
+
+# pes2ts_policy_reward_spec_v2 values (undiscounted finite-budget proxy).
+reward:
+  candidate_bonus: 1.0
+  cost_reference_seconds: 900.0
+  hard_failure_penalty: 0.25
+  step_cost_reference_seconds: 30.0
+
+# Offline training.  training_mode is selected per train/freeze invocation
+# (cql and bc_only each produce their own run + bundle); dev_fraction 0.25
+# splits the 16 train reactions 12 fit / 4 dev by reaction group.
+control_train:
+  batch_transitions: 16
+  max_epochs: 60
+  patience: 8
+  lr: 3.0e-4
+  weight_decay: 1.0e-4
+  clip: 1.0
+  cql_alpha: 1.0
+  imitation_weight: 0.5
+  target_sync_epochs: 4
+  freeze_encoder: true
+  encoder_init_bundle: artifacts/pesn/pesn-irc-v0.1.0-rc.1  # teacher rc.1 (dims verified 64/16; split_reference seals valid/test)
+  dev_fraction: 0.25
+
+model:
+  hidden: 64
+  n_layers: 3
+  n_basis: 16
+  use_coordinate_attention: false
+  context_dim: 7
+
+bundle:
+  model_id: pesn-control-demo24-v0.1.0
+  bc_model_id: pesn-control-demo24-bc-v0.1.0

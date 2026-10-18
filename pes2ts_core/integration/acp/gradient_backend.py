@@ -302,8 +302,14 @@ class ORCALocalCorrector:
         """Budgeted single-direction Lagrangian curvature probe (G2-AB1 WP-2).
 
         Never claims a minimum eigenvalue or a full spectrum; see
-        :func:`constrained_curvature.directional_curvature`.
+        :func:`constrained_curvature.directional_curvature`.  Every evaluate
+        call — including ones made before a mid-probe QC failure — is counted
+        and timed, and the returned probe record carries
+        ``n_gradient_evaluations``/``duration_seconds`` so cost capture never
+        has to default a missing count to zero (G2-AB3 WP-0 audit fix P1).
         """
+        import time as _time
+
         from pes2ts_core.generation.planning.constrained_curvature import directional_curvature
         from pes2ts_core.generation.planning.local_corrector import evaluation_content_digest
         backend = ORCAGradientBackend(
@@ -315,16 +321,39 @@ class ORCALocalCorrector:
                           "charge": backend.charge, "multiplicity": backend.multiplicity,
                           "elements": list(backend.elements)}
         counter = [0]
+        duration_total = [0.0]
+        reused_total = [0]
+        failures = []
 
         def evaluate(y, _raw_id):
             trial_id = f"trial-{counter[0]:04d}"
             counter[0] += 1
             content16 = evaluation_content_digest(y, coordinates, [], method_context,
                                                   "curvature_probe")
-            return backend(y, f"{trial_id}/eval-{content16}")
+            started = _time.monotonic()
+            record = backend(y, f"{trial_id}/eval-{content16}")
+            duration_total[0] += _time.monotonic() - started
+            acp = record.get("acp") or {}
+            if acp.get("reused"):
+                reused_total[0] += 1
+            if not record.get("success"):
+                failures.append({
+                    "failure_class": record.get("failure_class"),
+                    "request_sha256": record.get("request_sha256"),
+                    "reused": bool(acp.get("reused")),
+                })
+            return record
 
-        return directional_curvature(x, coordinates, gradient, direction, evaluate,
+        probe = directional_curvature(x, coordinates, gradient, direction, evaluate,
                                       name=name)
+        probe["n_gradient_evaluations"] = counter[0]
+        probe["n_energy_evaluations"] = counter[0]
+        probe["duration_seconds"] = duration_total[0]
+        probe["cost_source"] = "probe_evaluate_wrapper"
+        probe["n_cache_reused"] = reused_total[0]
+        if failures:
+            probe["failed_evaluations"] = failures
+        return probe
 
     def model_inverse_curvature(self, guess):
         from itertools import combinations

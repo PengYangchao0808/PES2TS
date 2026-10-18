@@ -1,0 +1,7 @@
+# PES-N predictor runtime optional dependencies (G3-P1 / ADR-0014).
+# Installed on top of requirements.txt when the predictor runtime is used.
+# Kept separate so the Classic pipeline never pulls an ML backend.
+# Version pins are locked after B4 environment verification; see
+# requirements-pesn-training.txt for the training-side additions.
+numpy>=2.2.2
+torch>=2.4

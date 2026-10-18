@@ -1,0 +1,333 @@
+{
+  "audited_utc": "2026-10-17T08:44:10.977355+00:00",
+  "scope": "Read-only fit50 frozen feature shards; no inference effect or causality claim.",
+  "mask_semantics": {
+    "offline": "leaving teacher action",
+    "freerun": "arriving executed action; all true at start"
+  },
+  "mask_comparison": {
+    "groups": 50,
+    "nonterminal_states": 5967,
+    "affected_states": 4149,
+    "atom_rows": 93869,
+    "mismatched_atom_rows": 12917,
+    "starts": 100,
+    "starts_with_different_mask": 100,
+    "input_channel_equals_target_mask": true
+  },
+  "per_group": [
+    {
+      "group": "RXN_0000000072",
+      "states": 120,
+      "affected_states": 83,
+      "mismatched_atoms": 202
+    },
+    {
+      "group": "RXN_0000000139",
+      "states": 120,
+      "affected_states": 84,
+      "mismatched_atoms": 232
+    },
+    {
+      "group": "RXN_0000000160",
+      "states": 120,
+      "affected_states": 47,
+      "mismatched_atoms": 62
+    },
+    {
+      "group": "RXN_0000000187",
+      "states": 119,
+      "affected_states": 85,
+      "mismatched_atoms": 297
+    },
+    {
+      "group": "RXN_0000000237",
+      "states": 121,
+      "affected_states": 111,
+      "mismatched_atoms": 474
+    },
+    {
+      "group": "RXN_0000000238",
+      "states": 61,
+      "affected_states": 52,
+      "mismatched_atoms": 236
+    },
+    {
+      "group": "RXN_0000000406",
+      "states": 123,
+      "affected_states": 92,
+      "mismatched_atoms": 218
+    },
+    {
+      "group": "RXN_0000000535",
+      "states": 120,
+      "affected_states": 103,
+      "mismatched_atoms": 222
+    },
+    {
+      "group": "RXN_0000000575",
+      "states": 127,
+      "affected_states": 88,
+      "mismatched_atoms": 270
+    },
+    {
+      "group": "RXN_0000000582",
+      "states": 120,
+      "affected_states": 57,
+      "mismatched_atoms": 106
+    },
+    {
+      "group": "RXN_0000000623",
+      "states": 127,
+      "affected_states": 93,
+      "mismatched_atoms": 255
+    },
+    {
+      "group": "RXN_0000000733",
+      "states": 159,
+      "affected_states": 102,
+      "mismatched_atoms": 400
+    },
+    {
+      "group": "RXN_0000000756",
+      "states": 120,
+      "affected_states": 103,
+      "mismatched_atoms": 278
+    },
+    {
+      "group": "RXN_0000000778",
+      "states": 120,
+      "affected_states": 89,
+      "mismatched_atoms": 248
+    },
+    {
+      "group": "RXN_0000000908",
+      "states": 125,
+      "affected_states": 93,
+      "mismatched_atoms": 303
+    },
+    {
+      "group": "RXN_0000000990",
+      "states": 135,
+      "affected_states": 111,
+      "mismatched_atoms": 448
+    },
+    {
+      "group": "RXN_0000001076",
+      "states": 124,
+      "affected_states": 80,
+      "mismatched_atoms": 180
+    },
+    {
+      "group": "RXN_0000001081",
+      "states": 120,
+      "affected_states": 54,
+      "mismatched_atoms": 130
+    },
+    {
+      "group": "RXN_0000001089",
+      "states": 125,
+      "affected_states": 98,
+      "mismatched_atoms": 346
+    },
+    {
+      "group": "RXN_0000001094",
+      "states": 135,
+      "affected_states": 79,
+      "mismatched_atoms": 178
+    },
+    {
+      "group": "RXN_0000001106",
+      "states": 136,
+      "affected_states": 108,
+      "mismatched_atoms": 530
+    },
+    {
+      "group": "RXN_0000001117",
+      "states": 120,
+      "affected_states": 84,
+      "mismatched_atoms": 264
+    },
+    {
+      "group": "RXN_0000001120",
+      "states": 156,
+      "affected_states": 93,
+      "mismatched_atoms": 280
+    },
+    {
+      "group": "RXN_0000001156",
+      "states": 113,
+      "affected_states": 76,
+      "mismatched_atoms": 140
+    },
+    {
+      "group": "RXN_0000001174",
+      "states": 82,
+      "affected_states": 59,
+      "mismatched_atoms": 199
+    },
+    {
+      "group": "RXN_0000001195",
+      "states": 133,
+      "affected_states": 113,
+      "mismatched_atoms": 352
+    },
+    {
+      "group": "RXN_0000001205",
+      "states": 121,
+      "affected_states": 95,
+      "mismatched_atoms": 332
+    },
+    {
+      "group": "RXN_0000001211",
+      "states": 120,
+      "affected_states": 85,
+      "mismatched_atoms": 190
+    },
+    {
+      "group": "RXN_0000001242",
+      "states": 107,
+      "affected_states": 81,
+      "mismatched_atoms": 174
+    },
+    {
+      "group": "RXN_0000001248",
+      "states": 120,
+      "affected_states": 87,
+      "mismatched_atoms": 328
+    },
+    {
+      "group": "RXN_0000001309",
+      "states": 122,
+      "affected_states": 66,
+      "mismatched_atoms": 168
+    },
+    {
+      "group": "RXN_0000001423",
+      "states": 145,
+      "affected_states": 98,
+      "mismatched_atoms": 318
+    },
+    {
+      "group": "RXN_0000001484",
+      "states": 117,
+      "affected_states": 80,
+      "mismatched_atoms": 335
+    },
+    {
+      "group": "RXN_0000001504",
+      "states": 125,
+      "affected_states": 95,
+      "mismatched_atoms": 276
+    },
+    {
+      "group": "RXN_0000001672",
+      "states": 124,
+      "affected_states": 66,
+      "mismatched_atoms": 114
+    },
+    {
+      "group": "RXN_0000001675",
+      "states": 83,
+      "affected_states": 60,
+      "mismatched_atoms": 398
+    },
+    {
+      "group": "RXN_0000001678",
+      "states": 146,
+      "affected_states": 113,
+      "mismatched_atoms": 560
+    },
+    {
+      "group": "RXN_0000001697",
+      "states": 120,
+      "affected_states": 43,
+      "mismatched_atoms": 66
+    },
+    {
+      "group": "RXN_0000001715",
+      "states": 127,
+      "affected_states": 72,
+      "mismatched_atoms": 272
+    },
+    {
+      "group": "RXN_0000001735",
+      "states": 111,
+      "affected_states": 103,
+      "mismatched_atoms": 386
+    },
+    {
+      "group": "RXN_0000001745",
+      "states": 104,
+      "affected_states": 65,
+      "mismatched_atoms": 145
+    },
+    {
+      "group": "RXN_0000001847",
+      "states": 120,
+      "affected_states": 96,
+      "mismatched_atoms": 262
+    },
+    {
+      "group": "RXN_0000002022",
+      "states": 121,
+      "affected_states": 88,
+      "mismatched_atoms": 210
+    },
+    {
+      "group": "RXN_0000002062",
+      "states": 105,
+      "affected_states": 71,
+      "mismatched_atoms": 157
+    },
+    {
+      "group": "RXN_0000002064",
+      "states": 93,
+      "affected_states": 79,
+      "mismatched_atoms": 291
+    },
+    {
+      "group": "RXN_0000002090",
+      "states": 120,
+      "affected_states": 88,
+      "mismatched_atoms": 240
+    },
+    {
+      "group": "RXN_0000002226",
+      "states": 158,
+      "affected_states": 105,
+      "mismatched_atoms": 406
+    },
+    {
+      "group": "RXN_0000002286",
+      "states": 120,
+      "affected_states": 76,
+      "mismatched_atoms": 177
+    },
+    {
+      "group": "RXN_0000002309",
+      "states": 37,
+      "affected_states": 18,
+      "mismatched_atoms": 52
+    },
+    {
+      "group": "RXN_0000002371",
+      "states": 120,
+      "affected_states": 82,
+      "mismatched_atoms": 210
+    }
+  ],
+  "note": "On the teacher path, the arriving-action mask at t equals the leaving-action mask at t-1. Differences here are input semantic differences, not a measured effect on policy output.",
+  "closure_top_level_keys": [
+    "schema_version",
+    "title",
+    "prereg_sha256",
+    "thresholds_sha256",
+    "prereg_thresholds_immutable_verified",
+    "registered_arm",
+    "arms",
+    "g5_clause_application",
+    "arms_exhausted_statement",
+    "wp_disposition"
+  ]
+}

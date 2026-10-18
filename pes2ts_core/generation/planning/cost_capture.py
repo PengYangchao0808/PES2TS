@@ -86,11 +86,25 @@ def _probe_ledgers(reaction_id: str, attempt: dict[str, Any],
             continue
         attempt_id = attempt.get("attempt_id") or f"attempt-{attempt_index:04d}"
         cost_id = f"{reaction_id}:probe:{attempt_id}:{order}"
-        n_gradient = int(probe.get("n_gradient_evaluations")
-                         or probe.get("n_evaluations") or 0)
+        # G2-AB3 WP-0 audit fix P1: a probe without an explicit evaluation
+        # count is a contract violation — refuse instead of defaulting zero
+        # (the probe wrapper in gradient_backend now always attaches it).
+        raw_count = probe.get("n_gradient_evaluations")
+        if raw_count is None:
+            raw_count = probe.get("n_evaluations")
+        if raw_count is None:
+            raise ValueError(
+                f"{cost_id}: curvature probe record lacks n_gradient_evaluations; "
+                "missing probe costs must be explicit, never zero-filled"
+            )
+        n_gradient = int(raw_count)
         cpu = _numeric(probe.get("duration_seconds"))
         if cpu is None:
             cpu = _numeric(probe.get("wall_seconds"))
+        reused = probe.get("n_cache_reused")
+        cost_source = "curvature_probe"
+        if isinstance(reused, int) and reused > 0:
+            cost_source = f"curvature_probe:cache_reused={reused}"
         ledgers.append(cost_ledger(cost_id=cost_id, n_energy=n_gradient,
                                    n_gradient=n_gradient, n_hessian=0, n_optts_trials=0,
                                    cpu_seconds=cpu,
@@ -98,7 +112,7 @@ def _probe_ledgers(reaction_id: str, attempt: dict[str, Any],
                                    else _CPU_REASON_NOT_MEASURED,
                                    allocated_core_seconds=None,
                                    allocated_core_seconds_reason=_ALLOC_REASON,
-                                   cost_source="curvature_probe"))
+                                   cost_source=cost_source))
     return ledgers
 
 

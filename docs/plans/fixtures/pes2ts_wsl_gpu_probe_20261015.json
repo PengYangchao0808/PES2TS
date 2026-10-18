@@ -1,0 +1,83 @@
+{
+  "status": "environment_probe_not_training_benchmark",
+  "generated_at_utc": "2026-10-15T02:27:57.497770+00:00",
+  "platform": "Linux-5.15.167.4-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+  "python": {
+    "executable": "/root/miniforge3/envs/pes2ts/bin/python",
+    "version": "3.12.14 (main, Sep  2 2026, 23:27:36) [GCC 15.3.0]"
+  },
+  "logical_cpus": 32,
+  "memory_kib": {
+    "MemTotal": 57587492,
+    "MemAvailable": 54693292,
+    "SwapTotal": 0,
+    "SwapFree": 0
+  },
+  "disks": {
+    "/": {
+      "total_bytes": 1081101176832,
+      "used_bytes": 181727219712,
+      "free_bytes": 844381601792
+    },
+    "/mnt/e": {
+      "total_bytes": 809332895744,
+      "used_bytes": 781736820736,
+      "free_bytes": 27596075008
+    }
+  },
+  "thread_environment": {
+    "CUDA_VISIBLE_DEVICES": null,
+    "OMP_NUM_THREADS": null,
+    "MKL_NUM_THREADS": null,
+    "OPENBLAS_NUM_THREADS": null
+  },
+  "torch": {
+    "version": "2.14.1+cpu",
+    "cuda_build": null,
+    "cuda_available": false,
+    "intra_threads": 16,
+    "interop_threads": 32,
+    "gpu_name": null
+  },
+  "cuda_driver_api": {
+    "cuInit_return": 0,
+    "device_count_return": 0,
+    "device_count": 1,
+    "driver_version_return": 0,
+    "driver_api_version": 13010,
+    "scope": "driver initialization only; no model or GPU tensor benchmark"
+  },
+  "supplemental_observations": {
+    "distribution": "Ubuntu 24.04.2 LTS (WSL2)",
+    "wslconfig": {
+      "memory": "56GB",
+      "swap": 0,
+      "autoMemoryReclaim": "gradual",
+      "swapFile": "E:/wsl_swap/swap.vhdx"
+    },
+    "repository_mount": {
+      "path": "/mnt/e/Calculations/AI4S_ML_Studys/PES2TS",
+      "type": "9p",
+      "dirsync": true
+    },
+    "vhd": {
+      "windows_path": "E:/WSL/ext4.vhdx",
+      "ls_human_size": "195G",
+      "shares_host_volume_with_repository": true
+    },
+    "pip_cache_human_size": "11G",
+    "D_free_bytes": 3563576197120,
+    "cuda_driver": "591.86",
+    "gpu_total_mib": 8188,
+    "gpu_snapshot_used_mib": 2413,
+    "gpu_snapshot_util_percent": 3,
+    "active_pes2ts_training_seen": false,
+    "acp_service_python": "/root/miniforge3/bin/python3.12",
+    "limitations": [
+      "No CUDA-enabled torch installed in the probed training interpreter",
+      "Driver initialization success is not a GPU tensor or model smoke",
+      "Host and guest available-memory samples are not simultaneous",
+      "No raw data/labels inspected; no training/QC/install/system changes performed"
+    ]
+  }
+}

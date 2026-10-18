@@ -1,0 +1,1 @@
+{"content_sha256":"1d4fd5fa3aec7fd476a76045bc40155a7bdf72fd7b5286039b6e4c9573f1d102","note":"control bundles train on real macro-step transitions, not teacher labels","schema_version":"pesn_control_labelspec_v1"}

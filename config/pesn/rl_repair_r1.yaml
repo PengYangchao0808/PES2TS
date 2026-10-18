@@ -1,0 +1,77 @@
+# PES2TS RL repair round 1 corrective retraining configuration
+# (RL repair plan §4.3, WP-1).
+#
+# Reuses the WP-0-qualified round0 transitions unchanged (same frozen
+# E_native environment, same train16 selection, same hyperparameters:
+# hidden64/layers3/encoder rc.1, batch16, max_epochs60, patience8, lr3e-4,
+# cql_alpha1, imitation_weight0.5).  The only intended differences vs the
+# round0 runs are (a) the effective training mode now genuinely reaches the
+# trainer, and (b) new bundle identities carrying the repair version.
+# Training triggers zero QC requests.
+schema_version: pesn_control_round_config_v1
+
+seed: 42
+
+paths:
+  rounds_root: outputs/pesn/rl_repair_v1_20261008/r1_fix
+  artifacts_root: artifacts/pesn
+
+environment:
+  n_grid_points: 21
+  force_constant: 50.0
+  opt_level: normal
+  max_cycle: 500
+  threads: 4
+  point_timeout_seconds: 300
+  physical_sp: true
+  max_seed_atom_displacement: 0.6
+  distance_residual_tolerance: 0.05
+  max_subdivisions: 2
+  max_rejections_per_target: 4
+  max_wall_seconds: 900.0
+  max_host_requests: 120
+  freeze_environment: false
+
+residual:
+  epsilon_angstrom: 0.1
+  allow_sign: 0
+  range_slack_angstrom: 0.1
+
+candidates:
+  model_scales: [0.5, 1.0]
+  n_single_coord_perturbs: 2
+  max_candidates: 8
+  exploration_probability: 0.25
+  exploration_seed: 42
+  dedup_tolerance: 1e-6
+
+reward:
+  candidate_bonus: 1.0
+  cost_reference_seconds: 900.0
+  hard_failure_penalty: 0.25
+  step_cost_reference_seconds: 30.0
+
+control_train:
+  batch_transitions: 16
+  max_epochs: 60
+  patience: 8
+  lr: 0.0003
+  weight_decay: 0.0001
+  clip: 1.0
+  cql_alpha: 1.0
+  imitation_weight: 0.5
+  target_sync_epochs: 4
+  freeze_encoder: true
+  encoder_init_bundle: artifacts/pesn/pesn-irc-v0.1.0-rc.1
+  dev_fraction: 0.25
+
+model:
+  hidden: 64
+  n_layers: 3
+  n_basis: 16
+  use_coordinate_attention: false
+  context_dim: 7
+
+bundle:
+  model_id: pesn-control-demo24-cql-v0.1.1-rlrepair1
+  bc_model_id: pesn-control-demo24-bc-v0.1.1-rlrepair1

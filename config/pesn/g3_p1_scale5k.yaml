@@ -1,0 +1,72 @@
+# PES2TS G3-P1 IRC teacher — scale campaign 5k fit configuration.
+#
+# Same model/train/eval recipe as config/pesn/g3_p1.yaml (frozen baseline
+#配方; hidden64/layers3/basis16, batch_reactions8, lr3e-4, task weights
+# unchanged).  Differences are campaign-level only:
+#   - fit cohort = the frozen scale-campaign irc_fit_5000 nested list
+#     (rl_dev/sealed excluded per plan §3.1; 2k subset verified nested);
+#   - fixed dev = the same 250 train_dev reactions;
+#   - new output root and bundle identity; lazy shard loading active.
+schema_version: pesn_g3p1_config_v1
+
+seed: 42
+
+paths:
+  interim: data/interim
+  manifests: data/manifests
+  output_root: outputs/pesn/scale20k_rl2000_v1_20261008/irc_5k
+  artifacts_root: artifacts/pesn
+
+inventory:
+  max_reactions: null
+
+split:
+  dev_fraction: 0.10
+  calibration_fraction: 0.10
+  family_holdout_fraction: 0.05
+  development_exposure_file: null
+
+build_teacher:
+  train_fit_limit: 5000
+  train_dev_limit: 250
+  authority_shard_size: 1000
+  dataset_shard_size: 200
+  fit_reaction_ids_file: outputs/pesn/scale20k_rl2000_v1_20261008/cohorts/irc_fit_cohorts.json
+  fit_reaction_ids_key: irc_fit_5000
+  dev_reaction_ids_file: outputs/pesn/scale20k_rl2000_v1_20261008/cohorts/irc_fit_cohorts.json
+  dev_reaction_ids_key: irc_dev_250
+
+train:
+  batch_reactions: 8
+  frames_per_reaction: 12
+  pairs_per_reaction: 8
+  pair_margin: 0.05
+  max_epochs: 50
+  patience: 8
+  lr: 0.0003
+  weight_decay: 0.0001
+  clip: 1.0
+  seed: 42
+  tau: 1.0
+  apply_symmetry: true
+  lazy_loading: true
+  loss_weights:
+    s: 1.0
+    d: 0.5
+    rank: 1.0
+    direction: 0.5
+    activity: 0.2
+    symmetry: 0.1
+
+model:
+  hidden: 64
+  n_layers: 3
+  n_basis: 16
+  spatial_cutoff: 5.0
+
+eval:
+  batch_reactions: 8
+  bootstrap_iterations: 1000
+
+bundle:
+  model_id: pesn-irc-scale5k-v0.1.0-rc.1

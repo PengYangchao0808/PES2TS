@@ -1,0 +1,94 @@
+{
+  "timestamp_utc": "2026-10-17T02:38:45.542274+00:00",
+  "run_id": "2026-10-17T02:36:42.974+00:00",
+  "computed": 185,
+  "failures": 0,
+  "resumed": 3446,
+  "pending_at_launch": 2521,
+  "seconds_since_dispatch": 67.215,
+  "nodes_per_minute": 165.14170943985718,
+  "reference_2x2_nodes_per_minute": 38.72,
+  "comparison_limit": "Short live windows on different nodes, not a controlled benchmark.",
+  "receipt_checks": [
+    {
+      "node_digest": "8cfd1dae51d9c2e73f9c9a521b2a69b333604bedf5a9611dc699b35419185f19",
+      "valid": true,
+      "nproc": 1
+    },
+    {
+      "node_digest": "02f70ffea0da3f94f472fdf33a83ff99f714fd3e6ec8209b17f79210e64636f1",
+      "valid": true,
+      "nproc": 1
+    },
+    {
+      "node_digest": "7a05d149bc4881d9c8e42b833af63bf5dd95230242436548439437670f13380d",
+      "valid": true,
+      "nproc": 1
+    },
+    {
+      "node_digest": "c1ae606859620ecffb77370083c840345717e67f28fe45029cc4da10bec37e65",
+      "valid": true,
+      "nproc": 1
+    },
+    {
+      "node_digest": "c328d61aec00c846f81af78b4acde691c9b07099a7a86df19e6303e0951578dd",
+      "valid": true,
+      "nproc": 1
+    },
+    {
+      "node_digest": "4ebe830a08018b9899733a3b8402e9d2631537731f64f10fb570acbc84d4fa72",
+      "valid": true,
+      "nproc": 1
+    },
+    {
+      "node_digest": "d614f7f9ce97cf9ab34c14686ae6727c17f3e4e701ed41c8ddba94de122cf5bf",
+      "valid": true,
+      "nproc": 1
+    },
+    {
+      "node_digest": "d696bd2e75c308835c55e92a07ac64ad33a41e0076bd4a8161b7787e642b49e5",
+      "valid": true,
+      "nproc": 1
+    },
+    {
+      "node_digest": "9b3417b441a644d391fea5d4d08177189ee4014c0fbfd03e3e254268c95092e8",
+      "valid": true,
+      "nproc": 1
+    },
+    {
+      "node_digest": "6b9b94df0d762e37c27d79b4103abbf613e9907bd0f618e4a54ae16de9d12c4e",
+      "valid": true,
+      "nproc": 1
+    },
+    {
+      "node_digest": "60df3406af534cac73fd1b8dfb5b866e0c2eb6bdc1fad847fffde892a9756c14",
+      "valid": true,
+      "nproc": 1
+    },
+    {
+      "node_digest": "5f18e5e281412022d41e8664959666a715ccd79bd6b92c8e978f53afb4c4697b",
+      "valid": true,
+      "nproc": 1
+    },
+    {
+      "node_digest": "a1db36152a95b51ceefd511b65e80e34911c28bfb6f3daccc57cab061c2ba4e1",
+      "valid": true,
+      "nproc": 1
+    },
+    {
+      "node_digest": "b14f9555becbe15201c5aed9b399ff1a39c0f0899903b8d3914e822c886dbfc7",
+      "valid": true,
+      "nproc": 1
+    },
+    {
+      "node_digest": "129e39cb1882f8a638507b561c019d8f86b4809539893d49470003786faea5db",
+      "valid": true,
+      "nproc": 1
+    },
+    {
+      "node_digest": "eb147b3396c6aaed2cc5fa85a34cdfdc2ee0dbc3327302b4da3cdaf1095287da",
+      "valid": true,
+      "nproc": 1
+    }
+  ]
+}

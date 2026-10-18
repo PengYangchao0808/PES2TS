@@ -129,12 +129,29 @@ def test_minimal_j_g_is_explicit_no_data_without_validated(campaign_root):
     assert "G3.0" in report["minimal_j_g"]["note"]
 
 
-def test_capability_status_table_is_honest_no_smoke_claims():
+#: Frozen after the 2026-10-05 real-campaign evidence review (T20-01).  The
+#: T21 final report embeds exactly these values; re-freezing requires new
+#: real-campaign evidence, never a fixture-only change.
+FROZEN_CAPABILITY_STATUS = {
+    "campaign_orchestrator": "smoke_passed",
+    "cost_capture": "smoke_passed",
+    "origin_preparation_acp_adapter": "smoke_passed",
+    "branch_policy_calibration": "smoke_passed",
+    "pilot_replay_judge": "smoke_passed",
+    "continuation_real_engine": "smoke_passed",
+    "validation_chain": "implemented",
+    "feedback_reporter": "fixture_passed",
+}
+
+
+def test_capability_status_table_frozen_after_real_evidence():
+    statuses = {capability: row["status"]
+                for capability, row in CAPABILITY_STATUS.items()}
+    assert statuses == FROZEN_CAPABILITY_STATUS
     for capability, row in CAPABILITY_STATUS.items():
         assert row["status"] in {"unknown", "implemented", "fixture_passed",
                                  "smoke_passed"}, capability
-        assert row["status"] != "smoke_passed" or capability == "__never__"
-        assert row["evidence"]
+        assert row["evidence"], capability
 
 
 def test_ab3_list_derives_from_histogram_with_evidence(campaign_root):

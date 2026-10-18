@@ -1,0 +1,70 @@
+# PES-N predictor G3-P1 configuration (standalone; unknown keys fail loudly).
+schema_version: pesn_g3p1_config_v1
+
+paths:
+  interim: data/interim
+  manifests: data/manifests
+  output_root: outputs/pesn/g3_p1
+  artifacts_root: artifacts/pesn
+
+seed: 42
+
+inventory:
+  max_reactions: null
+
+split:
+  dev_fraction: 0.10
+  calibration_fraction: 0.10
+  family_holdout_fraction: 0.05
+  # Optional text/CSV file of reaction ids with known development truth
+  # exposure; members (and their duplicate groups) become contamination-
+  # marked regression material, never independent test data.
+  development_exposure_file: null
+
+build_teacher:
+  # WP-4 first-trial scale: ~2k train_fit reactions + dev slice.
+  train_fit_limit: 2000
+  train_dev_limit: 250
+  authority_shard_size: 1000
+  dataset_shard_size: 200
+
+train:
+  batch_reactions: 8
+  frames_per_reaction: 12
+  pairs_per_reaction: 8
+  pair_margin: 0.05
+  max_epochs: 50
+  patience: 8
+  lr: 0.0003
+  weight_decay: 0.0001
+  clip: 1.0
+  seed: 42
+  tau: 1.0
+  apply_symmetry: true
+  # Per-split lazy shard loading (default true): training never
+  # materializes the full teacher dataset in memory; reactions are
+  # pulled per batch through an LRU cache of shard handles. Set false
+  # only to reproduce the legacy full-load path (`load_teacher_reactions`).
+  lazy_loading: true
+  loss_weights:
+    s: 1.0
+    d: 0.5
+    rank: 1.0
+    direction: 0.5
+    activity: 0.2
+    symmetry: 0.1
+
+model:
+  hidden: 64
+  n_layers: 3
+  n_basis: 16
+  spatial_cutoff: 5.0
+
+eval:
+  batch_reactions: 8
+  bootstrap_iterations: 1000
+
+bundle:
+  # First-cycle research candidate identity (pesn-irc-v0.1.0-rc.N until the
+  # G3.P.3 gate freezes the formal package).
+  model_id: pesn-irc-v0.1.0-rc.1

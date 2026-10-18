@@ -1,0 +1,67 @@
+{
+  "status": "gpu_representative_smoke",
+  "generated_at_utc": "2026-10-15T04:37:19.065299+00:00",
+  "device_requested": "cuda:0",
+  "torch": {
+    "version": "2.14.1+cu130",
+    "cuda_build": "13.0",
+    "cuda_available": true,
+    "intra_threads": 16,
+    "interop_threads": 32,
+    "backends": {
+      "tf32_matmul": false,
+      "tf32_cudnn": true,
+      "cudnn_deterministic": false
+    },
+    "device": {
+      "index": 0,
+      "name": "NVIDIA GeForce RTX 4060 Ti",
+      "capability": [
+        8,
+        9
+      ],
+      "total_memory_gib": 7.996,
+      "bf16_supported": true,
+      "multi_processor_count": 34
+    }
+  },
+  "small_tensor_smoke": {
+    "loss_is_finite": true,
+    "grad_is_finite": true,
+    "param_changed_after_step": true,
+    "loss_value": 508.0614318847656,
+    "output_device": "cuda:0",
+    "gpu_name_check": true
+  },
+  "representative_graph_batch": {
+    "graphs": 8,
+    "node_counts": [
+      16,
+      13,
+      20,
+      6,
+      11,
+      8,
+      7,
+      8
+    ],
+    "total_nodes": 89,
+    "total_edges": 356,
+    "iterations_timed": 20,
+    "warmup": 3,
+    "step_ms_mean": 2.571,
+    "step_ms_p50": 2.562,
+    "step_ms_p95": 3.486,
+    "graphs_per_second": 388.972,
+    "loss_last": 0.988147,
+    "grads_finite": true,
+    "peak_allocated_gib": 0.0169,
+    "peak_reserved_gib": 0.0312,
+    "devices_of_outputs": [
+      "cuda:0",
+      "cuda:0"
+    ],
+    "note": "synthetic smoke; throughput here is not a training speedup claim"
+  },
+  "overall": "pass"
+}

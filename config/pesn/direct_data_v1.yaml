@@ -1,0 +1,32 @@
+# Direct data preparation (WP1 fit50, plan v3 §4/§11.1). Unknown keys must
+# fail loudly once the strict loader exists (WP-INFRA1); nothing consumes
+# this file automatically yet.
+schema_version: pes2ts_direct_data_config_v1
+
+paths:
+  interim: data/interim
+  manifests: data/manifests
+  audit_fixture: docs/plans/fixtures/pes2ts_direct_training_input_audit_20261015.json
+  output_root: outputs/pesn/direct_egnn_v1_20261015
+  split_dir: outputs/pesn/direct_egnn_v1_20261015/splits
+  observations_dir: outputs/pesn/direct_egnn_v1_20261015/observations
+
+selection: direct_fit50
+seed: 42
+
+mdp:
+  action_max_angstrom: 0.1
+  reward_spec: reward_direct_proxy_v1   # frozen coefficients in contracts
+  budget_steps: 100
+
+acp:
+  root: ${PES2TS_ACP_ROOT}
+  python: ${PES2TS_ACP_PYTHON}
+  config_path: ${PES2TS_ACP_CONFIG}
+  method: GFN2-xTB
+  timeout_seconds: 120
+  nproc: 2
+
+limits:
+  max_nodes_per_reaction: null   # fill after fit50 measurement
+  max_parallel_reactions: 2      # safe_start profile

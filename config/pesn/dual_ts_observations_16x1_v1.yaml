@@ -1,0 +1,13 @@
+# WP2 run-specific override, explicitly requested by the user 2026-10-17.
+# Launch compute_dual_ts_observations.py with --workers 16 and this file.
+# Prior receipts retain their original nproc/settings provenance.
+schema_version: pes2ts_direct_data_config_v1
+acp:
+  root: ${PES2TS_ACP_ROOT}
+  python: ${PES2TS_ACP_PYTHON}
+  config_path: ${PES2TS_ACP_CONFIG}
+  method: GFN2-xTB
+  timeout_seconds: 120
+  nproc: 1
+limits:
+  max_parallel_reactions: 16

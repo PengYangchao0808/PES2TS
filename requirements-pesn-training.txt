@@ -1,0 +1,8 @@
+# PES-N predictor offline training dependencies (G3-P1 / ADR-0014).
+# Superset of requirements-pesn-runtime.txt plus offline-toolchain needs.
+# The base requirements.txt intentionally excludes all ML frameworks.
+numpy>=2.2.2
+pandas>=2.2
+pyarrow>=16
+pyyaml>=6
+torch>=2.4

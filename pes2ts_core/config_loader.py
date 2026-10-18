@@ -10,6 +10,8 @@ from __future__ import annotations
 
 import copy
 import logging
+import os
+import re
 from pathlib import Path
 from typing import Any
 
@@ -20,6 +22,10 @@ DEFAULT_CONFIG_PATH = PROJECT_ROOT / "config" / "defaults.yaml"
 
 #: Exit code returned by the CLI when configuration loading fails.
 EXIT_CONFIG_ERROR = 2
+
+#: Only ``${NAME}`` is expanded.  Shell-style ``$NAME`` is deliberately not
+#: supported so that chemistry strings containing ``$`` remain literal.
+_ENV_PATTERN = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)\}")
 
 
 class ConfigError(Exception):
@@ -45,6 +51,35 @@ def _read_yaml_mapping(path: Path) -> dict[str, Any]:
     return data
 
 
+def _expand_env(value: Any, *, source: str) -> Any:
+    """Return *value* with ``${NAME}`` placeholders expanded, fail-closed.
+
+    Missing variables raise :class:`ConfigError`; an unset optional path must
+    be made explicit in a ``*.local.yaml`` override instead of silently
+    becoming the empty string.
+    """
+    if isinstance(value, str):
+        def replace(match: re.Match[str]) -> str:
+            name = match.group(1)
+            if name not in os.environ:
+                message = (
+                    f"Environment variable {name!r} required by {source} is "
+                    "not set; export it or override it in a local config"
+                )
+                logging.getLogger(__name__).error(message)
+                raise ConfigError(message)
+            return os.environ[name]
+
+        return _ENV_PATTERN.sub(replace, value)
+    if isinstance(value, dict):
+        return {key: _expand_env(item, source=source) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_expand_env(item, source=source) for item in value]
+    if isinstance(value, tuple):
+        return tuple(_expand_env(item, source=source) for item in value)
+    return value
+
+
 def _deep_merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
     """Return a new mapping with *override* recursively merged onto *base*."""
     merged = copy.deepcopy(base)
@@ -55,6 +90,23 @@ def _deep_merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any
         else:
             merged[key] = copy.deepcopy(value)
     return merged
+
+
+def load_config_mapping(path: str | Path) -> dict[str, Any]:
+    """Read one YAML mapping and expand ``${ENV}`` without merging defaults.
+
+    Use this for campaign/config files that are not the classic
+    ``config/defaults.yaml`` overlay (e.g. ``config/g2t_scale.yaml`` or
+    ``config/campaigns/*.yaml``).
+    """
+    config_path = Path(path)
+    if not config_path.is_absolute():
+        config_path = Path.cwd() / config_path
+    if not config_path.exists():
+        message = f"Config file not found: {config_path}"
+        logging.getLogger(__name__).error(message)
+        raise ConfigError(message)
+    return _expand_env(_read_yaml_mapping(config_path), source=str(config_path))
 
 
 def load_config(path: str | Path | None = None) -> dict[str, Any]:
@@ -78,7 +130,9 @@ def load_config(path: str | Path | None = None) -> dict[str, Any]:
         YAML mapping.
     """
     logger = logging.getLogger(__name__)
-    defaults = _read_yaml_mapping(DEFAULT_CONFIG_PATH)
+    defaults = _expand_env(
+        _read_yaml_mapping(DEFAULT_CONFIG_PATH), source=str(DEFAULT_CONFIG_PATH)
+    )
     if path is None:
         return defaults
 
@@ -90,6 +144,6 @@ def load_config(path: str | Path | None = None) -> dict[str, Any]:
         logger.error(message)
         raise ConfigError(message)
 
-    override = _read_yaml_mapping(user_path)
+    override = _expand_env(_read_yaml_mapping(user_path), source=str(user_path))
     logger.debug("Merged user config %s over defaults %s", user_path, DEFAULT_CONFIG_PATH)
     return _deep_merge(defaults, override)

@@ -40,7 +40,7 @@ from typing import Any, Callable, Sequence
 
 import numpy as np
 
-from pes2ts_core.flywheel import LABEL_STATES
+from pes2ts_core.flywheel import COUNTER_FIELDS, LABEL_STATES
 from pes2ts_core.generation.planning.continuation import (
     ContinuationPolicy,
     run_continuation,
@@ -619,7 +619,15 @@ def _execute_case(reaction_id: str, case: dict[str, Any], case_root: Path,
                                 failure_code=choice.get("status"),
                                 failure_detail={"choose_origin": choice},
                                 label_state="execution_failed")
-            _write_case_artifacts(case_root, terminal=doc)
+            costs = _merge_case_costs([], reaction_id)
+            # A typed input rejection ran zero attempts; the collector accepts
+            # a null aggregate only for `blocked` terminals, so the complete
+            # zero-attempt record carries an explicit zero aggregate.
+            costs["aggregate"] = {**dict.fromkeys(COUNTER_FIELDS, 0),
+                                  "cpu_seconds": None,
+                                  "allocated_core_seconds": None,
+                                  "n_root_ledgers": 0, "n_ledgers_total": 0}
+            _write_case_artifacts(case_root, terminal=doc, costs=costs)
             return doc
         side_geometry = np.asarray(
             snapshot["r_coordinates" if choice["side"] == "R" else "p_coordinates"], float)

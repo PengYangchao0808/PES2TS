@@ -1,0 +1,223 @@
+# PES2TS G3-P1：IRC 教师预训练与模型版本计划 v1
+
+> 状态：当前第一期训练实施方案（设计完成，数据构建/训练/权重/硬件验收未启动）
+> 层级：G3.P 支线 ⊂ G3；批次 G3-P1；数据依赖 G0/G1，交接 G3.1/G3.2
+> 取代关系：细化 G3.P；补充 PES-N 未来计划，不取代 G2 物理闭环或 G3.0–G4 的真实决策价值验收
+> 上游依赖：[开发宪法内容 v2.2](../PES2TS_开发宪法_v1.md)、[阶段定义 v4.1](PES2TS_阶段定义_G0-G3.md)、[ADR-0013](../design/decisions/ADR-0013-G3并行IRC预训练与模型版本体系.md)、[PES-N 计划](PES2TS_PES-N未来开发计划_v2_20261005.md)
+> 下游消费者：隔离教师构建器、分裂审计、PES-N 编码器/任务头、实验记录、模型卡与后续 STOP/残差/Q 训练
+> 当前版本：方案 v1 @ 2026-10-06；首轮模型目标 `pesn-irc-v0.1.0`
+
+## 1. 本期目标和可独立启动的范围
+
+用已有 IRC/TS 数据训练一个 reaction-conditioned 编码器，回答：当前位于路径何处、在参考路径上距 TS 多远、图定义的哪些坐标应协同变化、趋近 TS 的理想局部方向是什么。它为后续真实决策模型提供初始化，不以 IRC 相似度代替精修成功概率。
+
+启动仅需要数据来源/图与原子映射/分裂/离线权限/坐标语义可用。G2 的约束优化器、步长调教、原生收据和科学出口不作为 G3.P 的入口条件。
+
+| 工作 | G2 是否为硬前置 | 本期交付语义 |
+|---|---|---|
+| 共享表示、signed progress、路径接近度 | 否 | 隔离教师监督与独立 IRC 测试 |
+| 尺度化坐标方向、局部协同 | 否；需要图定义的坐标合同 | 理想教师场，不是执行命令 |
+| 与 Classic 的教师差值消融 | 需要可计算且冻结版本的 Classic；不需要全 G2 通过 | 可选离线候选研究，不阻塞主模型 |
+| p_seed/C_full/Q_STOP | 需要真实同协议尝试与费用；正式 G3.0 经 G2 门 | 留到 G3.1，可复用编码器 |
+| 真实命令残差/MOVE-Q/控制闭环 | 需要相容动作响应、Shield/backup 和物理执行门 | G3.2/G4；本包明确 unsupported |
+
+流程为：G0/G1 增量数据资格 → G3.P.0/.1/.2/.3；同时 G1/G2 → G3.0/.1；两条线在 G3.1 共享编码器初始化处汇合。即使 G3.P 迁移无收益，正式 STOP 训练仍可从零初始化继续。
+
+## 2. 整体版本体系
+
+### 2.1 名称和目标身份
+
+| 对象 | 此次身份 | 版本含义与状态 |
+|---|---|---|
+| 软件包 PES2TS | 当前 `0.1.0` | 由 `pes2ts_core/version.py` 管理；本次不发布软件新版本 |
+| 工程支线 / 实施批次 | `G3.P` / `G3-P1` | G3 子任务/此次实施批次，不能等同模型版本 |
+| 本方案 | `v1` | 训练设计文档版本 |
+| 模型权重目标 | **`pesn-irc-v0.1.0`** | IRC 教师预训练研究包；当前仅分配身份，尚无权重 |
+| 教师数据合同 / 数据发布 | `pesn_irc_teacher_dataset_v1` / `0.1.0` | schema 与具体构建版本分开，绑定源/筛选/标签哈希 |
+| 标签 / 坐标与特征 | `pesn_irc_teacher_labels_v1` / `pesn_feature_spec_v1` | 质量度规、尺度、单位、任务头及输入允许字段 |
+| 分裂合同 / 发布 | `pesn_irc_split_v1` / `0.1.0` | 子集、家族、污染、排除及父 split 哈希 |
+| run / bundle 合同 | `pesn_training_run_v1` / `pesn_model_bundle_v1` | 实验全依赖与能力显式开放表；草案待实现 |
+| 实验 ID | `g3p1-YYYYMMDD-<config_hash8>-seed<seed>-r<attempt>` | 每次新尝试新 ID；恢复同一次尝试保留 ID 并记录事件 |
+
+模型 tag 是能力路线的目标身份，不表示计划已实现。首次冻结前候选使用 `pesn-irc-v0.1.0-rc.N`；正式研究包经 G3.P.3 门后发布同名不可变目录。不同 seed 的候选不能共享权重路径或覆盖旧产物。
+
+版本演进规则：修正文档可 bump 文档版本；修复同语义实现可 bump patch 并重新验收；特征/标签/坐标、训练来源、头语义/能力或精修协议变化发布新模型版本，记录旧包兼容性；schema 不相容变化升 schema 版本。训练数据追加也是新数据发布，不覆盖 `0.1.0`。
+
+### 2.2 后续目标路线（待各阶段验收）
+
+| 模型目标身份 | 阶段 | 新增能力 | 依赖 |
+|---|---|---|---|
+| `pesn-irc-v0.1.0` | G3.P | 共享表示/教师进度/方向/协同/路径接近度 | 已有合格 IRC；不需要 G2 调好 |
+| `pesn-stop-v0.2.0` | G3.1 | 真实 p_seed、完整精修成本、Q_STOP 与校准 | 固定协议下的尝试；预训练 vs 从零对照 |
+| `pesn-residual-v0.3.0` | G3.2 | 已支持连续动作的有界残差候选 | 冻结 Classic、相容命令/响应、STOP 基线与接入门 |
+| `pesn-offlineq-v0.4.0` | G4.0 | 保守 MOVE/STOP 动作价值 | 全成本/终端/预算/环境合同及动作支持 |
+| `pesn-closedloop-v0.5.0` | G4.1 | 冻结模型接入真实 QC 闭环的实验包 | Shield/backup/uncertainty 与真实同预算证据 |
+| `pesn-core-v1.0.0` | G4.2 | 独立内核与声明支持域的稳定发布 | 跨来源/整族、资源/兼容、收益及回滚验收 |
+
+这些是规划目标，实际能力由 bundle 的 capabilities 与证据决定。共享编码器始终同一核心家族，各阶段的任务头、协议和模型卡另登记；不建立独立 PES-R 学习产品。
+
+## 3. G3.P.0：来源盘点与冻结分裂
+
+### 3.1 当前可核验事实
+
+2026-10-06 清单元数据：`inventory_manifest.json` 为 199,217 行；`truth_manifest.json` 登记 199,890 条 TS/IRC 索引、B3LYPD3_TZVP 两份来源；旧 `split_manifest.json` 的总分裂计数 199,168。数字来自不同范围，不相互替代，也不等于本期有效轨迹数。现有软件单一版本为 0.1.0。
+
+用户描述“20 万 IRC/TS/xTB”作为规模背景。本期先区分 DFT IRC、TS、GFN2-xTB 的真实结构/能量/梯度来源及其配对关系；清单未证明全量是 xTB IRC、逐帧匹配或字段齐全。第一版可以先用合格 DFT IRC 的几何监督，方法偏差和迁移另报告；不强制补算全量 xTB 来解锁训练。
+
+数据盘点交付：按 source/method/electronic_state 的反应/分支/帧数、源哈希与文件可达性；原子映射/单位/TS 锚点/方向资格；与 inventory、split、G1 图的多向 join 和 typed 排除表；可用字段与有效标签覆盖。未授权真值读取、映射冲突、方向未定、零弧长、单侧/截短轨迹分别留原因，不静默删样本。
+
+本期模型主输入使用已有端点图/已标明来源的映射、当前帧几何及电子态。端点坐标若不可用不伪造；初版不要求把 R/TS/P 三套 Cartesian 坐标同时输入。truth-assisted_p1 的图/映射和 IRC 预筛来源如实披露，不能称端到端 truth-free。
+
+### 3.2 分裂与污染治理
+
+继承旧 split 的排除与 unassigned 隔离；旧 valid/test 不移回 train。先以非真值元数据建立 canonical reaction group，合并正逆反应、映射/对称副本、同反应构象及所有来源，组内全帧同 split。发现历史跨组冲突时隔离该组并发布新子集身份；不重写旧分裂。
+
+`train_fit / train_dev / train_calibration` 均从父 train 中划分，建议按组 80/10/10；开发、早停、阈值/权重选择都在这些 train 内子集。父 valid/test 和新增 reaction-family holdout 封存，在模型/门冻结后由隔离评测器使用。holdout 的族和成员由冻结图/分类版本定义，在查看该集合教师真值前冻结；已开发暴露的集合不能补称独立测试。
+
+Demo24 及其他已知开发真值暴露组归 development regression 并带 contamination 标记；不计入独立泛化。家族 holdout 涉及父 train 的组从所有预训练/微调/标准化/无监督预训练阶段整体移除；后续 G3/G4 沿用该排除防止预训练泄漏。已有 G1 真值辅助字段的来源/开发暴露纳入台账。
+
+G3.P.0 门：split 成员/源/分组/族/污染/排除哈希冻结，已知 group 跨 split 冲突为 0，逐反应和逐标签资格可查；真实源坐标只能在 scoped 离线访问完成审查后读入。本次不改守卫 allowlist。
+
+## 4. G3.P.1：标签和基线
+
+### 4.1 输入与隔离标签
+
+离线样本分 `TeacherState`、`TeacherLabel` 和 provenance。模型可见：元素/原子映射、R/P 目标图及 F/B 等声明支持的编辑、完整当前 X、图定义角色/坐标、charge/spin/method 和缺失掩码。首版几何模式不输入 E/g、帧索引、TS 坐标/距离、真实未来状态、标签、分支真值 ID 或 generator-ID 捷径。
+
+IRC 当前 X 是训练状态，不是线上读取来源；端点及标签来源留在隔离 sidecar。在线 FeatureSpec 仅从真实当前观测和可用任务图构建相同特征。参考 TS、未来帧、弧长和局部导数只供标签/隔离评测。梯度/能量增强是明确方法/单位后的后置消融，物理梯度与有效约束梯度不能混用。
+
+### 4.2 进度与路径接近度
+
+原子身份和两侧 R/P 定向通过后，对相邻帧按冻结的质量加权刚体配准去除整体平移/转动，定义：
+
+\[
+\Delta\ell_i=\sqrt{\sum_a m_a\|\widetilde X_{i+1,a}-X_{i,a}\|^2}.
+\]
+
+`d_arc(X,TS)` 是所属分支上到 TS 的累计弧长；`L_R/L_P` 是 TS 到对应分支末端的弧长：
+
+\[
+s_i=\begin{cases}-d_{arc}(X_i,TS)/L_R,&R\text{侧},\\
+0,&TS,\\
++d_{arc}(X_i,TS)/L_P,&P\text{侧}.
+\end{cases}\qquad d_i=|s_i|.
+\]
+
+末端未证实为目标极小值时，`±1` 只表示所记录分支末端，另标 truncated/endpoint_status；不能称真实反应完成。单侧轨迹只有通过该侧资格的标签，另一侧不零填。质量权重/单位/同位素、配准及线性体系策略随 LabelSpec 冻结；TS/重复帧导致零增量时方向掩码为 false。
+
+输出 `s_hat / d_path_hat / score_path` 用于教师进度和轨迹内定位；分支归一化 d 不作跨反应绝对几何距离，也不是 committor、TS basin 成功概率或精修价值。
+
+### 4.3 图定义的低维教师方向和协同
+
+从当前可用图定义坐标 `q=phi_G(X)`，初期采用 F/B driver 距离及有资格的 monitor；角/二面角在支持范围内显式单位和 unwrap。`q_tilde_j=(q_j-q_ref_j)/a_j`；尺度 a_j 和 q_ref_j 由坐标类型固定或只拟合 train，推理时可获得，参考 TS 不作为 q_ref。
+
+定义沿已观测分支**朝 TS**的弧长参数 z，离线用同侧相邻帧局部差分估计 `v*=d q_tilde/dz`，单侧/中心差分策略冻结。单位方向 `t_q*=v*/||v*||` 是主要监督，附 q 方向有效性/支持集/残差误差。用于差分的未来邻帧不会进入特征。
+
+协同标签取各坐标局部 `|v_j*|` 的归一化贡献及 active mask；阈值只在 train 内冻结，不能把“未明显动”自动改成永久 guard。全零、TS 锚点、角度跳变、坐标退化或方向无法确定时对应任务缺失。联合坐标教师有稳定非零方向才参与 cosine loss。
+
+这是一种已选坐标中的理想局部投影。未包含的构象自由度和真实优化响应依然未知；不把相邻 IRC 差值写入 `command_delta_q`，不用于 Bellman transition。需要有限步教师候选时用冻结弧长 lookahead 及限幅规则，独立字段 `teacher_delta_q` 记录；大小受采样密度影响，不直接学习成生产步长。
+
+Classic 可计算且版本冻结后，可定义 `delta_q_teacher - delta_q_classic` 消融，但两者是教师目标与名义命令的差，仍不是已验证最优残差。Classic 改版生成新的旁车/实验，不重建无关 progress 标签；此消融不阻塞本期交付。
+
+### 4.4 对称、采样和离线基线
+
+R/P 交换时 signed progress 变号、路径接近度不变；从 R 到 P 定向的 tangent 变号，但“朝 TS”向量按坐标重排/语义变换转换，不能机械套同一变号。刚体旋转/平移、原子重排只检验相应不变/等变规律；不同真正反应分支不强行合并。
+
+按反应等权采样，建议每条每 epoch 12 个帧（两侧近 TS/中段/端点分层，按可用性补充），取 8 个具有标签间隔的同反应 pair；TS 锚点可作训练辅助，定位测试另报保留/排除锚点两轨，主表排除精确参考 TS。长轨迹不因帧多获得更大反应权重。
+
+基线依次为：常数/随机定位；由端点任务定义的尺度化坐标及几何中间态规则；同输入低维 MLP；小图编码器。参考 TS 距离、全轨迹能量最大值属于 teacher/oracle/context 对照，不能冒充单点可部署基线。E/g 消融不与无 E/g 模型混报。
+
+## 5. G3.P.2：首代模型与训练配置
+
+### 5.1 默认设计
+
+主模型采用小型图消息传递编码器：R/P union task edges（键级/编辑/角色）与当前几何邻域共同表达任务和局部环境；距离与角度不变量用于消息，driver 坐标嵌入及角色 pooling 用于输出。空间邻域和任务边分别标识，断裂远程边不会因 cutoff 消失；完整环境保留，不只截取反应原子。
+
+首版输出均为标量/低维内部坐标方向，因此不需要 Cartesian 向量头来满足刚体不变性。复杂等变 backbone 是后续同输入/同预算对照，先以基线证据决定；本方案不绑定尚未验收的框架版本或外部预训练权重。
+
+| 参数 | v1 初始试验配置 | 调整边界 |
+|---|---|---|
+| 几何编码器 | hidden 64、3 层、距离基 16、空间 cutoff 5 Å、带类型任务边 | 初始设计，不声称最优；冲突/长程任务边单独保留 |
+| 参数量 | 目标 10^5–10^6 | 实测记录；扩大模型作为新实验 |
+| 输出 | s、d_path、score_path、t_q、activity | active coordinate mask；单独任务可缺失 |
+| 优化 | AdamW；初始 lr 3e-4、weight decay 1e-4、gradient clip 1 | 硬件和 train_dev 小试后冻结 |
+| batch | 8 个反应，每反应最多 12 帧 | 按原子/帧总数动态上限；effective batch 与 accumulation 留数 |
+| 训练 | 最多 50 epochs，train_dev patience 8 | 同预算比较；不看 sealed valid/test 做早停 |
+| 随机种子 | 小试 42；最终候选 42/43/44 | 同 split/预算；run/权重分开 |
+| 数值 | 初版 FP32 | mixed precision 经梯度/一致性及硬件小试再启用 |
+| E/g | 主模型不输入；后置物理增强消融 | 各来源单位/方法与 missing mask 明确 |
+
+物理状态真实性不因“geometry-only”消失：本期教师轨迹有明确方法/来源，后续生产状态仍由实际 QC 得到。
+
+### 5.2 损失与任务资格
+
+\[
+L=\lambda_s\operatorname{Huber}(\hat s,s)
++\lambda_d\operatorname{Huber}(\hat d,d)
++\lambda_r\operatorname{softplus}[-(f_i-f_j)/\tau]
++\lambda_t(1-\hat t_q\cdot t_q^*)
++\lambda_a\operatorname{BCE}(\hat z,z)
++\lambda_{sym}L_{sym}.
+\]
+
+pair 仅在同反应 `d_i + margin < d_j` 时采样，f 为未校准的路径分数；方向归一化前有有效范数检查。每项先按有效任务/反应平均，缺标签不填 0、不对无效样本反向传播。全部缺失的 batch typed skip 并留数。
+
+初始权重建议 `(lambda_s,lambda_d,lambda_r,lambda_t,lambda_a,lambda_sym)=(1,0.5,1,0.5,0.2,0.1)`，tau=1、pair margin=0.05；只有 train_dev 内调节。不同尺度和任务覆盖在日志中分列，必要时分阶段加方向/协同头，防止辅助任务破坏编码器。d 与 |s| 的一致性作为诊断，不把两个相近任务的高分当独立物理证据。
+
+预训练 vs 从零的迁移对照留到 G3.1：冻结编码器、受控微调、从零三种配置，共同真实 STOP 数据/协议/预算并复核 p/C 校准；不是看到预训练测试精度就断言在线获益。
+
+## 6. 工作包、交付与验收
+
+| 工作包 | 子阶段 | 交付 | 放行条件 / 依赖 |
+|---|---|---|---|
+| WP-0 立项/合同 | G3.P.0 | 本方案、ADR、版本登记；正式实现时补 schema/validator | 规范/阶段同步；在线/教师边界明确 |
+| WP-1 数据盘点与分裂 | G3.P.0 | inventory/join/rejection/exposure/split 报告及哈希 | 来源/方法可核验；无已知跨组泄漏；不读未冻结 holdout 真值 |
+| WP-2 隔离构建器 | G3.P.1 | TeacherState/Label 分仓、arc/direction/activity、LabelSpec | scoped truth 访问与审计；标签抽查、单位/方向/TS/缺失 fixture |
+| WP-3 特征与基线 | G3.P.1 | 纯 FeatureSpec、规则/MLP、数据加载与分层采样 | 在线模块不导入真值；旋转/重排、反向语义和无未来信息检查 |
+| WP-4 最小训练 | G3.P.2 | 约 2,000 个 train 反应，训练/恢复/资源日志 | pipeline 可回放；loss 有效；峰值内存与吞吐实测，无 QC 前置 |
+| WP-5 扩量与对照 | G3.P.2 | 20,000 → 50,000 → 合格 train 全量；GNN/MLP/任务消融 | 冻结配置后扩量；同反应/预算比较；扩大预算另记录 |
+| WP-6 独立评测/冻结 | G3.P.3 | sealed IRC/group/family 报告、model card、bundle、能力表 | 在评测前冻结权重与门；如失败保留失败版本，不对 sealed 测试调参 |
+| WP-7 后续交接 | G3.P.3→G3.1 | 编码器输入兼容/初始化方案；真实数据特征覆盖诊断 | G2 数据到位后再做迁移；不作为本期完成的硬前置 |
+
+WP-4/5 数量从合格 train 中按冻结分层规则选取，不能补用 valid/test/holdout 或要求数据必达“20 万”。全量前先测 RAM/VRAM、batch 与 I/O，按源 HDF5 的读取特性使用隔离流式/分片，不把全量载入内存；无 GPU 时先用更小 train 子集和 MLP 完成管线，不臆测全量耗时。模型选择预算建议限定 8 组配置，3 seeds，实际 GPU/CPU 小时预算在 WP-4 实测后冻结，所有尝试留存。
+
+### 6.1 本期验收指标与初始门
+
+数据/隔离门为硬门：已知 group 跨 split 冲突 0、线上允许字段中的未来/标签/参考 TS 字段 0、所有排除与任务缺失有原因、所有 run 绑定配置和依赖哈希。
+
+学习主指标：按反应等权 signed-progress MAE、排除 TS 锚点的 top-1/top-3 定位误差（归一化弧长）及同反应 pair concordance。方向报告 cosine/角度误差和有效覆盖，协同报告 PR-AUC/F1 与覆盖；分反应族/方法/两侧/截短/原子数分别统计。置信区间以 reaction group 为 bootstrap 单位，不以帧当独立样本。
+
+v1 候选研究门：相对同输入低维/规则最强基线，主指标 top-3 最优候选的平均 d 误差相对减少至少 10%（基线误差为零时不计算相对改善，单报平局/其余指标），pair concordance 差值的 95% group-bootstrap 区间下界大于 0，progress MAE 不劣超过 0.02。方向有效样本上的平均 cosine 目标 ≥0.70 且优于坐标规则方向，同时报告方向缺失/拒绝率，不能只在容易子集比较。
+
+这些是方案初始科研门，WP-4 可在 train_dev 上审计可行性并在独立评测前冻结修订，不能测试后放宽。未达到方向门可发布仅 encoder/progress 的研究包，但 capabilities 降级且明确本期方向任务未通过；不将其写成完整 `pesn-irc-v0.1.0` 全任务通过。各 holdout 单独判断，不把 IID 改善当整族泛化。
+
+学习指标只证明 IRC 教师任务。真实 OptTS 成功概率、跨 off-path 迁移和全量 QC 成本收益分别留到 G3.1/G4，不列为本期已有证据。
+
+### 6.2 G3.P.3 模型包
+
+拟交付 `model_bundle.json / weights / feature_spec.json / label_spec.json / normalization.json / split_reference.json / training_runs.json / metrics.json / model_card.md / checksums.json`；包内容及协议详见[合同草案](../contracts/PES2TS_PESN_IRC教师数据与模型包合同_v1.md)。权重格式及依赖版本在实现中冻结，不执行未审阅的反序列化代码。
+
+能力表逐头标资格：encoder、progress、path_proximity、teacher_direction、coordinate_activity；p_seed/C_full/Q_STOP/Q_MOVE/production_control 均 disabled。缺头返回 unsupported，不以 0/概率 0.5 冒充预测。默认 Classic 无权重自动接入；研究评估调用与宿主动作接口分离。
+
+## 7. 模块与文件级实现边界（待开发）
+
+| 预定位置 | 责任 | 本次状态 |
+|---|---|---|
+| `pes2ts_core/evaluation/pesn_irc/` | 审计读取/标签构建/独立评测，明确 train 和 sealed 模式 | 未创建；guard scoped caller 另在实现批次登记 |
+| `pes2ts_core/pesn/features/` | 不依赖真值的目标图/当前几何特征与校验 | 未创建，沿用宪法已登记内核落点 |
+| `pes2ts_core/pesn/models/` | 共享编码器及按资格开放的任务头 | 未创建 |
+| `pes2ts_core/pesn/training/` | 读取已导出的 train 数据/配置、训练与恢复 | 未创建；不直接读取原始真值文件 |
+| `pes2ts_core/pesn/inference/` | bundle 校验、纯推理及能力拒绝 | 未创建；无 QC/调度/教师依赖 |
+| `tests/` | 真实语义的隔离/分组/质量弧长/方向/重排/包兼容测试 | 实现时增补，不以训练 loss 冒烟代替独立科学门 |
+
+未来 CLI/API 的名字和运行配置在 WP-0/3 实现登记，本方案不提供不存在的可运行命令。本次只交付规划和合同草案；不改真实 truth allowlist、默认配置或旧数据链。
+
+运行目录建议：教师和标签在配置指定的隔离根按数据版本存放；开发 run 位于 `outputs/pesn/g3_p1/<run_id>/`；研究模型位于 `artifacts/pesn/pesn-irc-v0.1.0/`；独立评测单独权限与目录。路径存在不代表能力通过，具体存储/发布在实现时验收。
+
+## 8. 后续交接及状态
+
+G3.P 与 G2 只共享稳定的图/坐标/状态语义，不把不断调教的 G2 参数写进教师主标签。G2 配方改变时重新报告 off-path 来源/方法与 feature coverage；只有 Classic 差值消融需要重绑定 Classic 版本。
+
+G3.1 为真实结果扩 p_seed/C/Q_STOP 头时保留本期 split 禁入组；原教师头可保留作正则化或冻结诊断。G3.2 使用命令/响应数据训练可执行残差，G4.0 才在相容环境上训练 Q。每次微调新包并重查旧能力，失败保持 Classic 默认及从零基线。
+
+当前完成：阶段依赖调整、版本路线、第一期训练设计与合同草案。当前未完成：数据实读与清洗、正式 schema/guard 改动、训练程序/权重、硬件吞吐测量、独立评测、真实 STOP 标签和任何在线模型收益。依据宪法 §11.5，这些能力保持 unknown/未实现，不能由本方案升级状态。

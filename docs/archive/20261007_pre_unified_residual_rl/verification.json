@@ -1,0 +1,20 @@
+{
+  "schema_version": "pes2ts_planning_verification_v1",
+  "verified_at": "2026-10-07T16:52:06.798686+08:00",
+  "scope": "planning_documents_only",
+  "snapshot_count": 9,
+  "snapshot_hash_failures": [],
+  "protected_file_count": 386,
+  "protected_hash_failures": [],
+  "checked_document_count": 12,
+  "new_broken_local_links": [],
+  "preexisting_broken_local_links": [],
+  "charter_redlines_R1_R6_unchanged": true,
+  "version_failures": [],
+  "status_header_failures": [],
+  "business_code_modified": false,
+  "qc_executed": false,
+  "training_executed": false,
+  "tests_executed": false,
+  "root_readme_snapshot_recovered_and_verified": true
+}

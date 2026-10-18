@@ -258,13 +258,40 @@ def _record_failure_diagnostics(attempt, plan, frames, previous, predictor, resu
         previous, predictor, corrected, plan, targets, bonds)
 
 
-def _maybe_probe_curvature(attempt, attempts, plan, policy, guess, result, corrector, coordinates):
+def _probe_direction(x, guess, result):
+    """Cartesian path-advance direction for a curvature probe (G2-AB1 WP-2).
+
+    The probe measures the Lagrangian curvature of the path the failed
+    correction was trying to take, so the direction is the observed rejected
+    movement — the corrector output rigidly aligned back onto the predictor
+    geometry — the same quantity the archived round-3 probe measured.  When the
+    corrector returned no usable geometry, the predictor advance ``guess - x``
+    is the fallback.  ``None`` means neither evidence exists and the probe must
+    be skipped (never called with a missing direction).
+    """
+    guess = np.asarray(guess, float)
+    output = result.get("coordinates") if isinstance(result, dict) else None
+    if output is not None:
+        output = np.asarray(output, float)
+        if output.shape == guess.shape and np.isfinite(output).all():
+            movement = align(output, guess) - guess
+            if np.linalg.norm(movement) > 1e-10:
+                return movement
+    advance = guess - np.asarray(x, float)
+    if advance.shape != guess.shape or not np.isfinite(advance).all():
+        return None
+    return advance if np.linalg.norm(advance) > 1e-10 else None
+
+
+def _maybe_probe_curvature(attempt, attempts, plan, policy, guess, x, result, corrector, coordinates):
     """Trigger a single-direction curvature probe only after repeated LOCALITY failures.
 
     G2-AB1 WP-2: the probe fires only when >= 2 same-shape LOCALITY_* failures
     (including this attempt) precede it and the per-run budget
     (policy.max_curvature_probes) is not exhausted.  A probe result NEVER
     claims a minimum eigenvalue or a full spectrum — it is one direction.
+    The direction is the observed rejected movement (or the predictor advance
+    when the corrector returned no geometry); no direction means no probe.
     """
     from pes2ts_core.generation.planning.constrained_curvature import curvature_probe_required
     reason = attempt.get("reason") or ""
@@ -282,8 +309,11 @@ def _maybe_probe_curvature(attempt, attempts, plan, policy, guess, result, corre
         gradient = result.get("physical_gradient_hartree_per_angstrom")
     if gradient is None or result.get("physical_gradient_status") != "bound":
         return
+    direction = _probe_direction(x, guess, result)
+    if direction is None:
+        return
     gradient = np.asarray(gradient, float)
-    probe = corrector.directional_curvature(guess, coordinates, -gradient,
+    probe = corrector.directional_curvature(guess, coordinates, -gradient, direction,
                                              name=attempt["attempt_id"]+"-probe")
     if probe:
         attempt["curvature_probe"] = probe
@@ -436,7 +466,7 @@ def run_continuation(plan, initial_result, corrector: Callable, save: Callable |
         attempt["reason"] = reason
         if reason is not None and guess is not None:
             _record_failure_diagnostics(attempt, plan, frames, x, guess, result, targets)
-            _maybe_probe_curvature(attempt, attempts, plan, policy, guess, result,
+            _maybe_probe_curvature(attempt, attempts, plan, policy, guess, x, result,
                                    corrector, coordinates)
         attempts.append(attempt)
         if reason is not None:

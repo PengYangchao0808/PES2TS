@@ -1,0 +1,25 @@
+# pesn-irc-v0.1.0-rc.1 — research model card (draft)
+
+- generated: 2026-10-07T05:56:17+00:00
+- research package: predictions are IRC-teacher research outputs only;
+  STOP/MOVE/Q heads and production control are disabled by contract.
+- data provenance: B3LYP-D3/TZVP IRC trajectories (quarantined source,
+  audited scope-checked bridge reads); truth-assisted P1 atom mapping;
+  endpoint graphs from the G1 authority. Not end-to-end truth-free.
+
+## Frozen metrics (initial run)
+```json
+{"baseline_constant":{"activity_f1":NaN,"activity_pr_auc":NaN,"direction_cosine_mean":NaN,"direction_frame_cosine_mean":NaN,"localization_top1_mean_d":0.018943611659109592,"localization_top3_mean_d":0.018943611659109592,"mae_d":0.51292226825219,"mae_s":0.51292226825219,"n_activity_labels":0,"n_pairs":1529066,"n_reactions_direction":0,"n_reactions_localization":250,"n_reactions_pairs":250,"n_reactions_s":250,"n_valid_frames":0,"pair_concordance":0.0},"baseline_rule":{"activity_f1":NaN,"activity_pr_auc":NaN,"direction_cosine_mean":NaN,"direction_frame_cosine_mean":NaN,"localization_top1_mean_d":0.13747172912955283,"localization_top3_mean_d":0.1225013230368495,"mae_d":0.20767713622713474,"mae_s":0.2187572359230797,"n_activity_labels":0,"n_pairs":1529066,"n_reactions_direction":0,"n_reactions_localization":250,"n_reactions_pairs":250,"n_reactions_s":250,"n_valid_frames":0,"pair_concordance":0.49537328730483177},"eval_name":"train_dev@g3p1-20261007-1ed6bff1-seed42-r1","model":{"activity_f1":0.553712651612267,"activity_positive_rate":0.36759059982261477,"activity_pr_auc":0.6203477630710997,"activity_pr_auc_reaction_mean":0.6538189115079931,"direction_cosine_mean":0.39725678521400154,"direction_frame_cosine_mean":0.39735392895052024,"localization_top1_mean_d":0.11346707963943481,"localization_top3_mean_d":0.09747541766613722,"mae_d":0.15583814411610514,"mae_s":0.16314951408466416,"n_activity_labels":161231,"n_pairs":1529066,"n_reactions_direction":250,"n_reactions_localization":250,"n_reactions_pairs":250,"n_reactions_s":250,"n_valid_frames":28150,"pair_concordance":0.882405582637487},"n_reactions":250,"progress_mae_bootstrap":{"ci95_high":0.17443271796897167,"ci95_low":0.15352346092956434,"mean":0.16314951408466416,"n":250},"schema_version":"pesn_benchmark_report_v1"}
+```
+
+## Run summary
+```json
+{"best_epoch":0.175815,"n_parameters":117572,"run_id":"g3p1-20261007-1ed6bff1-seed42-r1","status":"completed"}
+```
+
+## Capabilities
+```json
+{"c_full":"disabled","coordinate_activity":"research_only","encoder":"enabled","p_seed":"disabled","path_proximity":"enabled","production_control":"disabled","progress":"enabled","q_move":"disabled","q_stop":"disabled","teacher_direction":"disabled"}
+```
+
+No claim is made about refinement success, off-path transfer, or QC cost.

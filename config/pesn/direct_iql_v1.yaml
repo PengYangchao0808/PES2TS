@@ -1,0 +1,28 @@
+# Direct IQL training (WP4, plan v3 §7.2). Unknown keys fail loudly once
+# the strict loader lands; nothing consumes this file automatically yet.
+schema_version: pes2ts_direct_iql_config_v1
+
+paths:
+  output_root: outputs/pesn/direct_egnn_v1_20261015
+
+train:
+  total_updates: 22000
+  batch_transitions: 256
+  lr: 0.0003
+  weight_decay: 0.0001
+  clip: 1.0
+  seed: 42
+  expectile: 0.7
+  advantage_clip: 10.0
+  awr_beta: 3.0
+  target_polyak: 0.995
+  hidden: 128
+  n_layers: 4
+  light: false
+  action_max: 0.1
+  device: cuda:0
+  require_cuda: true
+  cpu_intra_threads: 2
+  cpu_inter_threads: 1
+  eval_every: 1000
+  log_every: 200

@@ -1,0 +1,43 @@
+[
+  {
+    "path": "AGENT.md",
+    "sha256": "7ce4ded0a2dd04fe43ece057121272e78f166844aa0d1218353d802de276de81"
+  },
+  {
+    "path": "README.md",
+    "sha256": "bbfeb8e5e63b3bfc49c2f93fbb2040dcd8611f5d10a24e4b01f940b588cf22f3",
+    "snapshot_path": "source_README.md"
+  },
+  {
+    "path": "docs/README.md",
+    "sha256": "6f24feb7ff84cfc02d33a8dea7a7c56317902b3cd0a5f7c2055b23b99a582465"
+  },
+  {
+    "path": "docs/PES2TS_开发宪法_v1.md",
+    "sha256": "b4fba581af82e6fa33328a55a724f8fe9d7333c2bf7859c9c805a2bd9cb1ccd0"
+  },
+  {
+    "path": "docs/plans/PES2TS_PES-N未来开发计划_v2_20261005.md",
+    "sha256": "34509d1ed0744b785c9834d12aa19544dc4400ed70953b08e08b9c57da8db8e7"
+  },
+  {
+    "path": "docs/plans/PES2TS_阶段定义_G0-G3.md",
+    "sha256": "0477ded85bad685c829f5b5eff15cacd4447f6d732fc080a2f1d73b71467d361"
+  },
+  {
+    "path": "docs/plans/PES2TS_整体开发与发布方案_v2.md",
+    "sha256": "a424b48cf73c547948a9485242b1a360ead0805cc4fff5473bd9e375a77f092e"
+  },
+  {
+    "path": "docs/plans/PES2TS_完整开发流方案_整合版_v1.md",
+    "sha256": "ea8fcc362ad09d3764693b4d2b3822507ee428e4cb22f8c4f0c3e5f9faf70cd0"
+  },
+  {
+    "path": "docs/plans/PES2TS_文档修订台账.md",
+    "sha256": "ff62cab144918f485213f906ea199b5f79c6e316206b4de1bed212e5098bf6ea"
+  },
+  {
+    "path": "docs/plans/PES2TS_G3_P1_IRC教师预训练与模型版本计划_v1_20261006.md",
+    "sha256": "93dd5b6c6d4150d45263448ec1312439dd976f983c83ed6243c92f83b625d54b"
+  }
+]

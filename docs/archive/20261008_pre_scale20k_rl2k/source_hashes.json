@@ -1,0 +1,22 @@
+[
+  {
+    "source": "AGENT.md",
+    "snapshot": "docs\\archive\\20261008_pre_scale20k_rl2k\\AGENT.md",
+    "sha256": "d5745fb0dea57944d8f9f54ac9a297e17ace3795f8274b7146aaf8eb9ad4bc1a"
+  },
+  {
+    "source": "docs/README.md",
+    "snapshot": "docs\\archive\\20261008_pre_scale20k_rl2k\\docs\\README.md",
+    "sha256": "dba1eef0b6cd57448321305b166dd98ba94a07b9cbddf4496d8255e7c437acb1"
+  },
+  {
+    "source": "docs/plans/PES2TS_文档修订台账.md",
+    "snapshot": "docs\\archive\\20261008_pre_scale20k_rl2k\\docs\\plans\\PES2TS_文档修订台账.md",
+    "sha256": "5ae461911df0a6bba0d74f0c6f72003c3aff12000ceb89c1ba099beb21c9c30c"
+  },
+  {
+    "source": "docs/plans/PES2TS_RL下一轮代码修复训练与调整方案_v1_20261008.md",
+    "snapshot": "docs\\archive\\20261008_pre_scale20k_rl2k\\docs\\plans\\PES2TS_RL下一轮代码修复训练与调整方案_v1_20261008.md",
+    "sha256": "6bce15099ca64aa6d1ac3fe73e8b43799d2518190fe8a843550bbefaa8014e7e"
+  }
+]

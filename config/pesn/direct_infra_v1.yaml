@@ -1,0 +1,67 @@
+# PES2TS direct-training infrastructure configuration (WP-INFRA0 landing).
+# Status: config file created 2026-10-15; the strict loader/hash-binding is
+# delivered with WP-INFRA1, so nothing consumes this file yet. Unknown keys
+# must fail loudly once the loader exists. ACP resource section is an
+# external requirement statement, not current ACP CLI keys.
+schema_version: pes2ts_direct_infra_v1
+
+runtime:
+  # Frozen after pes2ts-gpu env creation + CUDA smoke verification (P0/P1),
+  # executed 2026-10-15; see docs/reports/PES2TS_GPU环境与磁盘预算执行记录_20261015.md.
+  python_path: ${PES2TS_GPU_PYTHON}
+  environment_lock_sha256: 3f0a12adc438aedd9b941fa7e25a2b2a20638023c3bd8ce27777688f92110cf0
+  environment_freeze_fixture: docs/plans/fixtures/pes2ts_env_freeze_gpu_20261015.txt
+  cpu_env_reference:
+    python_path: ${PES2TS_CPU_PYTHON}
+    environment_lock_sha256: cade075e9cffc34c30ceddb79c182468b851c6f5d5932333657fa267d5b76e19
+    environment_freeze_fixture: docs/plans/fixtures/pes2ts_env_freeze_cpu_20261015.txt
+
+learner:
+  device: cuda:0
+  require_cuda: true
+  processes: 1
+  seeds_concurrent: 1
+  precision: fp32
+  compile: false
+  tf32: false
+  cpu_intra_threads: 2
+  cpu_inter_threads: 1
+  microbatch_graphs: 8
+  effective_batch_source: algorithm_config
+  max_nodes_per_batch: null  # fill after fit50 measurement; batch release blocked while null
+  max_edges_per_batch: null
+
+loader:
+  workers: 2
+  start_method: spawn
+  threads_per_worker: 1
+  pin_memory: true
+  persistent_workers: true
+  prefetch_factor: 2
+  lazy_shards: true
+
+collection:
+  policy_update: between_rounds_only
+  max_inflight_episodes: 2
+  inference_batch_max: 8
+  inference_wait_ms: 5
+
+acp_resource_request:  # design requirement, not a current ACP config key
+  global_qc_jobs: 2
+  threads_per_job: 2
+  global_qc_thread_budget: 12
+  job_peak_memory_gib: null
+
+limits:
+  new_host_memory_gib: 8
+  host_available_reserve_gib: 8
+  gpu_total_used_soft_limit_gib: 7
+  # Disk gate decision 2026-10-15: E: free 26 GiB, pes2ts-gpu settled ~7.5 GiB
+  # + pip transient ~3.5 GiB leaves >=15 GiB peak / ~18.5 GiB settled against
+  # the 10 GiB host reserve. See docs/reports/PES2TS_GPU环境与磁盘预算执行记录_20261015.md.
+  disk_free_min_gib: 10
+
+telemetry:
+  interval_seconds: 2
+  unavailable_value: null
+  retain_failed_attempts: true

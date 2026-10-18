@@ -1,0 +1,25 @@
+# Direct BC training (WP3, plan v3 §7.1). Nothing consumes this file
+# automatically yet; unknown keys fail loudly once the strict loader lands.
+schema_version: pes2ts_direct_bc_config_v1
+
+paths:
+  output_root: outputs/pesn/direct_egnn_v1_20261015
+
+train:
+  max_epochs: 50
+  patience: 8
+  lr: 0.0003
+  weight_decay: 0.0001
+  clip: 1.0
+  seed: 42
+  batch_reactions: 8
+  hidden: 128
+  n_layers: 4
+  light: false
+  action_max: 0.1
+  device: cuda:0
+  require_cuda: true
+  cpu_intra_threads: 2
+  cpu_inter_threads: 1
+  eval_batch_reactions: 16
+  sigma_range: [0.02, 1.0]
