@@ -1,0 +1,89 @@
+# V5 phase-1 ten-hour sprint campaign config.
+# Provenance: docs/plans/PES2TS_V5.0-V5.2_十小时冲刺训练与验证执行方案_v1_20261018.md §4/§5
+# Consumer: scripts/campaigns/run_v5_sprint.py (ADR-0026)
+schema: pesn_v5_sprint_draft2
+d0_angstrom: 0.08
+d0_ablation: [0.05, 0.08, 0.12]
+a_ref_angstrom: 0.08
+teacher_atom_cap_angstrom: 0.20
+legacy_cap_diagnostic_angstrom: 0.12
+huber_delta_normalized: 0.25  # 对应误差0.02 Å
+lambda_pair: 0.5
+lambda_cos: 0.02
+cos_start_update: 250
+cos_ramp_updates: 250
+tau_norm_angstrom: 0.02
+cos_soft_norm_angstrom: 0.0001
+optimizer: AdamW
+lr: 0.001
+weight_decay: 0.0001
+warmup_updates: 250
+scheduler: cosine
+min_lr: 0.0001
+batch_size: 32
+reactions_per_batch: 8
+frames_per_reaction: 4
+grad_clip_norm: 1.0
+precision: fp32
+campaign_mode: label_first
+fixed_model: subgraph_egnn_w48_l3
+anchor_modes: ['off', 'on']
+max_start_frames_per_branch_cycle: 16
+screen_updates: 1500
+recheck_updates: 1500
+formal_updates: 3000
+eval_every_updates: 250
+formal_outer_early_stopping: false
+early_stop_metric: inner_val_reaction_median_key_rmse_over_zero
+early_stop_patience_checks: 8  # 开发筛选；正式crossfit关闭
+early_stop_min_delta: 0.005
+seeds: [17, 29, 43]
+folds: 5
+radius_angstrom: 4.5
+spatial_neighbors_target: 32
+wall_minutes: 600
+
+# --- ADR-0026 additions below (not part of plan §4 block; orchestration only) ---
+paths:
+  root_from_repo: .
+  manifests_dir: data/manifests
+  split_manifest: data/manifests/v5/split_manifest.json
+  dataset_audit: data/manifests/v5/dataset_audit.json
+  frame_contract: data/manifests/v5/frame_contract.json
+  native_root: outputs/pesn/v5/native
+  teacher_root: outputs/pesn/v5/teacher
+  feature_root: outputs/pesn/v5/features
+  output_root: outputs/pesn/v5/sprint
+  fit50_selection: outputs/pesn/direct_egnn_v1_20261015/splits/selection_direct_fit50.json
+  p1_mapping_root: data/interim/g1_truth/p1_mapping
+  wp2_task_root: outputs/pesn/dual_ts_v2_20261015/wp2_fit50
+  truth_caller: v5_sprint_key_atom_teacher
+sprint:
+  campaign_id: V5_SPRINT
+  arms: [C05, C08, C12, A05, A08, A12]
+  arm_table:
+    C05: {d0: 0.05, anchor: off}
+    C08: {d0: 0.08, anchor: off}
+    C12: {d0: 0.12, anchor: off}
+    A05: {d0: 0.05, anchor: on}
+    A08: {d0: 0.08, anchor: on}
+    A12: {d0: 0.12, anchor: on}
+  tier1: {fold: 0, seed: 17, updates: 1500, max_total_minutes: 108}
+  tier2: {folds: [0, 1], seeds: [17, 29, 43], updates: 1500}
+  tier3: {folds: 5, seeds: [17, 29, 43], updates: 3000, feasibility_predicted_minutes_max: 135}
+  stage_windows_minutes: {prepare-audit: 90, label-screen: 120, recipe-recheck: 150, crossfit: 150, report: 90}
+  downgrade_ladder: [1500, 1000, 500]
+  timing_probe: {warmup_steps: 30, train_steps: 200, dense_evals: 3}
+device:
+  device: cuda:0
+  require_cuda: true
+  single_training_process: true
+gates:
+  math_fixture_count: 100
+  rotations_per_fixture: 20
+  permutations_per_fixture: 10
+  bootstrap_count: 2000
+  bootstrap_seed: 20261018
+  split_seed: 20261018
+  effective_atom_norm_angstrom: 0.02
+  near_ts_fraction: 0.20

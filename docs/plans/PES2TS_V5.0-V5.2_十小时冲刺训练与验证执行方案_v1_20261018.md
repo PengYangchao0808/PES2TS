@@ -8,7 +8,7 @@
 > 取代关系：作为 V5–V7 v1.2 的专项终审与第一阶段实施提案，不覆盖原计划或历史报告；冲突裁决列于 §0
 > 上游依赖：[V5–V7 v1.2](PES2TS_PES-N_V5-V7架构调整与实施计划_v1.2_20261018.md)、用户本轮七模块要求、[开发宪法](../PES2TS_开发宪法_v1.md)、[阶段定义](PES2TS_阶段定义_G0-G3.md)
 > 下游消费者：数据构建、模型、训练与隔离评测工程；V6 OOF 消费者
-> 当前版本：v1.0 / 2026-10-18
+> 当前版本：v1.1 / 2026-10-18（fit50输入/标签筛选、稀疏采样与后续粗到细课程）
 > 证据边界：本文数值是建议预注册配置，不是实测收益或已验证物理阈值。历史 50 簇、100 分支、5,568 动作及 342 冲突对来自给定背景和现有计划，本轮未重新扫描数据确认。
 
 ## 0. 终审裁决与启动条件
@@ -24,8 +24,8 @@
 | 剪短教师后仍称固定 d0 | 线性缩放跨多个 IRC 线段可能离开原路径 | 沿路径寻找 cap 首次触点，记录实际步距与 terminal/cap mask |
 | follower 偷改执行对象 | 改动非关键 H 即违反 strict-copy | 主评测关闭；独立反事实静态诊断，不进入 Gate 主分母 |
 | Fold-0 选型后称完整 CV 无偏 | Fold-0 已暴露；选型也会影响其他 fold 训练流程 | OOF 仅保证样本未参与对应权重拟合；CV 标记 selection-exposed，独立 confirm 判定泛化 |
-| 外折 early stopping | 用外折标签选 checkpoint 污染供 V6 的 OOF | 正式外折固定 epoch；选 epoch 仅用外折训练部分的内部分组切分 |
-| 600 分钟强保证 | 未知分子规模、GPU/驱动、数据可用性时不成立 | 600 分钟硬截止、结果可完整或 censored；30 run 完成另设可行性门 |
+| 外折 early stopping | 用外折标签选 checkpoint 污染供 V6 的 OOF | 正式外折固定更新预算；预算选择仅用训练侧开发数据 |
+| 600 分钟强保证 | 未知分子规模、GPU/驱动、数据可用性时不成立 | 600 分钟硬截止、结果可完整或 censored；本轮六配方筛选与15 run OOF分别设可行性门 |
 | Oracle 在 90 分钟证明真实 TS | 静态 oracle 不能证明 relax/OptTS 可达；DFT→xTB 有跨 PES 偏差 | 本轮静态 teacher ceiling；真实 oracle rollout 是 V7 前置独立 ACP 验证，不挤占并假称完成 |
 
 适用范围：输入完整原子映射、端点拓扑和部署可得起点 X0；固定电子态、非外场环境。分支 b 表示“哪一个端点作为起点”，不能由 IRC 文件名/未来 TS 推断。交换 R/P 名称时同时交换 b、端点图及 ΔB，物理预测保持不变。X0 有助于辨识，但不保证 Markov 性或路径唯一。
@@ -47,7 +47,7 @@
 
 仅从反应物/产物**起点端**向内识别连续 f<0.05 的 ≥5 个原生间隔，且该前缀 `max_l range(q_l)<0.02 Å`，标为 `flat_tail_candidate`。至首次连续 3 点 f≥0.05 为止；最多移除分支关键路径长度的 20%。TS 端不依据低梯度裁剪：TS 本来 g≈0。若分母过小、整支无显著键距变化，或非尾巴区还有连续低 f，标 `pair_metric_uninformative`，保留并独立切片，不武断判为尾巴（弯曲/扭转反应可少变键距）。
 
-默认尾巴只降低训练采样权重至 0.25，不抹掉部署起点；Tier 2 比较 include(weight=1) 与 exclude(weight=0)，主报告始终含未经尾裁的合法完整路径及 tail-only。标签定义的尾裁只在训练侧用于实验，不能用于筛掉测试难例。X0 永远是原始部署起点，不改为裁剪后的第一帧。若尾裁超过 20% 则整支待审，不自动扩阈值。
+默认尾巴只降低训练采样权重至 0.25，不抹掉部署起点；后续尾巴消融比较 include(weight=1) 与 exclude(weight=0)，本轮六组合统一保持0.25，主报告始终含未经尾裁的合法完整路径及 tail-only。标签定义的尾裁只在训练侧用于实验，不能用于筛掉测试难例。X0 永远是原始部署起点，不改为裁剪后的第一帧。若尾裁超过 20% 则整支待审，不自动扩阈值。
 
 ### 1.2 局部自同构与 342 对冲突重审
 
@@ -95,7 +95,7 @@
 
 `move_proposal_v5_draft1.parquet` 每行一个 (sample,model,seed)，包含 group/family/branch/sample ID、fold、model/config/checkpoint/split/training_group hashes、atom_map_hash、input_geometry_hash、X0_hash、frame_contract、d0、key_atom_ids:list<int64>、u_raw:list<fixed3 float32>、u_bounded、z:list<float32>[64]、eligible/reason。teacher/future/TS 存另一隔离表，默认 OOF 消费器不可读。每个模型种子每个合格样本恰有一行，缺行明确 censored。
 
-正式 OOF 外折完全不参与 checkpoint/标准化/阈值拟合。内折可用外折训练的 40 簇做 32/8 切分确定 epoch，再用40簇固定 epoch 重训；若时间不足，使用 Tier 1–2 冻结的统一40 epoch，标 selection-exposed（不是严格嵌套 CV）。三个种子保留独立预测及均值，模型选择过程写 `selection_scope_hash`。供 V6 时按 reaction 分组；不同 fold 的 z 隐空间不能直接视作同一坐标：主接口仅用 U、固定几何摘要和不变量，z 仅存档，待训练内拟合跨编码器对齐/统一冻结 encoder 后再开放。OOF 并不自动消除 V6 的评测泄漏或部署分布漂移。
+正式 OOF 外折完全不参与 checkpoint/标准化/阈值拟合。内折可用外折训练的 40 簇做 32/8 切分确定 epoch，再用40簇固定 epoch 重训；本轮按§5使用固定3000次更新、从零训练，标 selection-exposed（不是严格嵌套 CV）。三个种子保留独立预测及均值，模型选择过程写 `selection_scope_hash`。供 V6 时按 reaction 分组；不同 fold 的 z 隐空间不能直接视作同一坐标：主接口仅用 U、固定几何摘要和不变量，z 仅存档，待训练内拟合跨编码器对齐/统一冻结 encoder 后再开放。OOF 并不自动消除 V6 的评测泄漏或部署分布漂移。
 
 ## 2. PyG / TensorDict 输入输出
 
@@ -170,12 +170,12 @@ scalar/vector channels32、interaction blocks3；vector state [N,32,3]，点积/
     L_cos = Σ_i w_i g_i(1−c_i) / max(Σ_i w_i g_i, 1e−8)
     L5 = (1/R) Σ_r (1/B_r) Σ_b [Σ_t q_t(L_atom+0.5 L_pair+0.02 L_cos)/Σ_t q_t]
 
-q_t=质量权重×尾巴权重；无合格样本分支不进入均值，缺失率另报。cos只用教师模长门，不依预测模长gate防止模型通过收缩逃罚；soft norm限制零附近梯度。λcos前5epoch=0，随后5epoch线性升到0.02，禁止升到V4 H2大权重。pair损失拟合教师**一阶**变化，不把精确有限步距离与线性式混作同一标签；评测另外算精确距离变化。
+q_t=质量权重×尾巴权重；无合格样本分支不进入均值，缺失率另报。cos只用教师模长门，不依预测模长gate防止模型通过收缩逃罚；soft norm限制零附近梯度。λcos前250次更新=0，随后250次更新线性升到0.02，禁止升到V4 H2大权重。pair损失拟合教师**一阶**变化，不把精确有限步距离与线性式混作同一标签；评测另外算精确距离变化。
 
-反应均衡 sampler：每个batch采8个不同反应簇，每簇4帧，两分支尽量各2；先簇均匀、分支均匀、帧按q采样。已通过采样实现权重时 loss 不再乘 1/n_r 或 q，避免双重降权；上式是目标分布的定义。epoch=ceil(N_train/32)个batch，有放回，记录实际曝光量。
+反应均衡 sampler：每个batch采8个不同反应簇，每簇4帧，两分支尽量各2；先簇均匀、分支均匀、帧按q采样。已通过采样实现权重时 loss 不再乘 1/n_r 或 q，避免双重降权；上式是目标分布的定义。本轮按更新数训练；§5稀疏轮换周期与原生全量epoch分开记录，有放回采样并记录实际曝光量。
 
 ```yaml
-schema: pesn_v5_sprint_draft1
+schema: pesn_v5_sprint_draft2
 d0_angstrom: 0.08
 d0_ablation: [0.05, 0.08, 0.12]
 a_ref_angstrom: 0.08
@@ -184,14 +184,14 @@ legacy_cap_diagnostic_angstrom: 0.12
 huber_delta_normalized: 0.25  # 对应误差0.02 Å
 lambda_pair: 0.5
 lambda_cos: 0.02
-cos_start_epoch: 5
-cos_ramp_epochs: 5
+cos_start_update: 250
+cos_ramp_updates: 250
 tau_norm_angstrom: 0.02
 cos_soft_norm_angstrom: 0.0001
 optimizer: AdamW
 lr: 0.001
 weight_decay: 0.0001
-warmup_epochs: 5
+warmup_updates: 250
 scheduler: cosine
 min_lr: 0.0001
 batch_size: 32
@@ -199,11 +199,18 @@ reactions_per_batch: 8
 frames_per_reaction: 4
 grad_clip_norm: 1.0
 precision: fp32
-max_epochs_screen: 60
-max_epochs_ablation: 40
-formal_epochs: 40
+campaign_mode: label_first
+fixed_model: subgraph_egnn_w48_l3
+anchor_modes: ['off', 'on']
+max_start_frames_per_branch_cycle: 16
+screen_updates: 1500
+recheck_updates: 1500
+formal_updates: 3000
+eval_every_updates: 250
+formal_outer_early_stopping: false
+loss_scale: fixed_0.08
 early_stop_metric: inner_val_reaction_median_key_rmse_over_zero
-early_stop_patience: 8
+early_stop_patience_checks: 8  # 开发筛选；正式crossfit关闭
 early_stop_min_delta: 0.005
 seeds: [17, 29, 43]
 folds: 5
@@ -214,30 +221,87 @@ wall_minutes: 600
 
 训练raw输出保留；u_bounded以统一因子限制单原子≤0.20 Å和RMS≤d0，所有指标raw/bounded双报，主Gate用raw精度与bounded可执行性；不能靠仅展示截断版掩盖发散。
 
-## 5. 600分钟执行预算与熔断
+## 5. 600分钟执行预算与熔断（v1.1：先筛标签，再扩量，再精修）
 
-**所有命令是待实现的 CLI 设计，当前不声称可直接执行。** 入口建议统一 `python scripts/campaigns/run_v5_sprint.py --config config/campaigns/v5_sprint.yaml --stage ...`；该脚本仅编排离线工作，不启动QC。业务归 pesn/offline，runtime特征/模型不导入offline。
+### 5.1 本轮目标与优先级
 
-| Tier | 窗口/分钟 | stage与工作 | 熔断/降级 |
+按用户本轮确认，将10小时主问题调整为：**在fit50内找出稳定、有希望的输入/教师组合**，不以50簇宣布全局最优。固定M2/B2小EGNN（hidden48、3层），先搜输入和步距；§3其他模型保留为后续架构对照，不再将四架构赛马、全部损失消融、30次OOF及扩量/课程学习全部叠加到同一600分钟窗口。
+
+本轮必做：数据/数学门、6组合短训练、Top-2复核、密集开发验证和审计报告。条件任务：胜出配方正式OOF与一次封存确认。后续窗口：50→200→500扩量及粗到细配对实验。未完成条件任务时输出开发研究结果，不能宣称V5.2/OOF或泛化门已经完成。
+
+**所有命令是待实现CLI设计。** 统一入口 `python scripts/campaigns/run_v5_sprint.py --config config/campaigns/v5_sprint.yaml --stage ...`；只编排离线工作，不启动QC。实现、环境准备不计入本轮600分钟。
+
+### 5.2 六组合与稀疏起始帧
+
+| 配方ID | 模型输入 | 请求步距d0 | 输出 |
 |---|---|---|---|
-| 0 | 00:00–01:30 /90 | `--stage prepare-audit`：0–15来源/split；15–45配准/对称/尾标；45–65重采样/冲突；65–80不变量与oracle/classic；80–90缓存与GPU测速 | 残余冲突>1%、隔离>5%、来源泄漏或G5.1失败：停止GPU计划，输出失败账本；不消耗余时空训 |
-| 1 | 01:30–03:30 /120 | `--stage screen --fold 0 --seed 17`：M1–M4顺序，每臂≤25分钟/60epoch，余20分钟比较与检查 | 20epoch后内验证RMSE≥Classic且最近5epoch改善<2%：停该臂；全部失败则保留Classic研究结论、不进入正式30run |
-| 2 | 03:30–06:00 /150 | `--stage ablate --fold 0 --seed 17`：最好架构固定40epoch，6臂×≤20分钟，30分钟复核/冻结 | 总耗时预计超窗只做冻结优先级前缀，记录 skipped；某臂NaN直接停止，不能临时换学习率后继续同run |
-| 3 | 06:00–08:30 /150 | `--stage crossfit --top 2 --folds 5 --seeds 17,29,43`：30 run，每run固定40epoch，128分钟训练+12分钟OOF+10分钟缓冲 | 用实测P90估算超预算则预注册降级：Top1×5×3；仍不足则Top1×5×1；不伪称完成Top2三seed，不能通过挑好折补齐 |
-| 4 | 08:30–10:00 /90 | `--stage sealed-report`：0–15冻结检查/OOF；15–45 confirm/OOD；45–60 strict-copy/follower静态诊断；60–80组级bootstrap/Gate；80–90原子写入报告/成本 | 缺封存或coverage不足=insufficient；任Gate失败=reject；T+590不启动新工作，T+600取消并保存censored报告 |
+| C05 | 当前完整几何+任务，anchor off | 0.05 Å | A上的m×3位移 |
+| C08 | 同上 | 0.08 Å | 同上 |
+| C12 | 同上 | 0.12 Å | 同上 |
+| A05 | 当前完整几何+任务+起点记忆X0 | 0.05 Å | 同上 |
+| A08 | 同上 | 0.08 Å | 同上 |
+| A12 | 同上 | 0.12 Å | 同上 |
 
-Tier 2 六臂：共同基准（d0=.08，pair=.5，anchor on，tail downweight）；pair=0；d0=.05；d0=.12；tail include；tail exclude。另 `anchor off` 是必做第七比较，可复用Tier1的相同配方基准节省一臂：实际新增6训练=pair0、.05、.12、include、exclude、anchor-off。若Tier1基准配方不完全相同，则基准重跑占一个槽，最后优先级为 anchor-off、pair0、tail两臂、.05、.12；删减明确标partial。anchor-off同时关闭pos0、r0、Δd、节点anchor摘要与向量，不只清一个标志。各d0测试在相同原生起始帧、同fold/曝光预算对照，终端短步单列；不得用重采样后不同帧数的原始MSE直接排名。
+任务输入均包含请求d0。anchor off同时禁用pos0、r0、Δd、节点anchor摘要/夹角及所有anchor向量，不能只清一个标志；保持张量形状并将对应槽固定为0/mask0。起点拓扑/电子态任务仍保留。两类输入使用同一组预处理几何与教师，配准来源披露；此消融只衡量显式X0记忆增益，不声称去掉了所有起点来源。冲突审计对每个输入/跨度配方重算：anchor off不得用X0差异解除冲突。保留共同质量合格的评测分母，配方特有的不可辨识率独立报告；超出§1冲突门的配方标不可准入，不能按不同输入悄悄删成不同的容易数据集。
 
-吞吐估算：约5,568动作、外折训练80%=4,454，batch32→140步/epoch。假定N中位≤60、P95≤120、空间度约32且图缓存CPU/GPU可用：M1预计0.5–1.5s/epoch、M2 1.5–4s、M3 2.5–6s、M4 3–8s，**均为待测预算假设**。每epoch含验证/I/O需另计，不能拿纯forward速度代替。Tier0做30个warmup+200个完整优化step、3次验证，记录P50/P90 step和加载时间。
+教师从完整原始IRC按§1.3重构，不删除原始文件、不简单每隔k帧取一帧。对同一起始帧分别构造三种跨度，不能只把同一个标签乘常数。每种跨度保存真实终端/cap短步及资格原因。新增离线弯曲诊断 `eta=||Y_A-X_A||F / sum_j||X_A[j+1]-X_A[j]||F`，所有点在同一标签配准坐标系；eta仅标签审计、不进模型，按eta切片检查大步是否切弯。
 
-    t_run = 40*(140*t_step_P90 + t_epoch_overhead) + t_start_save
-    t_tier3 = 15*t_run_top1 + 15*t_run_top2 + 22*60 seconds
+每个训练采样周期、每条分支最多选16个不同起始帧：按隔离的关键路径弧长进度分四段，每段4帧，不足则全部保留；近TS短尾步保留。各周期轮换，保存sample IDs和sampler seed，不永久删点。训练40簇约80分支，最多1,280个候选起点/周期；batch32约40次更新刷新一次候选池。保持反应/分支均衡，再在候选池按q采样；不得重复施加q权重。六臂共享起始帧计划，仅步距标签与anchor开关不同。
 
-若每epoch 4s，start/save15s，30run≈87.5分钟+22=109.5分钟；若6s则127.5+22=149.5分钟，已无余量；8s则167.5+22=189.5分钟，**不可完成150分钟目标**。准入建议预测≤135分钟（留15分钟风险），否则按上表降级。GPU仅一个训练进程，CPU最多8 workers预处理，缓存上限RAM50%，显存80%；禁止因OOM静默改变模型/batch但复用同run ID。
+**少取起始帧仅减少冗余；更远目标才改变监督跨度。** 原生相邻帧作为Oracle/Classic诊断基线保留，原生标签EGNN训练另列可选，不能挤掉六臂。验证用固定密集原生起始帧，逐跨度构造标签，不随训练抽稀；完整合法集合和共同资格子集双报，不能删去对某跨度不利的验证样本。
 
-锁定配方后，最终封存预测使用选定架构的5fold×3seed模型按同seed跨fold平均再跨seed平均；报告ensemble15成员与单成员差异，不冒充单模型推理成本。V6 OOF每反应只有该外折3seed成员可用，区别于封存15成员ensemble；该差异单列分布审计。没有时间重训全fit单模型就不发布该模型。
+### 5.3 短训练、公平比较与Top-2复核
 
-状态输出 `complete_full_matrix / complete_reduced_matrix / censored_budget / rejected_data / rejected_gate / insufficient_evidence`，每run均有耗时、epoch、样本/边曝光、跳过原因；分钟上限可保证结束，不能保证正结果或矩阵完整。
+* Tier1：6臂各seed17、Fold0（40簇训练/10簇开发验证），各1,500次优化更新、batch32；每250步验证并存checkpoint。前500步不因排名低而停，仅NaN/数学/数据故障立即停。其后连续三次检查不优于Classic且累计改善<2%可停止，标censored-screen而非已公平完成。
+* 初始化与样本顺序在可比臂间配对；全部从零训练，不用V4 checkpoint。预算按更新次数和累计图/边曝光报告，不按抽稀后的epoch排名。
+* Top-2指**输入/标签配方**，不再指两种架构。Tier2补齐两个配方在Fold0/Fold1、seed17/29/43的每格1,500步：共12格，复用Tier1已完成2格，新增10run。Fold1是开发稳定性复核，不是新的独立测试；同一反应在不同run中可换角色，但单个run严格组隔离。
+* 初筛按对应跨度的反应簇中位RMSE/zero排序，同时报告RMSE/Classic、有效方向cos、near-TS、协同与Oracle/预测静态违规；主排序差<0.02时优先near-TS cos，再优先更低违规率。训练曲线未稳定者标inconclusive，不把短训练排名当最终容量结论。
+* 跨d0不比较原始MSE决定胜负；所有精度分母使用该跨度自己的教师/基线。筛选固定§4的a_ref=0.08与损失，避免同时改变损失尺度；这也意味着梯度尺度效应仍可能存在，应列为解释限制。不得以跨跨度cos有效原子集合不同制造改善，另报共同有效原子子集。
+* 候选进入正式训练需G5.1通过，Oracle静态可执行合格，两个开发划分均在至少2/3种子上优于零与Classic，near-TS不退化。10簇开发折不满足正式G5.2样本量门，不能发正式pass。无配方满足则停止扩量，输出失败归因。
+
+### 5.4 五阶段时间表（总计600分钟）
+
+| Tier | 窗口/分钟 | 命令stage与任务 | 熔断/降级 |
+|---|---|---|---|
+| 0 | 00:00–01:30 /90 | `--stage prepare-audit`：0–15来源/split；15–45配准/清洗；45–65三跨度教师与起始帧计划；65–80各跨度Oracle/Classic及数学门；80–90真实训练测速 | 数据/参考架/不变量失败停止训练。冲突和隔离门沿§1，不为六臂覆盖率降低阈值 |
+| 1 | 01:30–03:30 /120 | `--stage label-screen --fold 0 --seed 17 --updates 1500`：6臂各≤18分钟，12分钟比较/留存 | 先测速保证共同预算；无法完成则按下述统一500/1000步里程碑报告partial，不在低步数下宣称最佳 |
+| 2 | 03:30–06:00 /150 | `--stage recipe-recheck --top 2 --folds 0,1 --seeds 17,29,43 --updates 1500`：新增10run各≤12分钟，30分钟复核与冻结 | 不能完成12格则不宣布稳定胜者，余时只做共同覆盖核验，不以最优seed替代缺格 |
+| 3 | 06:00–08:30 /150 | 条件 `--stage crossfit --recipes 1 --folds 5 --seeds 17,29,43 --updates 3000`：胜出配方15run，120分钟训练、15分钟OOF、15分钟缓冲 | 测速不够则降为5fold×1seed；仍不够则只归档开发结果，OOF延期。不开启200/500簇或课程混合抢占此窗口 |
+| 4 | 08:30–10:00 /90 | `--stage report`：0–20完整性/密集开发验证；20–45条件封存评测；45–60碰撞/follower诊断；60–80分组区间与下一轮决策；80–90封存报告 | 正式模型不完整/未冻结则不开Confirm/OOD。T+590不启动新工作，T+600保存censored状态 |
+
+测速含真实图加载、forward/backward/optimizer、验证与保存：30warmup+200训练step+3次密集验证，记录P50/P90。统一估算 `t_run=U*t_step_P90+ceil(U/250)*t_eval+t_start_save`。Tier1为6run，Tier2新增10run；Tier3为15run（降级5run）。例如step=0.10s、验证10s、启动保存15s：1500步run=225s，6run=22.5min、10run=37.5min；3000步run=435s，15run=108.75min，加30min=138.75min，条件可行。若step=0.20s则正式15run加30min=213.75min，不可放入150min。以上只是假设，正式准入取预测≤135min留余量，否则降级。
+
+如Tier0预测六臂1500步超过108min，训练前将**全部六臂**预算统一降为1000步，仍超则500步（此时仅探索）；warmup/验证间隔等保持明确run配置。筛选启动后不随表现给不同臂追加预算。Tier2复核沿相同共同预算；不足1500的复核不满足本轮稳定性目标，正式训练延期。GPU单训练进程、RAM50%/显存80%上限；OOM后改变batch/model须新run ID。
+
+原v1.0的四架构赛马、pair/tail消融和Top2架构×5fold×3seed共30run已从本轮默认矩阵移到后续实验池，不在本轮同时承诺。若提前完成，优先复核未稳定的候选并保存独立run，不提前打开封存集，也不临时扩展搜索后仍称原协议。
+
+### 5.5 OOF与封存资格
+
+正式crossfit从零初始化，不能续训Tier1/2 checkpoint（其训练簇可能含当前外折）。外折不选checkpoint；固定3000更新，配置选择暴露记录保留，因此是selection-exposed OOF，不是严格嵌套CV。每个配方/种子完整覆盖5折才可交付对应OOF；只完成部分时保存缺失掩码，禁把缺行填零。formal从头训练用同一稀疏轮换策略，OOF预测对全部合格密集起点导出。
+
+15run完整时，封存用5fold×3seed ensemble，单seed跨fold均值亦单报；5run降级只提供单seed研究证据，不满足三seed晋级门。只有模型/配置/评测协议hash冻结后才一次性打开封存；预测跨度是所选请求d0，不用真实剩余路程指定输入步距。不得根据封存结果换标签继续在同一封存集择优。
+
+### 5.6 后续窗口：扩量与粗到细（本轮只输出启动决策）
+
+**数据扩量**：先审计已有IRC，不新增xTB E/g；只有端点结构/SMILES的反应不具教师资格。先冻结Confirm/OOD及开发排除，再建立嵌套Fit50⊂Fit200⊂Fit500，500为下一轮主要目标；各规模固定同一额外开发验证集（目标50簇），Confirm目标≥50簇、OOD≥3族且每族≥10簇。保持原有封存集合，不能把已看过的身份重新封存；扩展新集合需在查看标签前登记。若为OOD移出原fit家族，重新申报实际集合及嵌套关系。
+
+固定胜出小EGNN/配方，每分支轮换16个起点、规模×3seed，比较验证误差–更新数及误差–墙钟两种曲线；相同更新预算可能使大集合欠训练，未稳定不能断言扩量无效。200→500的固定开发集RMSE相对改善约≥5%、至少2/3seed同向、cos/协同/静态违规无恶化且组级区间支持后，才考虑2,000簇；5%是预注册工程决策值，不是统计定律。约111动作/反应的旧密度仅作库存估算，重采样后的实数另报。
+
+**粗到细课程**：待较大集合已有稳定信号再单独试。输出始终m×3，task显式输入请求d0；细步集合{0.02,0.03,0.04} Å等概率，粗步为已选d0（即使胜者为0.05，也不强制换成0.12）。仅标签侧处理terminal/cap，不把实际d_eff或未来步数作为输入。原生细帧先做配准/噪声/冲突复审，不自动把极小位移当可靠细节。
+
+建议配对验证预算每臂共6000更新、3seed：A从零全程50%所选步距+50%细步，前3000 lr=1e−3、后3000 lr=1e−4；B从零前3000仅所选步距，后3000 lr=1e−4并分三个1000更新阶段，粗/细比例75/25→50/50→25/75。相同反应、起始帧计划、总更新数、学习率日程和评测，记录图/边曝光及墙钟。B已存在的预训练成本也计入总额，不能只比较最后微调时间。两臂reset optimizer于3000步边界，模型权重保留，规则一致。
+
+课程两臂统一按请求尺度归一化：将§4 atom/pair分母0.08换成 `a_loss=max(d0,0.02) Å`，Huber delta仍0.25，等权采步距；**不使用依赖未来的d_eff作尺度**。其余损失不变，另版本 `loss_scale=requested_step_v1`，不可把课程实验和固定0.08筛选损失混作同协议。输出头a_ref仍0.08；norm gate仍0.02，细步有效方向覆盖单列，若为空不判通过。物理Å误差/旧Gate与归一指标双报。
+
+课程收益门：在固定开发集细步RMSE比A下降≥5%、至少2/3seed同向，near-TS方向不降，中步RMSE退化≤2%，静态违规不升；同时给出组级置信区间。不达门则保留直接混合训练或原配方。条件d0已变更的模型重新生成OOF并登记新模型/标签/训练版本，不拼接旧OOF。
+
+### 5.7 双人协作、复盘与状态
+
+主GPU负责六臂、复核和正式crossfit；队友负责数据独立审计、Oracle/Classic、密集验证与OOF hash核验。如1070指GTX1070，先独立测速，算力不纳入主线必需预算；低优先级对照可独立run执行，不拆分同一run或共享可写checkpoint。每run登记owner/code/data/split/config/seed/fold/update budget/deadline/result hash。
+
+开始前20分钟冻结协议；T+90核验数据/吞吐；T+210选择候选；T+360冻结或声明复核不足；T+600后30–45分钟复盘，顺序为数据可信→跨seed/划分稳定→静态可执行→是否扩量/课程。复盘不计入训练600分钟。无授权不代向队友发送消息。
+
+状态分为 `complete_label_screen / complete_recipe_recheck / complete_oof_3seed / complete_oof_1seed / censored_budget / rejected_data / rejected_gate / insufficient_evidence`，同时保存预注册任务矩阵每格完成度。只能报告实际完成的层级，短训练、扩量规划或课程设计均不自动升级V5.2或真实执行能力。
 
 ## 6. 四级硬门与晋级定义
 
@@ -319,6 +383,8 @@ OOF一致性附表：原生帧/OOF/封存预测的范数、cap率、零输出、
    finite-difference用步长1e−5 Å核验 e·(u_j−u_i)；zero prediction/nonzero teacher也检查有限梯度。采样器加权后损失不再重复乘样本频次倒数。
 
 ## 8. 交付清单与外部依据
+
+v1.1新增产物：`label_recipe_matrix.json`、`start_frame_sampling_manifest.json`、`recipe_recheck.parquet`、`scale_curriculum_next_run.json`（扩量/课程仅计划状态）。
 
 工程产物：`split_manifest.json`、`dataset_audit.json`（342对逐项去向+新增冲突）、`frame_contract.json`、`feature_spec.json`、`timing_probe.json`、`run_records.jsonl`、`ablation_table.parquet`、`move_proposal_v5_draft1.parquet`、`sealed_eval.json`、`gate_report.md/json`。每件带schema/config/source/parent hash、四层能力状态；报告区分planned、实测、未执行、删失。没有QC时写 `QC not scheduled`，不把未知历史费用填0。
 

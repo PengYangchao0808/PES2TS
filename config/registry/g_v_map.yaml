@@ -214,6 +214,33 @@ campaigns:
     comparison_only:
       - pes2ts_core/pesn/models/dual_egnn.py
       - pes2ts_core/pesn/models/dual_ts_policy.py
+  V5_SPRINT:
+    title: V5 phase-1 ten-hour sprint (label screen, recheck, conditional OOF)
+    status: proposed
+    primary_g: G3.P.0
+    supporting_g: [G3.P.1, G3.P.2, G3.P.3, G0, G1]
+    data_dependencies: [G0, G1]
+    code_scope:
+      - pes2ts_core/pesn/contracts/key_atom.py
+      - pes2ts_core/pesn/features/key_atom_spec.py
+      - pes2ts_core/pesn/features/key_atom_graph.py
+      - pes2ts_core/pesn/offline/splits/v5_fold.py
+      - pes2ts_core/pesn/offline/data/key_atom_teacher.py
+      - pes2ts_core/pesn/offline/data/key_atom_dataset.py
+      - pes2ts_core/pesn/models/key_atom_egnn.py
+      - pes2ts_core/pesn/models/key_atom_classic.py
+      - pes2ts_core/pesn/offline/training/key_atom_bc.py
+      - pes2ts_core/pesn/offline/evaluation/key_atom_protocols.py
+      - scripts/campaigns/run_v5_sprint.py
+    config: config/campaigns/v5_sprint.yaml
+    data_manifest: data/manifests/v5/split_manifest.json
+    gates: [V5-G1, V5-G2, V5-G3, V5-G4]
+    evidence: docs/design/decisions/ADR-0026-V5冲刺key-atom位移合同与OOF语义.md
+    gate_note: 600-minute wall clock with censored statuses per sprint plan §5.7; sealed confirm/OOD candidates registered but unopened
+    comparison_only:
+      - pes2ts_core/pesn/models/dual_egnn.py
+      - pes2ts_core/pesn/models/dual_egnn_painn.py
+      - pes2ts_core/pesn/models/dual_ts_policy.py
   V6.0:
     title: V6.0 OOF/pre-relaxed decision data
     status: proposed
