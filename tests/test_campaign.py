@@ -234,6 +234,38 @@ def test_origin_failure_maps_to_rejected_typed_with_or_code(manifest_path, tmp_p
     assert costs["aggregate"]["N_gradient"] == 1  # the failed free opt is billed
 
 
+def test_input_geometry_rejection_writes_zero_attempt_cost_ledger(tmp_path):
+    """INPUT-stage typed rejection must leave an auditable zero-attempt ledger.
+
+    Same contract as the blocked path: the terminal names the typed rejection
+    and a costs.json with empty ledgers proves zero gradient attempts. The
+    collector accepts a null aggregate only for ``blocked`` terminals, so a
+    typed rejection carries the explicit zero aggregate instead (T18:
+    RXN_0000155302 had no costs.json and made the collector exit 3).
+    """
+    manifest_path = tmp_path / "input_reject_manifest.json"
+    build_campaign_manifest(
+        [FIXTURES / "RXN_0000155302.json"], output_path=manifest_path,
+        continuation_policy=synthetic_policy(),
+        budget={"max_frames_per_path": synthetic_policy().max_frames,
+                "max_attempts_per_path": synthetic_policy().max_attempts,
+                "max_wall_seconds_per_path": synthetic_policy().max_seconds})
+    root = tmp_path / "input_reject"
+    summary = run_campaign(manifest_path, root, backends=synthetic_backends())
+    assert summary.terminal_counts["rejected_typed"] == 1
+    case_root = root / "RXN_0000155302"
+    terminal = json.loads((case_root / "terminal_state.json").read_text())
+    assert terminal["stage_reached"] == "input"
+    assert terminal["failure_code"] == "INPUT_GEOMETRY_INVALID"
+    assert terminal["label_state"] == "execution_failed"
+    costs = json.loads((case_root / "costs.json").read_text())
+    assert costs["schema_version"] == "pes2ts_case_costs_v1"
+    assert costs["reaction_id"] == "RXN_0000155302"
+    assert costs["ledgers"] == []
+    assert costs["aggregate"]["N_gradient"] == 0
+    assert costs["aggregate"]["cpu_seconds"] is None
+
+
 def test_environment_block_is_typed_and_retried_when_available(manifest_path, tmp_path):
     from pes2ts_core.generation.campaign import OriginBackendUnavailable
     state = {"available": False}

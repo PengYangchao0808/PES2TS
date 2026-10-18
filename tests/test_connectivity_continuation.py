@@ -15,7 +15,7 @@ from pes2ts_core.generation.planning.continuation import (
 )
 from pes2ts_core.generation.planning.graph_rebuild import load_endpoint_materials_from_export, rebuild_endpoint_graphs
 from pes2ts_core.generation.planning.primary import select_primary_candidate
-from pes2ts_core.generation.planning.synchronized_path import digest
+from pes2ts_core.generation.planning.synchronized_path import align, digest
 
 
 def example(**policy):
@@ -33,6 +33,63 @@ def example(**policy):
 
 def physical_backend(guess, targets, attempt):
     return {"success": True, "converged": True, "coordinates": guess.tolist(), "energy": float(targets[0]), "duration_seconds": .1}
+
+
+def example3(**policy):
+    """Three-atom example with one distance driver and a free internal mode.
+
+    The curvature probe projects its direction onto the constraint-and-rigid
+    free space; this fixture is the smallest one where that space is non-empty
+    (3 atoms, 1 constraint -> 2 free modes), so the probe direction contract is
+    exercised instead of collapsing to ``no_free_direction``.
+    """
+    x = [[0., 0., 0.], [1., 0., 0.], [.2, 1., .4]]
+    plan = {"scope": "connectivity_only", "parameter_dimension": 1, "reaction_id": "unit3",
+            "atom_map_order": [1, 2, 3], "elements": ["C", "C", "H"], "masses": [12., 12., 1.],
+            "start_geometry": x, "active_edits": [{"maps": [1, 2], "edit_kind": "broken"}],
+            "drivers": [{"id": "b", "kind": "distance", "atoms": [0, 1], "maps": [1, 2],
+                         "edit_kind": "broken", "lambda_values": [0., 1.], "values": [1., 2.]}],
+            "guards": [], "policy": asdict(ContinuationPolicy(**policy)), "content_sha256": "unit"}
+    initial = {"success": True, "converged": True, "coordinates": x, "energy": 0.}
+    plan["content_sha256"] = digest({k: v for k, v in plan.items() if k != "content_sha256"})
+    return plan, initial
+
+
+class ProbingBackend:
+    """Synthetic corrector: repeated LOCALITY_ATOM failures with a bound gradient.
+
+    Its ``directional_curvature`` signature MUST mirror the production
+    ``ORCALocalCorrector.directional_curvature`` contract; the signature test
+    below locks that so the double can never again accept a call shape the
+    production corrector would reject (the V0 drift that hid the S3 crash).
+    """
+
+    def __init__(self):
+        self.probes = []
+        self.guesses = []
+        self.directions = []
+
+    def __call__(self, guess, targets, attempt):
+        self.probes.append(None)
+        self.guesses.append(np.asarray(guess, float).copy())
+        return {"success": False, "failure_class": "LOCALITY_ATOM",
+                "physical_gradient_status": "bound",
+                "physical_gradient_hartree_per_angstrom":
+                    np.zeros_like(np.asarray(guess, float)).tolist()}
+
+    def directional_curvature(self, x, coordinates, gradient, direction, name="probe"):
+        self.probes.append(name)
+        self.directions.append(None if direction is None else np.asarray(direction, float).copy())
+        return {"status": "measured", "directions_checked": 1,
+                "positive_definite_hessian_verified": False,
+                "physical_bifurcation_confirmed": False}
+
+
+def free_direction_norm(geometry, coordinates, direction):
+    """Norm of the probe direction after removing constraints and rigid modes."""
+    from pes2ts_core.generation.planning.local_corrector import tangent_projector
+    projector, _ = tangent_projector(np.asarray(geometry, float), coordinates)
+    return float(np.linalg.norm(projector @ np.asarray(direction, float).ravel()))
 
 
 def test_rejection_backtracks_to_last_accepted_state():
@@ -279,22 +336,9 @@ def test_curvature_probe_requires_repeated_same_shape_locality_failures():
 
 def test_curvature_probe_fires_only_after_repeat_locality_and_within_budget():
     plan, initial = example(initial_step=.08, max_step=.08)
-    probes = []
+    backend = ProbingBackend()
 
-    class ProbingBackend:
-        def __call__(self, guess, targets, attempt):
-            probes.append(None)
-            return {"success": False, "failure_class": "LOCALITY_ATOM",
-                    "physical_gradient_status": "bound",
-                    "physical_gradient_hartree_per_angstrom": [[0., 0., 0.], [0., 0., 0.]]}
-
-        def directional_curvature(self, x, coordinates, gradient, name="probe"):
-            probes.append(name)
-            return {"status": "measured", "directions_checked": 1,
-                    "positive_definite_hessian_verified": False,
-                    "physical_bifurcation_confirmed": False}
-
-    result = run_continuation(plan, initial, ProbingBackend())
+    result = run_continuation(plan, initial, backend)
     locality_failures = [a for a in result["attempts"]
                          if (a.get("reason") or "").startswith("LOCALITY")]
     assert len(locality_failures) >= 2
@@ -305,3 +349,80 @@ def test_curvature_probe_fires_only_after_repeat_locality_and_within_budget():
     for attempt in probed:
         assert attempt["curvature_probe"]["directions_checked"] == 1
         assert attempt["curvature_probe"]["positive_definite_hessian_verified"] is False
+
+
+def test_curvature_probe_stub_signatures_mirror_production_contract():
+    """The synthetic correctors must expose the exact production call contract."""
+    from inspect import signature
+    from pes2ts_core.generation.planning.branch_calibration import _DriftingCorrector
+    from pes2ts_core.integration.acp.gradient_backend import ORCALocalCorrector
+    production = list(signature(ORCALocalCorrector.directional_curvature).parameters)
+    assert production == ["self", "x", "coordinates", "gradient", "direction", "name"]
+    for stub in (ProbingBackend, _DriftingCorrector):
+        assert list(signature(stub.directional_curvature).parameters) == production, stub
+
+
+def test_curvature_probe_receives_the_aligned_rejected_movement_as_direction():
+    """The probe direction is the path-advance movement the correction attempted.
+
+    Semantics (archived round-3 probe): the direction is the failed corrector's
+    output aligned back onto the predictor geometry minus that geometry.  It
+    must be finite, correctly shaped, and have a non-zero free (constraint- and
+    rigid-removed) component — otherwise the probe can only ever report
+    ``no_free_direction``.
+    """
+    plan, initial = example3(initial_step=.08, max_step=.08)
+
+    class RecordingCorrector:
+        def __init__(self):
+            self.calls = 0
+            self.current = None
+            self.probe_calls = []
+
+        def __call__(self, guess, targets, attempt):
+            output = np.asarray(guess, float).copy()
+            output[2] += [0., 0., .15]  # spectator H moves out of plane: free motion
+            self.current = (np.asarray(guess, float).copy(), output.copy())
+            self.calls += 1
+            return {"success": False, "converged": False,
+                    "failure_class": "LOCALITY_ATOM",
+                    "coordinates": output.tolist(), "energy": None,
+                    "physical_gradient_status": "bound",
+                    "physical_gradient_hartree_per_angstrom":
+                        np.zeros_like(output).tolist()}
+
+        def directional_curvature(self, x, coordinates, gradient, direction, name="probe"):
+            self.probe_calls.append((np.asarray(direction, float).copy(), self.current))
+            return {"status": "measured", "directions_checked": 1,
+                    "positive_definite_hessian_verified": False,
+                    "physical_bifurcation_confirmed": False}
+
+    corrector = RecordingCorrector()
+    result = run_continuation(plan, initial, corrector)
+    probed = [a for a in result["attempts"] if a.get("curvature_probe")]
+    assert probed, "the second same-shape LOCALITY failure must fire the probe"
+    assert corrector.calls >= 2 and corrector.probe_calls, "the probe must receive a direction"
+    direction, (guess, output) = corrector.probe_calls[0]
+    assert direction.shape == guess.shape
+    assert np.isfinite(direction).all() and np.linalg.norm(direction) > 1e-8
+    expected = align(output, guess) - guess
+    assert np.allclose(direction, expected)
+    assert free_direction_norm(guess, plan["drivers"], direction) > 1e-8
+
+
+def test_curvature_probe_falls_back_to_predictor_advance_without_corrector_output():
+    """Without a returned geometry the probe still gets the predicted advance.
+
+    The advance is a coarse Cartesian direction; whether it has a free
+    component is the probe's own judgement (``no_free_direction``), so only
+    non-emptiness, shape, and the exact fallback value are locked here.
+    """
+    plan, initial = example3(initial_step=.08, max_step=.08)
+    backend = ProbingBackend()
+    run_continuation(plan, initial, backend)
+    assert len(backend.directions) >= 1 and backend.directions[0] is not None
+    direction = backend.directions[0]
+    assert direction.shape == backend.guesses[1].shape
+    assert np.isfinite(direction).all() and np.linalg.norm(direction) > 1e-8
+    expected = backend.guesses[1] - np.asarray(initial["coordinates"], float)
+    assert np.allclose(direction, expected)
