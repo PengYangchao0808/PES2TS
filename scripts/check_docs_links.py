@@ -57,11 +57,12 @@ def main() -> int:
             cleaned = unquote(target.split("#", 1)[0])
             if not cleaned:
                 continue
+            parts = Path(cleaned).parts
             if (
-                cleaned.startswith("outputs/")
-                or cleaned.startswith("../outputs/")
-                or ".slim/" in cleaned
-                or ".omo/" in cleaned
+                "outputs" in parts
+                or ".slim" in parts
+                or ".omo" in parts
+                or cleaned.endswith(".log")
             ):
                 warnings.append(
                     f"{path.relative_to(PROJECT_ROOT)}: local-only link {target}"
