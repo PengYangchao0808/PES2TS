@@ -1,0 +1,304 @@
+# G–V map: G = code/physics capability, V = training/test campaign.
+# This file is the single machine-readable source of truth.  The human-readable
+# table in docs/design/PES2TS_G_V_MAPPING_v1_20261018.md is rendered from it.
+schema: pes2ts_gv_map_v1
+map_version: "2026-10-18.1"
+
+stages:
+  G0:
+    title: Data base, truth quarantine and split freeze
+    stage_doc: docs/plans/PES2TS_阶段定义_G0-G3.md
+    code_globs: ["pes2ts_core/g0/**/*.py"]
+  G1:
+    title: Chemical task, graph audit and legal action compilation
+    stage_doc: docs/plans/PES2TS_阶段定义_G0-G3.md
+    code_globs: ["pes2ts_core/g1/**/*.py"]
+  G2:
+    title: Classic physical closure, Shield and replayable baseline
+    stage_doc: docs/plans/PES2TS_阶段定义_G0-G3.md
+    code_globs: ["pes2ts_core/generation/**/*.py"]
+  G2.T:
+    title: G2 24-case test and strict physical verification
+    stage_doc: docs/plans/PES2TS_阶段定义_G0-G3.md
+    code_globs: ["pes2ts_core/integration/**/*.py", "pes2ts_core/generation/**/*.py"]
+  G3.P.0:
+    title: Source/identity/split reconciliation for PES-N
+    stage_doc: docs/plans/PES2TS_阶段定义_G0-G3.md
+    code_globs: ["pes2ts_core/pesn/contracts/inputs.py", "pes2ts_core/pesn/offline/splits/**/*.py"]
+  G3.P.1:
+    title: Teacher state/label construction and deployable features
+    stage_doc: docs/plans/PES2TS_阶段定义_G0-G3.md
+    code_globs: ["pes2ts_core/pesn/offline/data/**/*.py", "pes2ts_core/pesn/features/**/*.py"]
+  G3.P.2:
+    title: Small-graph encoder, multi-task training and scaling ablations
+    stage_doc: docs/plans/PES2TS_阶段定义_G0-G3.md
+    code_globs: ["pes2ts_core/pesn/models/**/*.py", "pes2ts_core/pesn/offline/training/**/*.py"]
+  G3.P.3:
+    title: Frozen weights/gates, sealed evaluation and research bundle
+    stage_doc: docs/plans/PES2TS_阶段定义_G0-G3.md
+    code_globs: ["pes2ts_core/pesn/offline/evaluation/**/*.py", "pes2ts_core/pesn/bundle/**/*.py"]
+  G3.1:
+    title: Single-point p_seed, refinement cost and Q_STOP supervision
+    stage_doc: docs/plans/PES2TS_阶段定义_G0-G3.md
+    code_globs: ["pes2ts_core/pesn/inference/**/*.py", "pes2ts_core/pesn/models/**/*.py"]
+  G3.2:
+    title: Context, action imitation and bounded Classic residual
+    stage_doc: docs/plans/PES2TS_阶段定义_G0-G3.md
+    code_globs: ["pes2ts_core/pesn/contracts/control.py", "pes2ts_core/pesn/models/control_heads.py", "pes2ts_core/pesn/offline/control_trainer.py"]
+  G4.0:
+    title: Conservative offline value/Q on compatible transitions
+    stage_doc: docs/plans/PES2TS_阶段定义_G0-G3.md
+    code_globs: ["pes2ts_core/pesn/contracts/control.py", "pes2ts_core/pesn/offline/transitions.py", "pes2ts_core/pesn/offline/control_trainer.py"]
+  G4.1:
+    title: Frozen-model real QC closed loop and in-train collection
+    stage_doc: docs/plans/PES2TS_阶段定义_G0-G3.md
+    code_globs: ["pes2ts_core/generation/control_round.py", "pes2ts_core/integration/**/*.py"]
+  G4.2:
+    title: Full-system, cross-generator and release evidence
+    stage_doc: docs/plans/PES2TS_阶段定义_G0-G3.md
+    code_globs: []
+
+campaigns:
+  V4.2:
+    title: V4.2 label/feature/action sanity
+    status: executed
+    primary_g: G3.P.2
+    supporting_g: [G0, G1]
+    data_dependencies: [G0, G1]
+    code_scope:
+      - pes2ts_core/pesn/contracts/dual_ts.py
+      - pes2ts_core/pesn/features/dual_ts_graph.py
+      - pes2ts_core/pesn/models/dual_egnn.py
+      - pes2ts_core/pesn/models/dual_ts_policy.py
+      - pes2ts_core/pesn/offline/training/dual_ts_bc.py
+    config: config/pesn/dual_ts_observations_16x1_v1.yaml
+    data_manifest: data/manifests/split_manifest.json
+    gates: [V4-MSE-zero, V4-cos]
+    evidence: docs/reports/PES2TS_实现报告_20261018.md
+    comparison_only: []
+  V4.3:
+    title: V4.3 vector propagation and capacity arm
+    status: executed
+    primary_g: G3.P.2
+    supporting_g: [G0, G1]
+    data_dependencies: [G0, G1]
+    code_scope:
+      - pes2ts_core/pesn/contracts/dual_ts.py
+      - pes2ts_core/pesn/features/dual_ts_graph.py
+      - pes2ts_core/pesn/models/dual_egnn.py
+      - pes2ts_core/pesn/models/dual_egnn_painn.py
+      - pes2ts_core/pesn/offline/training/dual_ts_bc.py
+    config: config/pesn/dual_ts_observations_16x1_v1.yaml
+    data_manifest: data/manifests/split_manifest.json
+    gates: [V4-MSE-zero, V4-cos]
+    evidence: docs/reports/PES2TS_实现报告_20261018.md
+    comparison_only: []
+  V4.4:
+    title: V4.4 sparse key-pair conditioning
+    status: executed
+    primary_g: G3.P.2
+    supporting_g: [G0, G1]
+    data_dependencies: [G0, G1]
+    code_scope:
+      - pes2ts_core/pesn/contracts/dual_ts.py
+      - pes2ts_core/pesn/features/dual_ts_graph_v4.py
+      - pes2ts_core/pesn/models/dual_egnn.py
+      - pes2ts_core/pesn/offline/training/dual_ts_bc.py
+    config: config/pesn/dual_ts_observations_16x1_v1.yaml
+    data_manifest: data/manifests/split_manifest.json
+    gates: [V4-MSE-zero, V4-cos]
+    evidence: docs/reports/PES2TS_实现报告_20261018.md
+    comparison_only: []
+  V4.5:
+    title: V4.5 exposure and lambda schedule
+    status: executed
+    primary_g: G3.P.2
+    supporting_g: [G0, G1]
+    data_dependencies: [G0, G1]
+    code_scope:
+      - pes2ts_core/pesn/contracts/dual_ts.py
+      - pes2ts_core/pesn/features/dual_ts_graph_v4.py
+      - pes2ts_core/pesn/offline/training/dual_ts_campaign.py
+    config: config/pesn/dual_ts_observations_16x1_v1.yaml
+    data_manifest: data/manifests/split_manifest.json
+    gates: [V4-MSE-zero, V4-cos]
+    evidence: docs/reports/PES2TS_实现报告_20261018.md
+    comparison_only: []
+  V4.6:
+    title: V4.6 final three-seed arm screening
+    status: executed
+    primary_g: G3.P.2
+    supporting_g: [G0, G1]
+    data_dependencies: [G0, G1]
+    code_scope:
+      - pes2ts_core/pesn/contracts/dual_ts.py
+      - pes2ts_core/pesn/features/dual_ts_graph_v4.py
+      - pes2ts_core/pesn/offline/training/dual_ts_campaign.py
+      - pes2ts_core/pesn/offline/evaluation/dual_ts_protocols.py
+    config: config/pesn/dual_ts_observations_16x1_v1.yaml
+    data_manifest: data/manifests/split_manifest.json
+    gates: [V4-MSE-zero, V4-cos]
+    evidence: docs/reports/PES2TS_实现报告_20261018.md
+    comparison_only: []
+  V4.7:
+    title: V4.7 FINAL three-seed sealed evaluation (negative result)
+    status: executed
+    primary_g: G3.P.3
+    supporting_g: [G3.P.2, G0, G1]
+    data_dependencies: [G0, G1]
+    code_scope:
+      - pes2ts_core/pesn/offline/training/dual_ts_campaign.py
+      - pes2ts_core/pesn/offline/evaluation/dual_ts_protocols.py
+      - pes2ts_core/pesn/offline/evaluation/dual_ts_freerun.py
+      - pes2ts_core/pesn/bundle/reader.py
+    config: config/pesn/dual_ts_observations_16x1_v1.yaml
+    data_manifest: data/manifests/split_manifest.json
+    gates: [V4.7-MSE-zero, V4.7-groups, V4.7-cos, V4.7-nearTS-cos]
+    evidence: docs/reports/PES2TS_实现报告_20261018.md
+    comparison_only: []
+  V5.0:
+    title: V5.0 data/math qualification and Oracle preflight
+    status: proposed
+    primary_g: G3.P.1
+    supporting_g: [G0, G1, G3.P.0, G2.T]
+    data_dependencies: [G0, G1]
+    code_scope:
+      - pes2ts_core/pesn/contracts/key_atom.py
+      - pes2ts_core/pesn/features/key_atom_spec.py
+      - pes2ts_core/pesn/features/key_atom_graph.py
+      - pes2ts_core/pesn/offline/data/key_atom_teacher.py
+      - pes2ts_core/pesn/offline/data/key_atom_dataset.py
+      - pes2ts_core/pesn/offline/data/pre_relax.py
+      - pes2ts_core/generation/planning/key_atom_writer.py
+      - pes2ts_core/integration/acp/xtb_freeze_request.py
+      - pes2ts_core/integration/acp/xtb_freeze_transport.py
+      - pes2ts_core/integration/validation/xtb_ts_verification.py
+    config: config/campaigns/v5_0_data_math.yaml
+    data_manifest: data/manifests/v5/split_manifest.json
+    gates: [V5-G1, M0.5-oracle]
+    evidence: docs/plans/PES2TS_V5.0-V5.2_十小时冲刺训练与验证执行方案_v1_20261018.md
+    comparison_only: []
+  V5.1:
+    title: V5.1 architecture and ablation screen
+    status: proposed
+    primary_g: G3.P.2
+    supporting_g: [G0, G1]
+    data_dependencies: [G0, G1]
+    code_scope:
+      - pes2ts_core/pesn/models/key_atom_mlp.py
+      - pes2ts_core/pesn/models/key_atom_egnn.py
+      - pes2ts_core/pesn/models/key_atom_painn.py
+      - pes2ts_core/pesn/offline/training/key_atom_bc.py
+    config: config/campaigns/v5_1_architecture.yaml
+    data_manifest: data/manifests/v5/split_manifest.json
+    gates: [V5-G1, V5-G2, V5-G3, V5-G4]
+    evidence: docs/plans/PES2TS_V5.0-V5.2_十小时冲刺训练与验证执行方案_v1_20261018.md
+    comparison_only:
+      - pes2ts_core/pesn/models/dual_egnn.py
+      - pes2ts_core/pesn/models/dual_egnn_painn.py
+      - pes2ts_core/pesn/models/dual_ts_policy.py
+  V5.2:
+    title: V5.2 frozen recipe, OOF and sealed evaluation
+    status: proposed
+    primary_g: G3.P.3
+    supporting_g: [G3.P.2, G3.2]
+    data_dependencies: [G0, G1]
+    code_scope:
+      - pes2ts_core/pesn/offline/training/key_atom_bc.py
+      - pes2ts_core/pesn/offline/evaluation/key_atom_protocols.py
+      - pes2ts_core/pesn/bundle/key_atom_v5.py
+    config: config/campaigns/v5_2_freeze.yaml
+    data_manifest: data/manifests/v5/split_manifest.json
+    gates: [V5-G1, V5-G2, V5-G3, V5-G4, V5-sealed]
+    evidence: docs/plans/PES2TS_V5.0-V5.2_十小时冲刺训练与验证执行方案_v1_20261018.md
+    comparison_only:
+      - pes2ts_core/pesn/models/dual_egnn.py
+      - pes2ts_core/pesn/models/dual_ts_policy.py
+  V6.0:
+    title: V6.0 OOF/pre-relaxed decision data
+    status: proposed
+    primary_g: G3.2
+    supporting_g: [G3.P.3]
+    data_dependencies: [G0, G1]
+    code_scope:
+      - pes2ts_core/pesn/offline/data/decision_dataset.py
+      - pes2ts_core/pesn/offline/splits/decision_split.py
+    config: config/campaigns/v6_0_data.yaml
+    data_manifest: data/manifests/v6/split_manifest.json
+    gates: [V6-OOF, V6-leakage]
+    evidence: docs/plans/PES2TS_PES-N_V5-V7架构调整与实施计划_v1.2_20261018.md
+    comparison_only: []
+  V6.1:
+    title: V6.1 progress and uncertainty model
+    status: proposed
+    primary_g: G3.2
+    supporting_g: [G3.P.3]
+    data_dependencies: [G0, G1]
+    code_scope:
+      - pes2ts_core/pesn/models/v6_progress.py
+      - pes2ts_core/pesn/offline/training/v6_train.py
+    config: config/campaigns/v6_1_progress.yaml
+    data_manifest: data/manifests/v6/split_manifest.json
+    gates: [V6-progress, V6-conformal]
+    evidence: docs/plans/PES2TS_PES-N_V5-V7架构调整与实施计划_v1.2_20261018.md
+    comparison_only: []
+  V6.2:
+    title: V6.2 decoder, STOP rule and calibration
+    status: proposed
+    primary_g: G3.2
+    supporting_g: [G3.P.3]
+    data_dependencies: [G0, G1]
+    code_scope:
+      - pes2ts_core/pesn/models/v6_decoder.py
+      - pes2ts_core/pesn/offline/evaluation/decision_protocols.py
+    config: config/campaigns/v6_2_decoder.yaml
+    data_manifest: data/manifests/v6/split_manifest.json
+    gates: [V6-decoder, V6-stop]
+    evidence: docs/plans/PES2TS_PES-N_V5-V7架构调整与实施计划_v1.2_20261018.md
+    comparison_only: []
+  V7-A:
+    title: V7-A frozen-model real QC rollout
+    status: proposed
+    primary_g: G4.1
+    supporting_g: [G2.T, G3.2, G4.0]
+    data_dependencies: [G0, G1]
+    code_scope:
+      - pes2ts_core/generation/control_round.py
+      - pes2ts_core/generation/campaign.py
+      - pes2ts_core/integration/acp
+      - scripts/campaigns/run_v7_rollout.py
+    config: config/campaigns/v7a_rollout.yaml
+    data_manifest: data/manifests/v7/rollout_cohort.json
+    gates: [V7-verified-TS, V7-cost]
+    evidence: docs/plans/PES2TS_PES-N_V5-V7架构调整与实施计划_v1.2_20261018.md
+    comparison_only: []
+  V7-B:
+    title: V7-B supervised STOP/step calibration
+    status: proposed
+    primary_g: G4.1
+    supporting_g: [G3.2, G2.T]
+    data_dependencies: [G0, G1]
+    code_scope:
+      - pes2ts_core/generation/control_round.py
+      - pes2ts_core/pesn/offline/training/decision_train.py
+      - scripts/campaigns/run_v7_rollout.py
+    config: config/campaigns/v7b_calibration.yaml
+    data_manifest: data/manifests/v7/rollout_cohort.json
+    gates: [V7-calibration, V7-cost]
+    evidence: docs/plans/PES2TS_PES-N_V5-V7架构调整与实施计划_v1.2_20261018.md
+    comparison_only: []
+  V7-C:
+    title: V7-C conservative offline RL
+    status: proposed
+    primary_g: G4.0
+    supporting_g: [G4.1, G2.T, G3.2]
+    data_dependencies: [G0, G1]
+    code_scope:
+      - pes2ts_core/generation/control_round.py
+      - pes2ts_core/pesn/offline/transitions.py
+      - pes2ts_core/pesn/offline/control_trainer.py
+    config: config/campaigns/v7c_rl.yaml
+    data_manifest: data/manifests/v7/transition_cohort.json
+    gates: [V7-RL, V7-cost]
+    evidence: docs/plans/PES2TS_PES-N_V5-V7架构调整与实施计划_v1.2_20261018.md
+    comparison_only: []
