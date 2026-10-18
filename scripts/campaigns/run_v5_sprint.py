@@ -2336,7 +2336,12 @@ class SprintDriver:
                     samples.append({
                         "group_id": rid,
                         "pos": pos_np[n_lo:n_hi],
-                        "pos_start": pos0_np[n_lo:n_hi],
+                        # d_eq needs the PHYSICAL deployment start frame;
+                        # anchor-off batches zero pos0, so read the
+                        # pre-collate sample dict instead (masking is a
+                        # model-input concern only, plan §5.2)
+                        "pos_start": np.asarray(
+                            chunk[b]["pos0"], dtype=np.float64),
                         "atomic_numbers": [int(v) for v in z_np[n_lo:n_hi]],
                         "key_rows": key_rows,
                         "k_pairs": k_pairs,
