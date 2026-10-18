@@ -1,0 +1,11 @@
+# Binary / evidence files: never text-normalize archive snapshots.
+*.pt binary
+*.ckpt binary
+*.png binary
+*.jpg binary
+*.xlsx binary
+*.parquet binary
+*.h5 binary
+*.hdf5 binary
+*.npz binary
+docs/archive/** -text
