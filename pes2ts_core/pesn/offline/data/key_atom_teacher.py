@@ -507,6 +507,81 @@ def _earliest_root_in_segment(a: float, b: float, c: float) -> float | None:
     return float(min(max(min(candidates), 0.0), 1.0))
 
 
+FRAME_LAYER_REFERENCE = "reference_kabsch"
+FRAME_LAYER_NATIVE_VERIFIED = "native_verified_v1"
+#: Pre-registered continuity thresholds for native_verified_v1 stratification
+#: (plan §1.3: rank-deficient references may fall back ONLY when the original
+#: calculator archive demonstrably preserves one Cartesian frame).  Measured
+#: consecutive-frame rotations/translations on failing branches are ~0.2-0.8°
+#: / <=0.06 A — optimization-noise drift; a per-frame re-oriented archive
+#: would show random tens-of-degrees rotations and fail these gates.
+NATIVE_VERIFIED_MAX_CONSEC_ROT_DEG = 2.0
+NATIVE_VERIFIED_MAX_CONSEC_TRANS_ANGSTROM = 0.10
+NATIVE_VERIFIED_MAX_CUM_ROT_DEG = 10.0
+NATIVE_VERIFIED_MAX_CUM_TRANS_ANGSTROM = 1.0
+
+
+def verify_frame_continuity(pos: np.ndarray) -> dict:
+    """Empirical native-frame continuity check (plan §1.3 escape hatch).
+
+    Fits the optimal rigid transform between every CONSECUTIVE frame pair
+    (unit weights, all atoms) and the cumulative transform frame T-1 vs
+    frame 0.  The branch passes only when every consecutive rotation/
+    translation and the cumulative one stay inside the pre-registered
+    thresholds above — evidence that the archive never re-oriented the
+    molecule between frames.  Evidence dict is sidecar-recorded.
+    """
+    x = np.asarray(pos, dtype=np.float64)
+    n = len(x)
+    if n < 2:
+        return {"passed": False, "n_frames": int(n),
+                "reason": "too_few_frames"}
+    w = np.ones(x.shape[1], dtype=np.float64) / x.shape[1]
+    angs: list[float] = []
+    trs: list[float] = []
+
+    def _rigid(A, B):
+        _al, (R, muA, muB) = weighted_kabsch(A, B, w)
+        ang = float(np.degrees(np.arccos(np.clip(
+            (np.trace(R) - 1.0) / 2.0, -1.0, 1.0))))
+        return ang, float(np.linalg.norm(muA - muB))
+
+    for t in range(n - 1):
+        ang, tr = _rigid(x[t + 1], x[t])
+        angs.append(ang)
+        trs.append(tr)
+    cum_ang, cum_tr = _rigid(x[-1], x[0])
+    checks = {
+        "max_consecutive_rotation_deg": max(angs),
+        "max_consecutive_translation_angstrom": max(trs),
+        "cumulative_rotation_deg": cum_ang,
+        "cumulative_translation_angstrom": cum_tr,
+    }
+    passed = (
+        checks["max_consecutive_rotation_deg"]
+        <= NATIVE_VERIFIED_MAX_CONSEC_ROT_DEG
+        and checks["max_consecutive_translation_angstrom"]
+        <= NATIVE_VERIFIED_MAX_CONSEC_TRANS_ANGSTROM
+        and checks["cumulative_rotation_deg"]
+        <= NATIVE_VERIFIED_MAX_CUM_ROT_DEG
+        and checks["cumulative_translation_angstrom"]
+        <= NATIVE_VERIFIED_MAX_CUM_TRANS_ANGSTROM)
+    return {
+        "passed": bool(passed),
+        "n_frames": int(n),
+        "thresholds": {
+            "max_consecutive_rotation_deg":
+                NATIVE_VERIFIED_MAX_CONSEC_ROT_DEG,
+            "max_consecutive_translation_angstrom":
+                NATIVE_VERIFIED_MAX_CONSEC_TRANS_ANGSTROM,
+            "cumulative_rotation_deg": NATIVE_VERIFIED_MAX_CUM_ROT_DEG,
+            "cumulative_translation_angstrom":
+                NATIVE_VERIFIED_MAX_CUM_TRANS_ANGSTROM,
+        },
+        "evidence": {k: float(v) for k, v in checks.items()},
+    }
+
+
 def solve_teacher(
     pos: np.ndarray,
     key_rows: Sequence[int],
@@ -515,6 +590,7 @@ def solve_teacher(
     d0: float,
     *,
     gauge_ok: bool = True,
+    frame_layer: str = FRAME_LAYER_REFERENCE,
     cap: float = TEACHER_CAP_ANGSTROM,
 ) -> dict:
     """First-contact teacher labels for every start row t = 0..T-2.
@@ -566,9 +642,12 @@ def solve_teacher(
     s_a = np.concatenate([[0.0], np.cumsum(ds)])
     total_arc = float(s_a[-1])
 
-    if not gauge_ok or ref.size == 0:
-        out["reason_id"].fill(
-            REASON_GAUGE_UNRESOLVED if ref.size else REASON_REFERENCE_INVALID)
+    native_layer = (frame_layer == FRAME_LAYER_NATIVE_VERIFIED)
+    if not gauge_ok and not native_layer:
+        out["reason_id"].fill(REASON_GAUGE_UNRESOLVED)
+        return out
+    if not native_layer and ref.size == 0:
+        out["reason_id"].fill(REASON_REFERENCE_INVALID)
         return out
 
     for t in range(n_rows):
@@ -578,12 +657,17 @@ def solve_teacher(
             out["reason_id"][t] = REASON_NO_FUTURE_STEP
             continue
         # label-side alignment of every future frame into the X_t frame with
-        # the FIXED branch S/W (alignment uses only Y and X_t reference rows)
-        aligned = [x_t]
-        w_ref = weights[ref]
-        for j in range(t + 1, n_frames):
-            _a, transform = weighted_kabsch(x_all[j][ref], x_t[ref], w_ref)
-            aligned.append(apply_rigid_transform(x_all[j], transform))
+        # the FIXED branch S/W (alignment uses only Y and X_t reference rows);
+        # native_verified_v1 branches keep the archive's verified unified
+        # Cartesian frame and skip the Kabsch entirely (plan §1.3).
+        if native_layer:
+            aligned = [x_t] + [x_all[j] for j in range(t + 1, n_frames)]
+        else:
+            aligned = [x_t]
+            w_ref = weights[ref]
+            for j in range(t + 1, n_frames):
+                _a, transform = weighted_kabsch(x_all[j][ref], x_t[ref], w_ref)
+                aligned.append(apply_rigid_transform(x_all[j], transform))
         x_key = x_t[key]
 
         event = None  # (kind, segment, alpha)
@@ -749,6 +833,16 @@ def build_branch_native(
             if t["tier"] == chosen["tier"])
     ref_rows = np.asarray(chosen["rows"], dtype=np.int64)
     ref_weights = np.asarray(chosen["weights"], dtype=np.float64)
+
+    # native_verified_v1 stratification (plan §1.3): rank-deficient
+    # reference blocks may keep the archive's verified unified Cartesian
+    # frame instead — pre-registered continuity gates, evidence recorded.
+    frame_layer = FRAME_LAYER_REFERENCE
+    continuity: dict = {"passed": False, "reason": "not_attempted"}
+    if not gate_ok:
+        continuity = verify_frame_continuity(x)
+        if continuity.get("passed"):
+            frame_layer = FRAME_LAYER_NATIVE_VERIFIED
     k_pairs = task.K_pairs(branch)
     q_frame, tail_flag, tail_meta = mark_flat_tail(x, task.key_atom_rows, k_pairs)
     ds = key_path_arc(x, task.key_atom_rows)
@@ -766,6 +860,8 @@ def build_branch_native(
         "ref_tier_gates": tier_gates,
         "n_rotor_bonds_cut": ref["n_rotor_bonds_cut"],
         "gate_ok": gate_ok,
+        "frame_layer": frame_layer,
+        "frame_continuity": continuity,
         "eigenvalues": eigenvalues,
         "k_pairs": k_pairs,
         "q_frame": q_frame,
@@ -810,6 +906,8 @@ def native_meta_payload(
                           "rigid_1_2hop -> any_1_2hop -> any_3hop -> "
                           "all_nonkey_heavy per plan §1.3 block-size rule"),
         },
+        "frame_layer": str(record.get("frame_layer", "reference_kabsch")),
+        "frame_continuity": dict(record.get("frame_continuity", {})),
         "tail": {
             "flagged_rows": [int(v) for v in
                              np.nonzero(record["tail_flag"])[0]],
@@ -1150,6 +1248,19 @@ def build_frame_contract() -> dict:
                      "start-frame scatter; planar references allowed (no "
                      "third-eigenvalue requirement); failure -> "
                      "gauge_unresolved, never a global axis fallback"),
+            "tiered_fallback": ("rigid_1_2hop -> any_1_2hop -> any_3hop -> "
+                                "all_nonkey_heavy (plan §1.3 candidate-block "
+                                "distance/size rule); first tier passing the "
+                                "scatter gate wins; per-branch tier and all "
+                                "tier gates recorded in the native sidecar"),
+            "native_verified_v1": (
+                "branches whose every tier fails the scatter gate may keep "
+                "the archive's unified Cartesian frame INSTEAD of Kabsch "
+                "alignment, only after verify_frame_continuity passes the "
+                "pre-registered thresholds (consecutive rotation <= 2.0 deg, "
+                "translation <= 0.10 A; cumulative <= 10.0 deg / 1.0 A); "
+                "evidence per branch in the native sidecar; failing "
+                "branches stay gauge_unresolved (plan §1.3)"),
         },
         "kabsch": {
             "convention": "row vectors; C=(Y-muY)^T W (X-muX)=U S V^T",
@@ -1258,7 +1369,10 @@ def build_reaction_branches(
         record["teachers"] = {
             d0: solve_teacher(
                 pos, task.key_atom_rows, record["ref_rows"],
-                record["ref_weights"], d0, gauge_ok=record["gate_ok"])
+                record["ref_weights"], d0,
+                gauge_ok=record["gate_ok"],
+                frame_layer=record.get(
+                    "frame_layer", FRAME_LAYER_REFERENCE))
             for d0 in D0_VALUES
         }
         records[b] = record
