@@ -1,0 +1,73 @@
+{
+  "requested_by": "user",
+  "stage": "dual_ts_v2/WP2",
+  "started_utc": "2026-10-17T02:36:17.140688+00:00",
+  "old_processes": {
+    "251928": {
+      "ppid": 251741,
+      "state": "S",
+      "cmd": "python3 scripts/compute_dual_ts_observations.py ",
+      "cwd": "/mnt/e/Calculations/AI4S_ML_Studys/PES2TS",
+      "wchan": "hrtimer_nanosleep"
+    },
+    "251929": {
+      "ppid": 251741,
+      "state": "S",
+      "cmd": "python3 scripts/compute_dual_ts_observations.py ",
+      "cwd": "/mnt/e/Calculations/AI4S_ML_Studys/PES2TS",
+      "wchan": "hrtimer_nanosleep"
+    },
+    "251741": {
+      "ppid": 251740,
+      "state": "S",
+      "cmd": "python3 scripts/compute_dual_ts_observations.py ",
+      "cwd": "/mnt/e/Calculations/AI4S_ML_Studys/PES2TS",
+      "wchan": "futex_wait_queue_me"
+    }
+  },
+  "new_workers": 16,
+  "new_nproc": 1,
+  "status": "launched",
+  "existing_receipts_preserved": true,
+  "drained_workers": {
+    "251928": {
+      "ppid": 251741,
+      "state": "S",
+      "cmd": "python3 scripts/compute_dual_ts_observations.py ",
+      "cwd": "/mnt/e/Calculations/AI4S_ML_Studys/PES2TS",
+      "wchan": "pipe_read"
+    },
+    "251929": {
+      "ppid": 251741,
+      "state": "S",
+      "cmd": "python3 scripts/compute_dual_ts_observations.py ",
+      "cwd": "/mnt/e/Calculations/AI4S_ML_Studys/PES2TS",
+      "wchan": "futex_wait_queue_me"
+    }
+  },
+  "old_run_id": "2026-10-17T02:15:18.177+00:00",
+  "old_logged_computed": 791,
+  "old_logged_seconds_sum": 2264.725,
+  "receipt_files_at_switch": 3446,
+  "stopped_utc": "2026-10-17T02:36:40.940103+00:00",
+  "old_run_note": "Externally stopped after draining. Main driver ledger may lack this run; raw receipts and progress retained. Drain results may not be logged by the paused parent.",
+  "new_pid": 311416,
+  "command": [
+    "/root/miniforge3/bin/python3",
+    "-u",
+    "scripts/compute_dual_ts_observations.py",
+    "--workers",
+    "16",
+    "--acp-config",
+    "config/pesn/dual_ts_observations_16x1_v1.yaml"
+  ],
+  "thread_environment": {
+    "OMP_NUM_THREADS": "1",
+    "OPENBLAS_NUM_THREADS": "1",
+    "MKL_NUM_THREADS": "1",
+    "NUMEXPR_NUM_THREADS": "1",
+    "BLIS_NUM_THREADS": "1"
+  },
+  "log": "/mnt/e/Calculations/AI4S_ML_Studys/PES2TS/artifacts/wp2_16x1/compute_16x1.log",
+  "launched_utc": "2026-10-17T02:36:40.942435+00:00"
+}
