@@ -1,0 +1,56 @@
+{
+  "schema_version": "pes2ts_document_planning_audit_v1",
+  "date": "2026-10-06",
+  "status": "passed",
+  "scope": "G3-P1 planning only; no model/QC validation",
+  "changed_existing_documents": [
+    "AGENT.md",
+    "docs/PES2TS_开发宪法_v1.md",
+    "docs/plans/PES2TS_PES-N未来开发计划_v2_20261005.md",
+    "docs/plans/PES2TS_完整开发流方案_整合版_v1.md",
+    "docs/plans/PES2TS_整体开发与发布方案_v2.md",
+    "docs/plans/PES2TS_文档修订台账.md",
+    "docs/plans/PES2TS_阶段定义_G0-G3.md",
+    "docs/README.md",
+    "README.md"
+  ],
+  "new_design_documents": [
+    "docs/plans/PES2TS_G3_P1_IRC教师预训练与模型版本计划_v1_20261006.md",
+    "docs/design/decisions/ADR-0013-G3并行IRC预训练与模型版本体系.md",
+    "docs/contracts/PES2TS_PESN_IRC教师数据与模型包合同_v1.md"
+  ],
+  "document_versions": {
+    "AGENT.md": "v3.2",
+    "docs/PES2TS_开发宪法_v1.md": "v2.2",
+    "docs/plans/PES2TS_阶段定义_G0-G3.md": "v4.1",
+    "docs/plans/PES2TS_PES-N未来开发计划_v2_20261005.md": "v2.2",
+    "docs/plans/PES2TS_整体开发与发布方案_v2.md": "v3.2",
+    "docs/plans/PES2TS_完整开发流方案_整合版_v1.md": "v2.1",
+    "docs/plans/PES2TS_文档修订台账.md": "v2.3"
+  },
+  "protected_files_checked": 376,
+  "snapshots_checked": 9,
+  "local_links_checked": 266,
+  "table_rows_checked": 689,
+  "R1_R6_text_unchanged": true,
+  "G2_definition_and_exit_unchanged": true,
+  "software_version_unchanged": true,
+  "training_started": false,
+  "model_weights_created": false,
+  "issues": [],
+  "current_document_sha256": {
+    "AGENT.md": "a29823035431c87eeb5e6365d067dbb73fb8111d296559bd31a1e0b9e932877c",
+    "docs/PES2TS_开发宪法_v1.md": "1d71e6d42fe4c0a9defcb810c48d62276d6196444944c7c1516eac791ed0064b",
+    "docs/plans/PES2TS_PES-N未来开发计划_v2_20261005.md": "96178d84aaf2b5c30a539ece54ceca714a92fbc350dd416884855562a52e1040",
+    "docs/plans/PES2TS_完整开发流方案_整合版_v1.md": "b23d6f560c042ab76761a5cf28ea14b7dfba38f6fb652ba966cd6348e6d56e20",
+    "docs/plans/PES2TS_整体开发与发布方案_v2.md": "403270452c0e46e03106bbd998e36288a0770417436a42d61086067e87735587",
+    "docs/plans/PES2TS_文档修订台账.md": "d18f385e88a539ca5a3d0e7c07047ab2613c18a36134e153225511fbb5d84b94",
+    "docs/plans/PES2TS_阶段定义_G0-G3.md": "44cc5605f4214060d4c4aff518bc73875b775657a4221e61bb69b7f5c3679626",
+    "docs/README.md": "08b538f2a550a02b49df0ca6f51b7bfacaa1c7209466d5eac3804a2c353fd5f9",
+    "README.md": "f4c9bc91b34d8373376969dc1e0079eb5d9fedf43b1373b19c2030d7b30b3485",
+    "docs/plans/PES2TS_G3_P1_IRC教师预训练与模型版本计划_v1_20261006.md": "f8673e9cd6eb608da6cb03d5bdb2b9e830561688fcdbbf86edc78fee7d545787",
+    "docs/design/decisions/ADR-0013-G3并行IRC预训练与模型版本体系.md": "722e7f2f34b01e6e761c70fb90162c516e9e8ed15277a1776a1915d064521afa",
+    "docs/contracts/PES2TS_PESN_IRC教师数据与模型包合同_v1.md": "177849af1879d46de41582a967320e2d58f02cdf15dd215d18af0a92c7c312f8",
+    "docs/archive/20261006_pre_g3p/README.md": "ff8e1a4bc0eb8310258c582d79677502c61959d0f7320e0419c013539d5303af"
+  }
+}

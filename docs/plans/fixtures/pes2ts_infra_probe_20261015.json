@@ -1,0 +1,54 @@
+{
+  "status": "read_only_snapshot_not_training_benchmark",
+  "date": "2026-10-15",
+  "cpu": {
+    "name": "AMD Ryzen 9 7950X",
+    "physical_cores": 16,
+    "logical_processors": 32,
+    "cpu_percent_1s": 16.4
+  },
+  "memory": {
+    "total_bytes": 67802357760,
+    "available_bytes": 17896726528,
+    "percent_used": 73.6
+  },
+  "gpu": {
+    "name": "NVIDIA GeForce RTX 4060 Ti",
+    "driver": "591.86",
+    "driver_cuda_capability": "13.1",
+    "total_mib": 8188,
+    "used_mib": 2565,
+    "utilization_percent": 3,
+    "sample_scope": "instantaneous_desktop_not_attributed_to_training"
+  },
+  "python_checks": [
+    {
+      "path": "E:/Anaconda/python.exe",
+      "torch_present": false
+    },
+    {
+      "path": "E:/Anaconda/envs/YY/python.exe",
+      "torch_present": false
+    }
+  ],
+  "unknown": {
+    "active_historical_training_interpreter": "not_identified",
+    "wsl": "E_ACCESSDENIED during distro enumeration",
+    "current_disk_free": "query_failed",
+    "historical_training_resource_utilization": "not_measured",
+    "per_process_training_attribution": "not_measured"
+  },
+  "methods": [
+    "PowerShell registry CPU name; Environment.ProcessorCount",
+    "psutil cpu_count/virtual_memory/cpu_percent(interval=1)",
+    "nvidia-smi",
+    "Python import torch / importlib.util.find_spec",
+    "read-only code inspection"
+  ],
+  "limitations": [
+    "Windows CIM access denied; psutil physical count supplied fallback",
+    "Several Python processes visible; no process was stopped or reconfigured",
+    "No PyTorch install, CUDA workload, training, truth geometry access or QC performed",
+    "Driver CUDA version is not installed torch runtime version"
+  ]
+}

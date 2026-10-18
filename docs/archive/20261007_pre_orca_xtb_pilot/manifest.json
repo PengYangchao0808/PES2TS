@@ -1,0 +1,32 @@
+[
+  {
+    "path": "AGENT.md",
+    "snapshot_path": "files/AGENT.md",
+    "sha256": "e577a414427f49edacec9565f4fa81ea21be25cf0c4cef98fc21df3edc72082b"
+  },
+  {
+    "path": "README.md",
+    "snapshot_path": "files/README.md",
+    "sha256": "39c793b848cb1b4c16b87e04c250bc19e45397a66edee7c7e6d0d7867f1973a0"
+  },
+  {
+    "path": "docs/README.md",
+    "snapshot_path": "files/docs/README.md",
+    "sha256": "9899ce996f78f4e7a395f0bfcb8c6d64f20b3126aba0a9bbb2871033741a3b23"
+  },
+  {
+    "path": "docs/PES2TS_开发宪法_v1.md",
+    "snapshot_path": "files/docs/PES2TS_开发宪法_v1.md",
+    "sha256": "cf9d1f93bfc7b4b49ec0e1600bbf7d9443febf13ffff5306e655fb8b27406948"
+  },
+  {
+    "path": "docs/plans/PES2TS_文档修订台账.md",
+    "snapshot_path": "files/docs/plans/PES2TS_文档修订台账.md",
+    "sha256": "8409f363e1b9a4906a7305d7e5afb7bf6436b89aef25040f8d78fabd7b7c7225"
+  },
+  {
+    "path": "docs/plans/PES2TS_轻量控制与RL衔接计划_v1_20261007.md",
+    "snapshot_path": "files/docs/plans/PES2TS_轻量控制与RL衔接计划_v1_20261007.md",
+    "sha256": "0711d8cec9bf6ee82ee7af9391dbec867636ca09c6bef8f934894b625af45f25"
+  }
+]

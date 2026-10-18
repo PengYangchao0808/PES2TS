@@ -1,0 +1,24 @@
+{
+  "scope": "documentation/design-selection only; no business code or QC/training/test-suite execution",
+  "exact_snapshots": 6,
+  "new_local_links_checked": 26,
+  "source_artifact_hashes_checked": 16,
+  "historical_receipts_checked": 395,
+  "R1_R6_and_P1_P5_unchanged": true,
+  "formal_stage_and_G3_files_not_edited": true,
+  "status_headers": "passed",
+  "version_headers": "passed",
+  "new_trailing_whitespace": "none",
+  "changed_document_sha256": {
+    "AGENT.md": "3964e942fb468650a5d26535e0ccea3569adcbaaa816c168671c32163f0771da",
+    "README.md": "19043578544c53064c541be73790f0b00f4f4587a87118a8c8d39d49c180dd2e",
+    "docs/README.md": "360c7cb22adcfd30237dc423ac39763144c3cca4e2ae5d4dd8c5b641b0e9a26d",
+    "docs/PES2TS_开发宪法_v1.md": "e197abd2779299493520a290eeab9b502a54268d3c875b089903b593c4ce2b02",
+    "docs/plans/PES2TS_文档修订台账.md": "81bdb21fb107a4b544934174b806f05f119bcadc977ced367581a468e361f24f",
+    "docs/plans/PES2TS_轻量控制与RL衔接计划_v1_20261007.md": "8f3d047a3e714018a26251516f67dedf99854dcb2ad846f2627477601728849d",
+    "docs/plans/PES2TS_G2_AB4_ORCA驱动xTB约束优化试点方案_20261007.md": "0e38d75cf265fcb35794634848a9c0e15b68294075c64a3747ba4da9b5808745",
+    "docs/design/decisions/ADR-0016-ORCA驱动xTB硬约束优化试点.md": "0d5a652b3df53e5015e6b9c8ab4934dbf84ad3fb5bc452b2a1779ed5f507ae37"
+  },
+  "selection_manifest_sha256": "dfea04c1ea449f95fc5ead53f2e93206de154bcb48843bc2c1fafef00c9a58c0",
+  "errors": []
+}

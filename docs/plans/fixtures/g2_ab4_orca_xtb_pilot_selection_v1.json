@@ -1,0 +1,181 @@
+{
+  "document_kind": "design_selection_manifest",
+  "version": 1,
+  "status": "frozen_selection_not_executed",
+  "batch": "G2-AB4",
+  "scope": "four development scan points; not independent test or RL split assignment",
+  "source_root": "outputs/g2_ab3_native_xtb_run1_20261007",
+  "source_trace_path_note": "source traces still reference a historical Linux pilot path; workspace_path only locates copied immutable artifacts",
+  "trial_recipe_planned": {
+    "engines": [
+      "xtb_native_soft_constraints",
+      "orca_external_xtb_hard_constraints"
+    ],
+    "threads": 4,
+    "point_total_deadline_seconds": 60,
+    "native_max_cycles": 500,
+    "orca_max_cycles": 100,
+    "physical_sp_required": true,
+    "n_paired_points": 4,
+    "n_point_attempts_before_extra_smokes": 8,
+    "maximum_point_trial_budget_seconds": 480
+  },
+  "selected_points": [
+    {
+      "reaction_id": "RXN_0000017762",
+      "point_lambda": 0.2,
+      "source_attempt_id": "lam0.2-try00",
+      "purpose": "geometry_nonconvergence",
+      "source_request_sha256": "059ce809da8834d0178a218cc8ba486029f6eca24a1b354e4085a2f42c08c6b6",
+      "source_artifacts": {
+        "seed_xyz": {
+          "workspace_path": "outputs/g2_ab3_native_xtb_run1_20261007/RXN_0000017762/attempts/lam0.2/lam0.2-try00/WORK/07_CONSTRAINED_OPT/xtb_constopt_001/opt/xtb_input.xyz",
+          "sha256": "d2c2825af96c01a9239ff2d5ff5658f51bc0ad4b9fab5379ea045e29339d1cd4"
+        },
+        "xcontrol": {
+          "workspace_path": "outputs/g2_ab3_native_xtb_run1_20261007/RXN_0000017762/attempts/lam0.2/lam0.2-try00/RESULT/pes2ts/xtb_constopt/xcontrol.txt",
+          "sha256": "d4b0915ae68ed6c5a22663a060c2c4b3a6efa411f70309ab2c3cd8d21841d432"
+        },
+        "evidence": {
+          "workspace_path": "outputs/g2_ab3_native_xtb_run1_20261007/RXN_0000017762/attempts/lam0.2/lam0.2-try00/RESULT/pes2ts/xtb_constopt/evidence.json",
+          "sha256": "a110151bbdd177e8399b31cd9533b2927f2c72c1174d3e04ddbd8f9d621dabfd"
+        },
+        "trace": {
+          "workspace_path": "outputs/g2_ab3_native_xtb_run1_20261007/RXN_0000017762/native/native_scan_trace.json",
+          "sha256": "51aa9c7b589576622c06e407717d236f3b6e67bd6fa202247c096270753e09a0"
+        }
+      },
+      "historical_opt_converged": false,
+      "historical_opt_cycles": 538,
+      "historical_opt_wall_seconds": 3.1607504980638623,
+      "historical_wall_scope": "optimization_only; not cold paired trial total",
+      "source_xtb_provenance": {
+        "xtb_executable": "/opt/software/xtb/bin/xtb",
+        "xtb_executable_sha256": "debf27a9e0fa4bfb5ca75aafe4b90d8211f08ec2f4a482f375a4987212eaa12a",
+        "xtb_version": "6.7.1"
+      },
+      "qualification_pending": [
+        "source charge/multiplicity and atom-map identity reconciliation",
+        "effective ORCA/external-xTB method settings and binary mapping",
+        "ACP workflow and shared-deadline smoke acceptance"
+      ]
+    },
+    {
+      "reaction_id": "RXN_0000100736",
+      "point_lambda": 0.1,
+      "source_attempt_id": "lam0.1-try00",
+      "purpose": "geometry_nonconvergence",
+      "source_request_sha256": "2b87007b9c72e9eb9a3f9de6d46e1a6dfb69eefcdfe33c8be3e65e11c69888ac",
+      "source_artifacts": {
+        "seed_xyz": {
+          "workspace_path": "outputs/g2_ab3_native_xtb_run1_20261007/RXN_0000100736/attempts/lam0.1/lam0.1-try00/WORK/07_CONSTRAINED_OPT/xtb_constopt_001/opt/xtb_input.xyz",
+          "sha256": "c5653db090b3d0328a548a8f9e93d26648622c154acb52ea5ce20ede89524393"
+        },
+        "xcontrol": {
+          "workspace_path": "outputs/g2_ab3_native_xtb_run1_20261007/RXN_0000100736/attempts/lam0.1/lam0.1-try00/RESULT/pes2ts/xtb_constopt/xcontrol.txt",
+          "sha256": "a7432a4c2a4c3655d109543523d820dfc99fb5c8fd322750a04a481d1fe42908"
+        },
+        "evidence": {
+          "workspace_path": "outputs/g2_ab3_native_xtb_run1_20261007/RXN_0000100736/attempts/lam0.1/lam0.1-try00/RESULT/pes2ts/xtb_constopt/evidence.json",
+          "sha256": "357c212d6eecdd64c644fb57be90c880d38c67d47eead5dbd8f60f476ac1ad67"
+        },
+        "trace": {
+          "workspace_path": "outputs/g2_ab3_native_xtb_run1_20261007/RXN_0000100736/native/native_scan_trace.json",
+          "sha256": "683d91501a0a763e37671ebb817198054976b6c83bc6ee0e8e848a0e5f637d7e"
+        }
+      },
+      "historical_opt_converged": false,
+      "historical_opt_cycles": 538,
+      "historical_opt_wall_seconds": 2.733471054933034,
+      "historical_wall_scope": "optimization_only; not cold paired trial total",
+      "source_xtb_provenance": {
+        "xtb_executable": "/opt/software/xtb/bin/xtb",
+        "xtb_executable_sha256": "debf27a9e0fa4bfb5ca75aafe4b90d8211f08ec2f4a482f375a4987212eaa12a",
+        "xtb_version": "6.7.1"
+      },
+      "qualification_pending": [
+        "source charge/multiplicity and atom-map identity reconciliation",
+        "effective ORCA/external-xTB method settings and binary mapping",
+        "ACP workflow and shared-deadline smoke acceptance"
+      ]
+    },
+    {
+      "reaction_id": "RXN_0000194484",
+      "point_lambda": 0.05,
+      "source_attempt_id": "lam0.05-try00",
+      "purpose": "geometry_nonconvergence",
+      "source_request_sha256": "1aa0fdd79316336c5c78b47263fd80652c049839d15a4a1d7116dc4625dfcf98",
+      "source_artifacts": {
+        "seed_xyz": {
+          "workspace_path": "outputs/g2_ab3_native_xtb_run1_20261007/RXN_0000194484/attempts/lam0.05/lam0.05-try00/WORK/07_CONSTRAINED_OPT/xtb_constopt_001/opt/xtb_input.xyz",
+          "sha256": "5b613fbb1a19ac6e594350184ec067446964bd082e4e359b1010d0db8bd9cc1c"
+        },
+        "xcontrol": {
+          "workspace_path": "outputs/g2_ab3_native_xtb_run1_20261007/RXN_0000194484/attempts/lam0.05/lam0.05-try00/RESULT/pes2ts/xtb_constopt/xcontrol.txt",
+          "sha256": "30f2148c1393dc07bc48d8fb7d336365cb0289250c2fd4a943830644ab648322"
+        },
+        "evidence": {
+          "workspace_path": "outputs/g2_ab3_native_xtb_run1_20261007/RXN_0000194484/attempts/lam0.05/lam0.05-try00/RESULT/pes2ts/xtb_constopt/evidence.json",
+          "sha256": "9afa58cba7e6600c47c3c90c18f18ee3023925483a362e6293fb1ce39bc8b99f"
+        },
+        "trace": {
+          "workspace_path": "outputs/g2_ab3_native_xtb_run1_20261007/RXN_0000194484/native/native_scan_trace.json",
+          "sha256": "056093d816d9deb8abb8d838825c4f6f1b7ec8e8e20515b55df2a59dd9941ed2"
+        }
+      },
+      "historical_opt_converged": false,
+      "historical_opt_cycles": 538,
+      "historical_opt_wall_seconds": 3.9264281230280176,
+      "historical_wall_scope": "optimization_only; not cold paired trial total",
+      "source_xtb_provenance": {
+        "xtb_executable": "/opt/software/xtb/bin/xtb",
+        "xtb_executable_sha256": "debf27a9e0fa4bfb5ca75aafe4b90d8211f08ec2f4a482f375a4987212eaa12a",
+        "xtb_version": "6.7.1"
+      },
+      "qualification_pending": [
+        "source charge/multiplicity and atom-map identity reconciliation",
+        "effective ORCA/external-xTB method settings and binary mapping",
+        "ACP workflow and shared-deadline smoke acceptance"
+      ]
+    },
+    {
+      "reaction_id": "RXN_0000007104",
+      "point_lambda": 0.05,
+      "source_attempt_id": "lam0.05-try00",
+      "purpose": "normal_control",
+      "source_request_sha256": "ab6ccd02ee17f322f15d82a350cbe9172b45d3289a34a40e1bf6e5b2c215cfb3",
+      "source_artifacts": {
+        "seed_xyz": {
+          "workspace_path": "outputs/g2_ab3_native_xtb_run1_20261007/RXN_0000007104/attempts/lam0.05/lam0.05-try00/WORK/07_CONSTRAINED_OPT/xtb_constopt_001/opt/xtb_input.xyz",
+          "sha256": "587b68b9fcbbe7ac266173d301c36b486da12edd1353caa6d6e59bdad4e31bc1"
+        },
+        "xcontrol": {
+          "workspace_path": "outputs/g2_ab3_native_xtb_run1_20261007/RXN_0000007104/attempts/lam0.05/lam0.05-try00/RESULT/pes2ts/xtb_constopt/xcontrol.txt",
+          "sha256": "dc84867fc998f3648d9583e5454c8fb5165867a7a8d1facc7cf8a33d8c473a09"
+        },
+        "evidence": {
+          "workspace_path": "outputs/g2_ab3_native_xtb_run1_20261007/RXN_0000007104/attempts/lam0.05/lam0.05-try00/RESULT/pes2ts/xtb_constopt/evidence.json",
+          "sha256": "3ed0ee98ffc11a2dacdea514007b8d381e8c7a0d34ca94e51b05d339acd422f2"
+        },
+        "trace": {
+          "workspace_path": "outputs/g2_ab3_native_xtb_run1_20261007/RXN_0000007104/native/native_scan_trace.json",
+          "sha256": "3df4d7eb1fbaaf647f172c54b9c31237049018ae392530a4dd35d3fc96fdafb4"
+        }
+      },
+      "historical_opt_converged": true,
+      "historical_opt_cycles": 21,
+      "historical_opt_wall_seconds": 0.18827802198939025,
+      "historical_wall_scope": "optimization_only; not cold paired trial total",
+      "source_xtb_provenance": {
+        "xtb_executable": "/opt/software/xtb/bin/xtb",
+        "xtb_executable_sha256": "debf27a9e0fa4bfb5ca75aafe4b90d8211f08ec2f4a482f375a4987212eaa12a",
+        "xtb_version": "6.7.1"
+      },
+      "qualification_pending": [
+        "source charge/multiplicity and atom-map identity reconciliation",
+        "effective ORCA/external-xTB method settings and binary mapping",
+        "ACP workflow and shared-deadline smoke acceptance"
+      ]
+    }
+  ]
+}
