@@ -126,6 +126,20 @@ G51_TEST_FILES: Final[tuple[str, ...]] = (
 RECHECK_NEAR_TS_FLOOR: Final[float] = 0.50
 
 
+
+def _resolve_anchor_mode(value) -> str:
+    """Normalize YAML 'on'/'off' (yaml 1.1 parses them as booleans) or
+    plain strings into 'on'/'off'."""
+    if isinstance(value, bool):
+        return "on" if value else "off"
+    text = str(value).strip().lower()
+    if text in ("on", "true", "1", "yes"):
+        return "on"
+    if text in ("off", "false", "0", "no"):
+        return "off"
+    return "on"
+
+
 class SprintRefused(RuntimeError):
     """Typed campaign precheck refusal (machine-readable code)."""
 
@@ -1648,7 +1662,7 @@ class SprintDriver:
         arm_cfg = dict((self.sprint.get("arm_table") or {}).get(recipe)
                        or {})
         d0 = float(arm_cfg.get("d0", 0.08))
-        anchor = str(arm_cfg.get("anchor", "on")).lower()
+        anchor = _resolve_anchor_mode(arm_cfg.get("anchor", "on"))
         seeds = [int(v) for v in (tier3.get("seeds") or [17, 29, 43])]
         seeds = seeds[:int(mode_plan["n_seeds"])]
         n_folds = int(tier3.get("folds", 5))
@@ -2138,7 +2152,7 @@ class SprintDriver:
             arm_cfg = dict((self.sprint.get("arm_table") or {}).get(recipe)
                            or {})
             d0 = float(arm_cfg.get("d0", 0.08))
-            anchor = str(arm_cfg.get("anchor", "on")).lower()
+            anchor = _resolve_anchor_mode(arm_cfg.get("anchor", "on"))
             ckpt = Path(run_dir) / "checkpoints" / "checkpoint_final.pt"
             if not ckpt.is_file():
                 continue
@@ -2265,7 +2279,7 @@ class SprintDriver:
         recipe, fold, seed, mode, run_dir = candidates[0]
         arm_cfg = dict((self.sprint.get("arm_table") or {}).get(recipe) or {})
         d0 = float(arm_cfg.get("d0", 0.08))
-        anchor = str(arm_cfg.get("anchor", "on")).lower()
+        anchor = _resolve_anchor_mode(arm_cfg.get("anchor", "on"))
         ckpt = Path(run_dir) / "checkpoints" / "checkpoint_final.pt"
         if not ckpt.is_file():
             return None
