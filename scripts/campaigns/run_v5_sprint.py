@@ -584,7 +584,12 @@ class SprintDriver:
             audit = self._prepare_audit_summary()
             _require(audit.get("g51_pass") is True, "G51_NOT_GREEN",
                      "crossfit requires G5.1 fixtures green (plan §5.3)")
-            oracle = audit.get("oracle_static")
+            # consult the LIVE oracle artifact (re-measured by the official
+            # _oracle_static_ceiling path) rather than the stage-0 summary
+            # snapshot, which may predate an evaluation-side fix
+            oracle = self._read_oracle_static()
+            if oracle is None:
+                oracle = audit.get("oracle_static")
             _require(oracle is not None, "ORACLE_STATIC_MISSING",
                      "crossfit requires the Oracle static ceiling from "
                      "prepare-audit")
