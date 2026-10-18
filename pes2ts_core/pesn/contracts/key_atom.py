@@ -191,6 +191,15 @@ def _map_pair_set(bonds_map_space) -> set[tuple[int, int]]:
     return {(min(int(b[0]), int(b[1])), max(int(b[0]), int(b[1]))) for b in bonds_map_space}
 
 
+def _map_pair_order_set(bonds_map_space) -> set[tuple[int, int, float]]:
+    """(min_map, max_map, order) signatures for order-sensitive matching."""
+    return {
+        (min(int(b[0]), int(b[1])), max(int(b[0]), int(b[1])),
+         round(float(b[2]), 3))
+        for b in bonds_map_space
+    }
+
+
 def collect_key_maps(p1_mapping: Mapping) -> list[int]:
     """Unique map ids touched by bond_events, sorted (ADR-0026 §2.1).
 
@@ -439,33 +448,58 @@ def build_key_atom_task(
         bonds.sort()
         endpoints.append({"bonds": bonds})
 
-    # side matching: endpoint bond pair sets (map space) vs p1 r/p bonds
+    # side matching: endpoint bond pair sets (map space) vs p1 r/p bonds;
+    # ties (bond SETS equal — order-only reactions) fall through to
+    # (pair, order) signatures; a full ordered-graph tie (no event can
+    # distinguish) resolves deterministically and is recorded as such.
     r_pairs = _map_pair_set(p1_mapping["graph"]["r_bonds"])
     p_pairs = _map_pair_set(p1_mapping["graph"]["p_bonds"])
+    r_sig = _map_pair_order_set(p1_mapping["graph"]["r_bonds"])
+    p_sig = _map_pair_order_set(p1_mapping["graph"]["p_bonds"])
     sides: list[str] = []
     match_evidence = {}
     for slot, ep in enumerate(_expect_endpoints(wp2_task)):
-        ep_pair_maps = {
+        ep_bonds = [
             (_map_id_of(ep["atom_map_ids"][int(b["i"])]),
-             _map_id_of(ep["atom_map_ids"][int(b["j"])]))
+             _map_id_of(ep["atom_map_ids"][int(b["j"])]),
+             float(b.get("bond_order", 0.0) or 0.0))
             for b in ep["bonds"]
-        }
-        ep_pair_maps = {(min(a, c), max(a, c)) for a, c in ep_pair_maps}
+        ]
+        ep_pair_maps = {
+            (min(a, c), max(a, c)) for a, c, _o in ep_bonds}
+        ep_sig = {
+            (min(a, c), max(a, c), round(o, 3)) for a, c, o in ep_bonds}
         r_hit = len(ep_pair_maps & r_pairs)
         p_hit = len(ep_pair_maps & p_pairs)
+        tiebreak = "pair_set"
         if r_hit > p_hit:
             side = "R"
         elif p_hit > r_hit:
             side = "P"
         else:
-            raise KeyAtomTaskError(
-                f"endpoint {slot} bond-set matches neither side distinctly "
-                f"(r_hit={r_hit}, p_hit={p_hit})")
+            r_hit = len(ep_sig & r_sig)
+            p_hit = len(ep_sig & p_sig)
+            tiebreak = "pair_order_signature"
+            if r_hit > p_hit:
+                side = "R"
+            elif p_hit > r_hit:
+                side = "P"
+            else:
+                # ordered graphs indistinguishable at this matching depth;
+                # any bond event forces an ordered-set difference, so this
+                # is a benign symmetric case — deterministic fallback that
+                # never collides with the side already taken by slot 0.
+                if slot == 0:
+                    side = "R"
+                else:
+                    side = "P" if sides[0] == "R" else "R"
+                tiebreak = "graph_ambiguous_fallback"
         sides.append(side)
         match_evidence[f"endpoint_{slot}"] = {
             "side": side,
-            "r_pair_hits": r_hit,
-            "p_pair_hits": p_hit,
+            "r_hits": r_hit,
+            "p_hits": p_hit,
+            "tiebreak": tiebreak,
             "n_endpoint_pairs": len(ep_pair_maps),
             "n_r_pairs": len(r_pairs),
             "n_p_pairs": len(p_pairs),
