@@ -68,6 +68,12 @@ DEFAULT_ALLOWLIST: Final[tuple[str, ...]] = (
     # quarantined TS/IPC truth through the audited accessors; every other
     # g1/g2 module stays fully guarded.
     "pes2ts_core/g1/p1_truth.py",
+    # G3-P1 B2 (ADR-0014): the predictor product's single audited truth
+    # bridge.  It calls only the audited G0 accessors, enforces frozen-split
+    # scope before access, and records its module name as the audit caller;
+    # every other pesn module stays fully guarded (no truth paths, no truth
+    # imports) and receives teacher data as plain values only.
+    "pes2ts_core/pesn/offline/data/truth_source.py",
 )
 
 #: Modules exempt ONLY from ``DYNAMIC_EXEC_RISK`` findings (project-relative).
@@ -91,6 +97,10 @@ SUBPROCESS_IMPORT_ALLOWLIST: Final[tuple[str, ...]] = (
     # child-process discipline (claim/receipt/log/timeout) as the adapters
     # above; truth checks still apply to it in full.
     "pes2ts_core/integration/acp/origin_backend.py",
+    # G2-AB3 WP-4: xTB native constrained-optimization transport — identical
+    # argv-only ACP CLI child-process discipline (claim/receipt/log/timeout,
+    # idempotent recovery); truth checks still apply to it in full.
+    "pes2ts_core/integration/acp/xtb_constraints_transport.py",
 )
 
 TRUTH_PATH_MARKERS: Final[tuple[str, ...]] = ("ground_truth", "truth_sources")

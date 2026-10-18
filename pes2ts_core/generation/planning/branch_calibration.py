@@ -182,9 +182,9 @@ class _DriftingCorrector:
                 "evaluations": [{"evaluation_id": attempt_id + "/e0"}],
                 "acp": {"reused": False, "wall_seconds": 0.0005}}
 
-    def directional_curvature(self, x, coordinates, gradient, name="probe"):
+    def directional_curvature(self, x, coordinates, gradient, direction, name="probe"):
         self.probe_calls += 1
-        return {"name": name, "direction_norm": 1.0,
+        return {"name": name, "direction_norm": float(np.linalg.norm(np.asarray(direction, float))),
                 "curvature": -0.5, "n_gradient_evaluations": 1,
                 "budgeted_single_direction_only": True}
 

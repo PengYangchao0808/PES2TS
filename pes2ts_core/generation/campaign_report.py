@@ -29,27 +29,42 @@ from pes2ts_core.generation.planning.replay_report import (
 
 FEEDBACK_REPORT_SCHEMA = "pes2ts_g2t_feedback_report_v1"
 
-#: Capability status vocabulary (constitution §11.5) — honest layer states for
-#: this batch.  Nothing here claims ``smoke_passed``: that upgrade requires
-#: the gated real-engine runs (S2/S3/S4) which are environment-blocked until
-#: the ACP wiring exists.
+#: Capability status vocabulary (constitution §11.5) — honest layer states.
+#: Frozen once against the real-campaign evidence (T20-01, 2026-10-05): the
+#: T21 final report embeds exactly these values.  ``validation_chain`` stays
+#: ``implemented`` because S4 gated on human review, and ``feedback_reporter``
+#: stays ``fixture_passed`` until T21 replays it over the real root.
 CAPABILITY_STATUS = {
-    "campaign_orchestrator": {"status": "fixture_passed",
-        "evidence": "tests/test_campaign.py (synthetic backends, offline)"},
-    "cost_capture": {"status": "fixture_passed",
-        "evidence": "tests/test_cost_capture.py (offline)"},
-    "origin_preparation_acp_adapter": {"status": "fixture_passed",
-        "evidence": "tests/test_acp_origin_backend.py (fake ACP); real-ACP V2 pending"},
-    "branch_policy_calibration": {"status": "fixture_passed",
-        "evidence": "tests/test_replay_report.py (analytic grid, offline)"},
-    "pilot_replay_judge": {"status": "fixture_passed",
-        "evidence": "tests/test_replay_report.py (pure function, offline)"},
-    "continuation_real_engine": {"status": "implemented",
-        "evidence": "G2-AB1 V0; gated V2 replay requires ACP/ORCA environment"},
+    "campaign_orchestrator": {"status": "smoke_passed",
+        "evidence": "S3 outputs/g2t_campaign_s3_20261004 24/24 typed terminals; "
+                    ".omo/evidence/T18b-05-collector.log rc=0 + T18b-06 assertions; "
+                    "idempotent resume T17b/T18b-04; double-run cache T15c-03"},
+    "cost_capture": {"status": "smoke_passed",
+        "evidence": "S3 24 costs.json / 443 ledgers, N_gradient_total=26676; "
+                    "T18b-06 assertion [c] + RXN_0000155302 zero-attempt ledger; "
+                    "T15c-08 cost completeness gate"},
+    "origin_preparation_acp_adapter": {"status": "smoke_passed",
+        "evidence": ".omo/evidence/task-11-g2t-real-acp/T11-acceptance.json "
+                    "(real opt_only + energy trajectory, fixA/fixB PASS); "
+                    "S3 23 origin runs (22 prepared, 1 typed ORIGIN_BUDGET_EXHAUSTED)"},
+    "branch_policy_calibration": {"status": "smoke_passed",
+        "evidence": "three frozen rounds T15/T15b/T15c + T15c-08 GO re-verification; "
+                    "S3 real branch_evidence 319/320 biased_only frames, drift max "
+                    "0.998 < limit 1.0, curvature-probe budget respected (T17b)"},
+    "pilot_replay_judge": {"status": "smoke_passed",
+        "evidence": "judge v2 real pilot rounds T15->T15b->T15c = 0/4->3/4->4/4 GO "
+                    "(outputs/g2t_campaign_logs/T15c-08-judge.log, "
+                    "T15c-09-summary.log; T14b-05 first real pilot)"},
+    "continuation_real_engine": {"status": "smoke_passed",
+        "evidence": "S3 real 24-case continuation N_gradient_total=26676 "
+                    "(T18b-06/T17b-05); pilot GO 4/4 (T15c-09); v3cal 7762 rerun "
+                    "24/24 cache_hit (T15c-03)"},
     "validation_chain": {"status": "implemented",
-        "evidence": "G2-AB1 stage_cli; execution blocked on human review"},
+        "evidence": "S4 gated: 24/24 validation.status=blocked_on_human_review "
+                    "(T18b-06 assertion [f]); needs an accepted ReviewRecord"},
     "feedback_reporter": {"status": "fixture_passed",
-        "evidence": "tests/test_campaign_report.py (synthetic campaign, offline)"},
+        "evidence": "tests/test_campaign_report.py (synthetic campaign, offline); "
+                    "T21 real-root replay pending"},
 }
 
 _NO_DATA_J_G = {
@@ -157,15 +172,22 @@ def _b1_checks(terminals: list[dict[str, Any]], case_root: dict[str, Path],
         reference = references.get(rid) or {}
         reference_lambda = reference.get("last_accepted_lambda")
         last_lambda = doc.get("last_accepted_lambda")
-        progressed = bool(reference_lambda is None
-                          or (isinstance(last_lambda, (int, float))
-                              and isinstance(reference_lambda, (int, float))
-                              and float(last_lambda) > float(reference_lambda)))
+        # G2-AB3 WP-0 audit fix P2-3: a missing reference (or a missing
+        # current lambda) is not_comparable — never "progressed beyond".
+        progressed: bool | None = None
+        progressed_reason: str | None = None
+        if reference_lambda is None:
+            progressed_reason = "reference_last_accepted_lambda_missing"
+        elif not isinstance(last_lambda, (int, float)):
+            progressed_reason = "current_last_accepted_lambda_missing"
+        else:
+            progressed = float(last_lambda) > float(reference_lambda)
         origin_failed = doc.get("origin_status") == "failed"
         rows.append({
             "reaction_id": rid,
             "b1_1_identity_clear": int(doc.get("identity_conflict_count") or 0) == 0,
             "b1_2_progressed_beyond_reference": progressed,
+            "b1_2_not_comparable_reason": progressed_reason,
             "reference_last_accepted_lambda": reference_lambda,
             "current_last_accepted_lambda": last_lambda,
             "b1_3_origin_failure_typed": (bool(_origin_failure_detail_complete(origin_evidence))
@@ -179,20 +201,41 @@ def _b1_checks(terminals: list[dict[str, Any]], case_root: dict[str, Path],
             int(doc.get("identity_conflict_count") or 0) for doc in terminals),
         "b1_2_cases_with_reference": sum(1 for row in rows
                                          if row["reference_last_accepted_lambda"] is not None),
+        "b1_2_progressed_count": sum(1 for row in rows
+                                     if row["b1_2_progressed_beyond_reference"] is True),
+        "b1_2_not_comparable_count": sum(1 for row in rows
+                                         if row["b1_2_progressed_beyond_reference"] is None),
         "b1_3_typed_origin_failures": sum(1 for row in rows
                                           if row["b1_3_origin_failure_typed"]),
         "per_case": rows,
-        "note": "B1-3 is None when the origin succeeded (nothing to clear); "
-                "B1-4 is True when the candidate artifact exists and the "
-                "validation status is explicit (blocked_on_human_review counts)",
+        "note": "B1-2 is true only when both reference and current lambdas "
+                "are valid numbers and current > reference; a missing "
+                "reference/current is not_comparable (null + reason), never "
+                "'progressed beyond'. B1-3 is None when the origin succeeded "
+                "(nothing to clear); B1-4 is True when the candidate artifact "
+                "exists and the validation status is explicit "
+                "(blocked_on_human_review counts)",
     }
 
 
-def _branch_evidence(campaign_root: Path) -> dict[str, Any]:
+def _branch_evidence(case_root: dict[str, Path]) -> dict[str, Any]:
+    """Branch statistics over the EXACT verified case set.
+
+    G2-AB3 WP-0 audit fix P2-2: iterates only the case directories that
+    carry a verified ``terminal_state.json`` (and, when a manifest was
+    supplied, a matching ``campaign_sha256``) — historical crash directories
+    like ``RXN_*.crashed_v1`` (continuation results without a current
+    terminal) must never enter current statistics.
+    """
     accepted_frames, biased_only, drifts, probes = [], [], [], 0
     modes: dict[str, int] = {}
-    for path in sorted(campaign_root.glob("RXN_*/continuation_result.json")):
-        result = _read(path)
+    for rid in sorted(case_root):
+        result_path = case_root[rid] / "continuation_result.json"
+        if not result_path.is_file():
+            continue
+        result = _read(result_path)
+        if result.get("reaction_id") not in (None, rid):
+            raise ValueError(f"CONTINUATION_REACTION_ID_MISMATCH:{rid}")
         frames = result.get("frames", [])
         accepted_frames.append(max(0, len(frames)-1))
         for frame in frames[1:]:
@@ -207,6 +250,7 @@ def _branch_evidence(campaign_root: Path) -> dict[str, Any]:
                       if attempt.get("curvature_probe"))
     n_frames = sum(accepted_frames)
     return {
+        "n_cases_with_continuation": len(accepted_frames),
         "accepted_frames_beyond_origin_per_case": accepted_frames,
         "convergence_mode_histogram": dict(sorted(modes.items())),
         "biased_only_rate": (sum(biased_only)/n_frames) if n_frames else None,
@@ -312,6 +356,8 @@ def build_feedback_report(campaign_root: Path | str, *,
     terminals = []
     case_root: dict[str, Path] = {}
     for path in sorted(root.glob("RXN_*/terminal_state.json")):
+        if path.parent.name.split(".")[0] != path.parent.name:
+            continue
         doc = _read(path)
         if doc.get("schema_version") != TERMINAL_STATE_SCHEMA:
             raise ValueError(f"INVALID_TERMINAL_STATE:{path.parent.name}")
@@ -319,6 +365,33 @@ def build_feedback_report(campaign_root: Path | str, *,
         case_root[doc["reaction_id"]] = path.parent
     if not terminals:
         raise ValueError("NO_TERMINAL_STATES")
+    case_set_source = "terminals_glob"
+    if manifest_path is not None:
+        manifest = load_campaign_manifest(manifest_path)
+        campaign_sha = manifest["content_sha256"]
+        manifest_ids = {case["reaction_id"] for case in manifest["cases"]}
+        for doc in terminals:
+            if doc.get("campaign_sha256") != campaign_sha:
+                raise ValueError(
+                    f"TERMINAL_CAMPAIGN_SHA_MISMATCH:{doc.get('reaction_id')}")
+        extra = sorted({doc["reaction_id"] for doc in terminals} - manifest_ids)
+        if extra:
+            raise ValueError(f"MANIFEST_CASE_SET_MISMATCH:extra={extra}")
+        for rid, path in case_root.items():
+            if path.name != rid:
+                raise ValueError(f"CASE_DIR_NAME_MISMATCH:{rid}:{path.name}")
+        # G2-AB3 WP-0 audit fix P2-2: every table below shares the exact
+        # manifest∩terminal case set; a partial campaign is reportable but
+        # its missing cases are explicit, and directories outside the
+        # manifest (e.g. RXN_*.crashed_v1) never enter any statistic.
+        terminal_ids = {doc["reaction_id"] for doc in terminals}
+        missing_cases = sorted(manifest_ids - terminal_ids)
+        if missing_cases:
+            terminals = [doc for doc in terminals if doc["reaction_id"] in manifest_ids]
+            case_root = {rid: path for rid, path in case_root.items() if rid in manifest_ids}
+        case_set_source = "manifest_verified"
+    else:
+        missing_cases = []
     case_costs = {}
     for rid, path in case_root.items():
         costs_path = path / "costs.json"
@@ -326,17 +399,19 @@ def build_feedback_report(campaign_root: Path | str, *,
             case_costs[rid] = _read(costs_path)
     references: dict[str, Any] = {}
     if manifest_path is not None:
-        manifest = load_campaign_manifest(manifest_path)
         references = manifest.get("reference_failures") or {}
     histogram = _failure_histogram(terminals, case_costs)
-    return {
+    report = {
         "schema_version": FEEDBACK_REPORT_SCHEMA,
         "campaign_root": str(root),
+        "case_set_source": case_set_source,
         "n_cases": len(terminals),
+        "n_manifest_cases_missing": len(missing_cases),
+        "manifest_missing_cases": missing_cases,
         "funnel": _funnel(terminals),
         "typed_failure_histogram": histogram,
         "b1_comparison": _b1_checks(terminals, case_root, references),
-        "branch_evidence": _branch_evidence(root),
+        "branch_evidence": _branch_evidence(case_root),
         "candidates_and_validation": _candidates_and_validation(terminals),
         "cost_summary": _cost_summary(terminals, case_costs),
         "minimal_j_g": _minimal_j_g(terminals),
@@ -347,6 +422,7 @@ def build_feedback_report(campaign_root: Path | str, *,
                    "note": "first-round value is the failure distribution and "
                            "cost feedback, not a success rate"},
     }
+    return report
 
 
 __all__ = ["CAPABILITY_STATUS", "FEEDBACK_REPORT_SCHEMA", "build_feedback_report"]
