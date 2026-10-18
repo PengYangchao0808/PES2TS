@@ -3,7 +3,7 @@
 These fixtures freeze the boundary discipline documented in the PES-G
 tightening plan (§16 audit): every tool here has explicit standing conditions
 and explicit claims it CANNOT make.  Numerical baselines are read from
-``outputs/g2_pesg_design_audit_20261003/math_checks.json``; the assertions
+``tests/fixtures/evidence/g2_pesg_design_audit_math_checks.json``; the assertions
 recompute everything independently and require agreement.
 
 Standing conditions / non-claims:
@@ -28,7 +28,7 @@ import numpy as np
 import pytest
 
 BASELINE_PATH = (Path(__file__).resolve().parents[1]
-                 / "outputs/g2_pesg_design_audit_20261003/math_checks.json")
+                 / "tests/fixtures/evidence/g2_pesg_design_audit_math_checks.json")
 
 
 @pytest.fixture(scope="module")

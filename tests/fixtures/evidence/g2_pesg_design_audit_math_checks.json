@@ -1,0 +1,58 @@
+{
+  "projector_idempotency_error": 5.551115123125783e-17,
+  "projector_constraint_error": 5.551115123125783e-17,
+  "projector_metric_adjoint_error": 0.0,
+  "gradient_duality_error": 0.0,
+  "ridge_projector_constraint_leak": 0.1195110052709658,
+  "ridge_projector_idempotency_error": 0.10134528684344221,
+  "equal_mass_penalty_radius_H_over_C": 3.4641016151377544,
+  "normalized_laplacian_two_vertex": [
+    {
+      "weight": 1.0,
+      "eigenvalues": [
+        0.0,
+        2.0
+      ]
+    },
+    {
+      "weight": 0.01,
+      "eigenvalues": [
+        0.0,
+        2.0
+      ]
+    },
+    {
+      "weight": 1e-08,
+      "eigenvalues": [
+        0.0,
+        2.0
+      ]
+    }
+  ],
+  "multiple_driver_peak": {
+    "gradient": [
+      1.0,
+      -1.0,
+      0.0
+    ],
+    "schedule_tangent": [
+      1.0,
+      1.0,
+      0.0
+    ],
+    "energy_slope": 0.0,
+    "energy_second_derivative": -8.0,
+    "is_stationary": false,
+    "finite_difference_step": 0.0001
+  },
+  "lagrangian_curvature": {
+    "physical_hessian_only": 0.0,
+    "constrained_curvature": -1.0
+  },
+  "kkt_predictor_derivative": [
+    1.0,
+    2.0,
+    0.0
+  ],
+  "scope": "Algebraic consistency and counterexamples only; no convergence theorem or chemical benchmark."
+}
