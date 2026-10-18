@@ -630,3 +630,29 @@ def test_precompute_dataset_roundtrip(tmp_path):
     assert all(e[0] == 0 for e in entries)
     assert all(e[1] == 0 for e in entries)                # only eligible local idx
     assert any(abs(e[2] - 0.125) < 1e-9 for e in entries)  # q_frame 0.5 × 0.25
+
+
+def test_global_pair_space_regression(tmp_path):
+    """Integration regression: Lane B collate emits GLOBAL-node-row pair
+    entries; the loss and the Classic driver must consume them without
+    out-of-bounds indexing and agree with slot-space math."""
+    torch = pytest.importorskip('torch')
+    task = h_transfer_task()
+    pos, pos0 = geometry(task, seed=11)
+    feats = build_sample_features(task, pos, pos0, 0, 0.08, True,
+                                  stable_id_hash("B3LYP"), 0, True, False)
+    batch = collate([feats, dict(feats)], torch.device("cpu"), True,
+                    {stable_id_hash("B3LYP"): 1}, {0: 0})
+    assert int(batch.pair_index.max()) >= int(batch.key_index.numel()), \
+        "fixture must exercise global-row pair space"
+    from pes2ts_core.pesn.models.key_atom_classic import classic_pair_driver
+    u, info = classic_pair_driver(batch)
+    assert torch.isfinite(u).all() and u.shape == batch.key_index.shape + (3,)
+
+    from pes2ts_core.pesn.offline.training.key_atom_bc import key_atom_bc_loss
+    y = torch.zeros_like(u)
+    y[::2] = 0.05
+    out = key_atom_bc_loss(
+        u, y, batch.degK, batch.key_ptr, batch.pos, batch.key_index,
+        batch.pair_index)
+    assert torch.isfinite(out["loss"])

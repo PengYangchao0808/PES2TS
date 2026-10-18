@@ -236,6 +236,12 @@ def key_atom_bc_loss(
                   "NONFINITE_PREDICTION", "u contains non-finite values")
     _require_loss(bool(torch.isfinite(y).all()),
                   "NONFINITE_TEACHER", "y contains non-finite values")
+    if pair_index is not None and pair_index.numel() > 0:
+        from pes2ts_core.pesn.contracts.key_atom import (
+            global_pair_rows_to_slots,
+        )
+        pair_index = global_pair_rows_to_slots(
+            pair_index, key_index, int(pos.shape[0]))
     n_graphs = int(key_ptr.shape[0]) - 1
     scale = float(cfg.loss_scale_angstrom)
     total = torch.zeros((), dtype=u.dtype, device=u.device)
@@ -582,18 +588,35 @@ def lr_at_update(
 _LANE_B_CACHE: dict[tuple[str, str], dict] = {}
 
 
-def _split_group_reactions(split_path: str | Path, fold: int):
-    """Read pesn_v5_split_v1 -> (train_groups, dev_groups)."""
+def _split_group_reactions(split_path: str | Path, fold: int,
+                           config: Mapping | None = None):
+    """Read pesn_v5_split_v1 (folds/group_fold + fit50 selection) ->
+    (train_groups, dev_groups)."""
     import json as _json
 
     doc = _json.loads(Path(split_path).read_text(encoding="utf-8"))
-    rows = doc.get("fit50", doc if isinstance(doc, list) else [])
+    folds = doc.get("folds")
+    group_fold = doc.get("group_fold")
+    if not isinstance(folds, dict) or not isinstance(group_fold, dict):
+        raise KeyAtomBCTrainerError(
+            "SPLIT_EMPTY", f"no folds/group_fold tables in {split_path}")
+    paths = dict((config or {}).get("paths", {}))
+    sel_path = Path(paths.get(
+        "fit50_selection",
+        "outputs/pesn/direct_egnn_v1_20261015/splits/selection_direct_fit50.json"))
+    sel = _json.loads(sel_path.read_text(encoding="utf-8"))
+    group_rids: dict[str, list[str]] = {}
+    for gid, rid in zip(sel.get("group_ids", []), sel.get("reaction_ids", [])):
+        group_rids.setdefault(str(gid), []).append(str(rid))
     train: dict[str, list[str]] = {}
     dev: dict[str, list[str]] = {}
-    for row in rows:
-        gid, rid = str(row["group_id"]), str(row["reaction_id"])
-        bucket = dev if int(row.get("fold", -1)) == int(fold) else train
-        bucket.setdefault(gid, []).append(rid)
+    for gid, rids in group_rids.items():
+        f = group_fold.get(gid)
+        if f is None:
+            raise KeyAtomBCTrainerError(
+                "SPLIT_EMPTY", f"group {gid} absent from group_fold table")
+        bucket = dev if int(f) == int(fold) else train
+        bucket[gid] = rids
     if not train and not dev:
         raise KeyAtomBCTrainerError(
             "SPLIT_EMPTY", f"no fit50 rows parsed from {split_path}")
@@ -648,7 +671,7 @@ def load_lane_b_pools(config: Mapping, *, fold: int, d0: float, split_path: str)
     """
     from pes2ts_core.pesn.offline.data import key_atom_dataset as lane_b
 
-    train_groups, dev_groups = _split_group_reactions(split_path, fold)
+    train_groups, dev_groups = _split_group_reactions(split_path, fold, config)
     paths = dict(config.get("paths", {}))
     feature_root = str(paths.get("feature_root", "outputs/pesn/v5/features"))
     d0_tag = f"{float(d0):.2f}"
@@ -712,7 +735,7 @@ def load_lane_b_view(*, config: Mapping, samples: Sequence[dict], fold: int,
     vkey = ("vocabs", str(runtime["shards"][0].parent), f"fold{int(fold)}")
     vocabs = _LANE_B_CACHE.get(vkey)
     if vocabs is None:
-        train_groups, _dev = _split_group_reactions(split_path, fold)
+        train_groups, _dev = _split_group_reactions(split_path, fold, config)
         train_rids = [rid for rids in train_groups.values() for rid in rids]
         paths = dict(config.get("paths", {}))
         feature_root = str(paths.get("feature_root",

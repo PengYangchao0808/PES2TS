@@ -576,3 +576,25 @@ def _expect_endpoints(wp2_task: Mapping) -> tuple[Mapping, Mapping]:
         if "atom_map_ids" not in ep or "bonds" not in ep:
             raise KeyAtomTaskError("wp2 endpoint lacks atom_map_ids/bonds")
     return endpoints[0], endpoints[1]
+
+
+def global_pair_rows_to_slots(pair_index, key_index, n_nodes: int):
+    """Convert GLOBAL-node-row pair entries to key-slot rows.
+
+    Normative pair_index space (ADR-0026 §2.6): entries are global node
+    rows that must be key atoms.  Consumers indexing the packed key axis
+    ([Σm, 3] tensors like u/y/x_key) convert through this helper.
+    """
+    if torch is None:
+        raise KeyAtomTaskError(
+            "TORCH_REQUIRED", "torch is required for pair slot conversion")
+    node_to_slot = torch.full(
+        (int(n_nodes),), -1, dtype=torch.long, device=key_index.device)
+    node_to_slot[key_index] = torch.arange(
+        int(key_index.numel()), device=key_index.device)
+    slots = node_to_slot[pair_index]
+    if bool((slots < 0).any()):
+        bad = pair_index[(slots < 0).any(dim=0)].flatten().tolist()[:8]
+        raise KeyAtomTaskError(
+            "PAIR_NOT_KEY", f"pair_index rows are not key atoms: {bad}")
+    return slots

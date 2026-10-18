@@ -278,12 +278,43 @@ def compute_reference_block(
         rows.append(i)
         hop_of[i] = hop
         weights[i] = 1.0 / (1.0 + hop) ** 2
+
+    # Tiered fallback candidates (plan §1.3 "候选块按距 A、尺寸选择"): t0 is
+    # the strict rigid 1-2-hop block; larger pools follow for molecules
+    # whose rigid fragments are too small/degenerate to pass the scatter
+    # gate.  The FIRST tier passing reference_gate(pos_start) is used; if
+    # none passes, the branch is gauge_unresolved exactly as before.
+    tiers: list[dict] = []
+
+    def _tier(name: str, predicate) -> None:
+        t_rows: list[int] = []
+        t_hops: dict[int, int] = {}
+        t_weights = np.zeros(n, dtype=np.float64)
+        for i in range(n):
+            if i in key or z[i] <= 1:
+                continue
+            hop = hops.get(i)
+            if hop is None or not predicate(hop, i):
+                continue
+            t_rows.append(i)
+            t_hops[i] = hop
+            t_weights[i] = 1.0 / (1.0 + hop) ** 2
+        tiers.append({"tier": name, "rows": np.asarray(
+            sorted(t_rows), dtype=np.int64), "weights": t_weights,
+            "hops": t_hops})
+
+    _tier("rigid_1_2hop", lambda hop, i: (
+        1 <= hop <= 2 and find(i) in key_roots))
+    _tier("any_1_2hop", lambda hop, i: 1 <= hop <= 2)
+    _tier("any_3hop", lambda hop, i: 1 <= hop <= 3)
+    _tier("all_nonkey_heavy", lambda hop, i: True)
     return {
         "rows": np.asarray(sorted(rows), dtype=np.int64),
         "weights": weights,
         "hops": hop_of,
         "n_rotor_bonds_cut": cut_count,
         "degrees": degrees,
+        "tiers": tiers,
     }
 
 
@@ -698,7 +729,26 @@ def build_branch_native(
     x = np.asarray(pos, dtype=np.float64)
     ref = compute_reference_block(
         task.atomic_numbers, task.start_bonds(branch), task.key_atom_rows)
-    gate_ok, eigenvalues = reference_gate(x[0], ref["rows"], ref["weights"])
+    # tiered gate: first candidate pool passing the scatter gate wins
+    chosen = None
+    tier_gates: list[dict] = []
+    for tier in ref.get("tiers", [ref]):
+        ok, eigenvalues = reference_gate(x[0], tier["rows"], tier["weights"])
+        tier_gates.append({"tier": tier["tier"], "gate_ok": bool(ok),
+                           "eigenvalues_angstrom2": eigenvalues,
+                           "n_rows": int(np.asarray(tier["rows"]).size)})
+        if ok and chosen is None:
+            chosen = tier
+    if chosen is None:
+        chosen = ref.get("tiers", [ref])[-1]
+        gate_ok, eigenvalues = False, tier_gates[-1][
+            "eigenvalues_angstrom2"]
+    else:
+        gate_ok, eigenvalues = True, next(
+            t["eigenvalues_angstrom2"] for t in tier_gates
+            if t["tier"] == chosen["tier"])
+    ref_rows = np.asarray(chosen["rows"], dtype=np.int64)
+    ref_weights = np.asarray(chosen["weights"], dtype=np.float64)
     k_pairs = task.K_pairs(branch)
     q_frame, tail_flag, tail_meta = mark_flat_tail(x, task.key_atom_rows, k_pairs)
     ds = key_path_arc(x, task.key_atom_rows)
@@ -709,9 +759,11 @@ def build_branch_native(
     return {
         "pos": x,
         "key_rows": np.asarray(task.key_atom_rows, dtype=np.int64),
-        "ref_rows": ref["rows"],
-        "ref_weights": ref["weights"],
-        "ref_hops": ref["hops"],
+        "ref_rows": ref_rows,
+        "ref_weights": ref_weights,
+        "ref_hops": dict(chosen["hops"]),
+        "ref_tier": str(chosen["tier"]),
+        "ref_tier_gates": tier_gates,
         "n_rotor_bonds_cut": ref["n_rotor_bonds_cut"],
         "gate_ok": gate_ok,
         "eigenvalues": eigenvalues,
@@ -747,12 +799,16 @@ def native_meta_payload(
                         for r in record["ref_rows"]},
             "hops": {str(int(k)): int(v)
                      for k, v in record["ref_hops"].items()},
+            "tier": str(record.get("ref_tier", "rigid_1_2hop")),
+            "tier_gates": list(record.get("ref_tier_gates", [])),
             "n_rotor_bonds_cut": int(record["n_rotor_bonds_cut"]),
             "scatter_eigenvalues_angstrom2": [
                 float(v) for v in record["eigenvalues"]],
             "gate_ok": bool(record["gate_ok"]),
             "gate_rule": ("lambda1 > 0.01 A^2 and lambda2/lambda1 > 1e-3; "
-                          "planar OK; else gauge_unresolved"),
+                          "planar OK; else gauge_unresolved; tiered fallback "
+                          "rigid_1_2hop -> any_1_2hop -> any_3hop -> "
+                          "all_nonkey_heavy per plan §1.3 block-size rule"),
         },
         "tail": {
             "flagged_rows": [int(v) for v in

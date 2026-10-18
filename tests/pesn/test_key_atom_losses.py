@@ -51,9 +51,9 @@ def _loss_inputs(seed: int = 0, n_graphs: int = 2, keys_per_graph: int = 3):
         ys.append(rng.normal(scale=0.05, size=(m, 3)))
         degks.append(rng.uniform(0.5, 3.0, size=m))
         key_rows.append(np.arange(offset_n, offset_n + m))
-        for k in range(m - 1):
-            pi.append(key_off + k)
-            pj.append(key_off + k + 1)
+        for k in range(m - 1):  # GLOBAL node-row pair space (ADR-0026 §2.6)
+            pi.append(key_rows[g][k])
+            pj.append(key_rows[g][k + 1])
         key_off += m
         key_ptr.append(key_ptr[-1] + m)
         offset_n += n
@@ -185,8 +185,11 @@ def test_pair_projection_linearity():
 
 def test_pair_unit_vectors_are_unit():
     inputs = _loss_inputs(seed=10)
-    e_l = pair_unit_vectors(
-        inputs["pos"], inputs["key_index"], inputs["pair_index"])
+    from pes2ts_core.pesn.contracts.key_atom import global_pair_rows_to_slots
+    slots = global_pair_rows_to_slots(
+        inputs["pair_index"], inputs["key_index"],
+        int(inputs["pos"].shape[0]))
+    e_l = pair_unit_vectors(inputs["pos"], inputs["key_index"], slots)
     norms = e_l.norm(dim=-1)
     assert bool(torch.allclose(norms, torch.ones_like(norms), atol=1e-12))
 

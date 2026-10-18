@@ -66,7 +66,13 @@ def classic_pair_driver(
     # --- accumulate v from key pairs ----------------------------------------
     v = torch.zeros(n_keys, 3, dtype=batch.pos.dtype, device=device)
     pair_index = batch.pair_index
-    if pair_index.numel() > 0:
+    if pair_index is not None and pair_index.numel() > 0:
+        from pes2ts_core.pesn.contracts.key_atom import (
+            global_pair_rows_to_slots,
+        )
+        pair_index = global_pair_rows_to_slots(
+            pair_index, key_index, int(batch.pos.shape[0]))
+    if pair_index is not None and pair_index.numel() > 0:
         pi = pair_index[0].long()
         pj = pair_index[1].long()
         d = x_key[pj] - x_key[pi]

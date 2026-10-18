@@ -118,8 +118,9 @@ def make_batch(*, seed: int = 0, n_graphs: int = 2,
 
         key_index.extend(k + offset for k in key_rows)
         key_ptr.append(key_ptr[-1] + len(key_rows))
-        pair_i.extend([key_offset + i for i in range(len(key_rows) - 1)])
-        pair_j.extend([key_offset + i for i in range(1, len(key_rows))])
+        # GLOBAL node-row pair space (ADR-0026 §2.6)
+        pair_i.extend(key_rows[i] + offset for i in range(len(key_rows) - 1))
+        pair_j.extend(key_rows[i] + offset for i in range(1, len(key_rows)))
         pair_edit.extend([1.0 if i % 2 == 0 else -1.0
                           for i in range(len(key_rows) - 1)])
         degk.extend([2.0, 2.0, 1.0][:len(key_rows)])
@@ -261,13 +262,18 @@ def test_permutation_equivariance_key_slot_shuffle():
     u0, _ = fwd(model, base)
     b = make_batch(seed=6)
     n_keys = int(b.key_index.numel())
+    n_nodes = int(b.pos.shape[0])
+    node_to_slot = torch.full((n_nodes,), -1, dtype=torch.int64)
+    node_to_slot[b.key_index] = torch.arange(n_keys)
+    old_slots = node_to_slot[b.pair_index]
     slot_perm = torch.as_tensor(rng.permutation(n_keys))
     b.key_index = b.key_index[slot_perm]
     b.degK = b.degK[slot_perm]
-    # pair_index references key slots -> remap through slot_perm^{-1}
+    # pair_index is in GLOBAL node-row space: translate through the old
+    # slot map, apply slot_perm^{-1}, then back to the new global rows.
     inv = torch.empty(n_keys, dtype=torch.int64)
     inv[slot_perm] = torch.arange(n_keys)
-    b.pair_index = inv[b.pair_index]
+    b.pair_index = b.key_index[inv[old_slots]]
     u1, _ = fwd(model, b)
     assert torch.allclose(u1, u0[slot_perm], atol=TOL)
 
