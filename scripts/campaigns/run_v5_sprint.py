@@ -961,23 +961,19 @@ class SprintDriver:
                 lo, hi = int(key_ptr[b]), int(key_ptr[b + 1])
                 if hi <= lo:
                     continue
-                degenerate = bool(info["degenerate_frames"][b])
                 per_sample.append({
                     "group_id": str(groups[b]),
                     "u": uc_np[lo:hi], "y": y_np[lo:hi],
-                    "u_classic": None if degenerate else uc_np[lo:hi],
+                    "u_classic": uc_np[lo:hi],
+                    "degenerate": bool(info["degenerate_frames"][b]),
                     "near_ts": float(near[b]),
                 })
         g52 = evaluate_g52(
-            predictions={k: np.stack([s["u"] for s in per_sample])
-                         if per_sample else np.zeros((0, 1, 3))
-                         for k in ("raw", "bounded")},
-            teacher=np.stack([s["y"] for s in per_sample])
-            if per_sample else np.zeros((0, 1, 3)),
+            predictions={"raw": [s["u"] for s in per_sample],
+                         "bounded": [s["u"] for s in per_sample]},
+            teacher=[s["y"] for s in per_sample],
             groups=[s["group_id"] for s in per_sample],
-            classic=np.stack([s["u_classic"] for s in per_sample])
-            if per_sample and all(s["u_classic"] is not None
-                                  for s in per_sample) else None,
+            classic=[s["u_classic"] for s in per_sample],
             near_ts=[s["near_ts"] for s in per_sample],
             bootstrap_draws=200, bootstrap_seed=20261018)
         table = {
@@ -2183,27 +2179,22 @@ class SprintDriver:
                         lo, hi = int(key_ptr[b]), int(key_ptr[b + 1])
                         if hi <= lo:
                             continue
-                        degenerate = bool(info["degenerate_frames"][b])
                         per_sample.append({
                             "group_id": str(groups[b]),
                             "u": u_np[lo:hi], "y": y_np[lo:hi],
                             "u_bounded": ub_np[lo:hi],
-                            "u_classic": None if degenerate
-                            else uc_np[lo:hi],
+                            "u_classic": uc_np[lo:hi],
                             "near_ts": float(near[b]),
                         })
             if not per_sample:
                 continue
             g52 = evaluate_g52(
                 predictions={
-                    "raw": np.stack([s["u"] for s in per_sample]),
-                    "bounded": np.stack([s["u_bounded"]
-                                         for s in per_sample])},
-                teacher=np.stack([s["y"] for s in per_sample]),
+                    "raw": [s["u"] for s in per_sample],
+                    "bounded": [s["u_bounded"] for s in per_sample]},
+                teacher=[s["y"] for s in per_sample],
                 groups=[s["group_id"] for s in per_sample],
-                classic=(np.stack([s["u_classic"] for s in per_sample])
-                         if all(s["u_classic"] is not None
-                                for s in per_sample) else None),
+                classic=[s["u_classic"] for s in per_sample],
                 near_ts=[s["near_ts"] for s in per_sample])
             best = {
                 "recipe": recipe, "fold": fold, "seed": seed, "mode": mode,

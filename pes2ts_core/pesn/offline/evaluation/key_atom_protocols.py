@@ -240,28 +240,36 @@ def hierarchical_means(
 # ---------------------------------------------------------------------------
 
 
-def _as_prediction_blocks(predictions) -> dict[str, np.ndarray]:
-    """Normalize the predictions argument to ``{"raw": [S,m,3],
-    "bounded": [S,m,3]}`` (a bare array becomes raw-only and the bounded
-    block mirrors raw so downstream code stays uniform)."""
+def _as_prediction_blocks(predictions) -> dict:
+    """Normalize the predictions argument to ``{"raw": ..., "bounded": ...}``
+    (a bare array becomes raw-only and the bounded block mirrors raw so
+    downstream code stays uniform).  Values may be stacked ``[S,m,3]``
+    arrays OR ragged sequences of per-sample ``[m,3]`` arrays (molecules
+    with different key-atom counts)."""
     if isinstance(predictions, Mapping):
-        blocks = {str(k): np.asarray(v, dtype=np.float64)
-                  for k, v in predictions.items()}
+        blocks = {str(k): v for k, v in predictions.items()}
         _require(bool(blocks), "G52_PREDICTIONS_EMPTY", "no prediction blocks")
-        for name, array in blocks.items():
-            _require(array.ndim == 3 and array.shape[-1] == 3,
-                     "G52_PREDICTION_SHAPE",
-                     f"block {name!r} must be [S,m,3], got {array.shape}")
         if "raw" not in blocks:
-            first = next(iter(blocks.values()))
-            blocks["raw"] = first
+            blocks["raw"] = next(iter(blocks.values()))
         if "bounded" not in blocks:
             blocks["bounded"] = blocks["raw"]
         return blocks
-    array = np.asarray(predictions, dtype=np.float64)
-    _require(array.ndim == 3 and array.shape[-1] == 3, "G52_PREDICTION_SHAPE",
-             f"predictions must be [S,m,3], got {array.shape}")
-    return {"raw": array, "bounded": array.copy()}
+    return {"raw": predictions, "bounded": predictions}
+
+
+def _coerce_samples(x) -> list[np.ndarray]:
+    """[S,m,3] array OR ragged sequence -> list of [m,3] float64 arrays."""
+    if isinstance(x, np.ndarray) and x.ndim == 3:
+        return [np.asarray(x[s], dtype=np.float64)
+                for s in range(x.shape[0])]
+    seq = list(x)
+    out = []
+    for s in seq:
+        a = np.asarray(s, dtype=np.float64)
+        _require(a.ndim == 2 and a.shape[-1] == 3, "G52_PREDICTION_SHAPE",
+                 f"per-sample block must be [m,3], got {a.shape}")
+        out.append(a)
+    return out
 
 
 def _g52_block(
@@ -279,29 +287,34 @@ def _g52_block(
     bootstrap_seed: int,
 ) -> dict:
     """One raw/bounded G5.2 metric block (plan §6 G5.2)."""
-    n_samples = u_by_sample.shape[0]
-    _require(y.shape == u_by_sample.shape, "G52_SHAPE_MISMATCH",
-             f"teacher {y.shape} vs prediction {u_by_sample.shape}")
+    u_list = _coerce_samples(u_by_sample)
+    y_list = _coerce_samples(y)
+    n_samples = len(y_list)
+    _require(len(u_list) == n_samples, "G52_SHAPE_MISMATCH",
+             f"teacher samples {n_samples} vs prediction samples "
+             f"{len(u_list)}")
     _require(len(clusters) == n_samples, "G52_SHAPE_MISMATCH",
              "cluster ids must align with samples")
 
-    # --- per-frame reductions over key atoms --------------------------------
-    abs_err = np.linalg.norm(u_by_sample - y, axis=-1)      # [S, m]
-    sq_err = abs_err ** 2
-    y_norm = np.linalg.norm(y, axis=-1)                     # [S, m]
-    mae_frame = abs_err.mean(axis=1)
-    mse_frame = sq_err.mean(axis=1)
-    mae_zero_frame = y_norm.mean(axis=1)
-    mse_zero_frame = (y_norm ** 2).mean(axis=1)
+    # --- per-frame reductions over key atoms (ragged-safe) ------------------
+    mae_frame = np.asarray([
+        np.linalg.norm(u - yy, axis=-1).mean() for u, yy in
+        zip(u_list, y_list)])
+    mse_frame = np.asarray([
+        (np.linalg.norm(u - yy, axis=-1) ** 2).mean() for u, yy in
+        zip(u_list, y_list)])
+    y_norms = [np.linalg.norm(yy, axis=-1) for yy in y_list]
+    mae_zero_frame = np.asarray([yn.mean() for yn in y_norms])
+    mse_zero_frame = np.asarray([(yn ** 2).mean() for yn in y_norms])
 
     # effective-atom cosines (pooled over atoms, plan §6 "cos 中位全场")
     cos_eff: list[float] = []
     cos_near: list[float] = []
     for s in range(n_samples):
-        eff = y_norm[s] > tau
+        eff = y_norms[s] > tau
         if not bool(eff.any()):
             continue
-        values = _soft_cosine_matrix(u_by_sample[s][eff], y[s][eff]).tolist()
+        values = _soft_cosine_matrix(u_list[s][eff], y_list[s][eff]).tolist()
         cos_eff.extend(values)
         if float(near_ts[s]) <= near_ts_cut:
             cos_near.extend(values)
@@ -335,10 +348,12 @@ def _g52_block(
     classic_defined = 0
     classic_improvements: list[float] = []
     if classic is not None:
-        _require(classic.shape == u_by_sample.shape, "G52_SHAPE_MISMATCH",
+        cls_list = _coerce_samples(classic)
+        _require(len(cls_list) == n_samples, "G52_SHAPE_MISMATCH",
                  "classic predictions must align with model predictions")
-        abs_cls = np.linalg.norm(classic - y, axis=-1)
-        mse_cls_frame = (abs_cls ** 2).mean(axis=1)
+        mse_cls_frame = np.asarray([
+            (np.linalg.norm(c - yy, axis=-1) ** 2).mean() for c, yy in
+            zip(cls_list, y_list)])
         c_mse_cls = hierarchical_means(mse_cls_frame, clusters, reactions,
                                        branches)
     else:
@@ -528,10 +543,12 @@ def evaluate_g52(
     CIs), ``undefined`` (listed denominators), ``gate`` and a ``bounded``
     twin block.
     """
-    y = np.asarray(teacher, dtype=np.float64)
-    _require(y.ndim == 3 and y.shape[-1] == 3, "G52_TEACHER_SHAPE",
-             f"teacher must be [S,m,3], got {y.shape}")
-    n_samples = y.shape[0]
+    y = (teacher if isinstance(teacher, (list, tuple))
+         else np.asarray(teacher, dtype=np.float64))
+    if isinstance(y, np.ndarray):
+        _require(y.ndim == 3 and y.shape[-1] == 3, "G52_TEACHER_SHAPE",
+                 f"teacher must be [S,m,3], got {y.shape}")
+    n_samples = len(y)
     blocks = _as_prediction_blocks(predictions)
     cluster_ids = [str(g) for g in groups]
     _require(len(cluster_ids) == n_samples, "G52_SHAPE_MISMATCH",
@@ -542,8 +559,7 @@ def evaluate_g52(
                   else [0] * n_samples)
     near = (np.asarray(near_ts, dtype=np.float64) if near_ts is not None
             else np.ones(n_samples, dtype=np.float64))
-    classic_array = (np.asarray(classic, dtype=np.float64)
-                     if classic is not None else None)
+    classic_array = classic  # ndarray [S,m,3] or ragged sequence; None ok
 
     raw = _g52_block(
         blocks["raw"], y, cluster_ids, reaction_ids, branch_ids,
