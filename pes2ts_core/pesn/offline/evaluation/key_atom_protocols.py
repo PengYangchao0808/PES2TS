@@ -101,6 +101,10 @@ G53_SRE_MEDIAN_MAX: Final[float] = 0.15
 G53_SRE_Q75_MAX: Final[float] = 0.25
 G53_SIGN_PAIR_THRESHOLD: Final[float] = 0.005
 G53_SRE_MIN_TOTAL_CHANGE: Final[float] = 0.01
+#: V5.1a (plan §5.1 G5.3 死区弃权率 <10%): fraction of teacher-active
+#: pairs (|Δd_true| ≥ 0.005 Å) whose |Δd_pred| stays inside the dead
+#: zone (|Δd_pred| < 0.005 Å).
+G53_DEAD_ZONE_MAX: Final[float] = 0.10
 
 #: Plan §6 G5.4 thresholds and geometry factors.
 G54_CLASH_FACTOR: Final[float] = 0.75
@@ -636,6 +640,72 @@ def first_order_pair_projection(
     return out
 
 
+def g53_sample_enumeration(
+    *,
+    pos: np.ndarray,
+    ptr: np.ndarray,
+    key_index: np.ndarray,
+    key_ptr: np.ndarray,
+    pair_index: np.ndarray,
+    pair_edit: np.ndarray,
+    u: np.ndarray,
+    y: np.ndarray,
+    group_ids: Sequence[str],
+    reaction_ids: Sequence[str] | None = None,
+    branches: Sequence[int] | None = None,
+) -> list[dict]:
+    """Shared key-pair enumeration for G5.3 metrics (V5.1 plan §3.3/§3.4).
+
+    Produces one ``evaluate_g53``-ready sample mapping per frame that has
+    at least one changed key pair.  Pair semantics are the frozen V5
+    sprint ``_static_diagnostics`` rule: a ``pair_index`` column belongs
+    to frame ``b`` when BOTH global node-row endpoints fall inside the
+    frame's node range ``[ptr[b], ptr[b+1])`` AND ``pair_edit != 0``;
+    key rows and pair rows are re-based to the frame.  The trainer's
+    inner-val SRE / dead-zone metrics and the campaign static diagnostics
+    MUST share this helper so the derived-chemistry numbers stay
+    comparable (plan §3.4: selection metric == gate metric).
+    """
+    pos = np.asarray(pos, dtype=np.float64)
+    ptr = np.asarray(ptr, dtype=np.int64)
+    key_index = np.asarray(key_index, dtype=np.int64)
+    key_ptr = np.asarray(key_ptr, dtype=np.int64)
+    pair_index = np.asarray(pair_index, dtype=np.int64)
+    pair_edit = np.asarray(pair_edit, dtype=np.float64)
+    u = np.asarray(u, dtype=np.float64)
+    y = np.asarray(y, dtype=np.float64)
+    n_frames = len(ptr) - 1
+    out: list[dict] = []
+    for b in range(n_frames):
+        n_lo, n_hi = int(ptr[b]), int(ptr[b + 1])
+        k_lo, k_hi = int(key_ptr[b]), int(key_ptr[b + 1])
+        if k_hi <= k_lo:
+            continue
+        key_rows = [int(v) - n_lo for v in key_index[k_lo:k_hi]]
+        pairs: list[tuple[int, int]] = []
+        for col in range(pair_index.shape[1]):
+            a = int(pair_index[0, col])
+            c = int(pair_index[1, col])
+            if n_lo <= a < n_hi and n_lo <= c < n_hi and \
+                    float(pair_edit[col]) != 0.0:
+                pairs.append((a - n_lo, c - n_lo))
+        if not pairs:
+            continue
+        out.append({
+            "group_id": str(group_ids[b]),
+            "reaction_id": str(
+                reaction_ids[b] if reaction_ids is not None
+                else group_ids[b]),
+            "branch": int(branches[b]) if branches is not None else 0,
+            "pos": pos[n_lo:n_hi],
+            "key_rows": key_rows,
+            "pairs": pairs,
+            "u": u[k_lo:k_hi],
+            "y": y[k_lo:k_hi],
+        })
+    return out
+
+
 def evaluate_g53(
     samples: Sequence[Mapping],
     *,
@@ -666,6 +736,8 @@ def evaluate_g53(
     deviations: list[float] = []
     n_pairs_sign = 0
     n_pairs_correct = 0
+    n_active_pairs = 0
+    n_dead_pairs = 0
 
     for sample in samples:
         pos = np.asarray(sample["pos"], dtype=np.float64)
@@ -689,6 +761,9 @@ def evaluate_g53(
                 & (np.abs(dd_u[significant]) >= sign_threshold)
             n_pairs_sign += int(significant.sum())
             n_pairs_correct += int(correct.sum())
+            n_active_pairs += int(significant.sum())
+            n_dead_pairs += int(
+                (np.abs(dd_u[significant]) < sign_threshold).sum())
             sign_frame.append(float(correct.mean()))
             sign_cluster.append(cluster)
             sign_reaction.append(reaction)
@@ -738,6 +813,11 @@ def evaluate_g53(
             "sre_cluster_q75": sre_q75,
             "n_sign_pairs": n_pairs_sign,
             "n_sign_pairs_correct": n_pairs_correct,
+            "n_active_pairs": n_active_pairs,
+            "n_dead_pairs": n_dead_pairs,
+            "dead_zone_fraction": (
+                float(n_dead_pairs) / float(n_active_pairs)
+                if n_active_pairs > 0 else None),
             "n_sre_frames": len(sre_frame),
             "n_clusters_sign": len(sign_clusters),
             "n_clusters_sre": len(sre_clusters),

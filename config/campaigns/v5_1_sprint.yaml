@@ -1,0 +1,129 @@
+# V5.1a repair-sprint campaign config (Lane: campaign driver).
+# Provenance: docs/plans/PES2TS_V5.1_修复冲刺与扩量准入方案_v1_20261019.md §3/§4/§5
+# Consumer: scripts/campaigns/run_v5_1_sprint.py (V5.1a — NO formal OOF,
+#           NO Confirm/OOD unseal; thresholds frozen pre-training in
+#           outputs/pesn/v5_1/protocol_v51.json).
+# Inherits V5 (config/campaigns/v5_sprint.yaml) optimizer/schedule/batch
+# values; d0 fixed to 0.05 A with anchor on (V5.1 arm matrix B0-B3).
+schema: pesn_v5_1_sprint_v1
+
+# --- data / action contract (V5 split untouched) ---
+d0_angstrom: 0.05
+a_ref_angstrom: 0.08
+teacher_atom_cap_angstrom: 0.20
+legacy_cap_diagnostic_angstrom: 0.12
+huber_delta_normalized: 0.25  # 对应误差0.02 Å
+
+# --- loss weights (frozen λs, plan §3.3) ---
+lambda_pair: 0.5              # L_pair_reg coefficient (legacy pair term)
+lambda_cos: 0.02              # λ_cos
+cos_start_update: 250         # ramp start_update
+cos_ramp_updates: 250         # ramp_updates
+tau_norm_angstrom: 0.02
+cos_soft_norm_angstrom: 0.0001
+
+# --- optimizer / schedule (inherited from V5) ---
+optimizer: AdamW
+lr: 0.001
+weight_decay: 0.0001
+warmup_updates: 250
+scheduler: cosine
+min_lr: 0.0001
+batch_size: 32
+reactions_per_batch: 8
+frames_per_reaction: 4
+grad_clip_norm: 1.0
+precision: fp32
+
+campaign_mode: label_first
+fixed_model: subgraph_egnn_w48_l3
+max_start_frames_per_branch_cycle: 16
+
+# --- V5.1a training budget ---
+formal_updates: 3000          # every V5.1a run (D1 / ablate / confirm)
+eval_every_updates: 50        # inner-val cadence (plan §3.4; t_run eval interval)
+formal_outer_early_stopping: false
+early_stop_metric: inner_val_reaction_median_key_rmse_over_zero
+early_stop_patience_checks: 8 # V5.1 inner-val selection patience
+early_stop_min_delta: 0.005
+seeds: [17, 29, 43]
+folds: 5                      # frozen V5 5-fold split — NEVER rebuilt here
+radius_angstrom: 4.5
+spatial_neighbors_target: 32
+wall_minutes: 600  # 26 runs x up-to-3000 updates @ ~17 min worst case; patience stops most early
+
+# --- paths (V5 manifests/features reused verbatim; V5.1 outputs under v5_1) ---
+paths:
+  root_from_repo: .
+  manifests_dir: data/manifests
+  split_manifest: data/manifests/v5/split_manifest.json
+  dataset_audit: data/manifests/v5/dataset_audit.json
+  frame_contract: data/manifests/v5/frame_contract.json
+  native_root: outputs/pesn/v5/native
+  teacher_root: outputs/pesn/v5/teacher
+  task_root: outputs/pesn/v5/tasks
+  feature_root: outputs/pesn/v5/features
+  output_root: outputs/pesn/v5_1/sprint     # manifest / decisions / tables
+  runs_root: outputs/pesn/v5_1/runs         # per-run dirs (D1 + 12 + 9)
+  protocol: outputs/pesn/v5_1/protocol_v51.json
+  diagnostics_root: outputs/pesn/v5_1/diagnostics
+  report_root: outputs/pesn/v5_1            # gate_report_v51.*, run_records,
+                                            # scale_readiness_v51.json
+  truth_caller: v5_sprint_key_atom_teacher
+
+sprint:
+  campaign_id: V5_1A_SPRINT
+  arms: [B0, B1, B2, B3]
+  arm_table:
+    B0: {d0: 0.05, anchor: on, magnitude_head: false, pair_loss: legacy_j}
+    B1: {d0: 0.05, anchor: on, magnitude_head: true,  pair_loss: legacy_j}
+    B2: {d0: 0.05, anchor: on, magnitude_head: false, pair_loss: exact_trio}
+    B3: {d0: 0.05, anchor: on, magnitude_head: true,  pair_loss: exact_trio}
+  # stage plans (driver falls back to the top-level keys when absent)
+  diagnose: {arm: B0, fold: 0, seed: 17, updates: 3000, run_id: B0_f0_s17_d1}
+  ablation: {fold: 0, seeds: [17, 29, 43], updates: 3000}
+  confirm: {folds: 5, seed: 17, updates: 3000, b0_reference_folds: [1, 2, 3, 4]}
+  timing_probe: {warmup_steps: 30, train_steps: 200, dense_evals: 3}
+
+device:
+  device: cuda:0
+  require_cuda: true
+  single_training_process: true
+
+# --- V5.1a new blocks: exact keys consumed by the core v51 trainer lane ---
+v51:
+  inner_val:
+    n_val_clusters: 8                 # 40 train clusters -> 32/8 family+size
+    stratify: [family, size]
+    seed: 20261019
+    selection:
+      rmse_tolerance: 1.02            # rmse <= best * 1.02
+      patience_checks: 8
+      min_delta: 0.005
+      min_update_floor: 500           # no rank-based stop before update 500
+  magnitude_head:
+    lambda_mag: 0.5                   # λ_mag
+    init_angstrom: 0.05
+    mode: per_atom
+  pair_exact:
+    lambda_pair_reg: 0.5              # 0.5 * L_pair_reg (exact Δd)
+    lambda_sign: 0.2                  # λ_sign
+    lambda_dead: 0.1                  # λ_dead
+    tau_sign_angstrom: 0.005
+    tau_dead_angstrom: 0.005
+    active_threshold_angstrom: 0.005  # |Δd_true| >= 0.005 A active pairs
+  ramp:
+    start_update: 250                 # first 250 updates: L_atom + L_pair_reg only
+    ramp_updates: 250                 # then 250 updates linear ramp of aux terms
+
+# --- frozen gate constants (mirrored by protocol_v51.json; the protocol
+#     imports them from key_atom_protocols.py, never retypes them) ---
+gates:
+  math_fixture_count: 100
+  rotations_per_fixture: 20
+  permutations_per_fixture: 10
+  bootstrap_count: 2000
+  bootstrap_seed: 20261018
+  split_seed: 20261018
+  effective_atom_norm_angstrom: 0.02
+  near_ts_fraction: 0.20

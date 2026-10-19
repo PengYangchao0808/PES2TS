@@ -46,6 +46,7 @@ budget); everything else follows ADR-0026 §2.7 verbatim.
 """
 from __future__ import annotations
 
+import math
 from typing import Final
 
 import torch
@@ -73,11 +74,37 @@ PARAM_BUDGET: Final[int] = 90_000
 #: recorded after build per ADR-0026 §2.7 "实测落盘".
 MEASURED_PARAMS: Final[int] = 59_235
 
+#: Measured ``sum(p.numel())`` with the V5.1a magnitude head enabled
+#: (base 59,235 + 2-layer magnitude MLP 48→48→1 = 2,401).
+MEASURED_PARAMS_WITH_HEAD: Final[int] = 61_636
+
+#: V5.1a magnitude head (plan §3.2): direction soft-norm eps (Å).
+MAG_DIRECTION_EPS: Final[float] = 1e-4
+
+#: Accepted ``magnitude_mode`` spellings (plan §3.2 fallback ladder).
+MAGNITUDE_MODES: Final[tuple[str, ...]] = ("per_atom", "graph")
+
 #: Default star / spatial radius (Å) — plan §3 M2 and §2 graph contract.
 DEFAULT_RADIUS: Final[float] = 4.5
 
 #: Vector-head reference step (Å), plan §3 M2 a_ref.
 A_REF: Final[float] = 0.08
+
+#: V5.1a magnitude head: EFFECTIVE per-atom magnitude target at init (Å).
+#: The forward pass computes ``u = s_eff·v_hat`` with
+#: ``s_eff = softplus(head(h)) · deg_scale`` and
+#: ``deg_scale = a_ref/max(1, degK)`` — the head's raw softplus output is
+#: scaled by degK BEFORE reaching ``u``, so L_mag (which supervises the
+#: effective magnitude) must calibrate against s_eff, NOT the raw head
+#: output (bug: supervising raw s at degK=2 collapsed ‖u‖ by 4×).
+#: Calibration: degK_typ = 2 → deg_scale_typ = a_ref/2 = 0.04 Å →
+#: softplus(b) = 0.05/0.04 = 1.25 → b = ln(expm1(1.25)) ≈ 0.9124.
+MAG_INIT_TARGET: Final[float] = 0.05         # EFFECTIVE (post deg_scale)
+MAG_DEGK_TYP: Final[int] = 2
+MAG_DEG_SCALE_TYP: Final[float] = A_REF / MAG_DEGK_TYP   # 0.04 Å
+#: Raw softplus output required for the effective init target.
+MAG_RAW_INIT_TARGET: Final[float] = MAG_INIT_TARGET / MAG_DEG_SCALE_TYP
+MAG_BIAS_INIT: Final[float] = math.log(math.expm1(MAG_RAW_INIT_TARGET))
 
 #: Number of covalent hops from the key-atom set defining the message
 #: subgraph (plan §3 M2: "A 的 2 共价 hop").
@@ -106,6 +133,8 @@ class StarEGNN(nn.Module):
         radius: float = DEFAULT_RADIUS,
         hops: int = HOPS,
         param_budget: int = PARAM_BUDGET,
+        magnitude_head: bool = False,
+        magnitude_mode: str = "per_atom",
     ) -> None:
         super().__init__()
         if hidden != 48 or n_layers != 3:
@@ -120,6 +149,25 @@ class StarEGNN(nn.Module):
         self.a_ref = float(a_ref)
         self.radius = float(radius)
         self.hops = int(hops)
+        self.magnitude_head = bool(magnitude_head)
+        self.magnitude_mode = str(magnitude_mode)
+        if self.magnitude_head and self.magnitude_mode not in MAGNITUDE_MODES:
+            raise KeyAtomModelError(
+                "STAR_EGNN_MAGNITUDE_MODE",
+                f"magnitude_mode must be one of {MAGNITUDE_MODES}, got "
+                f"{magnitude_mode!r}")
+        #: Per-key-atom EFFECTIVE magnitudes ``s_eff = s·deg_scale`` (Å)
+        #: of the LAST forward pass when the head is enabled
+        #: (differentiable; None otherwise) — i.e. the per-atom magnitude
+        #: that actually reaches ``u`` (``u = s_eff·v_hat``, so
+        #: ``s_eff ≥ ‖u‖`` since ``‖v_hat‖ ≤ 1``).  The trainer's L_mag
+        #: supervises THIS quantity against ‖y‖ (V5.1a plan §3.3); the
+        #: raw head output is the degK-scaled-down pre-factor, NOT the
+        #: delivered displacement.
+        self.last_magnitudes: torch.Tensor | None = None
+        #: Debug stash of the raw softplus head output ``s`` (pre
+        #: deg_scale scaling); never supervised directly.
+        self.last_raw_magnitudes: torch.Tensor | None = None
 
         self.elem_emb = nn.Embedding(119, ELEM_DIM)  # Z=1..118 valid, 0 padding
         self.node_proj = nn.Linear(ELEM_DIM + NODE_INV_DIM, self.hidden)
@@ -144,12 +192,27 @@ class StarEGNN(nn.Module):
         # z head: graph pool ⊕ key pool -> 64, tanh (plan §3 M2)
         self.z_head = nn.Linear(2 * self.hidden, Z_DIM)
 
+        # --- V5.1a magnitude head (plan §3.2; CONDITIONAL, head-off
+        # state_dict stays bit-compatible with V5 checkpoints) ---
+        if self.magnitude_head:
+            self.mag_head = nn.Sequential(
+                nn.Linear(self.hidden, self.hidden), nn.SiLU(),
+                nn.Linear(self.hidden, 1))
+            final = self.mag_head[-1]
+            nn.init.zeros_(final.weight)
+            nn.init.constant_(final.bias, MAG_BIAS_INIT)
+
         n_params = sum(p.numel() for p in self.parameters())
         if n_params > int(param_budget):
             raise KeyAtomModelError(
                 "STAR_EGNN_PARAM_BUDGET",
                 f"{STAR_EGNN_VERSION} has {n_params} parameters > budget "
                 f"{param_budget}")
+        if self.magnitude_head and n_params != MEASURED_PARAMS_WITH_HEAD:
+            raise KeyAtomModelError(
+                "STAR_EGNN_PARAM_COUNT",
+                f"magnitude-head parameter count {n_params} != recorded "
+                f"{MEASURED_PARAMS_WITH_HEAD}")
 
     # -- helpers -------------------------------------------------------------
 
@@ -262,6 +325,20 @@ class StarEGNN(nn.Module):
                     torch.cat([h, agg, task_nodes], dim=-1)))
             last_messages = messages
 
+        # --- key-pool scalars (shared by the z head and the graph-mode
+        # magnitude head; pure reorder of the z-head pooling — same
+        # index_add on the same inputs, bit-identical results) ---
+        key_graph = torch.repeat_interleave(
+            torch.arange(n_graphs, device=device),
+            (batch.key_ptr[1:] - batch.key_ptr[:-1]).long())
+        k_sum = torch.zeros(n_graphs, self.hidden, dtype=dtype, device=device)
+        k_sum = k_sum.index_add(0, key_graph, h[key_index])
+        k_count = torch.zeros(
+            n_graphs, dtype=dtype, device=device).index_add(
+                0, key_graph,
+                torch.ones(n_keys, dtype=dtype, device=device))
+        k_mean = k_sum / k_count.clamp(min=1.0).unsqueeze(-1)
+
         # --- vector head (key atoms only; signed tanh; no coord updates) ---
         u = torch.zeros(n_keys, 3, dtype=dtype, device=device)
         if last_messages is not None and last_messages.shape[0] > 0:
@@ -285,7 +362,33 @@ class StarEGNN(nn.Module):
         a_coeff = self.c_a * torch.tanh(self.w_a(h[key_index]))  # signed
         deg_scale = (self.a_ref / batch.degK.to(dtype=dtype).clamp(min=1.0)
                      ).unsqueeze(-1)
-        u = deg_scale * (u + a_coeff * soft_mask * a_unit)
+        v_sum = u + a_coeff * soft_mask * a_unit  # summed vector channel
+        if self.magnitude_head:
+            # V5.1a plan §3.2 direction–magnitude decoupling: the direction
+            # is the soft-normalized summed channel (zero vector → zero
+            # vector, never a fabricated direction); the magnitude is a
+            # positive invariant scalar per key atom (or one graph scalar).
+            v_hat = v_sum / torch.sqrt(
+                (v_sum * v_sum).sum(dim=-1, keepdim=True)
+                + MAG_DIRECTION_EPS ** 2)
+            if self.magnitude_mode == "graph":
+                s = torch.nn.functional.softplus(
+                    self.mag_head(k_mean[key_graph]).squeeze(-1))
+            else:
+                s = torch.nn.functional.softplus(
+                    self.mag_head(h[key_index]).squeeze(-1))
+            # EFFECTIVE magnitude: what actually reaches u (u =
+            # deg_scale·s·v_hat = s_eff·v_hat).  L_mag supervises s_eff
+            # against ‖y‖ — supervising the raw s would shrink the
+            # delivered displacement by deg_scale (≈4× at degK=2).
+            s_eff = s * deg_scale.squeeze(-1)
+            self.last_magnitudes = s_eff
+            self.last_raw_magnitudes = s
+            u = deg_scale * (s.unsqueeze(-1) * v_hat)
+        else:
+            self.last_magnitudes = None
+            self.last_raw_magnitudes = None
+            u = deg_scale * v_sum
 
         # --- z head: graph pool ⊕ key pool -> 64, tanh ---
         g_sum = torch.zeros(n_graphs, self.hidden, dtype=dtype, device=device)
@@ -294,16 +397,6 @@ class StarEGNN(nn.Module):
             n_graphs, dtype=dtype, device=device).index_add(
                 0, batch.batch, torch.ones_like(batch.batch, dtype=dtype))
         g_mean = g_sum / g_count.clamp(min=1.0).unsqueeze(-1)
-        key_graph = torch.repeat_interleave(
-            torch.arange(n_graphs, device=device),
-            (batch.key_ptr[1:] - batch.key_ptr[:-1]).long())
-        k_sum = torch.zeros(n_graphs, self.hidden, dtype=dtype, device=device)
-        k_sum = k_sum.index_add(0, key_graph, h[key_index])
-        k_count = torch.zeros(
-            n_graphs, dtype=dtype, device=device).index_add(
-                0, key_graph,
-                torch.ones(n_keys, dtype=dtype, device=device))
-        k_mean = k_sum / k_count.clamp(min=1.0).unsqueeze(-1)
         z = torch.tanh(self.z_head(torch.cat([g_mean, k_mean], dim=-1)))
         return u, z
 
@@ -318,7 +411,15 @@ __all__ = [
     "ELEM_DIM",
     "HOPS",
     "KeyAtomModelError",
+    "MAG_DIRECTION_EPS",
+    "MAG_BIAS_INIT",
+    "MAG_DEGK_TYP",
+    "MAG_DEG_SCALE_TYP",
+    "MAG_INIT_TARGET",
+    "MAG_RAW_INIT_TARGET",
+    "MAGNITUDE_MODES",
     "MEASURED_PARAMS",
+    "MEASURED_PARAMS_WITH_HEAD",
     "PARAM_BUDGET",
     "STAR_EGNN_VERSION",
     "StarEGNN",

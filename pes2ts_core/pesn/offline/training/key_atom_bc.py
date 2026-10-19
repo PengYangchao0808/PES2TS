@@ -1,6 +1,7 @@
 """V5 sprint key-atom BC losses + trainer + CLI (ADR-0026 §2.8, plan §4).
 
-Schema/version: ``pesn_key_atom_bc_v1``.
+Schema/version: ``pesn_key_atom_bc_v1`` (loss-schema bump for V5.1a runs:
+``pesn_key_atom_bc_loss_v2``, see :data:`LOSS_SCHEMA_VERSION`).
 
 Losses (plan §4, verbatim): radial Huber h_δ(e) = e²/2 (e≤δ) else
 δ(e−δ/2), δ=0.25, on the normalized radial error e_i = ‖u_i−y_i‖/0.08;
@@ -31,8 +32,19 @@ cos medians (overall and near-TS), ``eval.jsonl`` /
 Early stopping exists ONLY in screen mode (inner_val reaction-cluster
 median RMSE/zero, patience 8, min_delta 0.005, no stop before update
 500); formal mode runs the fixed budget with
-``formal_outer_early_stopping=false``.  ``run_record.json`` carries the
-ADR-0025 ``gv`` block validated by ``validate_gv_run_record``.
+``formal_outer_early_stopping=false``.  V5.1a (plan §3.2–§3.4) adds
+trainer mode ``v51``: a family/size-stratified 32/8 inner split of the
+outer TRAIN clusters (frozen seed 20261019, sha256 recorded), training
+on inner-train pools only, selection among inner-val checkpoints
+(rmse ≤ R*×1.02 → lowest SRE → highest near-TS cos) with patience 8 /
+min_delta 0.005 / floor update 500, ``checkpoint_best.pt`` +
+``checkpoint_last.pt`` + ``checkpoint_final.pt``, exact-Δd trio pair
+losses + optional magnitude head, and a POST-HOC outer dev_dense eval of
+best+final weights (tagged ``dev_dense_best`` / ``dev_dense_final`` in
+eval.jsonl) that checkpoint selection never sees.  ``run_record.json``
+carries the ADR-0025 ``gv`` block validated by ``validate_gv_run_record``
+plus v51 fields (best_update / inner_val_score / inner_val_split_hash /
+alpha_median / dead_zone_fraction / ``selection_exposed: false``).
 """
 from __future__ import annotations
 
@@ -41,7 +53,7 @@ import hashlib
 import json
 import math
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Final, Mapping, Sequence
 
@@ -58,19 +70,33 @@ from pes2ts_core.pesn.models.key_atom_classic import (
 from pes2ts_core.pesn.models.key_atom_egnn import A_REF, StarEGNN
 
 SCHEMA_VERSION: Final[str] = "pesn_key_atom_bc_v1"
+#: V5.1a loss-schema bump (plan §3.3): exact-Δd trio + magnitude
+#: supervision terms; emitted ONLY in v51-mode run records so V5 screen/
+#: formal artifacts keep their frozen ``pesn_key_atom_bc_v1`` stamp.
+LOSS_SCHEMA_VERSION: Final[str] = "pesn_key_atom_bc_loss_v2"
 RUN_RECORD_SCHEMA: Final[str] = "pesn_key_atom_bc_run_v1"
 CHECKPOINT_SCHEMA: Final[str] = "pesn_key_atom_bc_checkpoint_v1"
 CAMPAIGN_ID: Final[str] = "V5_SPRINT"
 EXPECTED_CONFIG_SCHEMA: Final[str] = "pesn_v5_sprint_draft2"
+#: V5.1a config schema (config/campaigns/v5_1_sprint.yaml, driver lane);
+#: the trainer accepts BOTH schemas in every mode — the v51 yaml is a
+#: superset of the V5 loss keys and legacy modes default identically.
+ACCEPTED_CONFIG_SCHEMAS: Final[tuple[str, ...]] = (
+    "pesn_v5_sprint_draft2", "pesn_v5_1_sprint_v1")
 
-#: Status vocabulary (plan §5.7 / sprint contract).
+#: Status vocabulary (plan §5.7 / sprint contract + V5.1a addition).
 STATUS_COMPLETE: Final[str] = "complete"
 STATUS_CENSORED_SCREEN: Final[str] = "censored_screen"
 STATUS_ABORTED_DATA: Final[str] = "aborted_data"
 STATUS_ABORTED_NAN: Final[str] = "aborted_nan"
+#: V5.1a (plan §3.4): inner-val R* stalled (patience 8, min_delta 0.005).
+#: Successful v51 runs stay STATUS_COMPLETE — the landed V5.1 campaign
+#: driver keys run-success off ``status == "complete"``.
+STATUS_CENSORED_PATIENCE: Final[str] = "censored_patience"
 STATUS_VALUES: Final[tuple[str, ...]] = (
     STATUS_COMPLETE, STATUS_CENSORED_SCREEN,
-    STATUS_ABORTED_DATA, STATUS_ABORTED_NAN)
+    STATUS_ABORTED_DATA, STATUS_ABORTED_NAN,
+    STATUS_CENSORED_PATIENCE)
 
 
 class KeyAtomBCTrainerError(RuntimeError):
@@ -105,9 +131,22 @@ def _require_loss(condition: bool, code: str, detail: str) -> None:
 # Loss configuration + λ_cos ramp (plan §4)
 # ---------------------------------------------------------------------------
 
+#: V5.1a pair-loss arms (plan §3.3): ``legacy_j`` keeps the V5 first-order
+#: J term verbatim; ``exact_trio`` swaps in exact-Δd regression + sign
+#: margin + dead-zone penalty.
+PAIR_LOSS_MODES: Final[tuple[str, ...]] = ("legacy_j", "exact_trio")
+
+
 @dataclass(frozen=True, slots=True)
 class KeyAtomLossConfig:
-    """Plan §4 loss hyper-parameters (sprint yaml ``pesn_v5_sprint_draft2``)."""
+    """Plan §4 loss hyper-parameters (sprint yaml ``pesn_v5_sprint_draft2``).
+
+    V5.1a (plan §3.3) additions: ``pair_loss`` switch
+    (``legacy_j`` | ``exact_trio``), the sign/dead pair terms, log-form
+    magnitude supervision and the shared auxiliary ramp schedule.  All
+    new fields default to the legacy V5 behavior so an unmodified V5
+    yaml trains bit-identically.
+    """
 
     loss_scale_angstrom: float = A_REF      # a_ref = 0.08 Å
     huber_delta: float = 0.25
@@ -117,9 +156,41 @@ class KeyAtomLossConfig:
     cos_ramp_updates: int = 250
     tau_norm_angstrom: float = 0.02
     cos_soft_norm_angstrom: float = 1e-4
+    # --- V5.1a (plan §3.3) ---
+    pair_loss: str = "legacy_j"             # "legacy_j" | "exact_trio"
+    lambda_mag: float = 0.5
+    lambda_sign: float = 0.2
+    lambda_dead: float = 0.1
+    pair_sign_tau_angstrom: float = 0.005   # τ_sign
+    pair_dead_tau_angstrom: float = 0.005   # τ_dead
+    #: Active-pair gate |Δd_true| ≥ 0.005 Å AND the dead-zone boundary
+    #: |Δd_pred| < 0.005 Å (same frozen 0.005 as G53_SIGN_PAIR_THRESHOLD).
+    pair_active_threshold_angstrom: float = 0.005
+    #: L_mag teacher gate: only key atoms with ‖y‖ > 0.01 Å supervise s.
+    mag_supervision_tau_angstrom: float = 0.01
+    #: Shared linear ramp for ALL auxiliary terms (cos/mag/sign/dead):
+    #: zero for the first ``aux_start_update`` updates, then linear over
+    #: ``aux_ramp_updates`` (plan §3.3: 前 250 步只开 L_atom + L_pair_reg).
+    aux_start_update: int = 250
+    aux_ramp_updates: int = 250
+
+    def __post_init__(self) -> None:
+        if self.pair_loss not in PAIR_LOSS_MODES:
+            raise KeyAtomLossError(
+                "PAIR_LOSS_MODE",
+                f"pair_loss must be one of {PAIR_LOSS_MODES}, got "
+                f"{self.pair_loss!r}")
 
     @classmethod
     def from_campaign_config(cls, config: Mapping) -> "KeyAtomLossConfig":
+        # V5.1a yaml (driver lane) nests the new knobs under ``v51:``;
+        # flat top-level spellings remain accepted so ad-hoc/test configs
+        # stay ergonomic.  Precedence: nested v51 block > flat key >
+        # legacy default.
+        v51 = dict(config.get("v51", {}) or {})
+        mag_blk = dict(v51.get("magnitude_head", {}) or {})
+        pair_blk = dict(v51.get("pair_exact", {}) or {})
+        ramp_blk = dict(v51.get("ramp", {}) or {})
         return cls(
             loss_scale_angstrom=float(config.get("a_ref_angstrom", A_REF)),
             huber_delta=float(config.get("huber_delta_normalized", 0.25)),
@@ -130,6 +201,28 @@ class KeyAtomLossConfig:
             tau_norm_angstrom=float(config.get("tau_norm_angstrom", 0.02)),
             cos_soft_norm_angstrom=float(
                 config.get("cos_soft_norm_angstrom", 1e-4)),
+            pair_loss=str(config.get("pair_loss", "legacy_j")),
+            lambda_mag=float(mag_blk.get(
+                "lambda_mag", config.get("lambda_mag", 0.5))),
+            lambda_sign=float(pair_blk.get(
+                "lambda_sign", config.get("lambda_sign", 0.2))),
+            lambda_dead=float(pair_blk.get(
+                "lambda_dead", config.get("lambda_dead", 0.1))),
+            pair_sign_tau_angstrom=float(pair_blk.get(
+                "tau_sign_angstrom",
+                config.get("pair_sign_tau_angstrom", 0.005))),
+            pair_dead_tau_angstrom=float(pair_blk.get(
+                "tau_dead_angstrom",
+                config.get("pair_dead_tau_angstrom", 0.005))),
+            pair_active_threshold_angstrom=float(pair_blk.get(
+                "active_threshold_angstrom",
+                config.get("pair_active_threshold_angstrom", 0.005))),
+            mag_supervision_tau_angstrom=float(
+                config.get("mag_supervision_tau_angstrom", 0.01)),
+            aux_start_update=int(ramp_blk.get(
+                "start_update", config.get("aux_start_update", 250))),
+            aux_ramp_updates=int(ramp_blk.get(
+                "ramp_updates", config.get("aux_ramp_updates", 250))),
         )
 
 
@@ -145,6 +238,60 @@ def cos_lambda(update: int, config: KeyAtomLossConfig) -> float:
         return 0.0
     frac = min(1.0, (update - start) / ramp)
     return float(config.lambda_cos_max) * frac
+
+
+def aux_ramp_fraction(update: int, config: KeyAtomLossConfig) -> float:
+    """Shared linear ramp fraction ∈ [0,1] for the V5.1a auxiliary terms
+    (mag/sign/dead; plan §3.3: first 250 updates only
+    ``L_atom + L_pair_reg``, then 250 updates linear ramp to λ).
+
+    The cos term keeps its own cos_lambda ramp — with the frozen default
+    250/250 schedule the two coincide exactly.
+    """
+    start = int(config.aux_start_update)
+    ramp = max(int(config.aux_ramp_updates), 1)
+    if update < start:
+        return 0.0
+    return float(min(1.0, (update - start) / ramp))
+
+
+def exact_delta_d_torch(
+    pos_key: torch.Tensor,
+    pair_index: torch.Tensor,
+    u: torch.Tensor,
+) -> torch.Tensor:
+    """Differentiable EXACT finite-step Δd per key pair (plan §3.3).
+
+    ``Δd_l(u) = ‖r_l + u_j − u_i‖ − ‖r_l‖`` with ``r_l`` from the CURRENT
+    frame key-atom positions ``pos_key`` (slot order) — the torch twin of
+    :func:`pes2ts_core.pesn.offline.evaluation.key_atom_protocols.exact_delta_d`.
+    ``pair_index`` is [2, P] in KEY-SLOT space.
+    """
+    if pair_index is None or pair_index.numel() == 0:
+        return torch.zeros(0, dtype=u.dtype, device=u.device)
+    pi = pair_index[0].long()
+    pj = pair_index[1].long()
+    r = pos_key[pj] - pos_key[pi]
+    return (r + u[pj] - u[pi]).norm(dim=-1) - r.norm(dim=-1)
+
+
+def _apply_pair_edit_filter(
+    pair_index: torch.Tensor | None,
+    pair_edit: torch.Tensor | None,
+    *,
+    mode: str,
+) -> torch.Tensor | None:
+    """Keep only changed pairs (``pair_edit != 0``) for exact_trio mode.
+
+    The V5 legacy J term is defined over EVERY pair supplied by the
+    caller, so filtering is applied only for ``exact_trio`` (same pair
+    enumeration as G5.3 / ``_static_diagnostics``).
+    """
+    if (pair_index is None or pair_index.numel() == 0
+            or pair_edit is None or mode != "exact_trio"):
+        return pair_index
+    keep = pair_edit.to(device=pair_index.device) != 0
+    return pair_index[:, keep]
 
 
 # ---------------------------------------------------------------------------
@@ -163,12 +310,26 @@ def key_atom_bc_loss_vectorized(
     config: KeyAtomLossConfig | None = None,
     lambda_cos: float = 0.0,
     frame_mask: torch.Tensor | None = None,
+    pair_edit: torch.Tensor | None = None,
+    s: torch.Tensor | None = None,
+    lambda_mag: float = 0.0,
+    lambda_sign: float = 0.0,
+    lambda_dead: float = 0.0,
 ) -> dict:
     """Vectorized twin of :func:`key_atom_bc_loss` (identical math).
 
     Segment reductions replace the per-frame Python loop; the loop version
     stays as the reference and the trainer asserts agreement on real
     batches (same formulas, plan §4; no per-frame GPU sync points).
+
+    V5.1a (plan §3.3): with ``config.pair_loss == "exact_trio"`` the pair
+    term is the exact-Δd regression over changed pairs (``pair_edit != 0``)
+    plus sign-margin / dead-zone terms on teacher-active pairs
+    (|Δd_true| ≥ 0.005 Å); ``s`` (per-key-atom EFFECTIVE magnitudes —
+    the post-deg_scale contribution to ‖u‖ as stashed by the model in
+    ``last_magnitudes``, NOT the raw softplus head output) enables
+    log-form L_mag supervision toward ‖y‖.  Zero multipliers keep the
+    legacy totals bit-identical.
     """
     cfg = config or KeyAtomLossConfig()
     _require_loss(bool(torch.isfinite(u).all()),
@@ -179,6 +340,17 @@ def key_atom_bc_loss_vectorized(
     if pair_index is not None and pair_index.numel() > 0:
         pair_index = global_pair_rows_to_slots(
             pair_index, key_index, int(pos.shape[0]))
+    pair_index = _apply_pair_edit_filter(
+        pair_index, pair_edit, mode=cfg.pair_loss)
+    if (cfg.pair_loss == "exact_trio" and pair_index is not None
+            and pair_index.numel() > 0):
+        _require_loss(pair_edit is not None, "EXACT_TRIO_NEEDS_PAIR_EDIT",
+                      "exact_trio pair loss requires batch.pair_edit")
+    if s is not None:
+        _require_loss(s.shape == (u.shape[0],),
+                      "MAGNITUDE_SHAPE",
+                      f"s (effective magnitudes) must be [{u.shape[0]}], "
+                      f"got {tuple(s.shape)}")
     n_graphs = int(key_ptr.shape[0]) - 1
     scale = float(cfg.loss_scale_angstrom)
     device = u.device
@@ -207,19 +379,61 @@ def key_atom_bc_loss_vectorized(
     l_atom.index_add_(0, atom_frame, l_atom_atoms)
 
     l_pair = torch.zeros(n_graphs, dtype=dtype, device=device)
+    l_sign = torch.zeros(n_graphs, dtype=dtype, device=device)
+    l_dead = torch.zeros(n_graphs, dtype=dtype, device=device)
+    n_pairs_active = 0
     if pair_index is not None and pair_index.numel() > 0:
         pi = pair_index[0].long()
         pj = pair_index[1].long()
-        e_l = pair_unit_vectors(pos, key_index, pair_index)
-        dj = (e_l * (u[pj] - u[pi])).sum(dim=-1)
-        dy = (e_l * (y[pj] - y[pi])).sum(dim=-1)
-        pair_h = radial_huber(
-            ((dj - dy).abs() / scale).to(dtype=dtype), cfg.huber_delta)
         pair_frame = atom_frame[pi]
         pair_sum = torch.zeros(n_graphs, dtype=dtype, device=device)
-        pair_sum.index_add_(0, pair_frame, pair_h)
         pair_cnt = torch.zeros(n_graphs, dtype=dtype, device=device)
-        pair_cnt.index_add_(0, pair_frame, torch.ones_like(pair_h))
+        if cfg.pair_loss == "exact_trio":
+            # plan §3.3: EXACT Δd_l(u) = ‖r_l + u_j − u_i‖ − ‖r_l‖
+            x_key = pos[key_index]
+            dd_u = exact_delta_d_torch(x_key, pair_index, u)
+            dd_y = exact_delta_d_torch(x_key, pair_index, y)
+            pair_h = radial_huber(
+                ((dd_u - dd_y).abs() / scale).to(dtype=dtype),
+                cfg.huber_delta)
+            pair_sum.index_add_(0, pair_frame, pair_h)
+            pair_cnt.index_add_(
+                0, pair_frame, torch.ones_like(pair_h))
+            thr = float(cfg.pair_active_threshold_angstrom)
+            is_active = dd_y.abs() >= thr
+            n_pairs_active += int(is_active.sum())
+            if bool(is_active.any()):
+                a = is_active
+                sign_term = torch.nn.functional.softplus(
+                    -torch.sign(dd_y[a]) * dd_u[a]
+                    / float(cfg.pair_sign_tau_angstrom))
+                dead_term = torch.nn.functional.softplus(
+                    (thr - dd_u[a].abs())
+                    / float(cfg.pair_dead_tau_angstrom))
+                s_sum = torch.zeros(n_graphs, dtype=dtype, device=device)
+                s_cnt = torch.zeros(n_graphs, dtype=dtype, device=device)
+                s_sum.index_add_(0, pair_frame[a], sign_term.to(dtype))
+                s_cnt.index_add_(
+                    0, pair_frame[a], torch.ones_like(sign_term))
+                l_sign = torch.where(
+                    s_cnt > 0, s_sum / s_cnt.clamp(min=1.0),
+                    torch.zeros_like(s_sum))
+                d_sum = torch.zeros(n_graphs, dtype=dtype, device=device)
+                d_cnt = torch.zeros(n_graphs, dtype=dtype, device=device)
+                d_sum.index_add_(0, pair_frame[a], dead_term.to(dtype))
+                d_cnt.index_add_(
+                    0, pair_frame[a], torch.ones_like(dead_term))
+                l_dead = torch.where(
+                    d_cnt > 0, d_sum / d_cnt.clamp(min=1.0),
+                    torch.zeros_like(d_sum))
+        else:
+            e_l = pair_unit_vectors(pos, key_index, pair_index)
+            dj = (e_l * (u[pj] - u[pi])).sum(dim=-1)
+            dy = (e_l * (y[pj] - y[pi])).sum(dim=-1)
+            pair_h = radial_huber(
+                ((dj - dy).abs() / scale).to(dtype=dtype), cfg.huber_delta)
+            pair_sum.index_add_(0, pair_frame, pair_h)
+            pair_cnt.index_add_(0, pair_frame, torch.ones_like(pair_h))
         l_pair = pair_sum / pair_cnt.clamp(min=1.0)
 
     g = (y.norm(dim=-1) > float(cfg.tau_norm_angstrom)).to(dtype)
@@ -233,7 +447,30 @@ def key_atom_bc_loss_vectorized(
     l_cos = torch.where(denom > 0.0, l_cos,
                         torch.zeros_like(l_cos))
 
-    frames = l_atom + float(cfg.lambda_pair) * l_pair + float(lambda_cos) * l_cos
+    # L_mag (plan §3.3): radial huber of the log magnitude ratio on
+    # teacher-gated atoms (‖y‖ > 0.01 Å); zero when the head is off.
+    # `s` carries the EFFECTIVE magnitude (post deg_scale contribution
+    # to ‖u‖) so the optimum drives ‖u‖ ≈ ‖y‖, not raw-s ≈ ‖y‖.
+    l_mag = torch.zeros(n_graphs, dtype=dtype, device=device)
+    if s is not None:
+        y_norm = y.norm(dim=-1)
+        gate_mag = (y_norm > float(cfg.mag_supervision_tau_angstrom)).to(dtype)
+        log_r = torch.log(
+            (s.to(dtype=dtype) + 1e-6) / (y_norm + 1e-6))
+        mag_atom = radial_huber(log_r, cfg.huber_delta) * gate_mag
+        mag_sum = torch.zeros(n_graphs, dtype=dtype, device=device)
+        mag_sum.index_add_(0, atom_frame, mag_atom)
+        mag_cnt = torch.zeros(n_graphs, dtype=dtype, device=device)
+        mag_cnt.index_add_(0, atom_frame, gate_mag)
+        l_mag = torch.where(
+            mag_cnt > 0, mag_sum / mag_cnt.clamp(min=1.0),
+            torch.zeros_like(mag_sum))
+
+    frames = (l_atom + float(cfg.lambda_pair) * l_pair
+              + float(lambda_cos) * l_cos
+              + float(lambda_mag) * l_mag
+              + float(lambda_sign) * l_sign
+              + float(lambda_dead) * l_dead)
     keep = active.to(dtype)
     total = (frames * keep).sum() / n_used
     _require_loss(bool(torch.isfinite(total)), "NONFINITE_LOSS",
@@ -242,8 +479,17 @@ def key_atom_bc_loss_vectorized(
         "loss": total,
         "l_atom": (l_atom * keep).sum() / n_used,
         "l_pair": (l_pair * keep).sum() / n_used,
+        "l_pair_reg": (l_pair * keep).sum() / n_used,
         "l_cos": (l_cos * keep).sum() / n_used,
+        "l_mag": (l_mag * keep).sum() / n_used,
+        "l_sign": (l_sign * keep).sum() / n_used,
+        "l_dead": (l_dead * keep).sum() / n_used,
         "lambda_cos": float(lambda_cos),
+        "lambda_mag": float(lambda_mag),
+        "lambda_sign": float(lambda_sign),
+        "lambda_dead": float(lambda_dead),
+        "pair_loss": str(cfg.pair_loss),
+        "n_pairs_active": int(n_pairs_active),
         "n_frames": n_used,
     }
 
@@ -319,14 +565,21 @@ def key_atom_bc_loss(
     config: KeyAtomLossConfig | None = None,
     lambda_cos: float = 0.0,
     frame_mask: torch.Tensor | None = None,
+    pair_edit: torch.Tensor | None = None,
+    s: torch.Tensor | None = None,
+    lambda_mag: float = 0.0,
+    lambda_sign: float = 0.0,
+    lambda_dead: float = 0.0,
 ) -> dict:
     """Total loss + components (plan §4): per frame
-    ``L_atom + λ_pair·L_pair + λ_cos·L_cos`` with w_i normalized INSIDE
+    ``L_atom + λ_pair·L_pair + λ_cos·L_cos`` (+ V5.1a mag/sign/dead,
+    see :func:`key_atom_bc_loss_vectorized`) with w_i normalized INSIDE
     the frame term; batch loss = mean over unmasked frames (q weights are
     the sampler's job and are NOT re-applied here).
 
     Raises ``KeyAtomLossError`` on non-finite inputs or results; an empty
-    cos gate yields L_cos = 0 exactly.
+    cos gate yields L_cos = 0 exactly; empty active-pair sets yield
+    L_sign = L_dead = 0 exactly (never NaN).
     """
     cfg = config or KeyAtomLossConfig()
     _require_loss(bool(torch.isfinite(u).all()),
@@ -339,6 +592,17 @@ def key_atom_bc_loss(
         )
         pair_index = global_pair_rows_to_slots(
             pair_index, key_index, int(pos.shape[0]))
+    pair_index = _apply_pair_edit_filter(
+        pair_index, pair_edit, mode=cfg.pair_loss)
+    if (cfg.pair_loss == "exact_trio" and pair_index is not None
+            and pair_index.numel() > 0):
+        _require_loss(pair_edit is not None, "EXACT_TRIO_NEEDS_PAIR_EDIT",
+                      "exact_trio pair loss requires batch.pair_edit")
+    if s is not None:
+        _require_loss(s.shape == (u.shape[0],),
+                      "MAGNITUDE_SHAPE",
+                      f"s (effective magnitudes) must be [{u.shape[0]}], "
+                      f"got {tuple(s.shape)}")
     n_graphs = int(key_ptr.shape[0]) - 1
     scale = float(cfg.loss_scale_angstrom)
     total = torch.zeros((), dtype=u.dtype, device=u.device)
@@ -346,6 +610,10 @@ def key_atom_bc_loss(
     l_atom_acc = torch.zeros((), dtype=u.dtype, device=u.device)
     l_pair_acc = torch.zeros((), dtype=u.dtype, device=u.device)
     l_cos_acc = torch.zeros((), dtype=u.dtype, device=u.device)
+    l_mag_acc = torch.zeros((), dtype=u.dtype, device=u.device)
+    l_sign_acc = torch.zeros((), dtype=u.dtype, device=u.device)
+    l_dead_acc = torch.zeros((), dtype=u.dtype, device=u.device)
+    n_pairs_active = 0
     for b in range(n_graphs):
         if frame_mask is not None and not bool(frame_mask[b]):
             continue
@@ -360,16 +628,36 @@ def key_atom_bc_loss(
         l_atom = (w * radial_huber(e, cfg.huber_delta)).sum()
         # L_pair = mean over this frame's key pairs
         l_pair = torch.zeros((), dtype=u.dtype, device=u.device)
+        l_sign = torch.zeros((), dtype=u.dtype, device=u.device)
+        l_dead = torch.zeros((), dtype=u.dtype, device=u.device)
         if pair_index is not None and pair_index.numel() > 0:
             in_frame = ((pair_index[0] >= lo) & (pair_index[0] < hi)
                         & (pair_index[1] >= lo) & (pair_index[1] < hi))
             if bool(in_frame.any()):
                 sub = pair_index[:, in_frame]
-                e_l = pair_unit_vectors(pos, key_index, sub)
-                dj = pair_projections(u_b, sub - lo, e_l)
-                dy = pair_projections(y_b, sub - lo, e_l)
-                l_pair = radial_huber(
-                    (dj - dy).abs() / scale, cfg.huber_delta).mean()
+                if cfg.pair_loss == "exact_trio":
+                    x_key = pos[key_index]
+                    dd_u = exact_delta_d_torch(x_key, sub, u)
+                    dd_y = exact_delta_d_torch(x_key, sub, y)
+                    l_pair = radial_huber(
+                        (dd_u - dd_y).abs() / scale,
+                        cfg.huber_delta).mean()
+                    thr = float(cfg.pair_active_threshold_angstrom)
+                    is_active = dd_y.abs() >= thr
+                    n_pairs_active += int(is_active.sum())
+                    if bool(is_active.any()):
+                        l_sign = torch.nn.functional.softplus(
+                            -torch.sign(dd_y[is_active]) * dd_u[is_active]
+                            / float(cfg.pair_sign_tau_angstrom)).mean()
+                        l_dead = torch.nn.functional.softplus(
+                            (thr - dd_u[is_active].abs())
+                            / float(cfg.pair_dead_tau_angstrom)).mean()
+                else:
+                    e_l = pair_unit_vectors(pos, key_index, sub)
+                    dj = pair_projections(u_b, sub - lo, e_l)
+                    dy = pair_projections(y_b, sub - lo, e_l)
+                    l_pair = radial_huber(
+                        (dj - dy).abs() / scale, cfg.huber_delta).mean()
         # L_cos: teacher-magnitude gate only (never the prediction)
         g = (y_b.norm(dim=-1) > float(cfg.tau_norm_angstrom)).to(u.dtype)
         wg = w * g
@@ -379,12 +667,30 @@ def key_atom_bc_loss(
             l_cos = (wg * (1.0 - c)).sum() / denom.clamp(min=1e-8)
         else:
             l_cos = torch.zeros((), dtype=u.dtype, device=u.device)
-        frame = l_atom + float(cfg.lambda_pair) * l_pair + \
-            float(lambda_cos) * l_cos
+        # L_mag (plan §3.3): log-magnitude huber on gated atoms;
+        # `s` carries the EFFECTIVE magnitude (see vectorized twin).
+        l_mag = torch.zeros((), dtype=u.dtype, device=u.device)
+        if s is not None:
+            s_b = s[lo:hi]
+            y_norm = y_b.norm(dim=-1)
+            gate_mag = (y_norm
+                        > float(cfg.mag_supervision_tau_angstrom)).to(u.dtype)
+            if float(gate_mag.sum()) > 0.0:
+                log_r = torch.log((s_b + 1e-6) / (y_norm + 1e-6))
+                l_mag = (radial_huber(log_r, cfg.huber_delta)
+                         * gate_mag).sum() / gate_mag.sum().clamp(min=1.0)
+        frame = (l_atom + float(cfg.lambda_pair) * l_pair
+                 + float(lambda_cos) * l_cos
+                 + float(lambda_mag) * l_mag
+                 + float(lambda_sign) * l_sign
+                 + float(lambda_dead) * l_dead)
         total = total + frame
         l_atom_acc = l_atom_acc + l_atom
         l_pair_acc = l_pair_acc + l_pair
         l_cos_acc = l_cos_acc + l_cos
+        l_mag_acc = l_mag_acc + l_mag
+        l_sign_acc = l_sign_acc + l_sign
+        l_dead_acc = l_dead_acc + l_dead
         n_used += 1
     _require_loss(n_used > 0, "NO_ELIGIBLE_FRAMES",
                   "batch has no unmasked frames with key atoms")
@@ -395,8 +701,17 @@ def key_atom_bc_loss(
         "loss": total,
         "l_atom": l_atom_acc / n_used,
         "l_pair": l_pair_acc / n_used,
+        "l_pair_reg": l_pair_acc / n_used,
         "l_cos": l_cos_acc / n_used,
+        "l_mag": l_mag_acc / n_used,
+        "l_sign": l_sign_acc / n_used,
+        "l_dead": l_dead_acc / n_used,
         "lambda_cos": float(lambda_cos),
+        "lambda_mag": float(lambda_mag),
+        "lambda_sign": float(lambda_sign),
+        "lambda_dead": float(lambda_dead),
+        "pair_loss": str(cfg.pair_loss),
+        "n_pairs_active": int(n_pairs_active),
         "n_frames": n_used,
     }
 
@@ -448,6 +763,13 @@ def _median(values: Sequence[float]) -> float | None:
     return float(np.median(np.asarray(vals, dtype=np.float64)))
 
 
+def _quantile(values: Sequence[float], q: float) -> float | None:
+    vals = [v for v in values if v is not None and math.isfinite(v)]
+    if not vals:
+        return None
+    return float(np.quantile(np.asarray(vals, dtype=np.float64), q))
+
+
 def compute_cluster_metrics(
     per_sample: Sequence[dict], *,
     soft: float = 1e-4, tau: float = 0.02, near_ts_cut: float = 0.20,
@@ -457,8 +779,10 @@ def compute_cluster_metrics(
     Each ``per_sample`` entry: ``group_id``, ``u`` [m,3], ``y`` [m,3],
     ``u_classic`` [m,3] or None, ``near_ts`` float.  Per cluster: median/
     mean MAE & RMSE (Å), RMSE/zero and RMSE/Classic ratios, effective-atom
-    (‖y‖>τ) soft-cosine median overall and for near-TS samples.  The
-    aggregate takes the median over clusters for every scalar.
+    (‖y‖>τ) soft-cosine median overall and for near-TS samples, and the
+    V5.1a amplitude ratio α = ‖u‖/‖y‖ median over effective atoms (plan
+    §5.1 M1).  The aggregate takes the median over clusters for every
+    scalar (plus α Q25/Q75).
     """
     clusters: dict[str, list[dict]] = {}
     for s in per_sample:
@@ -469,6 +793,7 @@ def compute_cluster_metrics(
         y_norms: list[np.ndarray] = []
         cos_eff: list[float] = []
         cos_near: list[float] = []
+        alpha_eff: list[float] = []
         errs_classic: list[np.ndarray] = []
         has_classic = True
         for s in samples:
@@ -486,6 +811,10 @@ def compute_cluster_metrics(
                 cos_eff.extend(c.tolist())
                 if float(s.get("near_ts", 1.0)) <= near_ts_cut:
                     cos_near.extend(c.tolist())
+                alpha_eff.extend(
+                    (np.linalg.norm(u[eff], axis=1)
+                     / np.maximum(np.linalg.norm(y[eff], axis=1),
+                                  1e-12)).tolist())
             uc = s.get("u_classic")
             if uc is None:
                 has_classic = False
@@ -505,6 +834,7 @@ def compute_cluster_metrics(
             "rmse_over_zero": rmse / max(rmse_zero, 1e-12),
             "cos_eff_median": _median(cos_eff),
             "cos_eff_near_ts_median": _median(cos_near),
+            "alpha_median": _median(alpha_eff),
         }
         if has_classic and errs_classic:
             e_cls = np.concatenate(errs_classic)
@@ -515,10 +845,14 @@ def compute_cluster_metrics(
         per_cluster[gid] = entry
     agg_keys = (
         "mae", "rmse", "rmse_over_zero", "rmse_over_classic",
-        "cos_eff_median", "cos_eff_near_ts_median")
+        "cos_eff_median", "cos_eff_near_ts_median", "alpha_median")
     aggregate = {
         k: _median([per_cluster[g][k] for g in per_cluster])
         for k in agg_keys}
+    aggregate["alpha_q25"] = _quantile(
+        [per_cluster[g]["alpha_median"] for g in per_cluster], 0.25)
+    aggregate["alpha_q75"] = _quantile(
+        [per_cluster[g]["alpha_median"] for g in per_cluster], 0.75)
     aggregate["n_clusters"] = len(per_cluster)
     return per_cluster, aggregate
 
@@ -775,12 +1109,21 @@ def _parse_sample_id(sid: str, runtime: dict) -> int:
     return offset + sample_idx
 
 
-def load_lane_b_pools(config: Mapping, *, fold: int, d0: float, split_path: str):
+def load_lane_b_pools(config: Mapping, *, fold: int, d0: float,
+                      split_path: str,
+                      inner_val: Mapping | None = None):
     """Train cycle pools + dev dense rows (plan §5.2), Lane B API bridge.
 
     Returns ``{"train": {gid: {branch: [row]}}, "dev_dense": [row]}`` with
     rows ``{"sample_id", "q_weight"}``; ``sample_id`` encodes
     ``(shard_idx, sample_idx)`` over the sorted shard list of the d0 root.
+
+    V5.1a (plan §3.4): pass ``inner_val={"n_val": 8, "seed": 20261019}``
+    to additionally receive ``"inner_train"`` (train pools restricted to
+    the inner-train clusters), ``"inner_val_dense"`` (dense rows for the
+    inner-val clusters) and ``"inner_split"`` (ids/seed/hash provenance).
+    The outer dev_dense rows are untouched — v51 training never selects
+    on them.
     """
     from pes2ts_core.pesn.offline.data import key_atom_dataset as lane_b
 
@@ -806,21 +1149,148 @@ def load_lane_b_pools(config: Mapping, *, fold: int, d0: float, split_path: str)
             train[gid][int(branch)] = rows
     runtime = _lane_b_runtime(config, d0, split_path)
     dev_rids = {rid for rids in dev_groups.values() for rid in rids}
-    dev_rows: list[dict] = []
+    dev_rows: list[dict] = _dense_rows_for(runtime, dev_rids)
+    if not train:
+        raise KeyAtomBCTrainerError(
+            "EMPTY_POOLS", "no train pools resolved from split")
+    out = {"train": train, "dev_dense": dev_rows}
+    if inner_val is not None:
+        n_val = int(inner_val.get("n_val", 8))
+        seed = int(inner_val.get("seed", V51_INNER_SPLIT_SEED))
+        family_of, size_of = _cluster_family_size(split_path)
+        train_ids, val_ids, split_hash = inner_val_split(
+            sorted(train), family_of=family_of, size_of=size_of,
+            n_val=n_val, seed=seed)
+        val_set = set(val_ids)
+        train_rids = {rid for gid in train_ids
+                      for rid in train_groups.get(gid, [])}
+        val_rids = {rid for gid in val_ids
+                    for rid in train_groups.get(gid, [])}
+        out["inner_train"] = {gid: train[gid] for gid in train_ids}
+        out["inner_val_dense"] = _dense_rows_for(runtime, val_rids)
+        out["inner_split"] = {
+            "train_ids": list(train_ids),
+            "val_ids": list(val_ids),
+            "n_val": n_val,
+            "seed": seed,
+            "hash": split_hash,
+            "train_rids": sorted(train_rids),
+            "val_rids": sorted(val_rids),
+            "n_val_clusters": len(val_set),
+        }
+    return out
+
+
+def _dense_rows_for(runtime: Mapping, rids: set[str]) -> list[dict]:
+    """Dense eligible rows (``sample_id``/``q_weight``) for reaction ids."""
+    rows: list[dict] = []
     for shard_idx, path in enumerate(runtime["shards"]):
         rid = path.name.split(".branch")[0]
-        if rid not in dev_rids:
+        if rid not in rids:
             continue
         with np.load(path, allow_pickle=False) as data:
             eligible = np.asarray(data["eligible"], dtype=bool)
             q = np.asarray(data["q_weight"], dtype=np.float64)
         for sample_idx in np.nonzero(eligible)[0]:
-            dev_rows.append({"sample_id": _sample_id(shard_idx, sample_idx),
-                             "q_weight": float(q[sample_idx])})
-    if not train:
-        raise KeyAtomBCTrainerError(
-            "EMPTY_POOLS", "no train pools resolved from split")
-    return {"train": train, "dev_dense": dev_rows}
+            rows.append({"sample_id": _sample_id(shard_idx, sample_idx),
+                         "q_weight": float(q[sample_idx])})
+    return rows
+
+
+# ---------------------------------------------------------------------------
+# V5.1a inner-val split (plan §3.4: 32/8, family+size stratified, hashed)
+# ---------------------------------------------------------------------------
+
+#: Frozen inner-split seed (plan §3.4 "seed 固定").
+V51_INNER_SPLIT_SEED: Final[int] = 20261019
+
+_FAMILY_SIZE_CACHE: dict[str, tuple[dict, dict]] = {}
+
+
+def _cluster_family_size(split_path: str | Path) -> tuple[dict, dict]:
+    """``({gid: family}, {gid: size})`` from the split manifest components.
+
+    ``family`` is the G1 taxonomy family of the cluster component;
+    ``size`` is the reaction count of the cluster (its "size").  Groups
+    absent from the components table fall back to ``("unknown", 1)``.
+    Memoized per manifest mtime.
+    """
+    import json as _json
+
+    path = Path(split_path)
+    key = f"{path}|{path.stat().st_mtime_ns if path.exists() else -1}"
+    cached = _FAMILY_SIZE_CACHE.get(key)
+    if cached is not None:
+        return cached
+    doc = _json.loads(path.read_text(encoding="utf-8"))
+    family_of: dict[str, str] = {}
+    size_of: dict[str, int] = {}
+    for comp in doc.get("components") or ():
+        family = str(comp.get("family", "unknown"))
+        gids = [str(g) for g in comp.get("group_ids") or ()]
+        for gid in gids:
+            family_of[gid] = family
+            size_of[gid] = len(gids)
+    _FAMILY_SIZE_CACHE[key] = (family_of, size_of)
+    return family_of, size_of
+
+
+def inner_val_split(
+    cluster_ids: Sequence[str],
+    *,
+    family_of: Mapping[str, str] | None = None,
+    size_of: Mapping[str, int] | None = None,
+    n_val: int = 8,
+    seed: int = V51_INNER_SPLIT_SEED,
+) -> tuple[list[str], list[str], str]:
+    """Deterministic 32/8-style inner split of the outer-fold TRAIN
+    clusters (plan §3.4: family/size stratified, fixed seed, hash
+    recorded).
+
+    Clusters are ordered by ``(family, size, cluster_id)`` with a seeded
+    within-stratum shuffle; the inner-val set is a SYSTEMATIC sample of
+    that ordering (random start, fixed stride ``n/n_val``), which spreads
+    the val slots across every family/size stratum.  Returns
+    ``(train_ids, val_ids, split_hash)`` — the hash is sha256 over the
+    sorted cluster ids, the sorted val ids and the seed.
+    """
+    ids = sorted({str(g) for g in cluster_ids})
+    n = len(ids)
+    _require(0 < int(n_val) < n, "INNER_SPLIT_INVALID",
+             f"need 0 < n_val < n_clusters, got n_val={n_val}, n={n}")
+    fam_of = {g: str((family_of or {}).get(g, "unknown")) for g in ids}
+    size_lookup = {g: int((size_of or {}).get(g, 1)) for g in ids}
+    strata: dict[tuple[str, int], list[str]] = {}
+    for g in ids:
+        strata.setdefault((fam_of[g], size_lookup[g]), []).append(g)
+    rng = np.random.default_rng(int(seed))
+    ordered: list[str] = []
+    for key in sorted(strata):
+        members = strata[key]  # already sorted (ids inserted in order)
+        perm = rng.permutation(len(members))
+        ordered.extend(members[i] for i in perm)
+    step = n / float(n_val)
+    start = float(rng.uniform(0.0, step))
+    val_positions = sorted({int(start + j * step) for j in range(n_val)})
+    # step >= 1 guarantees n_distinct == n_val (floor of an arithmetic
+    # sequence with stride >= 1); the guard covers degenerate callers.
+    pos = 0
+    while len(val_positions) < int(n_val):
+        candidate = (val_positions[-1] + 1) % n if val_positions else 0
+        if candidate not in val_positions:
+            val_positions.append(candidate)
+        else:
+            pos += 1
+            candidate = pos % n
+            if candidate not in val_positions:
+                val_positions.append(candidate)
+    val_ids = sorted(ordered[i] for i in val_positions)
+    train_ids = [g for g in ids if g not in set(val_ids)]
+    payload = json.dumps(
+        {"clusters": ids, "inner_val": val_ids, "seed": int(seed)},
+        sort_keys=True, ensure_ascii=False, separators=(",", ":"))
+    split_hash = hashlib.sha256(payload.encode("utf-8")).hexdigest()
+    return train_ids, val_ids, split_hash
 
 
 class _SampleView:
@@ -912,17 +1382,32 @@ def _git_commit(repo_root: Path | None = None) -> str:
         return "unknown"
 
 
-def build_gv_block(*, config_path: Path, repo_root: Path) -> dict:
-    """ADR-0025 ``gv`` provenance block for a V5_SPRINT run record."""
+def build_gv_block(*, config_path: Path, repo_root: Path,
+                   campaign_id: str | None = None) -> dict:
+    """ADR-0025 ``gv`` provenance block for a sprint run record.
+
+    ``campaign_id`` comes from the campaign config (``sprint.campaign_id``
+    — e.g. ``V5_1A_SPRINT`` for v51 runs); when the id is not (yet)
+    registered in ``g_v_map`` the block falls back to the registered
+    ``V5_SPRINT`` entry's gates so validation still passes — the
+    configured id travels in the run record's top-level ``campaign_id``.
+    """
     gv_map = load_gv_map()
+    requested = str(campaign_id or CAMPAIGN_ID)
+    registered = (requested if requested in gv_map.campaigns
+                  else CAMPAIGN_ID)
+    entry = gv_map.campaigns.get(registered)
     data_manifest = repo_root / "data/manifests/v5/split_manifest.json"
     map_path = Path(gv_map.path)
     return {
         "map_version": gv_map.map_version,
-        "campaign_id": CAMPAIGN_ID,
-        "primary_g": "G3.P.0",
-        "supporting_g": ["G3.P.1", "G3.P.2", "G3.P.3", "G0", "G1"],
-        "gates": ["V5-G1", "V5-G2", "V5-G3", "V5-G4"],
+        "campaign_id": registered,
+        "campaign_id_configured": requested,
+        "primary_g": entry.primary_g if entry is not None else "G3.P.0",
+        "supporting_g": (list(entry.supporting_g) if entry is not None
+                         else ["G3.P.1", "G3.P.2", "G3.P.3", "G0", "G1"]),
+        "gates": (list(entry.gates) if entry is not None
+                  else ["V5-G1", "V5-G2", "V5-G3", "V5-G4"]),
         "code_commit": _git_commit(),
         "config_sha256": _sha256_or_none(config_path),
         "data_manifest_sha256": _sha256_or_none(data_manifest),
@@ -947,19 +1432,48 @@ def write_run_record(
 
 @dataclass(frozen=True, slots=True)
 class KeyAtomArmSpec:
-    """Resolved arm identity: prefix A = anchor on, C = anchor off."""
+    """Resolved arm identity: prefix A = anchor on, C = anchor off.
+
+    V5.1a additions (plan §3.2/§3.3): ``magnitude_head`` (direction–
+    magnitude decoupling, anchor-on only) and ``pair_loss``
+    (``legacy_j`` | ``exact_trio``).
+    """
 
     arm_id: str
     anchor: str          # "on" | "off"
     d0: float
+    magnitude_head: bool = False
+    pair_loss: str = "legacy_j"
 
     def to_payload(self) -> dict:
-        return {"arm_id": self.arm_id, "anchor": self.anchor, "d0": self.d0}
+        return {"arm_id": self.arm_id, "anchor": self.anchor,
+                "d0": self.d0, "magnitude_head": self.magnitude_head,
+                "pair_loss": self.pair_loss}
+
+
+def _as_bool(value, *, field: str, arm_id: str) -> bool:
+    """YAML-1.1 tolerant boolean (bare on/off/yes/no parse as bools)."""
+    if isinstance(value, bool):
+        return value
+    text = str(value).strip().lower()
+    if text in ("true", "yes", "on", "1"):
+        return True
+    if text in ("false", "no", "off", "0"):
+        return False
+    raise KeyAtomBCTrainerError(
+        "ARM_FIELD_INVALID",
+        f"arm {arm_id} {field} must be a boolean, got {value!r}")
 
 
 def resolve_arm(config: Mapping, arm_id: str) -> KeyAtomArmSpec:
     """Parse the arm id: A→anchor on, C→anchor off; d0 from the config
-    arm_table (plan §5.2)."""
+    arm_table (plan §5.2).  V5.1a arm_table entries may additionally set
+    ``magnitude_head`` (bool) and ``pair_loss`` (``legacy_j``|
+    ``exact_trio``); both default to the legacy V5 behavior.  The A/C
+    prefix rule is enforced only for A/C-prefixed arms; any other prefix
+    (B0..B3 ablations) is accepted verbatim.  A magnitude head REQUIRES
+    anchor=on (plan §3.2 — the head-on path is anchor-on only).
+    """
     table = (config.get("sprint", {}) or {}).get("arm_table", {}) or {}
     _require(arm_id in table, "ARM_UNKNOWN",
              f"arm {arm_id!r} not in config arm_table {sorted(table)}")
@@ -978,10 +1492,148 @@ def resolve_arm(config: Mapping, arm_id: str) -> KeyAtomArmSpec:
     _require(anchor in ("on", "off"), "ARM_ANCHOR_INVALID",
              f"arm {arm_id} anchor must be on/off, got {anchor!r}")
     prefix = arm_id[0].upper()
-    _require((prefix == "A") == (anchor == "on"), "ARM_PREFIX_CONFLICT",
-             f"arm {arm_id}: prefix {prefix!r} disagrees with arm_table "
-             f"anchor={anchor!r}")
-    return KeyAtomArmSpec(arm_id=arm_id, anchor=anchor, d0=d0)
+    if prefix in ("A", "C"):
+        _require((prefix == "A") == (anchor == "on"), "ARM_PREFIX_CONFLICT",
+                 f"arm {arm_id}: prefix {prefix!r} disagrees with arm_table "
+                 f"anchor={anchor!r}")
+    magnitude_head = _as_bool(
+        entry.get("magnitude_head", False),
+        field="magnitude_head", arm_id=arm_id)
+    pair_loss = str(entry.get(
+        "pair_loss", config.get("pair_loss", "legacy_j"))).strip().lower()
+    _require(pair_loss in PAIR_LOSS_MODES, "ARM_PAIR_LOSS_INVALID",
+             f"arm {arm_id} pair_loss must be one of {PAIR_LOSS_MODES}, "
+             f"got {pair_loss!r}")
+    _require(not magnitude_head or anchor == "on", "ARM_HEAD_ANCHOR_REQUIRED",
+             f"arm {arm_id}: magnitude_head=true requires anchor=on "
+             f"(V5.1 plan §3.2)")
+    return KeyAtomArmSpec(arm_id=arm_id, anchor=anchor, d0=d0,
+                          magnitude_head=magnitude_head, pair_loss=pair_loss)
+
+
+# ---------------------------------------------------------------------------
+# V5.1a best-checkpoint selection + patience (plan §3.4 — FROZEN rule)
+# ---------------------------------------------------------------------------
+
+#: Frozen checkpoint-qualification factor (plan §3.4: rmse ≤ R*×1.02).
+V51_QUALIFY_FACTOR: Final[float] = 1.02
+#: Frozen patience floor: no stop before this update (plan §3.4).
+V51_PATIENCE_FLOOR_UPDATE: Final[int] = 500
+
+
+@dataclass(frozen=True, slots=True)
+class V51EvalPoint:
+    """One inner-val evaluation row for the v51 selection rule."""
+
+    update: int
+    rmse_over_zero: float | None
+    sre_median: float | None
+    near_ts_cos: float | None
+    alpha_median: float | None = None
+    dead_zone_fraction: float | None = None
+    sign_accuracy: float | None = None
+
+
+def _finite_or(value: float | None, fallback: float) -> float:
+    if value is None or not math.isfinite(float(value)):
+        return fallback
+    return float(value)
+
+
+def select_best_v51(
+    points: Sequence[V51EvalPoint],
+    *,
+    qualify_factor: float = V51_QUALIFY_FACTOR,
+) -> V51EvalPoint | None:
+    """Pure best-checkpoint selection (plan §3.4, frozen rule):
+
+    maintain the running best rmse R* over ALL checks so far; a checkpoint
+    QUALIFIES iff ``rmse ≤ R* × 1.02``; among qualified checkpoints keep
+    the one with the lowest SRE median, tie-break highest near-TS cos,
+    then earliest update (determinism only — not part of the plan rule).
+    Non-finite/None metrics sort worst (SRE → +inf, cos → −inf).
+    """
+    finite = [p for p in points
+              if p.rmse_over_zero is not None
+              and math.isfinite(float(p.rmse_over_zero))]
+    if not finite:
+        return None
+    r_star = min(float(p.rmse_over_zero) for p in finite)
+    qualified = [p for p in finite
+                 if float(p.rmse_over_zero) <= r_star * qualify_factor]
+
+    def _key(p: V51EvalPoint) -> tuple[float, float, int]:
+        # lowest SRE first; then highest near-TS cos; then earliest
+        # update (determinism only — not part of the plan rule).
+        return (_finite_or(p.sre_median, math.inf),
+                -_finite_or(p.near_ts_cos, -math.inf),
+                int(p.update))
+
+    return min(qualified, key=_key)
+
+
+class V51EarlyStopper:
+    """Patience state for v51 inner-val selection (plan §3.4).
+
+    A check IMPROVES the running best R* by ≥ ``min_delta`` → the bad
+    counter resets; otherwise it increments.  Stop fires at
+    ``patience`` consecutive bad checks, but never before
+    ``floor_update`` (plan §3.4: no stop before update 500).
+    """
+
+    def __init__(self, *, patience: int = 8, min_delta: float = 0.005,
+                 floor_update: int = V51_PATIENCE_FLOOR_UPDATE) -> None:
+        self.patience = int(patience)
+        self.min_delta = float(min_delta)
+        self.floor_update = int(floor_update)
+        self.r_star: float | None = None
+        self.bad_checks = 0
+
+    def update(self, rmse_over_zero: float | None, *,
+               at_update: int) -> bool:
+        """Feed one inner-val check; return True → stop early."""
+        if rmse_over_zero is None or not math.isfinite(float(rmse_over_zero)):
+            return False
+        value = float(rmse_over_zero)
+        if self.r_star is None or (self.r_star - value) >= self.min_delta:
+            self.r_star = value
+            self.bad_checks = 0
+            return False
+        if value < self.r_star:
+            self.r_star = value  # new best, but improvement < min_delta
+        self.bad_checks += 1
+        return (self.bad_checks >= self.patience
+                and int(at_update) >= self.floor_update)
+
+
+class V51BestTracker:
+    """Running v51 best-checkpoint selection over inner-val eval points.
+
+    Wraps the frozen plan §3.4 rule (:func:`select_best_v51`): after each
+    check the selection is RECOMPUTED over the full history (the
+    qualifying band follows the running R*, so an earlier point can drop
+    out or re-enter).  ``best_update`` is the update currently selected;
+    callers persist model states keyed by update and rewrite
+    ``checkpoint_best.pt`` whenever ``best_update`` changes.
+    """
+
+    def __init__(self, *, qualify_factor: float = V51_QUALIFY_FACTOR) -> None:
+        self.qualify_factor = float(qualify_factor)
+        self.points: list[V51EvalPoint] = []
+        self.best: V51EvalPoint | None = None
+        self.r_star: float | None = None
+
+    def add(self, point: V51EvalPoint) -> V51EvalPoint | None:
+        """Record one inner-val check; return the new best (or None)."""
+        self.points.append(point)
+        rmse = point.rmse_over_zero
+        if rmse is not None and math.isfinite(float(rmse)):
+            value = float(rmse)
+            self.r_star = (value if self.r_star is None
+                           else min(self.r_star, value))
+        self.best = select_best_v51(
+            self.points, qualify_factor=self.qualify_factor)
+        return self.best
 
 
 class KeyAtomBCTrainer:
@@ -990,7 +1642,12 @@ class KeyAtomBCTrainer:
     One trainer drives one (arm, fold, seed, mode) run with a fixed
     update budget.  Screen mode may censored-stop on the inner_val
     reaction-cluster median RMSE/zero (patience/min_delta from config);
-    formal mode never early-stops.
+    formal mode never early-stops.  V5.1a adds mode ``v51`` (plan §3.4):
+    32/8 family/size-stratified inner split of the outer TRAIN clusters,
+    eval on inner-val only, best-checkpoint selection (rmse ≤ R*×1.02 →
+    lowest SRE → highest near-TS cos), patience 8 / min_delta 0.005 with
+    a floor at update 500, and a POST-HOC outer dev_dense eval of
+    checkpoint_best AND checkpoint_final that selection never sees.
     """
 
     def __init__(
@@ -1007,13 +1664,17 @@ class KeyAtomBCTrainer:
         device_override: str | None = None,
         repo_root: Path | None = None,
     ) -> None:
-        _require(config.get("schema") == EXPECTED_CONFIG_SCHEMA,
+        _require(config.get("schema") in ACCEPTED_CONFIG_SCHEMAS,
                  "CONFIG_SCHEMA",
-                 f"expected schema {EXPECTED_CONFIG_SCHEMA!r}, got "
+                 f"expected schema in {ACCEPTED_CONFIG_SCHEMAS}, got "
                  f"{config.get('schema')!r}")
-        _require(mode in ("screen", "formal"), "MODE_UNKNOWN",
-                 f"mode must be screen|formal, got {mode!r}")
+        _require(mode in ("screen", "formal", "v51"), "MODE_UNKNOWN",
+                 f"mode must be screen|formal|v51, got {mode!r}")
         _require(int(updates) > 0, "BUDGET_INVALID", "updates must be positive")
+        _require(not arm.magnitude_head or arm.anchor == "on",
+                 "ARM_HEAD_ANCHOR_REQUIRED",
+                 f"arm {arm.arm_id}: magnitude_head=true requires anchor=on "
+                 f"(V5.1 plan §3.2)")
         self.config = config
         self.config_path = Path(config_path)
         self.arm = arm
@@ -1025,7 +1686,10 @@ class KeyAtomBCTrainer:
         self.repo_root = Path(repo_root) if repo_root is not None else Path.cwd()
         self.run_dir.mkdir(parents=True, exist_ok=True)
 
-        self.loss_config = KeyAtomLossConfig.from_campaign_config(config)
+        loss_cfg = KeyAtomLossConfig.from_campaign_config(config)
+        # arm-controlled pair-loss switch (plan §3.3); arm wins over config
+        self.loss_config = (loss_cfg if loss_cfg.pair_loss == arm.pair_loss
+                            else replace(loss_cfg, pair_loss=arm.pair_loss))
         self.eval_every = int(config.get("eval_every_updates", 250))
         self.batch_size = int(config.get("batch_size", 32))
         self.reactions_per_batch = int(
@@ -1045,6 +1709,37 @@ class KeyAtomBCTrainer:
         self.split_path = str(
             (config.get("paths", {}) or {}).get(
                 "split_manifest", "data/manifests/v5/split_manifest.json"))
+        #: Campaign id from the config (``sprint.campaign_id``; the V5.1
+        #: driver yaml sets ``V5_1A_SPRINT``) — echoed in run records.
+        self.campaign_id = str(
+            (config.get("sprint", {}) or {}).get("campaign_id")
+            or CAMPAIGN_ID)
+        # --- V5.1a (plan §3.2/§3.4); driver yaml nests these under v51: ---
+        v51_cfg = dict(config.get("v51", {}) or {})
+        inner_blk = dict(v51_cfg.get("inner_val", {}) or {})
+        sel_blk = dict(inner_blk.get("selection", {}) or {})
+        mag_blk = dict(v51_cfg.get("magnitude_head", {}) or {})
+        self.magnitude_mode = str(
+            mag_blk.get("mode", config.get("magnitude_mode", "per_atom")))
+        self.inner_val_n = int(inner_blk.get(
+            "n_val_clusters", v51_cfg.get("inner_val_clusters", 8)))
+        self.inner_val_seed = int(inner_blk.get(
+            "seed", v51_cfg.get("inner_split_seed", V51_INNER_SPLIT_SEED)))
+        self.v51_qualify_factor = float(sel_blk.get(
+            "rmse_tolerance", v51_cfg.get("qualify_rmse_factor",
+                                          V51_QUALIFY_FACTOR)))
+        self.v51_patience = int(sel_blk.get(
+            "patience_checks", self.early_stop_patience))
+        self.v51_min_delta = float(sel_blk.get(
+            "min_delta", self.early_stop_min_delta))
+        self.v51_floor_update = int(sel_blk.get(
+            "min_update_floor", V51_PATIENCE_FLOOR_UPDATE))
+        self._inner_split: dict | None = None
+        self._v51_tracker: V51BestTracker | None = None
+        self._v51_stopper: V51EarlyStopper | None = None
+        self._v51_states: dict[int, dict] = {}
+        self._best_update: int | None = None
+        self._best_score: dict | None = None
 
         # device: config require_cuda honored; --device cpu is smoke-only
         from pes2ts_core.pesn.offline.training.device import resolve_device
@@ -1059,7 +1754,16 @@ class KeyAtomBCTrainer:
 
         # paired initialization: seed BEFORE model construction
         torch.manual_seed(self.seed)
-        self.model = StarEGNN().to(torch.float32).to(self.device)
+        if arm.magnitude_head:
+            # V5.1a plan §3.2: head-on arms (anchor-on only, asserted
+            # above) construct the magnitude head; legacy arms keep the
+            # exact V5 construction (identical RNG stream).
+            self.model = StarEGNN(
+                magnitude_head=True,
+                magnitude_mode=self.magnitude_mode).to(
+                    torch.float32).to(self.device)
+        else:
+            self.model = StarEGNN().to(torch.float32).to(self.device)
         params = [p for p in self.model.parameters() if p.requires_grad]
         self.optimizer = torch.optim.AdamW(
             params, lr=self.base_lr, weight_decay=self.weight_decay)
@@ -1077,9 +1781,11 @@ class KeyAtomBCTrainer:
 
     def _build_pools(self):
         try:
+            inner = ({"n_val": self.inner_val_n, "seed": self.inner_val_seed}
+                     if self.mode == "v51" else None)
             return load_lane_b_pools(
                 self.config, fold=self.fold, d0=self.arm.d0,
-                split_path=self.split_path)
+                split_path=self.split_path, inner_val=inner)
         except ImportError as exc:
             raise KeyAtomBCTrainerError(
                 "DATA_LANE_PENDING",
@@ -1123,11 +1829,14 @@ class KeyAtomBCTrainer:
     # -- run record ----------------------------------------------------------
 
     def _write_run_record(self, *, n_parameters: int) -> None:
+        is_v51 = self.mode == "v51"
         payload = {
             "schema_version": RUN_RECORD_SCHEMA,
-            "loss_schema_version": SCHEMA_VERSION,
+            "loss_schema_version": (LOSS_SCHEMA_VERSION if is_v51
+                                    else SCHEMA_VERSION),
             "run_id": self.run_dir.name,
             "status": "running",
+            "campaign_id": self.campaign_id,
             "arm": self.arm.to_payload(),
             "fold": self.fold,
             "seed": self.seed,
@@ -1139,8 +1848,12 @@ class KeyAtomBCTrainer:
             "config_path": str(self.config_path),
             "split_manifest": self.split_path,
         }
+        if is_v51:
+            # plan §3.4 / §6: checkpoint selection NEVER saw the outer dev
+            payload["selection_exposed"] = False
         gv = build_gv_block(
-            config_path=self.config_path, repo_root=self.repo_root)
+            config_path=self.config_path, repo_root=self.repo_root,
+            campaign_id=self.campaign_id)
         write_run_record(self.run_dir, payload=payload, gv=gv)
         self._run_record_payload = payload
         self._run_record_gv = gv
@@ -1148,28 +1861,63 @@ class KeyAtomBCTrainer:
     def _finalize_run_record(self) -> None:
         payload = {**self._run_record_payload, "status": self.status,
                    "updates_run": self.updates_run}
+        if self.mode == "v51" and self._best_update is not None:
+            # plan §6 run-record additions (best-checkpoint inner-val)
+            payload["best_update"] = self._best_update
+            payload["inner_val_score"] = self._v51_score_payload()
+            payload["alpha_median"] = (self._best_score or {}).get(
+                "alpha_median")
+            payload["dead_zone_fraction"] = (self._best_score or {}).get(
+                "dead_zone_fraction")
+            payload["sign_accuracy"] = (self._best_score or {}).get(
+                "sign_accuracy")
         write_run_record(self.run_dir, payload=payload, gv=self._run_record_gv)
 
     # -- checkpointing -------------------------------------------------------
 
-    def _save_checkpoint(self, name: str) -> None:
+    def _save_checkpoint(self, name: str, *,
+                         model_state: Mapping | None = None,
+                         update: int | None = None,
+                         v51: Mapping | None = None) -> None:
         doc = {
             "schema_version": CHECKPOINT_SCHEMA,
-            "update": self.updates_run,
-            "model": self.model.state_dict(),
+            "update": int(update) if update is not None else self.updates_run,
+            "model": (dict(model_state) if model_state is not None
+                      else self.model.state_dict()),
             "optimizer": self.optimizer.state_dict(),
             "arm": self.arm.to_payload(),
             "fold": self.fold,
             "seed": self.seed,
+            # V5.1a (plan §3.2): head provenance travels with the weights
+            "magnitude_head": bool(self.arm.magnitude_head),
+            "magnitude_mode": (self.magnitude_mode
+                               if self.arm.magnitude_head else None),
+            "pair_loss": str(self.arm.pair_loss),
         }
+        if v51 is not None:
+            doc["v51"] = dict(v51)
         torch.save(doc, self.run_dir / "checkpoints" / name)
 
     # -- eval ----------------------------------------------------------------
 
-    def evaluate(self, dev_batches: Sequence[KeyAtomBatch]) -> dict:
-        """Dense dev-fold eval: raw + bounded per-cluster metrics."""
+    def evaluate(self, dev_batches: Sequence[KeyAtomBatch], *,
+                 include_g53: bool = False,
+                 split: str | None = None) -> dict:
+        """Dense fold eval: raw + bounded per-cluster metrics.
+
+        ``include_g53`` adds the exact-Δd derived-chemistry block (SRE
+        cluster median + dead-zone fraction via the shared
+        ``g53_sample_enumeration`` — plan §3.3/§3.4 selection metric ==
+        gate metric).  ``split`` labels the eval split in eval.jsonl
+        (v51 driver contract: "inner_val" | "dev_dense_best" |
+        "dev_dense_final").
+        """
+        from pes2ts_core.pesn.offline.evaluation.key_atom_protocols import (
+            evaluate_g53, g53_sample_enumeration)
+
         self.model.train(False)
         per_sample: list[dict] = []
+        g53_samples: list[dict] = []
         with torch.no_grad():
             for batch in dev_batches:
                 u, _z = self.model(batch)
@@ -1190,6 +1938,18 @@ class KeyAtomBCTrainer:
                 y_np = y.cpu().numpy()
                 ub_np = u_b.cpu().numpy()
                 uc_np = u_cls.cpu().numpy()
+                if include_g53:
+                    branches = (batch.branch.cpu().numpy()
+                                if batch.branch is not None else None)
+                    g53_samples.extend(g53_sample_enumeration(
+                        pos=batch.pos.cpu().numpy(),
+                        ptr=batch.ptr.cpu().numpy(),
+                        key_index=batch.key_index.cpu().numpy(),
+                        key_ptr=key_ptr,
+                        pair_index=batch.pair_index.cpu().numpy(),
+                        pair_edit=batch.pair_edit.cpu().numpy(),
+                        u=u_np, y=y_np, group_ids=groups,
+                        branches=branches))
                 for b in range(len(key_ptr) - 1):
                     lo, hi = int(key_ptr[b]), int(key_ptr[b + 1])
                     if hi <= lo:
@@ -1211,24 +1971,48 @@ class KeyAtomBCTrainer:
         per_cluster_b, agg_b = compute_cluster_metrics(
             [{**s, "u": s["u_bounded"]} for s in per_sample],
             soft=cfg.cos_soft_norm_angstrom, tau=cfg.tau_norm_angstrom)
+        g53 = (evaluate_g53(g53_samples) if g53_samples else None)
         return {
             "update": self.updates_run,
             "wall_s": time.time() - self._t0,
+            "split": split,
             "raw": {"per_cluster": per_cluster_raw, "aggregate": agg_raw},
             "bounded": {"per_cluster": per_cluster_b, "aggregate": agg_b},
+            "g53": ({"aggregate": g53["aggregate"],
+                     "per_cluster_sre": g53["per_cluster_sre"]}
+                    if g53 is not None else None),
         }
 
     def _record_eval(self, record: dict) -> None:
         self.eval_history.append(record)
+        raw_agg = dict(record["raw"]["aggregate"])
+        g53_agg = (record.get("g53") or {}).get("aggregate")
+        if g53_agg is not None:
+            # merge the derived-chemistry scalars into the aggregate the
+            # v51 driver reads from eval.jsonl / metrics.json (defensive
+            # spellings live driver-side; we emit the canonical ones).
+            for key in ("sre_cluster_median", "sign_accuracy_cluster_median",
+                        "dead_zone_fraction", "n_sign_pairs",
+                        "n_sign_pairs_correct", "n_active_pairs",
+                        "n_dead_pairs", "n_sre_frames"):
+                if key in g53_agg:
+                    raw_agg[key] = g53_agg[key]
+        line = {
+            "update": record["update"],
+            "wall_s": record["wall_s"],
+            "per_cluster": record["raw"]["per_cluster"],
+            "aggregate": raw_agg,
+            "per_cluster_bounded": record["bounded"]["per_cluster"],
+            "aggregate_bounded": record["bounded"]["aggregate"],
+        }
+        if record.get("split") is not None:
+            line["split"] = record["split"]
+        if record.get("checkpoint") is not None:
+            line["checkpoint"] = record["checkpoint"]
+        if g53_agg is not None:
+            line["g53_aggregate"] = g53_agg
         with (self.run_dir / "eval.jsonl").open("a", encoding="utf-8") as fh:
-            fh.write(json.dumps({
-                "update": record["update"],
-                "wall_s": record["wall_s"],
-                "per_cluster": record["raw"]["per_cluster"],
-                "aggregate": record["raw"]["aggregate"],
-                "per_cluster_bounded": record["bounded"]["per_cluster"],
-                "aggregate_bounded": record["bounded"]["aggregate"],
-            }, ensure_ascii=False) + "\n")
+            fh.write(json.dumps(line, ensure_ascii=False) + "\n")
 
     def _early_stop_check(self, record: dict) -> bool:
         """Screen-mode only: inner_val reaction-cluster median RMSE/zero."""
@@ -1253,6 +2037,8 @@ class KeyAtomBCTrainer:
 
     def fit(self) -> str:
         """Run the fixed budget; return the final status string."""
+        if self.mode == "v51":
+            return self._fit_v51()
         self._t0 = time.time()
         self._write_run_record(n_parameters=self.model.n_parameters)
         (self.run_dir / "checkpoints").mkdir(exist_ok=True)
@@ -1336,6 +2122,232 @@ class KeyAtomBCTrainer:
         self._finalize_run_record()
         return self.status
 
+    # -- V5.1a loop (plan §3.3/§3.4) ----------------------------------------
+
+    def _refresh_run_record(self) -> None:
+        """Rewrite the run record with the current payload (best-effort)."""
+        write_run_record(self.run_dir, payload=self._run_record_payload,
+                         gv=self._run_record_gv)
+
+    def _v51_point(self, record: dict) -> "V51EvalPoint":
+        agg = record["raw"]["aggregate"]
+        g53_agg = (record.get("g53") or {}).get("aggregate") or {}
+        return V51EvalPoint(
+            update=int(record["update"]),
+            rmse_over_zero=agg.get("rmse_over_zero"),
+            sre_median=g53_agg.get("sre_cluster_median"),
+            near_ts_cos=agg.get("cos_eff_near_ts_median"),
+            alpha_median=agg.get("alpha_median"),
+            dead_zone_fraction=g53_agg.get("dead_zone_fraction"),
+            sign_accuracy=g53_agg.get("sign_accuracy_cluster_median"))
+
+    def _v51_score_payload(self) -> dict:
+        """Driver-contract inner_val_score spelling (metrics.json/record)."""
+        return {
+            "rmse_over_zero": (self._best_score or {}).get("rmse_over_zero"),
+            "sre_median": (self._best_score or {}).get("sre_median"),
+            "near_ts_cos": (self._best_score or {}).get("near_ts_cos"),
+        }
+
+    def _save_v51_best(self) -> None:
+        state = self._v51_states.get(int(self._best_update or -1))
+        self._save_checkpoint(
+            "checkpoint_best.pt", model_state=state,
+            update=int(self._best_update),
+            v51={"best_update": self._best_update,
+                 "inner_val_score": self._v51_score_payload(),
+                 "alpha_median": (self._best_score or {}).get("alpha_median"),
+                 "dead_zone_fraction": (self._best_score or {}).get(
+                     "dead_zone_fraction"),
+                 "sign_accuracy": (self._best_score or {}).get("sign_accuracy"),
+                 "inner_val_split_hash": (self._inner_split or {}).get("hash"),
+                 "selection_exposed": False,
+                 "qualify_rmse_factor": self.v51_qualify_factor})
+
+    def _fit_v51(self) -> str:
+        """V5.1a loop (plan §3.3/§3.4): inner-train pools only, inner-val
+        selection every ``eval_every_updates``, best checkpoint, patience
+        stop, POST-HOC outer dev eval that selection never sees."""
+        self._t0 = time.time()
+        self._write_run_record(n_parameters=self.model.n_parameters)
+        (self.run_dir / "checkpoints").mkdir(exist_ok=True)
+        try:
+            pools = self._build_pools()
+            train_pools = pools["inner_train"]
+            self._inner_split = dict(pools["inner_split"])
+            inner_val_samples = list(pools["inner_val_dense"])
+            dev_samples = list(pools.get("dev_dense") or [])
+            # paired sample order: seed BEFORE sampler creation
+            torch.manual_seed(self.seed)
+            self.sampler = KeyAtomCycleSampler(
+                train_pools, seed=self.seed,
+                reactions_per_batch=self.reactions_per_batch,
+                frames_per_reaction=self.frames_per_reaction)
+            inner_batches = self._load_samples(inner_val_samples, dense=True)
+        except KeyAtomBCTrainerError as exc:
+            self._abort(exc.code, exc.detail,
+                        STATUS_ABORTED_DATA
+                        if exc.code.startswith(
+                            ("DATA", "EMPTY", "POOL", "INNER"))
+                        else STATUS_ABORTED_NAN)
+            return self.status
+        # freeze split provenance into the run record before any update
+        self._run_record_payload["inner_val_split_hash"] = str(
+            self._inner_split["hash"])
+        self._run_record_payload["inner_val_split"] = {
+            "n_val": self._inner_split["n_val"],
+            "seed": self._inner_split["seed"],
+            "val_ids": list(self._inner_split["val_ids"]),
+        }
+        self._refresh_run_record()
+
+        cfg = self.loss_config
+        self._v51_tracker = V51BestTracker(
+            qualify_factor=self.v51_qualify_factor)
+        self._v51_stopper = V51EarlyStopper(
+            patience=self.v51_patience, min_delta=self.v51_min_delta,
+            floor_update=self.v51_floor_update)
+
+        self.model.train()
+        try:
+            for update in range(1, self.updates + 1):
+                self.updates_run = update
+                lr = lr_at_update(
+                    update, base_lr=self.base_lr, warmup=self.warmup,
+                    total=self.updates, min_lr=self.min_lr)
+                for group in self.optimizer.param_groups:
+                    group["lr"] = lr
+                rows = self.sampler.draw_batch()
+                batches = self._load_samples(rows, dense=False)
+                lam_cos = cos_lambda(update, cfg)
+                aux = aux_ramp_fraction(update, cfg)
+                lam_mag = cfg.lambda_mag * aux
+                lam_sign = cfg.lambda_sign * aux
+                lam_dead = cfg.lambda_dead * aux
+                for batch in batches:
+                    u, _z = self.model(batch)
+                    if batch.y_teacher is None:
+                        continue
+                    # last_magnitudes = EFFECTIVE s_eff (post deg_scale);
+                    # L_mag supervises it toward ‖y‖ (see model docstring)
+                    s = (self.model.last_magnitudes
+                         if self.arm.magnitude_head else None)
+                    out = key_atom_bc_loss_vectorized(
+                        u.float(), batch.y_teacher.float(),
+                        batch.degK.float(), batch.key_ptr, batch.pos,
+                        batch.key_index, batch.pair_index,
+                        config=cfg, lambda_cos=lam_cos,
+                        pair_edit=batch.pair_edit, s=s,
+                        lambda_mag=lam_mag, lambda_sign=lam_sign,
+                        lambda_dead=lam_dead)
+                    loss = out["loss"]
+                    if not bool(torch.isfinite(loss)):
+                        raise KeyAtomBCTrainerError(
+                            "ABORT_NAN", f"non-finite loss at update {update}")
+                    self.optimizer.zero_grad(set_to_none=True)
+                    loss.backward()
+                    torch.nn.utils.clip_grad_norm_(
+                        self.model.parameters(), self.grad_clip)
+                    self.optimizer.step()
+                if update % self.eval_every == 0 or update == self.updates:
+                    record = self.evaluate(inner_batches, include_g53=True,
+                                           split="inner_val")
+                    self._record_eval(record)
+                    self._save_checkpoint("checkpoint_last.pt")
+                    point = self._v51_point(record)
+                    self._v51_states[update] = {
+                        k: v.detach().cpu().clone()
+                        for k, v in self.model.state_dict().items()}
+                    previous_best = self._best_update
+                    best = self._v51_tracker.add(point)
+                    if best is not None and best.update != previous_best:
+                        self._best_update = int(best.update)
+                        self._best_score = {
+                            "rmse_over_zero": best.rmse_over_zero,
+                            "sre_median": best.sre_median,
+                            "near_ts_cos": best.near_ts_cos,
+                            "alpha_median": best.alpha_median,
+                            "dead_zone_fraction": best.dead_zone_fraction,
+                            "sign_accuracy": best.sign_accuracy,
+                        }
+                        self._save_v51_best()
+                    if self._v51_stopper.update(
+                            point.rmse_over_zero, at_update=update):
+                        self.status = STATUS_CENSORED_PATIENCE
+                        self.status_detail = (
+                            "v51 inner-val early stop: RMSE/zero stalled "
+                            f"(patience {self._v51_stopper.patience}, "
+                            f"min_delta {self._v51_stopper.min_delta}, "
+                            f"floor update {self._v51_stopper.floor_update})")
+                        break
+        except KeyAtomBCTrainerError as exc:
+            self._abort(exc.code, exc.detail, STATUS_ABORTED_NAN)
+            return self.status
+        except KeyAtomLossError as exc:
+            self._abort(exc.code, exc.detail, STATUS_ABORTED_NAN)
+            return self.status
+
+        if self.status == "running":
+            # successful v51 runs stay STATUS_COMPLETE (the landed V5.1
+            # campaign driver keys run-success off status == "complete")
+            self.status = STATUS_COMPLETE
+            if self._best_update is not None:
+                self.status_detail = (
+                    f"v51 budget complete; best checkpoint @u"
+                    f"{self._best_update} (inner-val "
+                    f"rmse/zero={self._v51_score_payload()['rmse_over_zero']})")
+        self._save_checkpoint("checkpoint_final.pt")
+        # POST-HOC outer dev_dense eval of best AND final weights; these
+        # rows are appended to eval.jsonl AFTER selection has ended.
+        if dev_samples:
+            self._outer_dev_posthoc(dev_samples)
+        self._write_metrics()
+        status_doc = {
+            "status": self.status, "detail": self.status_detail,
+            "updates_run": self.updates_run, "mode": self.mode,
+        }
+        if self._best_update is not None:
+            status_doc.update({
+                "best_update": self._best_update,
+                "alpha_median": (self._best_score or {}).get("alpha_median"),
+                "dead_zone_fraction": (self._best_score or {}).get(
+                    "dead_zone_fraction"),
+                "sign_accuracy": (self._best_score or {}).get("sign_accuracy"),
+                "inner_val_score": self._v51_score_payload(),
+                "inner_val_split_hash": (self._inner_split or {}).get("hash"),
+                "selection_exposed": False,
+            })
+        (self.run_dir / "status.json").write_text(
+            json.dumps(status_doc, indent=2) + "\n", encoding="utf-8")
+        self._finalize_run_record()
+        return self.status
+
+    def _outer_dev_posthoc(self, dev_samples: Sequence[dict]) -> None:
+        """Evaluate checkpoint_best AND checkpoint_final on the OUTER
+        dev_dense (plan §3.4: 外折 OOF 只用 best; selection never sees
+        these rows — they are appended after training ended)."""
+        try:
+            dev_batches = self._load_samples(list(dev_samples), dense=True)
+        except KeyAtomBCTrainerError:
+            return
+        if not dev_batches:
+            return
+        if self._best_update is not None:
+            best_state = self._v51_states.get(int(self._best_update))
+            if best_state is not None:
+                current = {k: v.detach().cpu().clone()
+                           for k, v in self.model.state_dict().items()}
+                self.model.load_state_dict(best_state)
+                rec = self.evaluate(dev_batches, include_g53=True,
+                                    split="dev_dense_best")
+                rec["checkpoint"] = "checkpoint_best.pt"
+                self._record_eval(rec)
+                self.model.load_state_dict(current)
+        rec = self.evaluate(dev_batches, include_g53=True,
+                            split="dev_dense_final")
+        rec["checkpoint"] = "checkpoint_final.pt"
+        self._record_eval(rec)
+
     def _abort(self, code: str, detail: str, status: str) -> None:
         self.status = status
         self.status_detail = f"{code}: {detail}"
@@ -1349,19 +2361,48 @@ class KeyAtomBCTrainer:
             pass
 
     def _write_metrics(self) -> None:
+        raw_rows = []
+        bounded_rows = []
+        for r in self.eval_history:
+            agg = dict(r["raw"]["aggregate"])
+            g53_agg = (r.get("g53") or {}).get("aggregate")
+            if g53_agg is not None:
+                for key in ("sre_cluster_median",
+                            "sign_accuracy_cluster_median",
+                            "dead_zone_fraction", "n_sign_pairs",
+                            "n_sign_pairs_correct", "n_active_pairs",
+                            "n_dead_pairs", "n_sre_frames"):
+                    if key in g53_agg:
+                        agg[key] = g53_agg[key]
+            row = {"update": r["update"], "aggregate": agg,
+                   "per_cluster": r["raw"]["per_cluster"]}
+            if r.get("split") is not None:
+                row["split"] = r["split"]
+            raw_rows.append(row)
+            bounded_rows.append(
+                {"update": r["update"],
+                 "aggregate": r["bounded"]["aggregate"],
+                 "per_cluster": r["bounded"]["per_cluster"]})
         doc = {
             "schema_version": SCHEMA_VERSION,
             "arm": self.arm.to_payload(),
             "fold": self.fold, "seed": self.seed, "mode": self.mode,
             "updates_run": self.updates_run,
-            "raw": [ {"update": r["update"], "aggregate": r["raw"]["aggregate"],
-                       "per_cluster": r["raw"]["per_cluster"]}
-                      for r in self.eval_history],
-            "bounded": [
-                {"update": r["update"], "aggregate": r["bounded"]["aggregate"],
-                 "per_cluster": r["bounded"]["per_cluster"]}
-                for r in self.eval_history],
+            "raw": raw_rows,
+            "bounded": bounded_rows,
         }
+        if self.mode == "v51":
+            # v51 driver contract: top-level best-checkpoint metrics
+            doc["best_update"] = self._best_update
+            doc["inner_val_score"] = self._v51_score_payload()
+            doc["alpha_median"] = (self._best_score or {}).get("alpha_median")
+            doc["dead_zone_fraction"] = (self._best_score or {}).get(
+                "dead_zone_fraction")
+            doc["sign_accuracy"] = (self._best_score or {}).get(
+                "sign_accuracy")
+            doc["inner_val_split_hash"] = (self._inner_split or {}).get("hash")
+            doc["selection_exposed"] = False
+            doc["loss_schema_version"] = LOSS_SCHEMA_VERSION
         (self.run_dir / "metrics.json").write_text(
             json.dumps(doc, indent=2, ensure_ascii=False) + "\n",
             encoding="utf-8")
@@ -1380,7 +2421,8 @@ def build_arg_parser() -> argparse.ArgumentParser:
     p.add_argument("--fold", type=int, required=True)
     p.add_argument("--seed", type=int, required=True)
     p.add_argument("--updates", type=int, default=None)
-    p.add_argument("--mode", choices=("screen", "formal"), required=True)
+    p.add_argument("--mode", choices=("screen", "formal", "v51"),
+                   required=True)
     p.add_argument("--out", default=None,
                    help="run dir (default outputs/pesn/v5/sprint/runs/"
                         "<arm>_f<fold>_s<seed>_<mode>)")
@@ -1406,7 +2448,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     status = trainer.fit()
     print(json.dumps({"run_id": run_id, "status": status,
                       "run_dir": str(run_dir)}, ensure_ascii=False))
-    return 0 if status in (STATUS_COMPLETE, STATUS_CENSORED_SCREEN) else 2
+    return 0 if status in (STATUS_COMPLETE, STATUS_CENSORED_SCREEN,
+                           STATUS_CENSORED_PATIENCE) else 2
 
 
 if __name__ == "__main__":  # pragma: no cover

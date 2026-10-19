@@ -178,13 +178,18 @@ def _sha256_file(path: str | Path) -> str | None:
 # ---------------------------------------------------------------------------
 
 def t_run_seconds(updates: int, t_step_p90_s: float, t_eval_s: float,
-                  t_start_save_s: float) -> float:
-    """Plan §5.4 timing model: ``t_run(U)=U*t_step_P90+ceil(U/250)*t_eval
-    +t_start_save`` (eval interval fixed at 250 updates)."""
+                  t_start_save_s: float, *, eval_every: int = 250) -> float:
+    """Plan §5.4 timing model: ``t_run(U)=U*t_step_P90+ceil(U/E)*t_eval
+    +t_start_save`` (eval interval ``E`` defaults to the V5 250-update
+    schedule; the V5.1 sprint passes ``eval_every=50`` — additive keyword
+    arg, default keeps every V5 call site byte-identical)."""
     u = int(updates)
     _require(u > 0, "TIMING_UPDATES", f"updates must be positive, got {u}")
+    every = int(eval_every)
+    _require(every > 0, "TIMING_EVAL_EVERY",
+             f"eval_every must be positive, got {every}")
     return (u * float(t_step_p90_s)
-            + math.ceil(u / 250) * float(t_eval_s)
+            + math.ceil(u / every) * float(t_eval_s)
             + float(t_start_save_s))
 
 
