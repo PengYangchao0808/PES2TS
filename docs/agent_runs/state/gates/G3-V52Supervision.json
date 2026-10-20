@@ -1,1 +1,36 @@
-{"gate_id": "G3-V52Supervision", "status": "not_run", "evidence": null, "evaluated_at": null, "protocol_sha256_16": "3081e05479007eaf"}
+{
+  "budget": {
+    "attempts_used": 32,
+    "blocked_confirm": 6,
+    "cap": 33,
+    "interrupted": 1,
+    "invalid_done": 7,
+    "remaining_held": 1,
+    "valid_done": 9
+  },
+  "campaign_id": "PES2TS_30H_R3_V52_V53",
+  "consequence": "H20 activated: V5.3 proceeds with upper-bound controllers only (classic CV/Jacobian + R3-winner learned upper bound); v52 arm runs as DIAGNOSTIC-ONLY with explicit non-claim labeling; no V5.2 supervision claims",
+  "evaluated_at": "2026-10-20T23:30:00Z",
+  "evaluated_by": "supervisor (orchestrator)",
+  "evidence": {
+    "evidence_pack": "outputs/pesn/30h_campaign/v52_runs/g3_evidence_pack.json",
+    "invalid_runs": "8 self-invalidated BEFORE salvage results observed (confirm-fold split leak v1; manifest invalid_runs.json; excluded from all evidence)",
+    "lambda_probe": "λq=0.4210 λm=0.0132 calibrated at 2% encoder share (plan §5.4 formalism, only λ source)",
+    "move_guard": "BREACHED in 4/6 QT runs: median degradation +5.5%, max +9.3% (guard ≤2%); V5.2 joint training actively degrades Move",
+    "q_head": "NOT learnable: MAE 0.507 vs constant-q baseline 0.476 (learnable_above_constant=false), corr ~0 (-0.11..-0.01); q signal absent under frozen schedule/λ",
+    "stop_head": "at/near chance: T-only AUC 0.491; QT median 0.527 (5/6 barely >0.5); recall@0.5 = 0.0 — no usable threshold",
+    "valid_runs": "9 (pre-registered salvage: QT fold0-1 x3 + T fold0 x3; seal verified train_folds [1,2]/[0,2])"
+  },
+  "gate": "G3-V52Supervision",
+  "incidents": [
+    "LAMBDA_RANGE validation bug burned 15 attempts pre-training (off-term λ=0 wrongly rejected; regression test added)",
+    "v1 split confirm-fold leakage invalidated 8 done runs (self-declared pre-result; SPLIT_SEAL assertion added)"
+  ],
+  "rulings": [
+    "cap extension DENIED: remaining 14 unlaunched runs would not change the conclusion (q unlearnable, stop chance-level, Move degraded); user rule: no padding toward 99 runs; V5.2 closes at 32/33",
+    "the 1 held attempt stays unspent",
+    "λ/schedule revision is OUT of this campaign's authorization — deferred to NEXT_DAY_DECISION_MEMO (e.g. λq reduction, longer frozen-encoder phase, q-label informativeness audit)"
+  ],
+  "status": "fail",
+  "verdict": "E-NO-GAIN (scientific conclusion preserved per user directive; no re-tuning attempted or permitted)"
+}
