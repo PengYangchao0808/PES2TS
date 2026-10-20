@@ -1,0 +1,18 @@
+{
+  "version": "r3_teacher_manifest_v1",
+  "created_at": "2026-10-20T00:00:00+00:00",
+  "files": [
+    {
+      "path": "irc_edge.csv",
+      "sha256": "e952498002880c0f1f7c0ea9c9eed99275f0d03d2ba002c9f03f9837298144da"
+    },
+    {
+      "path": "reaction_intent.csv",
+      "sha256": "fee2bc270e26a15e7a2ac102f60d32002313fb9b34c55404c746bd7766ab7bec"
+    },
+    {
+      "path": "sample_view.csv",
+      "sha256": "b93ee7299cf85dc2e614634d0abb52fb581cede047a287ee1a7ff424d27614f0"
+    }
+  ]
+}

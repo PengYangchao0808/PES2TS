@@ -1,10 +1,19 @@
 """Tests for the R3 data-table schema + Data Gate validator (T0.1 / T0.4).
 
-Fixture sets under ``tests/agent_ops/data_fixtures/``:
+Round 2 (WP-D2): updated for schema ``r3_6table_v2`` (PD-9 flat ``delta_xyz``,
+intent pairing, label/weight columns, d0/gauge rules, T0.5 truth audit). The
+ORA-2-specific gates live in ``test_data_gate_t02.py``; this file keeps the
+round-1 contract coverage (T0.1a/b/c, T0.4a/b, blocked/not_run semantics,
+CLI exit codes) green against the v2 fixtures.
 
-* ``clean``         — 2 curves × 10 nodes, forward+reverse intents; all pass.
-* ``orphan_fk``     — orphan rows for node→curve, edge→node, sample→intent /
-                      curve / node ⇒ only ``T0.1a`` fails.
+Fixture sets under ``tests/agent_ops/data_fixtures/`` (each also carries a
+``truth_access_log.jsonl`` allow-listed truth log for T0.5):
+
+* ``clean``         — 2 curves × 10 nodes, forward+reverse intents, PD-9 edges
+                      in both directions, weights summing to 1.0 per
+                      (curve_id, d0); all 10 gate tests pass.
+* ``orphan_fk``     — orphan rows for node→curve, edge→node (both directions),
+                      sample→intent / curve / node ⇒ only ``T0.1a`` fails.
 * ``duplicate_ts``  — two ``is_ts`` nodes on one curve ⇒ only ``T0.1b`` fails.
 * ``nan_split_leak``— NaN/inf coordinates **and** one curve listed in two folds
                       ⇒ ``T0.1c`` + ``T0.4a`` fail.
@@ -41,8 +50,8 @@ SIX_TABLES = {
 }
 
 
-def run(fixture: str, tmp_path: Path, name: str = "report.json"):
-    return v.run_validation(FIXTURES / fixture, tmp_path / name)
+def run(fixture: str, tmp_path: Path, name: str = "report.json", **kw):
+    return v.run_validation(FIXTURES / fixture, tmp_path / name, **kw)
 
 
 def statuses(report):
@@ -89,6 +98,7 @@ def test_schema_keys_and_sample_identity():
     # FK declarations for the checks T0.1a performs
     assert ("curve_id", "irc_curve", "curve_id") in schema.TABLES["irc_node"].fk_columns
     assert ("intent_id", "reaction_intent", "intent_id") in sv.fk_columns
+    assert ("intent_id", "reaction_intent", "intent_id") in schema.TABLES["irc_edge"].fk_columns
 
 
 # ---------------------------------------------------------------------------
@@ -102,6 +112,7 @@ def test_clean_fixture_all_tests_pass(tmp_path):
     assert report["exit_code"] == 0
     assert report["summary"]["all_pass"] is True
     assert report["summary"]["pass"] == len(ALL_IDS)
+    assert report["schema_version"] == schema.SCHEMA_VERSION == "r3_6table_v2"
     for t in report["tests"]:
         assert t["evidence"] and t["evidence"].startswith(str(tmp_path))
         assert t["inputs"], f"{t['id']} must record the files it read"
@@ -116,6 +127,21 @@ def test_clean_split_manifest_near_dup_groups_present(tmp_path):
     assert t["details"]["near_dup_column_present"] is True
     assert t["counts"]["n_near_dup_groups"] == 2
     assert t["counts"]["n_violations"] == 0
+
+
+def test_clean_weight_and_pd9_counts(tmp_path):
+    report = run("clean", tmp_path)
+    t1a = get_test(report, "T0.1a")
+    assert t1a["counts"]["n_weight_groups"] == 2  # (c0, 0.08) and (c1, 0.08)
+    assert t1a["counts"]["n_weight_violations"] == 0
+    assert t1a["counts"]["n_orphan_rows"] == 0
+    assert t1a["details"]["curve_weight_target"] == 1.0
+    t1c = get_test(report, "T0.1c")
+    assert t1c["counts"]["n_edges_pd9_checked"] == 36  # 2 curves x 2 intents x 9
+    assert t1c["counts"]["n_pd9_violations"] == 0
+    t5 = get_test(report, "T0.5")
+    assert t5["counts"]["n_entries"] == 2
+    assert t5["counts"]["n_violations"] == 0
 
 
 # ---------------------------------------------------------------------------
@@ -145,8 +171,11 @@ def test_violation_fixture_fails_exactly_expected_tests(fixture, failing, tmp_pa
 def test_orphan_fixture_counts_and_evidence(tmp_path):
     report = run("orphan_fk", tmp_path)
     t = get_test(report, "T0.1a")
-    assert t["counts"]["n_orphan_rows"] == 5
+    assert t["counts"]["n_orphan_rows"] == 6
     assert t["counts"]["n_relations_checked"] == t["counts"]["n_relations_total"]
+    # FK orphans only — the weight invariant must stay green in this fixture
+    assert t["counts"]["n_weight_violations"] == 0
+    assert t["counts"]["n_integrity_violations"] == 0
     relations = {b["relation"] for b in t["bad_rows"]}
     assert any(r.startswith("irc_node.") for r in relations)  # node→curve
     assert any("dst_node_index" in r for r in relations)      # edge→node
@@ -167,7 +196,7 @@ def test_nan_and_leak_fixture_bad_rows_never_dropped(tmp_path):
     report = run("nan_split_leak", tmp_path)
     t1c = get_test(report, "T0.1c")
     assert t1c["counts"]["n_non_finite_coordinates"] == 2
-    assert len(t1c["bad_rows"]) == 2
+    assert t1c["counts"]["n_pd9_violations"] == 0
     tables = {b["table"] for b in t1c["bad_rows"]}
     assert tables == {"irc_node", "sample_view"}
     t4a = get_test(report, "T0.4a")
@@ -187,24 +216,31 @@ def test_missing_inputs_are_blocked_not_passed(tmp_path):
     partial.mkdir()
     shutil.copy(FIXTURES / "clean" / "irc_curve.csv", partial / "irc_curve.csv")
     report = v.run_validation(partial, tmp_path / "report.json")
-    assert statuses(report) == {tid: "blocked" for tid in ALL_IDS}
+    st = statuses(report)
+    for tid in ALL_IDS:
+        if tid == "T0.5":
+            continue  # no truth log in this dir → not_run (nothing to audit)
+        assert st[tid] == "blocked", (tid, st)
+    assert st["T0.5"] == "not_run"
     assert report["exit_code"] == 1
     assert report["summary"]["all_pass"] is False
 
 
 def test_tests_filter_marks_others_not_run(tmp_path):
-    report = v.run_validation(
-        FIXTURES / "clean", tmp_path / "report.json", only_tests=["T0.1a"]
-    )
+    report = run("clean", tmp_path, only_tests=["T0.1a"])
     st = statuses(report)
     assert st["T0.1a"] == "pass"
     assert st["T0.4b"] == "not_run"
+    assert st["T0.5"] == "not_run"
     assert report["exit_code"] == 1  # not_run is not a pass
 
 
 def test_status_enum_is_complete():
     assert set(v.STATUS_VALUES) == {"pass", "fail", "blocked", "not_run"}
-    assert set(v.TEST_IDS) == {"T0.1a", "T0.1b", "T0.1c", "T0.4a", "T0.4b"}
+    assert set(v.TEST_IDS) == {
+        "T0.1a", "T0.1b", "T0.1c", "T0.2a", "T0.2b", "T0.3a", "T0.3b",
+        "T0.4a", "T0.4b", "T0.5",
+    }
 
 
 # ---------------------------------------------------------------------------
