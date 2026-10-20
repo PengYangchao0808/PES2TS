@@ -56,6 +56,34 @@ WP-L2 hardening (fail-closed; Oracle ORA-1):
 * Partial (PD-4, 21-run) plans force ``admissibility =
   not_admissible_exploratory`` at launch and refuse ``scale_controlled``/
   ``V5.1b`` keywords in any finalize (:class:`ExploratoryOnlyError`).
+
+WP-L3 hardening (fail-closed; E0 residuals #1/#2):
+
+* **Pinned-plan verification on EVERY mutation** (residual: Oracle showed a
+  tampered copy of the frozen ``run_plan.jsonl`` -- confirm flags flipped, or
+  a partial-mode plan re-headered as ``full`` -- still appended because only
+  ``runplan verify`` checked identity while ``append`` never did).  Whenever
+  a ledger is bound to a ``plan_path``, every ``append`` /
+  ``confirm_unseal`` / ``metric_unseal`` call first recomputes the plan's
+  sha256 and re-reads ``campaign_mode`` from its header and compares both
+  against the E0-frozen pin (``task_state.e0_freeze.run_plan_pinned`` /
+  ``protocol_30h.json`` frozen_artifacts; compiled here as
+  :data:`DEFAULT_PLAN_PIN`).  ANY byte change -- confirm flags, header mode,
+  whitespace -- is ``PlanNotFrozenError`` ``PLAN_SHA_MISMATCH`` /
+  ``PLAN_MODE_MISMATCH`` and nothing is written.  Re-pinning requires a
+  ``--force`` plan rebuild + re-freeze + human re-signoff (never in-band).
+* **B folds3/4 metric reveal is consumed, not decorative** (residual #2): a
+  ``done`` transition for a plan line with ``substage == "B"`` and ``fold in
+  (3, 4)`` consumes the one-shot ``metric_unseal`` token for the plan's B
+  folds3/4 batch (idempotent inside the batch; :class:`UnsealExceeded`
+  ``UNSEAL_OUTSIDE_BATCH`` / ``UNSEAL_BATCH_MISMATCH`` /
+  ``METRIC_UNSEAL_NOT_CONFIGURED`` outside) and records the consumption in
+  the run record (``metric_unseal`` field) + an audit event.  A sealed-metric
+  run can never reach ``done`` without burning the token.
+* ``mark_blocked`` lets the supervisor monitor annotate a run with
+  ``blocked_with_reason`` (e.g. a :class:`PlanNotFrozenError`) without
+  crashing and without a status transition; the annotation clears on the
+  next real transition.
 """
 
 from __future__ import annotations
@@ -78,11 +106,16 @@ from typing import Any, Callable, Dict, Iterator, List, Optional
 __all__ = [
     "AppendOutcome",
     "BudgetCapExceeded",
+    "CAMPAIGN_PIN",
     "DEFAULT_CAPS",
+    "DEFAULT_PLAN_PIN",
+    "DEFAULT_TASK_STATE_SUBPATH",
     "ExploratoryOnlyError",
     "IllegalTransition",
     "LedgerError",
     "MISSING_PLACEHOLDER",
+    "PINNED_CAMPAIGN_MODE",
+    "PINNED_RUN_PLAN_SHA256",
     "PLACEHOLDER",
     "PlanNotFrozenError",
     "RetryCapExceeded",
@@ -95,11 +128,14 @@ __all__ = [
     "is_confirm_run",
     "is_formal_record",
     "is_frozen_sha",
+    "load_campaign_pin",
     "main",
     "metric_unseal",
     "pid_alive",
     "read_run_plan",
+    "sha256_file",
     "validate",
+    "verify_plan_pin",
 ]
 
 # --------------------------------------------------------------------------
@@ -206,6 +242,18 @@ DEFAULT_CAPS: Dict[str, int] = {"R3": 66, "V5.2": 33}
 #: default unseal token locations (relative to the campaign root)
 DEFAULT_UNSEAL_SUBPATH = "docs/agent_runs/state/gates/unseal.json"
 DEFAULT_METRIC_UNSEAL_SUBPATH = "docs/agent_runs/state/gates/metric_unseal.json"
+
+#: E0-frozen pin of the campaign run_plan.jsonl (task_state.e0_freeze.
+#: run_plan_pinned / protocol_30h.json frozen_artifacts.run_plan -- WP-L3).
+#: Re-pinning requires a --force plan rebuild + re-freeze + human re-signoff;
+#: it is NEVER changed in-band by ledger/tooling code.
+PINNED_RUN_PLAN_SHA256 = (
+    "d2a63599727804e9ff407b30c7e5e1bdfc555c38fa7cafd5857a6cf273073163"
+)
+PINNED_CAMPAIGN_MODE = "full"
+DEFAULT_PLAN_PIN = {"sha256": PINNED_RUN_PLAN_SHA256, "campaign_mode": PINNED_CAMPAIGN_MODE}
+#: task_state location carrying e0_freeze.run_plan_pinned (pin source of truth)
+DEFAULT_TASK_STATE_SUBPATH = "docs/agent_runs/state/task_state.json"
 
 #: keywords forbidden in any finalize of a partial (PD-4) campaign plan
 PARTIAL_FORBIDDEN_FINALIZE_KEYWORDS = ("scale_controlled", "v5.1b")
@@ -570,6 +618,7 @@ def read_run_plan(plan_path: Any) -> Dict[str, Any]:
           "by_run_id": {run_id: line},
           "mode":     "full" | "partial",
           "confirm_run_ids": [run_id, ...],   # lines with explicit confirm=true
+          "metric_run_ids":  [run_id, ...],   # B-stage folds3/4 lines (sealed metrics)
           "header":   plan_header dict,
         }
 
@@ -592,6 +641,7 @@ def read_run_plan(plan_path: Any) -> Dict[str, Any]:
     run_ids = set()
     by_run_id: Dict[str, Dict[str, Any]] = {}
     confirm_run_ids: List[str] = []
+    metric_run_ids: List[str] = []
     header: Dict[str, Any] = {}
     seen_header = False
     for lineno, line in enumerate(lines, start=1):
@@ -658,6 +708,9 @@ def read_run_plan(plan_path: Any) -> Dict[str, Any]:
         by_run_id[run_id] = rec
         if rec.get("confirm") is True:
             confirm_run_ids.append(run_id)
+        if rec.get("substage") == "B" and rec.get("fold") in (3, 4):
+            # B-stage folds3/4: sealed-baseline metrics, one-shot metric_unseal
+            metric_run_ids.append(run_id)
     mode = header.get("campaign_mode", "full")
     if mode not in ("full", "partial"):
         raise LedgerError("PLAN_CORRUPT: campaign_mode {!r} not in full/partial".format(mode))
@@ -669,6 +722,7 @@ def read_run_plan(plan_path: Any) -> Dict[str, Any]:
         "by_run_id": by_run_id,
         "mode": mode,
         "confirm_run_ids": sorted(confirm_run_ids),
+        "metric_run_ids": sorted(metric_run_ids),
         "header": header,
     }
 
@@ -680,6 +734,144 @@ def is_frozen_sha(value: Any) -> bool:
         and HASH_RE.match(value)
         and value != "0" * 64
     )
+
+
+def sha256_file(path: Any) -> str:
+    """Streaming sha256 of a file (WP-L3 plan-pin recomputation)."""
+    digest = hashlib.sha256()
+    with open(str(path), "rb") as handle:
+        for chunk in iter(lambda: handle.read(1 << 20), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+# --------------------------------------------------------------------------
+# pinned-plan verification (WP-L3 / E0 residual #1)
+# --------------------------------------------------------------------------
+
+
+def _validate_pin(pin: Any, where: str) -> Dict[str, str]:
+    """Fail-closed validation of a plan pin dict ``{sha256, campaign_mode}``."""
+    if not isinstance(pin, dict):
+        raise PlanNotFrozenError(
+            "PLAN_PIN_INVALID: {} pin must be a dict with sha256/campaign_mode, "
+            "got {!r}".format(where, pin)
+        )
+    sha = pin.get("sha256")
+    mode = pin.get("campaign_mode")
+    if not (isinstance(sha, str) and HASH_RE.match(sha) and sha != "0" * 64):
+        raise PlanNotFrozenError(
+            "PLAN_PIN_INVALID: {} pin sha256 must be a non-zero 64-hex digest, "
+            "got {!r}".format(where, sha)
+        )
+    if mode not in ("full", "partial"):
+        raise PlanNotFrozenError(
+            "PLAN_PIN_INVALID: {} pin campaign_mode must be full/partial, got "
+            "{!r}".format(where, mode)
+        )
+    return {"sha256": sha, "campaign_mode": mode}
+
+
+def load_campaign_pin(task_state_path: Any = None) -> Dict[str, str]:
+    """Read the E0-frozen plan pin from ``task_state.e0_freeze.run_plan_pinned``.
+
+    This is the human-signed source of truth (E0 sign-off; re-pinning requires
+    a --force plan rebuild + re-freeze + user re-approval).  Missing/corrupt
+    state or a malformed pin always raises :class:`PlanNotFrozenError` --
+    fail-closed, never a default fallback to "unpinned".
+    """
+    path = Path(task_state_path or DEFAULT_TASK_STATE_SUBPATH)
+    if not path.is_file():
+        raise PlanNotFrozenError(
+            "PLAN_PIN_SOURCE_MISSING: {} not found (cannot resolve the frozen "
+            "run_plan pin)".format(path)
+        )
+    try:
+        state = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise PlanNotFrozenError(
+            "PLAN_PIN_SOURCE_CORRUPT: {}: {}".format(path, exc)
+        ) from exc
+    if not isinstance(state, dict):
+        raise PlanNotFrozenError(
+            "PLAN_PIN_SOURCE_CORRUPT: {} is not a JSON object".format(path)
+        )
+    pinned = state.get("e0_freeze", {}).get("run_plan_pinned") if isinstance(
+        state.get("e0_freeze"), dict
+    ) else None
+    if not isinstance(pinned, dict):
+        raise PlanNotFrozenError(
+            "PLAN_PIN_SOURCE_CORRUPT: {} has no e0_freeze.run_plan_pinned object"
+            .format(path)
+        )
+    return _validate_pin(
+        {"sha256": pinned.get("sha256"), "campaign_mode": pinned.get("campaign_mode")},
+        str(path),
+    )
+
+
+def verify_plan_pin(plan_path: Any, pin: Any) -> Dict[str, Any]:
+    """Recompute the plan's sha256 + header campaign_mode and compare to ``pin``.
+
+    WP-L3 / E0 residual #1: Oracle showed a *tampered copy* of the frozen
+    ``run_plan.jsonl`` (confirm flags flipped, or a PD-4 partial plan
+    re-headered as ``full``, or any other byte change) still passed every
+    append-time check because only ``runplan verify`` hashed the plan while
+    ``ledger.append`` never did.  This function closes that path: ANY byte
+    difference is a :class:`PlanNotFrozenError` (``PLAN_SHA_MISMATCH``), and
+    the header mode is cross-checked independently (``PLAN_MODE_MISMATCH``)
+    as defense in depth.  Returns the verified pin on success.
+    """
+    verified = _validate_pin(pin, "bound")
+    path = Path(plan_path)
+    if not path.is_file():
+        raise PlanNotFrozenError(
+            "PLAN_PIN_CHECK_FAILED: bound run_plan.jsonl not found: {}".format(path)
+        )
+    try:
+        actual = sha256_file(path)
+    except OSError as exc:
+        raise PlanNotFrozenError(
+            "PLAN_PIN_CHECK_FAILED: cannot hash {}: {}".format(path, exc)
+        ) from exc
+    if actual != verified["sha256"]:
+        raise PlanNotFrozenError(
+            "PLAN_SHA_MISMATCH: {} hashes to {} but the frozen pin is {} -- the "
+            "plan was modified after E0 freeze (confirm-flag/mode/byte tamper "
+            "or an in-band rebuild); restore the frozen file or re-freeze with "
+            "--force + human re-signoff".format(path, actual, verified["sha256"])
+        )
+    # independent header-mode check (defense in depth: a mode flip is also a
+    # byte change, but report the semantic mismatch explicitly)
+    header: Optional[Dict[str, Any]] = None
+    try:
+        with open(str(path), "r", encoding="utf-8") as handle:
+            for line in handle:
+                if not line.strip():
+                    continue
+                parsed = json.loads(line)
+                if isinstance(parsed, dict):
+                    header = parsed
+                break
+    except (OSError, json.JSONDecodeError) as exc:
+        raise PlanNotFrozenError(
+            "PLAN_PIN_CHECK_FAILED: cannot parse the header of {}: {}".format(
+                path, exc
+            )
+        ) from exc
+    if not isinstance(header, dict) or header.get("record_type") != "plan_header":
+        raise PlanNotFrozenError(
+            "PLAN_PIN_CHECK_FAILED: {} does not start with a plan_header line"
+            .format(path)
+        )
+    mode = header.get("campaign_mode")
+    if mode != verified["campaign_mode"]:
+        raise PlanNotFrozenError(
+            "PLAN_MODE_MISMATCH: {} header campaign_mode={!r} but the frozen "
+            "pin is {!r} (e.g. a PD-4 partial plan re-headered as full is "
+            "refused)".format(path, mode, verified["campaign_mode"])
+        )
+    return dict(verified)
 
 
 # --------------------------------------------------------------------------
@@ -855,10 +1047,15 @@ def metric_unseal(
 
 @dataclass(frozen=True)
 class AppendOutcome:
-    """Result of :meth:`RunLedger.append`."""
+    """Result of :meth:`RunLedger.append` / :meth:`RunLedger.mark_blocked`."""
 
-    action: str  # "created" | "noop" | "transitioned"
+    action: str  # "created" | "noop" | "transitioned" | "blocked"
     entry: Dict[str, Any]
+
+
+#: sentinel: "bind the E0-frozen campaign pin" (vs ``None`` = explicitly
+#: unpinned, ONLY legitimate for synthetic test-fixture plans).
+CAMPAIGN_PIN = object()
 
 
 class RunLedger:
@@ -873,6 +1070,7 @@ class RunLedger:
         caps: Optional[Dict[str, int]] = None,
         unseal_path: Optional[Any] = None,
         metric_unseal_path: Optional[Any] = None,
+        plan_pin: Any = CAMPAIGN_PIN,
     ) -> None:
         if run_id_scheme not in ("auto", "legacy", "hashed"):
             raise LedgerError(
@@ -886,6 +1084,27 @@ class RunLedger:
         self.run_id_scheme = run_id_scheme
         #: bound run_plan.jsonl (E0 planning artifact); None = no plan cross-check
         self.plan_path = Path(plan_path) if plan_path is not None else None
+        #: WP-L3 plan pin: {sha256, campaign_mode} verified against the bound
+        #: plan file on EVERY append / unseal.  Default = the E0-frozen
+        #: campaign pin (task_state.e0_freeze.run_plan_pinned; compiled as
+        #: DEFAULT_PLAN_PIN).  ``None`` disables the check and is ONLY
+        #: legitimate for synthetic test-fixture plans -- binding a plan
+        #: without overriding the pin means "this IS the frozen campaign
+        #: plan" and it must match (fail-closed, WP-L3 residual #1).
+        if plan_pin is CAMPAIGN_PIN:
+            self.plan_pin: Optional[Dict[str, str]] = (
+                dict(DEFAULT_PLAN_PIN) if self.plan_path is not None else None
+            )
+        elif plan_pin is None:
+            self.plan_pin = None
+        else:
+            self.plan_pin = _validate_pin(plan_pin, "plan_pin")
+            if self.plan_path is None:
+                raise LedgerError(
+                    "PLAN_PIN_WITHOUT_PLAN: an explicit plan_pin was configured "
+                    "but no plan_path is bound (pinning a non-existent plan is "
+                    "incoherent)"
+                )
         self.caps: Dict[str, int] = dict(DEFAULT_CAPS)
         if caps is not None:
             self.caps.update(caps)
@@ -1000,6 +1219,19 @@ class RunLedger:
           ``run_plan.jsonl`` (:class:`BudgetCapExceeded`) and, for fold3/4
           confirm runs, consume the one-shot unseal token
           (:class:`UnsealExceeded`).
+        * **WP-L3**: when a plan is bound and pinned, the plan file's sha256 +
+          header ``campaign_mode`` are re-verified against the pin BEFORE any
+          ledger mutation (Oracle residual: tampered plan copies used to
+          append).  Any mismatch -> :class:`PlanNotFrozenError`, nothing
+          written.
+        * **WP-L3**: a ``done`` transition for a B folds3/4 plan line consumes
+          the one-shot ``metric_unseal`` token (batch = the plan's B
+          folds3/4 run set) and records the consumption on the run record
+          (``metric_unseal`` field).  Missing token path, a second/different
+          batch or a non-batch run -> :class:`UnsealExceeded`, nothing
+          written.
+        * ``blocked_with_reason`` annotations (monitor) are cleared by any
+          successful transition.
         """
         rec = dict(record)
         validate(rec)
@@ -1007,6 +1239,9 @@ class RunLedger:
         rec["run_id"] = run_id
         now = _utc_now_iso()
         with _file_lock(self.lock_path):
+            # WP-L3 fail-closed plan pin: verify BEFORE any ledger mutation.
+            if self.plan_path is not None and self.plan_pin is not None:
+                verify_plan_pin(self.plan_path, self.plan_pin)
             all_latest = self._latest_locked()
             latest = all_latest.get(run_id)
             if latest is None:
@@ -1108,6 +1343,7 @@ class RunLedger:
                         allowed_run_ids=allowed,
                     )
 
+            metric_token: Optional[Dict[str, Any]] = None
             if to_status == "done":
                 # PD-4: partial-campaign finalizes may never claim these
                 if self.plan_path is not None:
@@ -1125,6 +1361,30 @@ class RunLedger:
                                         "scale_controlled/V5.1b from 21-run "
                                         "exploratory sets)".format(keyword, field_name)
                                     )
+                    # WP-L3 residual #2: B folds3/4 sealed-baseline metrics are
+                    # revealed exactly once per campaign via the one-shot
+                    # metric_unseal token -- finalize CONSUMES it (batch = the
+                    # plan's B folds3/4 run set) and records the consumption.
+                    plan_line_done = plan["by_run_id"].get(run_id)
+                    if (
+                        plan_line_done is not None
+                        and plan_line_done.get("substage") == "B"
+                        and plan_line_done.get("fold") in (3, 4)
+                    ):
+                        if self.metric_unseal_path is None:
+                            raise UnsealExceeded(
+                                "METRIC_UNSEAL_NOT_CONFIGURED: B folds3/4 run {} "
+                                "cannot finalize without the one-shot metric "
+                                "token (expected {})".format(
+                                    run_id, DEFAULT_METRIC_UNSEAL_SUBPATH
+                                )
+                            )
+                        metric_token = metric_unseal(
+                            self.metric_unseal_path,
+                            run_id,
+                            batch_id="plan-metric-batch",
+                            allowed_run_ids=plan["metric_run_ids"],
+                        )
 
             entry = dict(latest)
             entry.update(rec)
@@ -1133,6 +1393,17 @@ class RunLedger:
             entry["updated_at"] = now
             entry["retry_count"] = retry_count
             entry["supervisor_override"] = bool(rec.get("supervisor_override", False))
+            if metric_token is not None:
+                # record the consumption on the run record (auditable reveal)
+                entry["metric_unseal"] = {
+                    "kind": metric_token.get("kind"),
+                    "batch_id": metric_token.get("batch_id"),
+                    "count": metric_token.get("count"),
+                    "consumed_at": metric_token.get("consumed_at"),
+                }
+            # a successful transition supersedes any monitor block annotation
+            for _block_key in ("blocked_with_reason", "blocked_source", "blocked_at"):
+                entry.pop(_block_key, None)
             self._emit_locked(entry, "transition", from_status)
             return AppendOutcome("transitioned", entry)
 
@@ -1267,6 +1538,7 @@ class RunLedger:
         When the ledger has a bound plan and no explicit batch is given, the
         batch is the plan's ``confirm: true`` run set (all C-stage + QT-confirm
         run_ids); otherwise the batch defaults to the single ``run_id``.
+        The bound plan is pin-verified first (WP-L3).
         """
         if self.unseal_path is None:
             raise UnsealExceeded(
@@ -1274,6 +1546,8 @@ class RunLedger:
                     DEFAULT_UNSEAL_SUBPATH
                 )
             )
+        if self.plan_path is not None and self.plan_pin is not None:
+            verify_plan_pin(self.plan_path, self.plan_pin)
         if allowed_run_ids is None and self.plan_path is not None:
             plan = read_run_plan(self.plan_path)
             allowed_run_ids = list(plan["confirm_run_ids"])
@@ -1303,12 +1577,29 @@ class RunLedger:
         batch_id: Optional[str] = None,
         allowed_run_ids: Any = None,
     ) -> Dict[str, Any]:
-        """Consume the separate one-shot B-stage folds3/4 metric-reveal token."""
+        """Consume the separate one-shot B-stage folds3/4 metric-reveal token.
+
+        With a bound plan and no explicit batch, the batch is the plan's
+        B folds3/4 run set (``metric_run_ids``) -- the same batch the
+        ``done``-transition wiring consumes (WP-L3 residual #2).  The bound
+        plan is pin-verified first.
+        """
         if getattr(self, "metric_unseal_path", None) is None:
             raise UnsealExceeded(
                 "METRIC_UNSEAL_NOT_CONFIGURED: ledger has no metric_unseal_path "
                 "(expected {})".format(DEFAULT_METRIC_UNSEAL_SUBPATH)
             )
+        if self.plan_path is not None and self.plan_pin is not None:
+            verify_plan_pin(self.plan_path, self.plan_pin)
+        if allowed_run_ids is None and self.plan_path is not None:
+            plan = read_run_plan(self.plan_path)
+            allowed_run_ids = list(plan["metric_run_ids"])
+            batch_id = batch_id or "plan-metric-batch"
+            if not allowed_run_ids:
+                raise UnsealExceeded(
+                    "UNSEAL_CORRUPT: bound plan {} registers no B folds3/4 runs"
+                    .format(self.plan_path)
+                )
         if batch_id is None:
             batch_id = "metric-batch"
         return metric_unseal(
@@ -1317,6 +1608,46 @@ class RunLedger:
             batch_id=batch_id,
             allowed_run_ids=allowed_run_ids,
         )
+
+    def mark_blocked(
+        self,
+        run_id: str,
+        reason: Any,
+        *,
+        source: str = "supervisor.monitor",
+    ) -> AppendOutcome:
+        """Annotate a run record with ``blocked_with_reason`` (no status change).
+
+        WP-L3 residual #3: the supervisor monitor must record a blocking
+        condition (typically a :class:`PlanNotFrozenError`) on the affected
+        run record instead of crashing.  This is an *annotation* append --
+        the status machine is untouched, the reason is auditable in
+        ``events.jsonl`` (event ``blocked``), and any subsequent successful
+        transition clears the annotation.  Idempotent: re-marking the same
+        reason is a no-op.  Unknown run -> :class:`RunNotFound`.
+        """
+        if not (isinstance(reason, str) and reason.strip()):
+            raise LedgerError(
+                "INVALID_BLOCK_REASON: blocked_with_reason must be a non-empty "
+                "string, got {!r}".format(reason)
+            )
+        with _file_lock(self.lock_path):
+            latest = self._latest_locked().get(run_id)
+            if latest is None:
+                raise RunNotFound(
+                    "RUN_NOT_FOUND: cannot mark blocked; {} is not in {}".format(
+                        run_id, self.path
+                    )
+                )
+            if latest.get("blocked_with_reason") == reason:
+                return AppendOutcome("noop", dict(latest))
+            updated = dict(latest)
+            updated["blocked_with_reason"] = reason
+            updated["blocked_source"] = source
+            updated["blocked_at"] = _utc_now_iso()
+            updated["updated_at"] = updated["blocked_at"]
+            self._emit_locked(updated, "blocked", latest.get("status"))
+            return AppendOutcome("blocked", updated)
 
     def reconcile(
         self, pid_alive_fn: Optional[Callable[[Any], bool]] = None
@@ -1375,6 +1706,21 @@ def _build_parser() -> argparse.ArgumentParser:
         "(R3=66 / V5.2=33, plan membership enforced)",
     )
     parser.add_argument(
+        "--plan-pin",
+        choices=("auto", "none"),
+        default="auto",
+        help="WP-L3 plan pin: 'auto' (default) verifies the bound plan's "
+        "sha256+campaign_mode against the E0-frozen pin from task_state "
+        "(e0_freeze.run_plan_pinned); 'none' disables the check and is ONLY "
+        "legitimate for synthetic fixture plans",
+    )
+    parser.add_argument(
+        "--plan-pin-file",
+        default=None,
+        help="explicit pin JSON ({sha256, campaign_mode}) instead of the "
+        "task_state-derived campaign pin",
+    )
+    parser.add_argument(
         "--unseal",
         default=None,
         help="path of the one-shot fold3/4 confirm BATCH unseal token "
@@ -1410,9 +1756,35 @@ def _build_parser() -> argparse.ArgumentParser:
 
 def main(argv: Optional[List[str]] = None) -> int:
     args = _build_parser().parse_args(argv)
+    plan_pin: Any
+    if args.plan is None:
+        plan_pin = None  # no plan bound -> no pin (RunLedger allows this)
+    elif args.plan_pin == "none":
+        plan_pin = None  # explicit fixture opt-out
+    elif args.plan_pin_file is not None:
+        try:
+            plan_pin = json.loads(
+                Path(args.plan_pin_file).read_text(encoding="utf-8")
+            )
+        except (OSError, json.JSONDecodeError) as exc:
+            sys.stderr.write(
+                "error: PLAN_PIN_SOURCE_CORRUPT: {}: {}\n".format(
+                    args.plan_pin_file, exc
+                )
+            )
+            return 2
+    else:
+        # E0-frozen pin from task_state (fail-closed; compiled constant is the
+        # same value and is asserted equal in the WP-L3 tests)
+        try:
+            plan_pin = load_campaign_pin()
+        except PlanNotFrozenError as exc:
+            sys.stderr.write("error: {}\n".format(exc))
+            return 2
     ledger = RunLedger(
         args.ledger,
         plan_path=args.plan,
+        plan_pin=plan_pin,
         unseal_path=args.unseal,
         metric_unseal_path=args.metric_unseal,
     )
