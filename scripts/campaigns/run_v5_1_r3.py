@@ -62,6 +62,7 @@ DEFAULT_PLAN = CAMPAIGN_ROOT + "/run_plan.jsonl"
 DEFAULT_LEDGER = CAMPAIGN_ROOT + "/run_records.jsonl"
 DEFAULT_DATA_DIR = CAMPAIGN_ROOT + "/data"
 DEFAULT_SPLIT = CAMPAIGN_ROOT + "/data/split_manifest_r3.json"
+DEFAULT_METRIC_UNSEAL = "docs/agent_runs/state/gates/metric_unseal.json"
 GPU_LOCK = "/tmp/opencode/pes2ts_gpu.lock"
 FORMAL_UPDATES = 3000
 CONFIRM_BLOCK_REASON = "confirm_awaiting_dev_positive"
@@ -74,18 +75,25 @@ ARM_MAP: Dict[str, Dict[str, Any]] = {
     "F3": {"level": "F3"},
     "F2-bidir": {"level": "F2", "bidirectional": True},
     "F2-intent-off": {"level": "F2", "intent_off": True},
-    "B": {"level": None},          # level = G2-selected F winner (explicit --level)
-    "S2": {"level": None, "aux_arm": "S2"},
-    "S10": {"level": None, "aux_arm": "S10"},
-    "D2": {"level": None, "aux_arm": "D2"},
-    "D10": {"level": None, "aux_arm": "D10"},
-    "V-top1": {"level": None},     # needs top-2 selection (post G2)
+    # B0-F = base loss on the pre-registered Top-1 winner config (F2-bidir);
+    # B fold0 reuses the F-bidir fold0 runs (never relaunched)
+    "B": {"level": None, "bidirectional": True},
+    "S2": {"level": None, "aux_arm": "S2", "bidirectional": True},
+    "S10": {"level": None, "aux_arm": "S10", "bidirectional": True},
+    "D2": {"level": None, "aux_arm": "D2", "bidirectional": True},
+    "D10": {"level": None, "aux_arm": "D10", "bidirectional": True},
+    # pre-registered Top-2 (supervisor ranking): Top-1=F2-bidir, Top-2=F3
+    "V-top1": {"level": None, "bidirectional": True},
     "V-top2": {"level": None},
     "R1": {"undefined": "ramp spec R1 not defined in the frozen config"},
     "R2": {"undefined": "ramp spec R2 not defined in the frozen config"},
     "C": {"confirm": True},
     "QT": {"v52": True},
 }
+
+#: plan 4.2 sealing: B-phase folds3/4 metrics are computed+stored but never
+#: enter selection / report aggregation (dev folds 0-2 only)
+SEALED_FOLDS = (3, 4)
 
 
 def resolve_output_root(value: Optional[str]) -> str:
@@ -166,6 +174,12 @@ def _trainer_config_from_line(line: Mapping[str, Any], args: argparse.Namespace)
             "LEVEL_REQUIRED",
             "arm {!r} needs an explicit --level (G2-selected F winner; not "
             "decidable in this lane)".format(arm))
+    if spec.get("aux_arm") and args.lambda_arm is None:
+        raise TrainerError(
+            "AUX_LAMBDA_REQUIRED",
+            "aux arm {!r} requires --lambda-arm from the calibrated probe "
+            "(outputs/pesn/30h_campaign/r3_runs/lambda_calibration.json); "
+            "guessing λ is forbidden".format(arm))
     return TrainerConfigV3(
         arm=arm,
         fold=int(line["fold"]),
@@ -237,7 +251,10 @@ def cmd_run(args: argparse.Namespace) -> int:
             "error: CONFIRM_ARM_REFUSED: {} is a confirm arm; use "
             "block-confirm\n".format(args.run_id))
         return 1
-    ledger = RunLedger(args.ledger, plan_path=args.plan)  # campaign pin default
+    ledger = RunLedger(
+        args.ledger, plan_path=args.plan,  # campaign pin default
+        metric_unseal_path=args.metric_unseal,
+    )
     ledger.reconcile()  # dead-pid running entries -> interrupted (retryable)
     entry = ledger.status(args.run_id)
     if entry is None or entry.get("status") == "planned":
@@ -297,6 +314,11 @@ def cmd_run(args: argparse.Namespace) -> int:
         "checkpoint_sha256": metrics["checkpoint_best_sha256"],
         "metrics_path": "{}/{}/metrics.json".format(root, args.run_id),
     })
+    if int(line["fold"]) in SEALED_FOLDS:
+        # plan 4.2: folds3/4 metrics are SEALED -- stored, never aggregated
+        done["metrics_seal"] = (
+            "sealed: B-phase folds3/4 metrics excluded from selection/"
+            "report aggregation (dev folds 0-2 only; plan 4.2)")
     outcome = ledger.append(done)
     print(json.dumps({
         "run_id": args.run_id,
@@ -339,6 +361,33 @@ def cmd_block_confirm(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_block(args: argparse.Namespace) -> int:
+    """Register + block named runs with an honest reason (never launched).
+
+    Used for: R arms (R1/R2 ramp spec undefined in any frozen doc — no
+    invented hyperparameters) and L arms whose probe verdict is
+    ``scale_unreachable`` (evidence recorded; run not burned).
+    """
+    plan = read_run_plan(args.plan)
+    ledger = RunLedger(args.ledger, plan_path=args.plan)
+    results = []
+    for run_id in args.run_ids:
+        line = _find_plan_line(plan, run_id)
+        if line.get("confirm"):
+            sys.stderr.write(
+                "error: {} is a confirm arm; use block-confirm\n".format(run_id))
+            return 2
+        record = _record_from_plan(line)
+        ledger.append(record)  # registration only
+        outcome = ledger.mark_blocked(run_id, args.reason)
+        results.append({"run_id": run_id, "action": outcome.action,
+                        "arm": line["arm"], "fold": line["fold"],
+                        "seed": line["seed"], "reason": args.reason})
+    print(json.dumps({"blocked_runs": results, "count": len(results)},
+                     sort_keys=True))
+    return 0
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="run_v5_1_r3",
@@ -370,6 +419,12 @@ def _build_parser() -> argparse.ArgumentParser:
     run.add_argument("--task-state", default=DEFAULT_TASK_STATE_PATH)
     run.add_argument("--data-dir", default=DEFAULT_DATA_DIR)
     run.add_argument("--split", default=DEFAULT_SPLIT)
+    run.add_argument(
+        "--metric-unseal", default=DEFAULT_METRIC_UNSEAL,
+        help="one-shot B folds3/4 metric-reveal token (plan 4.2; consumed "
+        "idempotently at the first sealed-fold done transition; the token "
+        "receipt is recorded on the run record and the metrics stay EXCLUDED "
+        "from all selection/aggregation)")
     run.add_argument("--device", default="cuda")
     run.add_argument("--level", default=None,
                      help="feature level override (B/L/V arms after G2)")
@@ -380,6 +435,14 @@ def _build_parser() -> argparse.ArgumentParser:
                            help="mark all confirm arms blocked (never run)")
     block.add_argument("--plan", default=DEFAULT_PLAN)
     block.add_argument("--ledger", default=DEFAULT_LEDGER)
+
+    blk = sub.add_parser("block",
+                         help="register + block named runs with a reason")
+    blk.add_argument("--plan", default=DEFAULT_PLAN)
+    blk.add_argument("--ledger", default=DEFAULT_LEDGER)
+    blk.add_argument("--reason", required=True,
+                     help="blocked_with_reason (honest, evidence-backed)")
+    blk.add_argument("run_ids", nargs="+", help="planned run_ids to block")
     return parser
 
 
@@ -405,6 +468,8 @@ def main(argv: Optional[List[str]] = None) -> int:
             return cmd_run(args)
         if args.cmd == "block-confirm":
             return cmd_block_confirm(args)
+        if args.cmd == "block":
+            return cmd_block(args)
         return 2
     except CampaignRootError as exc:
         sys.stderr.write("error: {}\n".format(exc))
