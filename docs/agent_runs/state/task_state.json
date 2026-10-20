@@ -351,6 +351,13 @@
       "status": "done_merged",
       "verified_by": "supervisor rerun (61 new + full 1304 pesn/agent_ops green in main tree; scope 9 files; real-data report inspected)"
     },
+    "E6-V53PREP": {
+      "commit": "dc30176",
+      "lane": "W-FEAT",
+      "notes": "xtb availability corrected by supervisor (/opt/software/xtb/bin/xtb works; lane probe missed it); physics_not_run stands until G4-stage clearance; 12 curves frozen; sign_agree 0.75 diagnostic recorded",
+      "status": "done_merged",
+      "verified_by": "supervisor rerun (21 rollout tests + truth_guard green post-merge; smoke artifacts inspected)"
+    },
     "EXP-1-docs-digest": {
       "lane": "read-only",
       "output": "7 conflicts + R3 deliverable file list",
@@ -442,5 +449,5 @@
     },
     "rule": "dynamic scheduling targets; expiry at hard stop unconditional; last 2h no new long tasks"
   },
-  "updated": "2026-10-20T17:35:00Z"
+  "updated": "2026-10-20T20:05:00Z"
 }
