@@ -135,7 +135,7 @@ ALLOWED_TRANSITIONS: Dict[str, frozenset] = {
 RETRY_SOURCES = frozenset({"failed", "interrupted"})
 MAX_RETRIES = 2  # retry_count <= 2 free of charge; the 3rd retry needs override
 
-DEFAULT_LEDGER_PATH = "outputs/pes2ts/30h_campaign/run_records.jsonl"
+DEFAULT_LEDGER_PATH = "outputs/pesn/30h_campaign/run_records.jsonl"
 EVENTS_FILENAME = "events.jsonl"
 
 
