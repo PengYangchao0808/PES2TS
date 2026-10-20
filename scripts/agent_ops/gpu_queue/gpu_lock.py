@@ -10,6 +10,14 @@ Stale detection: if the holder pid no longer exists the status probe reports
 unlinked -- releasing a stale lock is a supervisor decision.
 
 No GPU hardware access is required to use this module.
+
+Gate integration (WP-L2): ``acquire(..., run_meta=..., gate_id=...)`` refuses
+*formal* acquisitions unless :func:`scripts.agent_ops.gpu_queue.gate_guard.assert_runnable`
+passes for the requested gate.  A formal run (``run_meta`` flagged
+``formal``/``formal_run``, or any ``gate_id``) without a passing, protocol-pinned
+gate record raises :class:`GateNotPassedError` **before** the lock file is even
+opened -- fail-closed, no warn-and-continue path.  Legacy acquisitions (no
+``run_meta`` / no ``gate_id``) keep the old behaviour for fixture-level work.
 """
 
 from __future__ import annotations
@@ -26,10 +34,13 @@ import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Union
+
+from scripts.agent_ops.gpu_queue.gate_guard import GateNotPassedError, assert_runnable
 
 __all__ = [
     "DEFAULT_LOCK_PATH",
+    "GateNotPassedError",
     "LockHandle",
     "acquire",
     "holder_path",
@@ -41,6 +52,8 @@ __all__ = [
 
 DEFAULT_LOCK_PATH = "/tmp/opencode/pes2ts_gpu.lock"
 HOLDER_SUFFIX = ".holder.json"
+#: repository root = parents[3] of scripts/agent_ops/gpu_queue/gpu_lock.py
+DEFAULT_CAMPAIGN_ROOT = Path(__file__).resolve().parents[3]
 
 
 def holder_path(lock_path: Any) -> Path:
@@ -157,18 +170,59 @@ class LockHandle:
         self.release()
 
 
+def _is_formal_run(run_meta: Optional[Dict[str, Any]], gate_id: Optional[str]) -> bool:
+    """A run is *formal* when it claims gate coverage or is flagged formal."""
+    if gate_id is not None:
+        return True
+    if isinstance(run_meta, dict):
+        for key in ("formal", "formal_run"):
+            if run_meta.get(key):
+                return True
+        if run_meta.get("gate_id"):
+            return True
+    return False
+
+
 def acquire(
     lock_path: Any = DEFAULT_LOCK_PATH,
     *,
     blocking: bool = False,
     lane: Optional[str] = None,
     run_id: Optional[str] = None,
+    run_meta: Optional[Dict[str, Any]] = None,
+    gate_id: Optional[str] = None,
+    campaign_root: Optional[Union[str, Path]] = None,
+    protocol_file: Optional[str] = None,
 ) -> Optional[LockHandle]:
     """Try to take the GPU mutex.
 
     Returns a :class:`LockHandle` on success, or ``None`` when the lock is
     held by someone else and ``blocking=False``.
+
+    Formal-run gate enforcement (WP-L2): when ``gate_id`` is given (or
+    ``run_meta`` marks the acquisition formal), the gate is verified via
+    :func:`gate_guard.assert_runnable` **before** touching the lock file.
+    Missing/invalid/corrupt gate record, ``status != "pass"`` or a protocol
+    sha256 mismatch raises :class:`GateNotPassedError`; a formal acquisition
+    without any ``gate_id`` also raises.  ``campaign_root`` defaults to the
+    repository root (``run_meta["campaign_root"]`` wins if present).
     """
+    meta: Dict[str, Any] = dict(run_meta) if isinstance(run_meta, dict) else {}
+    effective_gate_id = gate_id if gate_id is not None else meta.get("gate_id")
+    gate_report: Optional[Dict[str, Any]] = None
+    if _is_formal_run(run_meta, gate_id):
+        if effective_gate_id in (None, ""):
+            raise GateNotPassedError(
+                "GATE_REQUIRED: formal GPU acquisition without gate_id is refused "
+                "(run_id={!r}, lane={!r})".format(run_id, lane)
+            )
+        root = campaign_root if campaign_root is not None else meta.get("campaign_root")
+        if root is None:
+            root = DEFAULT_CAMPAIGN_ROOT
+        gate_report = assert_runnable(
+            effective_gate_id, root, protocol_file=protocol_file
+        )
+
     path = Path(lock_path)
     path.parent.mkdir(parents=True, exist_ok=True)
     fd = os.open(str(path), os.O_RDWR | os.O_CREAT, 0o666)
@@ -188,7 +242,12 @@ def acquire(
         "acquired_at_iso": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "cmdline": _cmdline(),
         "lock_path": str(path),
+        "gate_id": effective_gate_id,
+        "gate_checked": gate_report is not None,
     }
+    if gate_report is not None:
+        holder["gate_status"] = gate_report.get("status")
+        holder["protocol_sha256"] = gate_report.get("protocol_sha256_verified")
     try:
         _atomic_write_json(holder_path(path), holder)
     except OSError:
