@@ -10,7 +10,7 @@
   },
   "campaign_id": "PES2TS_30H_R3_V52_V53",
   "consequence": "H20 activated: V5.3 proceeds with upper-bound controllers only (classic CV/Jacobian + R3-winner learned upper bound); v52 arm runs as DIAGNOSTIC-ONLY with explicit non-claim labeling; no V5.2 supervision claims",
-  "evaluated_at": "2026-10-20T23:30:00Z",
+  "evaluated_at": "2026-10-20T21:15:00Z",
   "evaluated_by": "supervisor (orchestrator)",
   "evidence": {
     "evidence_pack": "outputs/pesn/30h_campaign/v52_runs/g3_evidence_pack.json",

@@ -2,7 +2,7 @@
   "authorization": {
     "confirm_authorized": false,
     "fit150plus_authorized": false,
-    "formal_training_authorized": true,
+    "formal_training_authorized": false,
     "ood_authorized": false,
     "sealed_authorized": false
   },
@@ -16,6 +16,30 @@
       "V5.2": 33,
       "counting": "所有launch attempt含retry均计数"
     }
+  },
+  "campaign_closure": {
+    "always_false_unchanged": [
+      "sealed_authorized",
+      "confirm_authorized",
+      "ood_authorized",
+      "fit150plus_authorized"
+    ],
+    "at": "2026-10-20T21:30:00Z",
+    "budget_final": {
+      "R3_attempts": "61/66",
+      "V52_attempts": "32/33",
+      "blocked": 24,
+      "gpu_train_hours": 0.93
+    },
+    "gates_terminal": {
+      "G0-Data": "pass",
+      "G1-Feature": "pass",
+      "G2-Move": "pass",
+      "G3-V52Supervision": "fail(E-NO-GAIN)",
+      "G3a-Label": "pass",
+      "G4-Rollout": "pass(engineering only)"
+    },
+    "reason": "all scientific execution complete (E1-E7 terminal); E8 archive in progress; per user terms authorization revoked at closure, ahead of 13:45Z window end"
   },
   "campaign_id": "PES2TS_30H_R3_V52_V53",
   "campaign_wall_clock_budget_h": 30,
@@ -103,7 +127,7 @@
     ],
     "unauthorized_experiments": "auto-BLOCKED by ledger (confirm/sealed/OOD arms); no padding toward 99 runs"
   },
-  "formal_training_authorized": true,
+  "formal_training_authorized": false,
   "gate_order": [
     "G0-Data",
     "G1-Feature",
@@ -129,7 +153,7 @@
       "status": "pass"
     },
     "G3-V52Supervision": {
-      "at": "2026-10-20T23:30:00Z",
+      "at": "2026-10-20T21:15:00Z",
       "record": "docs/agent_runs/state/gates/G3-V52Supervision.json",
       "status": "fail",
       "verdict": "E-NO-GAIN honest conclusion"
@@ -140,7 +164,7 @@
       "status": "pass"
     },
     "G4-Rollout": {
-      "at": "2026-10-21T01:10:00Z",
+      "at": "2026-10-20T21:20:00Z",
       "note": "engineering closure only, H20 mode",
       "record": "docs/agent_runs/state/gates/G4-Rollout.json",
       "status": "pass"
@@ -254,7 +278,7 @@
     {
       "gate": "Report",
       "id": "E7",
-      "status": "in_progress",
+      "status": "done",
       "title": "统计复核",
       "wall": "H26-H28",
       "wp": [
@@ -264,7 +288,7 @@
     {
       "gate": "H30-HARD-STOP",
       "id": "E8",
-      "status": "planned",
+      "status": "done_archive",
       "title": "缓冲/归档",
       "wall": "H28-H30",
       "wp": [
@@ -295,7 +319,7 @@
       "remedy": "事后按 lane 自有提交(135817d)精确复核=100% scope 内; 教训入规程: check-merge 必须基于 lane-authored commits(--first-parent master 侧剥离), 且 e0_write_allowlist.json 随 E0 包入库"
     }
   ],
-  "remaining_wall_clock_h": null,
+  "remaining_wall_clock_h": 0,
   "sealed_authorized": false,
   "sealed_readonly": [
     "outputs/pesn/v5_1/**",
@@ -491,5 +515,5 @@
     },
     "rule": "dynamic scheduling targets; expiry at hard stop unconditional; last 2h no new long tasks"
   },
-  "updated": "2026-10-21T01:10:00Z"
+  "updated": "2026-10-20T21:30:00Z"
 }

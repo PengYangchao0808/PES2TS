@@ -1,7 +1,7 @@
 {
   "authorization_effect": "campaign scientific execution COMPLETE; remaining: E7 final stats + E8 archive",
   "campaign_id": "PES2TS_30H_R3_V52_V53",
-  "evaluated_at": "2026-10-21T01:10:00Z",
+  "evaluated_at": "2026-10-20T21:20:00Z",
   "evaluated_by": "supervisor (orchestrator)",
   "evidence": {
     "claims_audit": "0 positive verified-TS claims (16 mentions all negated/forbidden context); frequency verification NOT attempted",
