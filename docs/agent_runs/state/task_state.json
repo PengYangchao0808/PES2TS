@@ -78,7 +78,13 @@
     "G3-V52Supervision",
     "G4-Rollout"
   ],
-  "gates": {},
+  "gates": {
+    "G0-Data": {
+      "at": "2026-10-20T15:35:00Z",
+      "record": "docs/agent_runs/state/gates/G0-Data.json",
+      "status": "pass"
+    }
+  },
   "integration": {
     "main_pytest": "2997 passed, 1 skipped, exit=0 (186s, @b1907c6 全量)",
     "merges": [
@@ -122,7 +128,7 @@
     {
       "gate": "G0-Data",
       "id": "E1",
-      "status": "planned",
+      "status": "done_gate_pass",
       "title": "Curve/Intent/Data",
       "wall": "H02-H05",
       "wp": [
@@ -273,10 +279,13 @@
       "wp": "WP-L1"
     },
     "E1-DATA": {
+      "commit": "d5f4cb6",
       "dispatched_at": "2026-10-20T13:45:00Z",
       "lane": "W-DATA",
+      "merge": "90f7844",
       "scope": "scripts/agent_ops/data_gate/** + outputs/pesn/30h_campaign/data/** (grant above)",
-      "status": "dispatched",
+      "status": "done_merged",
+      "verified_by": "supervisor rerun (validator 10/10, pytest 14, sha recompute, scope, run_plan guard)",
       "wp": "E1 six-table build"
     },
     "E2-FEAT": {
@@ -374,5 +383,5 @@
     },
     "rule": "dynamic scheduling targets; expiry at hard stop unconditional; last 2h no new long tasks"
   },
-  "updated": "2026-10-20T13:45:00Z"
+  "updated": "2026-10-20T15:35:00Z"
 }

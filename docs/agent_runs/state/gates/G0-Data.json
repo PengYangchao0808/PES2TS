@@ -1,1 +1,53 @@
-{"gate_id": "G0-Data", "status": "not_run", "evidence": null, "evaluated_at": null, "protocol_sha256_16": "3081e05479007eaf"}
+{
+  "authorization_effect": "G0 pass unlocks E2 formal gate evaluation and (with WP-L3 + stage-g0 binding + pre-training audit) formal_training_authorized",
+  "campaign_id": "PES2TS_30H_R3_V52_V53",
+  "evaluated_at": "2026-10-20T15:35:00Z",
+  "evaluated_by": "supervisor (orchestrator)",
+  "evidence": {
+    "cohorts": {
+      "1248": "excluded_gauge_unresolved (242 samples masked, dual evidence)",
+      "2022": "rechecked @0.08: ok 229/terminal 15; 0.05 conclusion superseded",
+      "342-pairs": "artifact absent in repo (ADR-0026) -> closed by full R3 re-audit: 15372 near-input pairs, 89 conflict masked, 12 near downweighted 0.25; R3_scope_not_affected NOT claimed",
+      "480-gauge": "node-level mask 812 samples",
+      "mapping-overflow-5": "4 consistent + RXN_0000001174 quarantined (forming edit zero length change)"
+    },
+    "coverage": "50 curves/100 intents/12034 samples: ok 9655 (15 near-conflict w=0.25), terminal 1123, conflict 68, masked 1188; usable curves 48",
+    "determinism": "3 full rebuilds byte-identical manifests",
+    "lineage": "wp2_fit50 dual-branch IRC export (50 RXN, TS shared, 6017 nodes) + g1_truth p1 mappings + frozen V5 split (T0.4 pass, no cross-fold near-dup leakage)",
+    "pytest": "tests/agent_ops/test_data_r3_build.py 14 passed (supervisor rerun in wt-a)",
+    "shas": {
+      "data_manifest": "c21ff84b3790282b4c60764e6a356b8cb3c46e5f3b76f2bf785eeb8e70a56cbc",
+      "dataset_content": "4635c330e94f59ad80f8da51c996923e1e1f9d236b5a8d8def293bd4af2dfd84",
+      "split_manifest_r3": "7cc1f98e5d28077ae202eb8bf04554c53647f9c9467f0877c34365850b055879",
+      "teacher_manifest": "bc02a2bd6f6496dff32d04533ca233a1c8175779410295e2b136d17ee89ce26a"
+    },
+    "tests": [
+      "T0.1a/b/c FK+schema+weights",
+      "T0.2a/b label involution + reverse teacher",
+      "T0.3a/b d0/gauge",
+      "T0.4a/b split leakage",
+      "T0.5 truth access (empty log)"
+    ],
+    "validator_summary": {
+      "blocked": 0,
+      "fail": 0,
+      "not_run": 0,
+      "pass": 10,
+      "total": 10
+    }
+  },
+  "gate": "G0-Data",
+  "inputs": {
+    "builder_commit": "d5f4cb6 (merged 90f7844)",
+    "supervisor_rerun_report": "/tmp/opencode/g0_supervisor_rerun.json",
+    "tables_dir": "outputs/pesn/30h_campaign/data/",
+    "validator": "scripts/agent_ops/data_gate/validate_r3_tables.py (schema r3_6table_v2, validator 0.2.0)"
+  },
+  "notes": [
+    "supervisor independently recomputed all three manifest SHAs + reran validator (10/10) + pytest (14) + scope check (4 files) + run_plan sha guard (d2a63599 unchanged)",
+    "historical-342 pair-list substitution by full re-audit documented (open research item beyond E1, does not affect R3 semantics)",
+    "features_sha256 remains PENDING_E2; stage-g0 plan rebind happens after E2/G1",
+    "masked/terminal/conflict rows excluded from hard-label training (label_status=ok filter; 15 near-conflict rows weight 0.25)"
+  ],
+  "status": "pass"
+}
