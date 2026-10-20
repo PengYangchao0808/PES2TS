@@ -1,1 +1,19 @@
-{"gate_id": "G3a-Label", "status": "not_run", "evidence": null, "evaluated_at": null, "protocol_sha256_16": "3081e05479007eaf"}
+{
+  "authorization_effect": "unlocks E5 V5.2 training",
+  "campaign_id": "PES2TS_30H_R3_V52_V53",
+  "evaluated_at": "2026-10-20T21:30:00Z",
+  "evaluated_by": "supervisor",
+  "evidence": {
+    "heads": "progress 2113 + stop 65 params; backbone 55441 bitwise-unchanged after attach (tested fixture+real)",
+    "loss": "L_v52 = L_move + lambda_q*L_q + lambda_m*L_TSStop; Mask out of denominator; lambda_mono=lambda_path=0",
+    "q_labels": "9655 valid / 0 masked; reverse q=-q exact (max|q_fwd+q_rev|=0.0, 6017 pairs); anchors exact A=-1/TS=0/B=+1",
+    "report": "outputs/pesn/30h_campaign/e4_label_report.json (real data, generated 17:01Z by E4, re-inspected at bind)",
+    "stop_labels": "per-fold inner-train positives 164-171 (pos_rate ~5%), no insufficient_stop_positives; frozen class weights 16.9-20.3 (inner-train only)"
+  },
+  "gate": "G3a-Label",
+  "notes": [
+    "bind deferred from 17:35Z until after G2 per serial gate order — now bound",
+    "Move non-degradation hook designed (not_run) — executes at G3 with V5.2 checkpoints"
+  ],
+  "status": "pass"
+}

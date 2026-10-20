@@ -1,1 +1,28 @@
-{"gate_id": "G2-Move", "status": "not_run", "evidence": null, "evaluated_at": null, "protocol_sha256_16": "3081e05479007eaf"}
+{
+  "authorization_effect": "unlocks G3a bind + E5 V5.2 training (Stage A/B); sealed/confirm/OOD stay false",
+  "campaign_id": "PES2TS_30H_R3_V52_V53",
+  "evaluated_at": "2026-10-20T21:30:00Z",
+  "evaluated_by": "supervisor (orchestrator)",
+  "evidence": {
+    "aux_arms": "S2/S10/D2/D10 calibrated (probe: S2=0.01906 S10=0.09528 D2=2.11e-05 D10=1.05e-04, all verdict=calibrated, lambda_zero_bit_identical_to_B0F=true) and guard-green 12/12 vs matched baseline (rmse -1.1%..+1.8%, sign drop 0, deadzone rise <=0)",
+    "baselines": "zero-step, classic CV/Jacobian min-norm (formula recorded), EGNN=StarEGNNV3; old OOF 0.824 excluded per protocol",
+    "cost": "~0.9 GPU-h for 61 launch attempts (~45-55s/run incl retries)",
+    "cross_fold": "B arms (folds1-2): 0.9735 [0.949-0.998], 10/12 clusters beat zero, 2/2 folds >=2/3 seeds <1; V-top1 reproduces B; V-top2 (F3) 1.039 -> ranking holds",
+    "evidence_pack": "outputs/pesn/30h_campaign/r3_runs/g2_evidence_pack.json (48 dev runs)",
+    "guards_thresholds": "rmse degradation <=2%, sign drop <=0.01, deadzone rise <=0.01 — all green",
+    "winner": "F2-bidir (Top-1 pre-registered selection confirmed): fold0 rmse/zero 0.910 [CI95 0.884-0.949], 6/6 clusters beat zero-step, sign median 0.89, seeds 17/29/43 all <1"
+  },
+  "gate": "G2-Move",
+  "honest_caveats": [
+    "generalization decay fold0 0.910 -> folds1-2 0.974 (CI upper 0.998 still <1); fold2 seed17 single point 1.0188",
+    "early inner-val overfit: 43/48 run selections at update <=250 of 3000 (frozen schedule, no tuning applied)",
+    "forward-only arms all >1.0: intent signal only helps under bidirectional supervision (recorded as screening finding)",
+    "confirm arms (C x6) + QT-confirm (x6) blocked: scale_controlled endgame NOT claimable in this campaign; R3 closes at dev-positive-confirm-blocked",
+    "5 launch attempts remain under cap 66 (reserved, no planned use)"
+  ],
+  "rulings": [
+    "probe reference ambiguity resolved as F2-bidir fold0 seed-matched checkpoint (supervisor ratifies): aux arms inherit winner config, so calibration/guards reference the winner; my task text said 'F0 forward' in error, the frozen plan's B0-F reference is the R3 baseline the aux arms modify"
+  ],
+  "scope": "dev folds 0-2 only; folds3/4 sealed (6 runs quarantined by id, unseal consumed once for finalization only, values in no aggregate); confirm stage blocked per user authorization",
+  "status": "pass"
+}
