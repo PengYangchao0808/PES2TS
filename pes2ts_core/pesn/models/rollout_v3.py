@@ -44,6 +44,7 @@ NOT a controlled reaction path and NOT a transition-state claim."""
 from __future__ import annotations
 
 import hashlib
+import json
 import math
 from dataclasses import dataclass, field
 from typing import Any, Final, Mapping, Sequence
@@ -160,6 +161,8 @@ class RolloutStepV3:
     min_interatomic: float          # min non-self distance AFTER the step (Å)
     collision: bool                 # min_interatomic < COLLISION_DISTANCE
     all_finite: bool                # geometry finite after the step
+    disp_l1_sum: float = 0.0        # Σ_k ‖u_clipped,k‖ applied this step (Å)
+    max_excursion_from_start: float = 0.0  # max_k ‖pos_k(t) − pos_k(0)‖ (Å)
     q_pred: float | None = None     # v52 only: predicted progress q ∈ [−1,1]
     stop_prob: float | None = None  # v52 only: sigmoid(stop logit)
     ts_candidate_event: bool = False  # v52 only: stop_prob ≥ threshold (record)
@@ -214,6 +217,8 @@ class RolloutResultV3:
                     "min_interatomic": s.min_interatomic,
                     "collision": s.collision,
                     "all_finite": s.all_finite,
+                    "disp_l1_sum": s.disp_l1_sum,
+                    "max_excursion_from_start": s.max_excursion_from_start,
                     "q_pred": s.q_pred,
                     "stop_prob": s.stop_prob,
                     "ts_candidate_event": s.ts_candidate_event,
@@ -499,6 +504,7 @@ def run_rollout_v3(
         cv_deltas = np.pad(cv_deltas, (0, len(cv_pairs) - cv_deltas.size))
 
     xyz = start.xyz_array()
+    xyz0 = xyz.copy()
     d_key_prev = _d_key(xyz, cv_pairs)
     steps: list[RolloutStepV3] = []
 
@@ -515,9 +521,13 @@ def run_rollout_v3(
         u_max = float(norms.max()) if norms.size else 0.0
         u_rms = float(np.sqrt((norms * norms).mean())) if norms.size else 0.0
         u_clipped, factor = _trust_region_clip(u, trust_region_max_atom)
+        disp_l1 = float(np.linalg.norm(u_clipped, axis=-1).sum())
 
         xyz = xyz.copy()
         xyz[np.asarray(key_rows, dtype=np.int64)] += u_clipped
+        excursion = float(
+            np.linalg.norm(xyz - xyz0, axis=-1)[
+                np.asarray(key_rows, dtype=np.int64)].max()) if key_rows else 0.0
 
         d_now = _d_key(xyz, cv_pairs)
         d_delta = d_now - d_key_prev
@@ -541,15 +551,26 @@ def run_rollout_v3(
             min_interatomic=min_d,
             collision=bool(min_d < collision_distance),
             all_finite=all_finite,
+            disp_l1_sum=disp_l1,
+            max_excursion_from_start=excursion,
             q_pred=q,
             stop_prob=stop_prob,
             ts_candidate_event=ts_event,
         ))
 
     d_final = [s.d_key for s in steps]
+    total_disp = float(sum(s.disp_l1_sum for s in steps))
+    max_excursion = float(
+        max((s.max_excursion_from_start for s in steps), default=0.0))
     summary: dict[str, Any] = {
         "n_collisions": sum(1 for s in steps if s.collision),
         "n_nonfinite": sum(1 for s in steps if not s.all_finite),
+        "n_clip_events": sum(1 for s in steps if s.clip_factor < 1.0),
+        "total_displacement": total_disp,
+        "max_atom_excursion": max_excursion,
+        "divergence_flag": bool(
+            any(not s.all_finite for s in steps)
+            or max_excursion > DIVERGENCE_EXCURSION_ANGSTROM),
         "n_ts_candidate_events": sum(1 for s in steps if s.ts_candidate_event),
         "mean_clip_factor": float(np.mean([s.clip_factor for s in steps])),
         "mean_u_max_atom": float(np.mean([s.u_max_atom for s in steps])),
@@ -581,20 +602,408 @@ def run_rollout_v3(
     )
 
 
+# ---------------------------------------------------------------------------
+# V5.3 execution layer: episode aggregation, budget parity, diagnostic
+# labeling, constrained-relax result schema (E6-V53EXEC).
+# ---------------------------------------------------------------------------
+#: Frozen diagnostic label for the ``v52`` arm.  G3-V52Supervision FAILED
+#: (honest E-NO-GAIN: q unlearnable / stop chance-level / Move guard
+#: breached); under hard stop H20 the V5.3 rollout set contains ONLY
+#: upper-bound controllers (classic, r3) — the v52 arm participates for
+#: ENGINEERING comparison only and every record/aggregate that carries a
+#: v52 arm MUST carry this exact label plus ``diagnostic_only=true``.
+#: Enforced by :func:`enforce_diagnostic_labeling_v3` (tested).
+V52_DIAGNOSTIC_LABEL: Final[str] = "v52_supervision_failed_no_claim"
+
+#: Episode-record schema written by the execution layer (one JSON object
+#: per rollout episode; superset of :meth:`RolloutResultV3.to_dict`).
+EPISODE_SCHEMA_V3: Final[str] = "pes2ts_v53_rollout_episode_v1"
+
+#: Per-CV tolerance (Å) for "contact made" against the true IRC TS node's
+#: d_key (diagnostic comparison only; never a policy input).
+TS_DKEY_CONTACT_TOLERANCE_ANGSTROM: Final[float] = 0.15
+
+#: Key-atom excursion (Å) from the start geometry beyond which an episode
+#: is flagged as diverged (diagnostic threshold; reported, never rolled
+#: back).
+DIVERGENCE_EXCURSION_ANGSTROM: Final[float] = 2.0
+
+#: Constrained-relax result schema (one JSON object per curve×arm relax).
+RELAX_RESULT_SCHEMA_V3: Final[str] = "pes2ts_v53_relax_result_v1"
+
+#: Frozen constrained-relax recipe (campaign ``v53_rollout.
+#: constrained_relax.same_budget_same_constraints: true``).  Every arm runs
+#: the IDENTICAL recipe; only the seed geometry differs (each arm's own
+#: 20-step rollout endpoint).  Driver targets are computed by the same
+#: geometry-independent rule per curve (intent K-pair CVs at the true IRC
+#: TS node — ts_index_record_only, diagnostics-tier information used only
+#: post-hoc by the physics bridge, never by a policy).
+RELAX_RECIPE_V3: Final[Mapping[str, Any]] = {
+    "gfn_level": 2,
+    "force_constant": 50.0,
+    "opt_level": "normal",
+    "max_cycle": 500,
+    "threads": 4,
+    "timeout_seconds": 300,
+    "fix_atoms": None,          # drivers-only constraints; env free
+    "physical_sp": True,
+    "charge": 0,
+    "multiplicity": 1,
+}
+
+
+def is_v52_arm_v3(arm: str) -> bool:
+    """True for any arm name carrying the failed V5.2 supervision."""
+    return "v52" in str(arm)
+
+
+def enforce_diagnostic_labeling_v3(
+    records: Sequence[Mapping[str, Any]],
+) -> None:
+    """Machine-check: every v52-arm record is diagnostic-only + labeled.
+
+    Raises :class:`RolloutV3Error` if any record whose ``arm`` mentions
+    ``v52`` lacks ``diagnostic_only=true`` or carries a diagnostic label
+    other than :data:`V52_DIAGNOSTIC_LABEL`.  classic/r3 records must NOT
+    claim the v52 diagnostic label (mislabeling in either direction is a
+    typed refusal).
+    """
+    for idx, rec in enumerate(records):
+        arm = str(rec.get("arm", ""))
+        if is_v52_arm_v3(arm):
+            if rec.get("diagnostic_only") is not True or rec.get(
+                    "diagnostic_label") != V52_DIAGNOSTIC_LABEL:
+                raise RolloutV3Error(
+                    "V52_LABELING",
+                    f"record {idx} arm={arm!r} must carry "
+                    f"diagnostic_only=true and diagnostic_label="
+                    f"{V52_DIAGNOSTIC_LABEL!r} (G3-V52Supervision failed; "
+                    f"H20: V5.3 = upper-bound controllers only)")
+        else:
+            if rec.get("diagnostic_label") == V52_DIAGNOSTIC_LABEL:
+                raise RolloutV3Error(
+                    "V52_LABELING",
+                    f"record {idx} arm={arm!r} must not carry the v52 "
+                    f"diagnostic label")
+
+
+def check_budget_parity_v3(
+    records: Sequence[Mapping[str, Any]],
+) -> dict[str, Any]:
+    """Machine-check: same budget + same start state across arms.
+
+    Grouping key is ``(curve_id, direction, n_steps_requested)``.  Within
+    every group:
+
+    * the arm set must equal the global arm set of the record collection
+      (no arm may skip a budget point another arm ran);
+    * ``input_step0_sha256`` must be identical across arms (every arm
+      starts from the exact same geometry+intent state);
+    * ``n_steps_requested`` must lie in the frozen ``NO_PHYSICS_STEPS_V3``.
+
+    Returns a summary dict on pass; raises on any violation.
+    """
+    if not records:
+        raise RolloutV3Error("BUDGET_PARITY", "no records to check")
+    global_arms = {str(r.get("arm", "")) for r in records}
+    groups: dict[tuple[str, str, int], list[Mapping[str, Any]]] = {}
+    for rec in records:
+        n = int(rec.get("n_steps_requested", -1))
+        if n not in NO_PHYSICS_STEPS_V3:
+            raise RolloutV3Error(
+                "BUDGET_PARITY",
+                f"n_steps_requested={n} outside frozen budget "
+                f"{NO_PHYSICS_STEPS_V3}")
+        key = (str(rec.get("curve_id")), str(rec.get("direction")), n)
+        groups.setdefault(key, []).append(rec)
+    for key, members in sorted(groups.items()):
+        arms = {str(m.get("arm", "")) for m in members}
+        if arms != global_arms:
+            raise RolloutV3Error(
+                "BUDGET_PARITY",
+                f"{key}: arm set {sorted(arms)} != global "
+                f"{sorted(global_arms)} (same budget across arms violated)")
+        fingerprints = {str(m.get("input_step0_sha256")) for m in members}
+        if len(fingerprints) != 1:
+            raise RolloutV3Error(
+                "BUDGET_PARITY",
+                f"{key}: step-0 fingerprints differ across arms "
+                f"({len(fingerprints)} distinct) — arms did not share the "
+                f"identical start state")
+    return {
+        "ok": True,
+        "n_groups": len(groups),
+        "n_records": len(records),
+        "arms": sorted(global_arms),
+        "steps": sorted({int(r.get("n_steps_requested")) for r in records}),
+    }
+
+
+def aggregate_episode_records_v3(
+    records: Sequence[Mapping[str, Any]],
+) -> dict[str, Any]:
+    """Aggregate episode records per (arm, n_steps) — the G4 stats table.
+
+    Episode schema: :data:`EPISODE_SCHEMA_V3` objects (``arm``,
+    ``curve_id``, ``direction``, ``n_steps_requested``,
+    ``input_step0_sha256``, ``diagnostic_only``, ``diagnostic_label``,
+    ``summary`` with the execution-layer metrics: ``cv_sign_agree_fraction``,
+    ``contact_made_ts_dkey``, ``final_ts_rmsd_all``,
+    ``final_arc_progress``, ``n_collisions``, ``n_nonfinite``,
+    ``n_clip_events``, ``mean_clip_factor``, ``total_displacement``,
+    ``max_atom_excursion``, ``divergence_flag``,
+    ``n_ts_candidate_events``).
+
+    All v52-arm aggregates inherit the diagnostic-only stamp
+    (:func:`enforce_diagnostic_labeling_v3` runs first).  Means are plain
+    arithmetic means over episodes; medians via ``np.median``; missing
+    optional fields are excluded pairwise (count reported).
+    """
+    enforce_diagnostic_labeling_v3(records)
+    buckets: dict[tuple[str, int], list[Mapping[str, Any]]] = {}
+    for rec in records:
+        buckets.setdefault(
+            (str(rec.get("arm", "")), int(rec.get("n_steps_requested", -1))),
+            []).append(rec)
+
+    out: dict[str, Any] = {"schema": "pes2ts_v53_rollout_aggregate_v1",
+                           "groups": []}
+    for (arm, n_steps), members in sorted(buckets.items()):
+        sums = [m.get("summary") or {} for m in members]
+
+        def _vals(field: str) -> list[float]:
+            return [float(s[field]) for s in sums
+                    if s.get(field) is not None]
+
+        def _mean(field: str) -> float | None:
+            v = _vals(field)
+            return float(np.mean(v)) if v else None
+
+        def _bool_rate(field: str) -> float | None:
+            v = [1.0 if s.get(field) else 0.0 for s in sums if field in s]
+            return float(np.mean(v)) if v else None
+
+        ts_rmsd = _vals("final_ts_rmsd_all")
+        group: dict[str, Any] = {
+            "arm": arm,
+            "n_steps_requested": n_steps,
+            "n_episodes": len(members),
+            "n_curves": len({str(m.get("curve_id")) for m in members}),
+            "n_directions": len({str(m.get("direction")) for m in members}),
+            "cv_sign_agree_fraction_mean": _mean("cv_sign_agree_fraction"),
+            "contact_made_rate": _bool_rate("contact_made_ts_dkey"),
+            "final_ts_rmsd_all_mean": (
+                float(np.mean(ts_rmsd)) if ts_rmsd else None),
+            "final_ts_rmsd_all_median": (
+                float(np.median(ts_rmsd)) if ts_rmsd else None),
+            "final_arc_progress_mean": _mean("final_arc_progress"),
+            "collisions_total": int(sum(
+                int(s.get("n_collisions", 0)) for s in sums)),
+            "episodes_with_collision": sum(
+                1 for s in sums if int(s.get("n_collisions", 0)) > 0),
+            "nonfinite_total": int(sum(
+                int(s.get("n_nonfinite", 0)) for s in sums)),
+            "clip_events_mean": _mean("n_clip_events"),
+            "mean_clip_factor": _mean("mean_clip_factor"),
+            "total_displacement_mean": _mean("total_displacement"),
+            "max_atom_excursion_max": (
+                max(_vals("max_atom_excursion")) if _vals(
+                    "max_atom_excursion") else None),
+            "divergence_episodes": sum(
+                1 for s in sums if s.get("divergence_flag")),
+            "ts_candidate_events_total": int(sum(
+                int(s.get("n_ts_candidate_events", 0)) for s in sums)),
+            "diagnostic_only": bool(members[0].get("diagnostic_only")),
+            "diagnostic_label": members[0].get("diagnostic_label"),
+        }
+        out["groups"].append(group)
+    return out
+
+
+# ---------------------------------------------------------------------------
+# constrained-relax result schema (mockable executor; real xtb only in the
+# execution script, never in tests)
+# ---------------------------------------------------------------------------
+@dataclass(frozen=True)
+class PhysicsOutcomeV3:
+    """Typed outcome of one xTB constrained-opt attempt (runner product).
+
+    ``status`` vocabulary (honest, closed):
+
+    * ``converged`` — xTB reported OPTIMIZATION CONVERGED + final
+      geometry parsed;
+    * ``not_converged`` — xTB ran but did not converge (geometry may or
+      may not exist; recorded, never hidden);
+    * ``timeout`` — wall-clock timeout hit (process group killed);
+    * ``physics_failed`` — the physics call itself failed (nonzero
+      xTB crash, missing binary, unparsable output, runner exception
+      captured upstream).
+    """
+
+    status: str
+    returncode: int | None
+    wall_seconds: float
+    final_xyz: tuple[tuple[float, float, float], ...] | None
+    convergence_line: str | None = None
+    error: str | None = None
+
+
+def _pair_distances_v3(
+    pos: np.ndarray, pairs: Sequence[tuple[int, int]]) -> list[float]:
+    return [float(np.linalg.norm(pos[j] - pos[i])) for i, j in pairs]
+
+
+def execute_relax_episode_v3(
+    *,
+    curve_id: str,
+    arm: str,
+    direction: str,
+    driver_pairs: Sequence[tuple[int, int]],
+    target_distances: Sequence[float],
+    request: Mapping[str, Any],
+    runner: Any,
+    workdir: str,
+    diagnostic_only: bool = False,
+    diagnostic_label: str | None = None,
+) -> dict[str, Any]:
+    """Assemble one canonical constrained-relax result record.
+
+    ``runner`` is ANY callable ``runner(request, workdir) ->
+    PhysicsOutcomeV3`` — the real xtb runner lives in
+    ``scripts/agent_ops/feature_gate/v53_relax_exec.py``; tests inject a
+    mock.  A runner exception is captured as ``physics_failed`` (physics
+    failures are recorded, never hidden, and never abort sibling runs).
+    Claim scope is always ``TS_candidate_only`` — single-imaginary-
+    frequency verification is out of scope (OptTS territory).
+    """
+    if is_v52_arm_v3(arm):
+        diagnostic_only = True
+        diagnostic_label = V52_DIAGNOSTIC_LABEL
+    enforce_diagnostic_labeling_v3([{
+        "arm": arm, "diagnostic_only": diagnostic_only,
+        "diagnostic_label": diagnostic_label}])
+    pairs = [(int(i), int(j)) for i, j in driver_pairs]
+    targets = [float(t) for t in target_distances]
+    _require(len(pairs) == len(targets) and pairs, "RELAX_TARGETS",
+             "driver_pairs and target_distances must align and be non-empty")
+
+    try:
+        outcome = runner(dict(request), workdir)
+        if not isinstance(outcome, PhysicsOutcomeV3):
+            raise RolloutV3Error(
+                "RELAX_RUNNER", "runner must return PhysicsOutcomeV3")
+    except RolloutV3Error:
+        raise
+    except Exception as exc:  # noqa: BLE001 — physics failure is data
+        outcome = PhysicsOutcomeV3(
+            status="physics_failed", returncode=None, wall_seconds=0.0,
+            final_xyz=None, error=f"{type(exc).__name__}: {exc}")
+
+    achieved: list[float] | None = None
+    dev_from_target: list[float] | None = None
+    if outcome.final_xyz is not None:
+        pos = np.asarray(outcome.final_xyz, dtype=np.float64)
+        if pos.shape[0] > 0 and bool(np.isfinite(pos).all()):
+            achieved = _pair_distances_v3(pos, pairs)
+            dev_from_target = [a - t for a, t in zip(achieved, targets)]
+    return {
+        "schema": RELAX_RESULT_SCHEMA_V3,
+        "curve_id": curve_id,
+        "arm": arm,
+        "direction": direction,
+        "status": outcome.status,
+        "returncode": outcome.returncode,
+        "wall_seconds": float(outcome.wall_seconds),
+        "convergence_line": outcome.convergence_line,
+        "error": outcome.error,
+        "driver_pairs": pairs,
+        "target_distances": targets,
+        "achieved_distances": achieved,
+        "dev_from_target": dev_from_target,
+        "request_sha256": (request.get("provenance") or {}).get(
+            "request_sha256"),
+        "recipe": dict(RELAX_RECIPE_V3),
+        "diagnostic_only": bool(diagnostic_only),
+        "diagnostic_label": diagnostic_label,
+        "claim_scope": CLAIM_SCOPE_V3,
+        "note": ("constrained xTB relaxation of a rollout endpoint; "
+                 "TS_candidate only — no frequency verification attempted"),
+    }
+
+
+def check_relax_budget_parity_v3(
+    records: Sequence[Mapping[str, Any]],
+) -> dict[str, Any]:
+    """Machine-check: same budget + same constraints across arms (relax).
+
+    * every record carries the identical frozen recipe
+      (:data:`RELAX_RECIPE_V3`);
+    * per curve, the driver targets are IDENTICAL across arms (the target
+      rule is geometry-independent, so any cross-arm target drift is a
+      protocol violation);
+    * every record carries ``TS_candidate_only`` claim scope.
+    """
+    if not records:
+        raise RolloutV3Error("RELAX_PARITY", "no relax records to check")
+    recipes = {json.dumps(r.get("recipe"), sort_keys=True) for r in records}
+    if len(recipes) != 1:
+        raise RolloutV3Error(
+            "RELAX_PARITY", f"{len(recipes)} distinct recipes across arms")
+    recipe = json.loads(next(iter(recipes)))
+    for key, val in RELAX_RECIPE_V3.items():
+        if recipe.get(key) != val:
+            raise RolloutV3Error(
+                "RELAX_PARITY", f"recipe[{key!r}]={recipe.get(key)!r} != "
+                f"frozen {val!r}")
+    per_curve: dict[str, set[str]] = {}
+    for rec in records:
+        if rec.get("claim_scope") != CLAIM_SCOPE_V3:
+            raise RolloutV3Error(
+                "RELAX_PARITY",
+                f"{rec.get('curve_id')}/{rec.get('arm')}: claim_scope must "
+                f"be {CLAIM_SCOPE_V3!r}")
+        digest = json.dumps(
+            {"pairs": rec.get("driver_pairs"),
+             "targets": rec.get("target_distances")},
+            sort_keys=True)
+        per_curve.setdefault(str(rec.get("curve_id")), set()).add(digest)
+    drifted = {c: len(v) for c, v in per_curve.items() if len(v) != 1}
+    if drifted:
+        raise RolloutV3Error(
+            "RELAX_PARITY",
+            f"driver targets differ across arms for curves {drifted}")
+    return {"ok": True, "n_records": len(records),
+            "n_curves": len(per_curve),
+            "arms": sorted({str(r.get("arm")) for r in records})}
+
+
 __all__ = [
     "ROLLOUT_SCHEMA_V3",
+    "EPISODE_SCHEMA_V3",
     "NO_PHYSICS_STEPS_V3",
     "ARMS_V3",
     "TRUST_REGION_MAX_ATOM_ANGSTROM",
     "COLLISION_DISTANCE_ANGSTROM",
     "V52_STOP_PROB_THRESHOLD",
     "CLAIM_SCOPE_V3",
+    "V52_DIAGNOSTIC_LABEL",
+    "TS_DKEY_CONTACT_TOLERANCE_ANGSTROM",
+    "DIVERGENCE_EXCURSION_ANGSTROM",
+    "RELAX_RESULT_SCHEMA_V3",
+    "RELAX_RECIPE_V3",
     "RolloutV3Error",
     "RolloutStartV3",
     "RolloutStepV3",
     "RolloutResultV3",
+    "PhysicsOutcomeV3",
     "classic_cv_jacobian_step_v3",
     "load_r3_checkpoint_v3",
     "load_v52_checkpoint_v3",
     "run_rollout_v3",
+    "is_v52_arm_v3",
+    "enforce_diagnostic_labeling_v3",
+    "check_budget_parity_v3",
+    "aggregate_episode_records_v3",
+    "execute_relax_episode_v3",
+    "check_relax_budget_parity_v3",
 ]

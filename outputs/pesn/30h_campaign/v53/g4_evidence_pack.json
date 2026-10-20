@@ -1,0 +1,830 @@
+{
+  "schema": "pes2ts_v53_g4_evidence_v1",
+  "campaign": "PES2TS_30H_R3_V52_V53",
+  "gate": "G4-Rollout",
+  "hard_stop_mode": "H20 (V5.2 supervision failed → V5.3 = upper-bound controllers only; v52 arm is diagnostic-only, never a validated controller)",
+  "claim_scope": "TS_candidate_only",
+  "verified_ts_claim": "forbidden",
+  "curve_list_sha256": "7ec3e1928824c690c718ce9c6f7c8244c3248108efa2a045a2ff60bd5c49da09",
+  "rollout": {
+    "n_episodes": 216,
+    "aggregate": {
+      "schema": "pes2ts_v53_rollout_aggregate_v1",
+      "groups": [
+        {
+          "arm": "classic",
+          "n_steps_requested": 5,
+          "n_episodes": 24,
+          "n_curves": 12,
+          "n_directions": 2,
+          "cv_sign_agree_fraction_mean": 0.21904761904761902,
+          "contact_made_rate": 0.041666666666666664,
+          "final_ts_rmsd_all_mean": 0.6808583559257304,
+          "final_ts_rmsd_all_median": 0.7098411452626461,
+          "final_arc_progress_mean": 0.06938812814278517,
+          "collisions_total": 0,
+          "episodes_with_collision": 0,
+          "nonfinite_total": 0,
+          "clip_events_mean": 0.0,
+          "mean_clip_factor": 1.0,
+          "total_displacement_mean": 1.421109836572181,
+          "max_atom_excursion_max": 0.3866069569580648,
+          "divergence_episodes": 0,
+          "ts_candidate_events_total": 0,
+          "diagnostic_only": false,
+          "diagnostic_label": null
+        },
+        {
+          "arm": "classic",
+          "n_steps_requested": 10,
+          "n_episodes": 24,
+          "n_curves": 12,
+          "n_directions": 2,
+          "cv_sign_agree_fraction_mean": 0.21904761904761902,
+          "contact_made_rate": 0.041666666666666664,
+          "final_ts_rmsd_all_mean": 0.7822199357105584,
+          "final_ts_rmsd_all_median": 0.7925487875476153,
+          "final_arc_progress_mean": 0.06938812814278517,
+          "collisions_total": 17,
+          "episodes_with_collision": 11,
+          "nonfinite_total": 0,
+          "clip_events_mean": 0.0,
+          "mean_clip_factor": 1.0,
+          "total_displacement_mean": 2.8805776777155963,
+          "max_atom_excursion_max": 0.7798561238463803,
+          "divergence_episodes": 0,
+          "ts_candidate_events_total": 0,
+          "diagnostic_only": false,
+          "diagnostic_label": null
+        },
+        {
+          "arm": "classic",
+          "n_steps_requested": 20,
+          "n_episodes": 24,
+          "n_curves": 12,
+          "n_directions": 2,
+          "cv_sign_agree_fraction_mean": 0.24029265873015873,
+          "contact_made_rate": 0.041666666666666664,
+          "final_ts_rmsd_all_mean": 1.0182796245195675,
+          "final_ts_rmsd_all_median": 1.0353540875151068,
+          "final_arc_progress_mean": 0.06869368369834072,
+          "collisions_total": 215,
+          "episodes_with_collision": 23,
+          "nonfinite_total": 0,
+          "clip_events_mean": 0.3333333333333333,
+          "mean_clip_factor": 0.9911963732496393,
+          "total_displacement_mean": 6.369566009662044,
+          "max_atom_excursion_max": 1.6161083125292819,
+          "divergence_episodes": 0,
+          "ts_candidate_events_total": 0,
+          "diagnostic_only": false,
+          "diagnostic_label": null
+        },
+        {
+          "arm": "r3",
+          "n_steps_requested": 5,
+          "n_episodes": 24,
+          "n_curves": 12,
+          "n_directions": 2,
+          "cv_sign_agree_fraction_mean": 0.8887896825396826,
+          "contact_made_rate": 0.08333333333333333,
+          "final_ts_rmsd_all_mean": 0.5996989890199479,
+          "final_ts_rmsd_all_median": 0.6114794472411722,
+          "final_arc_progress_mean": 0.29395758872334715,
+          "collisions_total": 0,
+          "episodes_with_collision": 0,
+          "nonfinite_total": 0,
+          "clip_events_mean": 0.0,
+          "mean_clip_factor": 1.0,
+          "total_displacement_mean": 0.8881607881149218,
+          "max_atom_excursion_max": 0.8322533961997268,
+          "divergence_episodes": 0,
+          "ts_candidate_events_total": 0,
+          "diagnostic_only": false,
+          "diagnostic_label": null
+        },
+        {
+          "arm": "r3",
+          "n_steps_requested": 10,
+          "n_episodes": 24,
+          "n_curves": 12,
+          "n_directions": 2,
+          "cv_sign_agree_fraction_mean": 0.8794146825396826,
+          "contact_made_rate": 0.08333333333333333,
+          "final_ts_rmsd_all_mean": 0.6092065743557782,
+          "final_ts_rmsd_all_median": 0.5861377728757984,
+          "final_arc_progress_mean": 0.40054306826831737,
+          "collisions_total": 0,
+          "episodes_with_collision": 0,
+          "nonfinite_total": 0,
+          "clip_events_mean": 0.0,
+          "mean_clip_factor": 1.0,
+          "total_displacement_mean": 1.7566859528928287,
+          "max_atom_excursion_max": 1.4224062389312262,
+          "divergence_episodes": 0,
+          "ts_candidate_events_total": 0,
+          "diagnostic_only": false,
+          "diagnostic_label": null
+        },
+        {
+          "arm": "r3",
+          "n_steps_requested": 20,
+          "n_episodes": 24,
+          "n_curves": 12,
+          "n_directions": 2,
+          "cv_sign_agree_fraction_mean": 0.8759424603174603,
+          "contact_made_rate": 0.08333333333333333,
+          "final_ts_rmsd_all_mean": 0.6637206086494355,
+          "final_ts_rmsd_all_median": 0.6284849411526042,
+          "final_arc_progress_mean": 0.6227320800362498,
+          "collisions_total": 14,
+          "episodes_with_collision": 3,
+          "nonfinite_total": 0,
+          "clip_events_mean": 0.0,
+          "mean_clip_factor": 1.0,
+          "total_displacement_mean": 3.3972636527018025,
+          "max_atom_excursion_max": 2.0037695477649557,
+          "divergence_episodes": 1,
+          "ts_candidate_events_total": 0,
+          "diagnostic_only": false,
+          "diagnostic_label": null
+        },
+        {
+          "arm": "v52",
+          "n_steps_requested": 5,
+          "n_episodes": 24,
+          "n_curves": 12,
+          "n_directions": 2,
+          "cv_sign_agree_fraction_mean": 0.9888888888888889,
+          "contact_made_rate": 0.08333333333333333,
+          "final_ts_rmsd_all_mean": 0.5917367247827016,
+          "final_ts_rmsd_all_median": 0.6162050072354696,
+          "final_arc_progress_mean": 0.3613659508101241,
+          "collisions_total": 0,
+          "episodes_with_collision": 0,
+          "nonfinite_total": 0,
+          "clip_events_mean": 0.0,
+          "mean_clip_factor": 1.0,
+          "total_displacement_mean": 0.6192085886338711,
+          "max_atom_excursion_max": 0.3357690362449839,
+          "divergence_episodes": 0,
+          "ts_candidate_events_total": 10,
+          "diagnostic_only": true,
+          "diagnostic_label": "v52_supervision_failed_no_claim"
+        },
+        {
+          "arm": "v52",
+          "n_steps_requested": 10,
+          "n_episodes": 24,
+          "n_curves": 12,
+          "n_directions": 2,
+          "cv_sign_agree_fraction_mean": 0.9888888888888889,
+          "contact_made_rate": 0.08333333333333333,
+          "final_ts_rmsd_all_mean": 0.5832387584192442,
+          "final_ts_rmsd_all_median": 0.6033423781091927,
+          "final_arc_progress_mean": 0.49508677925072236,
+          "collisions_total": 0,
+          "episodes_with_collision": 0,
+          "nonfinite_total": 0,
+          "clip_events_mean": 0.0,
+          "mean_clip_factor": 1.0,
+          "total_displacement_mean": 1.2276923230120345,
+          "max_atom_excursion_max": 0.6659289806735539,
+          "divergence_episodes": 0,
+          "ts_candidate_events_total": 20,
+          "diagnostic_only": true,
+          "diagnostic_label": "v52_supervision_failed_no_claim"
+        },
+        {
+          "arm": "v52",
+          "n_steps_requested": 20,
+          "n_episodes": 24,
+          "n_curves": 12,
+          "n_directions": 2,
+          "cv_sign_agree_fraction_mean": 0.9909722222222221,
+          "contact_made_rate": 0.08333333333333333,
+          "final_ts_rmsd_all_mean": 0.5911644740234806,
+          "final_ts_rmsd_all_median": 0.5957651951863749,
+          "final_arc_progress_mean": 0.7643110692410787,
+          "collisions_total": 4,
+          "episodes_with_collision": 2,
+          "nonfinite_total": 0,
+          "clip_events_mean": 0.0,
+          "mean_clip_factor": 1.0,
+          "total_displacement_mean": 2.4035066862503833,
+          "max_atom_excursion_max": 1.28270251805517,
+          "divergence_episodes": 0,
+          "ts_candidate_events_total": 40,
+          "diagnostic_only": true,
+          "diagnostic_label": "v52_supervision_failed_no_claim"
+        }
+      ]
+    },
+    "determinism": [
+      {
+        "curve_id": "RXN_0000000238",
+        "direction": "forward",
+        "arm": "classic",
+        "n_steps": 5,
+        "bitwise_equal": true
+      },
+      {
+        "curve_id": "RXN_0000000238",
+        "direction": "forward",
+        "arm": "r3",
+        "n_steps": 20,
+        "bitwise_equal": true
+      }
+    ],
+    "budget_parity": {
+      "ok": true,
+      "n_groups": 72,
+      "n_records": 216,
+      "arms": [
+        "classic",
+        "r3",
+        "v52"
+      ],
+      "steps": [
+        5,
+        10,
+        20
+      ]
+    }
+  },
+  "relax": {
+    "table": [
+      {
+        "curve_id": "RXN_0000000238",
+        "arm": "classic",
+        "status": "physics_failed",
+        "wall_seconds": 0.027283191680908203,
+        "seed_min_interatomic": 0.03939388650983103,
+        "seed_clashed": true,
+        "max_abs_dev_from_target": null,
+        "failure_class": "seed_clash_optimizer_abort",
+        "error": "status=physics_failed rc=128"
+      },
+      {
+        "curve_id": "RXN_0000000238",
+        "arm": "r3",
+        "status": "converged",
+        "wall_seconds": 1.3095853328704834,
+        "seed_min_interatomic": 0.9655419354950641,
+        "seed_clashed": false,
+        "max_abs_dev_from_target": 0.0005823485479734547,
+        "failure_class": null,
+        "error": null
+      },
+      {
+        "curve_id": "RXN_0000000238",
+        "arm": "v52",
+        "status": "not_converged",
+        "wall_seconds": 2.0164036750793457,
+        "seed_min_interatomic": 0.8340042399782039,
+        "seed_clashed": false,
+        "max_abs_dev_from_target": 0.00010884820885959101,
+        "failure_class": "optimizer_cycle_abort",
+        "error": null
+      },
+      {
+        "curve_id": "RXN_0000000406",
+        "arm": "classic",
+        "status": "physics_failed",
+        "wall_seconds": 0.15199589729309082,
+        "seed_min_interatomic": 0.03908817835901148,
+        "seed_clashed": true,
+        "max_abs_dev_from_target": null,
+        "failure_class": "seed_clash_optimizer_abort",
+        "error": "status=physics_failed rc=128"
+      },
+      {
+        "curve_id": "RXN_0000000406",
+        "arm": "r3",
+        "status": "not_converged",
+        "wall_seconds": 1.5979366302490234,
+        "seed_min_interatomic": 0.677798131155651,
+        "seed_clashed": true,
+        "max_abs_dev_from_target": 7.012614216139745e-05,
+        "failure_class": "seed_clash_optimizer_abort",
+        "error": null
+      },
+      {
+        "curve_id": "RXN_0000000406",
+        "arm": "v52",
+        "status": "not_converged",
+        "wall_seconds": 1.522284746170044,
+        "seed_min_interatomic": 1.005489760688915,
+        "seed_clashed": false,
+        "max_abs_dev_from_target": 7.13805479068963e-05,
+        "failure_class": "optimizer_cycle_abort",
+        "error": null
+      },
+      {
+        "curve_id": "RXN_0000000582",
+        "arm": "classic",
+        "status": "physics_failed",
+        "wall_seconds": 0.03457379341125488,
+        "seed_min_interatomic": 0.8614695432086796,
+        "seed_clashed": false,
+        "max_abs_dev_from_target": null,
+        "failure_class": "physics_failed_other",
+        "error": "status=physics_failed rc=128"
+      },
+      {
+        "curve_id": "RXN_0000000582",
+        "arm": "r3",
+        "status": "converged",
+        "wall_seconds": 2.6261088848114014,
+        "seed_min_interatomic": 0.9710118811575941,
+        "seed_clashed": false,
+        "max_abs_dev_from_target": 0.00017736235022836055,
+        "failure_class": null,
+        "error": null
+      },
+      {
+        "curve_id": "RXN_0000000582",
+        "arm": "v52",
+        "status": "converged",
+        "wall_seconds": 1.6323509216308594,
+        "seed_min_interatomic": 1.005413717710762,
+        "seed_clashed": false,
+        "max_abs_dev_from_target": 0.00016564683078845732,
+        "failure_class": null,
+        "error": null
+      },
+      {
+        "curve_id": "RXN_0000000908",
+        "arm": "classic",
+        "status": "physics_failed",
+        "wall_seconds": 0.026844501495361328,
+        "seed_min_interatomic": 0.01824718779432758,
+        "seed_clashed": true,
+        "max_abs_dev_from_target": null,
+        "failure_class": "seed_clash_optimizer_abort",
+        "error": "status=physics_failed rc=128"
+      },
+      {
+        "curve_id": "RXN_0000000908",
+        "arm": "r3",
+        "status": "not_converged",
+        "wall_seconds": 2.296980381011963,
+        "seed_min_interatomic": 0.7242635891102158,
+        "seed_clashed": false,
+        "max_abs_dev_from_target": 0.0003087073992023015,
+        "failure_class": "optimizer_cycle_abort",
+        "error": null
+      },
+      {
+        "curve_id": "RXN_0000000908",
+        "arm": "v52",
+        "status": "not_converged",
+        "wall_seconds": 2.40030574798584,
+        "seed_min_interatomic": 0.7595313072484734,
+        "seed_clashed": false,
+        "max_abs_dev_from_target": 0.0005618687242081588,
+        "failure_class": "optimizer_cycle_abort",
+        "error": null
+      },
+      {
+        "curve_id": "RXN_0000001309",
+        "arm": "classic",
+        "status": "physics_failed",
+        "wall_seconds": 0.16783761978149414,
+        "seed_min_interatomic": 0.033170626511926427,
+        "seed_clashed": true,
+        "max_abs_dev_from_target": null,
+        "failure_class": "seed_clash_optimizer_abort",
+        "error": "status=physics_failed rc=128"
+      },
+      {
+        "curve_id": "RXN_0000001309",
+        "arm": "r3",
+        "status": "not_converged",
+        "wall_seconds": 2.8313891887664795,
+        "seed_min_interatomic": 0.9067293708127049,
+        "seed_clashed": false,
+        "max_abs_dev_from_target": 0.00012832896106473868,
+        "failure_class": "optimizer_cycle_abort",
+        "error": null
+      },
+      {
+        "curve_id": "RXN_0000001309",
+        "arm": "v52",
+        "status": "not_converged",
+        "wall_seconds": 2.9272522926330566,
+        "seed_min_interatomic": 0.8665670717617072,
+        "seed_clashed": false,
+        "max_abs_dev_from_target": 0.00015710491967357854,
+        "failure_class": "optimizer_cycle_abort",
+        "error": null
+      },
+      {
+        "curve_id": "RXN_0000001423",
+        "arm": "classic",
+        "status": "physics_failed",
+        "wall_seconds": 0.03880167007446289,
+        "seed_min_interatomic": 0.4620645261183918,
+        "seed_clashed": true,
+        "max_abs_dev_from_target": null,
+        "failure_class": "seed_clash_optimizer_abort",
+        "error": "status=physics_failed rc=128"
+      },
+      {
+        "curve_id": "RXN_0000001423",
+        "arm": "r3",
+        "status": "converged",
+        "wall_seconds": 0.8805994987487793,
+        "seed_min_interatomic": 0.965021408861974,
+        "seed_clashed": false,
+        "max_abs_dev_from_target": 0.00020226864294548008,
+        "failure_class": null,
+        "error": null
+      },
+      {
+        "curve_id": "RXN_0000001423",
+        "arm": "v52",
+        "status": "converged",
+        "wall_seconds": 1.0190138816833496,
+        "seed_min_interatomic": 0.965021408861974,
+        "seed_clashed": false,
+        "max_abs_dev_from_target": 0.00019792023042275453,
+        "failure_class": null,
+        "error": null
+      },
+      {
+        "curve_id": "RXN_0000001675",
+        "arm": "classic",
+        "status": "physics_failed",
+        "wall_seconds": 0.03720545768737793,
+        "seed_min_interatomic": 0.1277284286067656,
+        "seed_clashed": true,
+        "max_abs_dev_from_target": null,
+        "failure_class": "seed_clash_optimizer_abort",
+        "error": "status=physics_failed rc=128"
+      },
+      {
+        "curve_id": "RXN_0000001675",
+        "arm": "r3",
+        "status": "not_converged",
+        "wall_seconds": 3.4329679012298584,
+        "seed_min_interatomic": 0.9663588175546752,
+        "seed_clashed": false,
+        "max_abs_dev_from_target": 0.00024880325549747617,
+        "failure_class": "optimizer_cycle_abort",
+        "error": null
+      },
+      {
+        "curve_id": "RXN_0000001675",
+        "arm": "v52",
+        "status": "not_converged",
+        "wall_seconds": 3.371849298477173,
+        "seed_min_interatomic": 0.801117952918104,
+        "seed_clashed": false,
+        "max_abs_dev_from_target": 0.0002277398826275867,
+        "failure_class": "optimizer_cycle_abort",
+        "error": null
+      },
+      {
+        "curve_id": "RXN_0000001715",
+        "arm": "classic",
+        "status": "physics_failed",
+        "wall_seconds": 0.16374993324279785,
+        "seed_min_interatomic": 0.04947930156714459,
+        "seed_clashed": true,
+        "max_abs_dev_from_target": null,
+        "failure_class": "seed_clash_optimizer_abort",
+        "error": "status=physics_failed rc=128"
+      },
+      {
+        "curve_id": "RXN_0000001715",
+        "arm": "r3",
+        "status": "physics_failed",
+        "wall_seconds": 0.023825883865356445,
+        "seed_min_interatomic": 0.4227891739564589,
+        "seed_clashed": true,
+        "max_abs_dev_from_target": null,
+        "failure_class": "seed_clash_optimizer_abort",
+        "error": "status=physics_failed rc=128"
+      },
+      {
+        "curve_id": "RXN_0000001715",
+        "arm": "v52",
+        "status": "physics_failed",
+        "wall_seconds": 0.023288488388061523,
+        "seed_min_interatomic": 1.0968143094057154,
+        "seed_clashed": false,
+        "max_abs_dev_from_target": null,
+        "failure_class": "physics_failed_other",
+        "error": "status=physics_failed rc=128"
+      },
+      {
+        "curve_id": "RXN_0000001745",
+        "arm": "classic",
+        "status": "physics_failed",
+        "wall_seconds": 0.1851179599761963,
+        "seed_min_interatomic": 0.03135600861092341,
+        "seed_clashed": true,
+        "max_abs_dev_from_target": null,
+        "failure_class": "seed_clash_optimizer_abort",
+        "error": "status=physics_failed rc=128"
+      },
+      {
+        "curve_id": "RXN_0000001745",
+        "arm": "r3",
+        "status": "not_converged",
+        "wall_seconds": 3.8825502395629883,
+        "seed_min_interatomic": 0.680798293985535,
+        "seed_clashed": true,
+        "max_abs_dev_from_target": 0.0003138549730852258,
+        "failure_class": "seed_clash_optimizer_abort",
+        "error": null
+      },
+      {
+        "curve_id": "RXN_0000001745",
+        "arm": "v52",
+        "status": "not_converged",
+        "wall_seconds": 3.91872239112854,
+        "seed_min_interatomic": 1.0082370655859663,
+        "seed_clashed": false,
+        "max_abs_dev_from_target": 0.0001761553969357177,
+        "failure_class": "optimizer_cycle_abort",
+        "error": null
+      },
+      {
+        "curve_id": "RXN_0000001847",
+        "arm": "classic",
+        "status": "physics_failed",
+        "wall_seconds": 0.05874752998352051,
+        "seed_min_interatomic": 0.013363469809696635,
+        "seed_clashed": true,
+        "max_abs_dev_from_target": null,
+        "failure_class": "seed_clash_optimizer_abort",
+        "error": "status=physics_failed rc=128"
+      },
+      {
+        "curve_id": "RXN_0000001847",
+        "arm": "r3",
+        "status": "physics_failed",
+        "wall_seconds": 0.024636030197143555,
+        "seed_min_interatomic": 1.0892715904815884,
+        "seed_clashed": false,
+        "max_abs_dev_from_target": null,
+        "failure_class": "physics_failed_other",
+        "error": "status=physics_failed rc=128"
+      },
+      {
+        "curve_id": "RXN_0000001847",
+        "arm": "v52",
+        "status": "not_converged",
+        "wall_seconds": 1.915151834487915,
+        "seed_min_interatomic": 0.8397155785276315,
+        "seed_clashed": false,
+        "max_abs_dev_from_target": 0.00042532944170714515,
+        "failure_class": "optimizer_cycle_abort",
+        "error": null
+      },
+      {
+        "curve_id": "RXN_0000002062",
+        "arm": "classic",
+        "status": "physics_failed",
+        "wall_seconds": 0.14664793014526367,
+        "seed_min_interatomic": 0.21891939299479182,
+        "seed_clashed": true,
+        "max_abs_dev_from_target": null,
+        "failure_class": "seed_clash_optimizer_abort",
+        "error": "status=physics_failed rc=128"
+      },
+      {
+        "curve_id": "RXN_0000002062",
+        "arm": "r3",
+        "status": "physics_failed",
+        "wall_seconds": 0.01766037940979004,
+        "seed_min_interatomic": 0.7152368429127697,
+        "seed_clashed": false,
+        "max_abs_dev_from_target": null,
+        "failure_class": "physics_failed_other",
+        "error": "status=physics_failed rc=128"
+      },
+      {
+        "curve_id": "RXN_0000002062",
+        "arm": "v52",
+        "status": "not_converged",
+        "wall_seconds": 1.2786719799041748,
+        "seed_min_interatomic": 0.49463835841178505,
+        "seed_clashed": true,
+        "max_abs_dev_from_target": 0.0002629036719652422,
+        "failure_class": "seed_clash_optimizer_abort",
+        "error": null
+      },
+      {
+        "curve_id": "RXN_0000002090",
+        "arm": "classic",
+        "status": "physics_failed",
+        "wall_seconds": 0.17019987106323242,
+        "seed_min_interatomic": 0.06252107437247624,
+        "seed_clashed": true,
+        "max_abs_dev_from_target": null,
+        "failure_class": "seed_clash_optimizer_abort",
+        "error": "status=physics_failed rc=128"
+      },
+      {
+        "curve_id": "RXN_0000002090",
+        "arm": "r3",
+        "status": "not_converged",
+        "wall_seconds": 3.335574150085449,
+        "seed_min_interatomic": 0.8512823792566574,
+        "seed_clashed": false,
+        "max_abs_dev_from_target": 0.0019699739413197026,
+        "failure_class": "optimizer_cycle_abort",
+        "error": null
+      },
+      {
+        "curve_id": "RXN_0000002090",
+        "arm": "v52",
+        "status": "not_converged",
+        "wall_seconds": 3.049955129623413,
+        "seed_min_interatomic": 0.7642592410990804,
+        "seed_clashed": false,
+        "max_abs_dev_from_target": 0.0006596223545973778,
+        "failure_class": "optimizer_cycle_abort",
+        "error": null
+      }
+    ],
+    "status_counts_per_arm": {
+      "classic": {
+        "physics_failed": 12
+      },
+      "r3": {
+        "converged": 3,
+        "not_converged": 6,
+        "physics_failed": 3
+      },
+      "v52": {
+        "not_converged": 9,
+        "converged": 2,
+        "physics_failed": 1
+      }
+    },
+    "parity": {
+      "ok": true,
+      "n_records": 36,
+      "n_curves": 12,
+      "arms": [
+        "classic",
+        "r3",
+        "v52"
+      ]
+    },
+    "recipe": {
+      "gfn_level": 2,
+      "force_constant": 50.0,
+      "opt_level": "normal",
+      "max_cycle": 500,
+      "threads": 4,
+      "timeout_seconds": 300,
+      "fix_atoms": null,
+      "physical_sp": true,
+      "charge": 0,
+      "multiplicity": 1
+    },
+    "constraint_rule": "all intent CV-pair distances driven to the TRUE IRC TS-node distances (ts_index_record_only, diagnostics tier; identical targets across arms by construction)"
+  },
+  "cost": {
+    "rollout": {
+      "checkpoint_load": 0.0158538818359375,
+      "rollout_matrix": 7.7800538539886475,
+      "episodes_total": 7.37273907661438
+    },
+    "relax": {
+      "wall_seconds_total": 48.776612520217896,
+      "wall_seconds_sum_runs": 48.54407024383545,
+      "n_runs": 36,
+      "per_status_wall_seconds": {
+        "converged": 7.467658519744873,
+        "not_converged": 39.777995586395264,
+        "physics_failed": 1.2984161376953125
+      }
+    },
+    "device": "cpu (rollout inference < lock-acquisition overhead; GPU left free — documented choice)",
+    "gpu_used": false
+  },
+  "engineering_closure_checklist": {
+    "determinism_bitwise_two_episodes": {
+      "ok": true,
+      "detail": [
+        {
+          "curve_id": "RXN_0000000238",
+          "direction": "forward",
+          "arm": "classic",
+          "n_steps": 5,
+          "bitwise_equal": true
+        },
+        {
+          "curve_id": "RXN_0000000238",
+          "direction": "forward",
+          "arm": "r3",
+          "n_steps": 20,
+          "bitwise_equal": true
+        }
+      ]
+    },
+    "budget_parity_rollouts": {
+      "ok": true,
+      "detail": {
+        "ok": true,
+        "n_groups": 72,
+        "n_records": 216,
+        "arms": [
+          "classic",
+          "r3",
+          "v52"
+        ],
+        "steps": [
+          5,
+          10,
+          20
+        ]
+      }
+    },
+    "constraint_parity_relax": {
+      "ok": true,
+      "detail": {
+        "ok": true,
+        "n_records": 36,
+        "n_curves": 12,
+        "arms": [
+          "classic",
+          "r3",
+          "v52"
+        ]
+      }
+    },
+    "frozen_curve_list_immutable": {
+      "ok": true,
+      "curve_list_sha256": "7ec3e1928824c690c718ce9c6f7c8244c3248108efa2a045a2ff60bd5c49da09",
+      "n_curves": 12,
+      "steps": [
+        5,
+        10,
+        20
+      ]
+    },
+    "v52_diagnostic_labeling_enforced": {
+      "ok": true,
+      "n_v52_records": 72,
+      "label": "v52_supervision_failed_no_claim"
+    },
+    "claim_scope_audit_zero_positive_verified_ts": {
+      "ok": true,
+      "detail": {
+        "n_ts_language_hits": 16,
+        "n_negated_or_forbidden_context": 16,
+        "n_positive_claims": 0,
+        "positive_claims": [],
+        "ok": true
+      }
+    },
+    "aggregate_recompute_matches_manifest": {
+      "ok": true
+    },
+    "physics_failures_recorded_not_hidden": {
+      "ok": true,
+      "detail": "every relax run carries a status; failures carry seed_min_interatomic + failure_class; no run was dropped (n_results=36 = 12 curves × 3 arms)"
+    },
+    "ts_frequency_verification_not_attempted": {
+      "ok": true,
+      "detail": "single-imaginary-frequency verification is OptTS territory, out of V5.3 scope (claim TS_candidate only)"
+    }
+  },
+  "engineering_closure_ok": true,
+  "conclusions": {
+    "headline": "H20 mode (V5.2 supervision failed → V5.3 = upper-bound controllers only). The v52 arm is DIAGNOSTIC-ONLY (v52_supervision_failed_no_claim) and must not be read as a validated controller, even where its rollout diagnostics look smoother.",
+    "drift_patterns": [
+      "classic arm drifts fastest: sign-agreement collapses to 0.24 and 215 collision steps at 20; its 20-step endpoints are almost all physically clashed (xTB cannot start)",
+      "r3 holds CV sign agreement 0.88 with 14 collision steps at 20, but arc progress saturates (~0.62 of the start→TS arc) — closed-loop re-embedding does not yet buy distance-to-TS over the budget tested",
+      "v52 (diagnostic-only) shows the smoothest displacement and highest sign agreement, BUT this is exactly the arm whose supervision FAILED at G3 (q unlearnable / stop chance-level); its stop readouts fire 40 times at 20 steps with contact rate 0.08 — chance-level evidence consistent with G3, reported for engineering comparison only",
+      "contact-made rate (final d_key within 0.15Å/CV of the TS node) is ≤0.08 for every arm at every budget — NO arm demonstrates TS-approach competence in this no-physics stress test",
+      "relax: xTB constrained relaxation of 20-step endpoints converges 0/12 classic, 3/12 r3, 2/12 v52 (diagnostic-only); most failures trace to clashed seed geometries (optimizer abort |grad|>500), i.e. the open-loop rollout, not the physics backend"
+    ],
+    "per_arm_step_stats": [
+      "classic@5: agree=0.219 prog=0.07 tsRMSD=0.68Å coll=0 div=0 contact=0.04",
+      "classic@10: agree=0.219 prog=0.07 tsRMSD=0.78Å coll=17 div=0 contact=0.04",
+      "classic@20: agree=0.240 prog=0.07 tsRMSD=1.02Å coll=215 div=0 contact=0.04",
+      "r3@5: agree=0.889 prog=0.29 tsRMSD=0.60Å coll=0 div=0 contact=0.08",
+      "r3@10: agree=0.879 prog=0.40 tsRMSD=0.61Å coll=0 div=0 contact=0.08",
+      "r3@20: agree=0.876 prog=0.62 tsRMSD=0.66Å coll=14 div=1 contact=0.08",
+      "v52@5: agree=0.989 prog=0.36 tsRMSD=0.59Å coll=0 div=0 contact=0.08",
+      "v52@10: agree=0.989 prog=0.50 tsRMSD=0.58Å coll=0 div=0 contact=0.08",
+      "v52@20: agree=0.991 prog=0.76 tsRMSD=0.59Å coll=4 div=0 contact=0.08"
+    ],
+    "scope": "pure-geometry policy stress test + post-hoc xTB constrained relaxation; TS_candidate only — NO arm has a verified transition state and none is claimed"
+  },
+  "artifact_sha256": {
+    "rollouts_manifest.json": "7af14c7d50d28c14a7e8ad4f905f6c3c3b5e356ccdaa4b20ecd3f52de85db347",
+    "episodes.jsonl": "ac1471f905d22147e0e74baab2888cd1577b8dcb0d5cbcc93dc277fe49c8acf2",
+    "relax_manifest.json": "9709db39834290ef6d8c81f73e235d0647706eb6e655dc33a42ebe12965eba3b",
+    "relax_results.jsonl": "4e5f208af66ecad716a0378c0a5628b26077c3997dfe3a4e48dd9878acf38a71",
+    "rollout_curves.json": "46866082ae475b791d38722f1f4fe8e535026b886ec878b67a9eb839e4810874"
+  }
+}

@@ -1,0 +1,63 @@
+{
+  "schema": "pes2ts_v53_relax_manifest_v1",
+  "campaign": "PES2TS_30H_R3_V52_V53",
+  "stage": "G4",
+  "clearance": "supervisor G4-stage constrained-relax clearance under yaml v53_rollout: same budget + same constraints across arms",
+  "xtb_binary": "/opt/software/xtb/bin/xtb",
+  "recipe": {
+    "gfn_level": 2,
+    "force_constant": 50.0,
+    "opt_level": "normal",
+    "max_cycle": 500,
+    "threads": 4,
+    "timeout_seconds": 300,
+    "fix_atoms": null,
+    "physical_sp": true,
+    "charge": 0,
+    "multiplicity": 1
+  },
+  "constraint_rule": "all intent CV-pair distances driven to the TRUE IRC TS-node distances (ts_index_record_only, diagnostics tier; identical targets across arms by construction)",
+  "arms": [
+    "classic",
+    "r3",
+    "v52"
+  ],
+  "n_curves": 12,
+  "n_results": 36,
+  "status_counts": {
+    "physics_failed": 16,
+    "converged": 5,
+    "not_converged": 15
+  },
+  "status_counts_per_arm": {
+    "classic": {
+      "physics_failed": 12
+    },
+    "r3": {
+      "converged": 3,
+      "not_converged": 6,
+      "physics_failed": 3
+    },
+    "v52": {
+      "not_converged": 9,
+      "converged": 2,
+      "physics_failed": 1
+    }
+  },
+  "parity": {
+    "ok": true,
+    "n_records": 36,
+    "n_curves": 12,
+    "arms": [
+      "classic",
+      "r3",
+      "v52"
+    ]
+  },
+  "wall_seconds_total": 48.776612520217896,
+  "wall_seconds_sum_runs": 48.54407024383545,
+  "claim_scope": "TS_candidate_only",
+  "verified_ts_claim": "forbidden",
+  "ts_frequency_verification": "not_attempted (OptTS territory)",
+  "results_file": "outputs/pesn/30h_campaign/v53/relax/relax_results.jsonl"
+}

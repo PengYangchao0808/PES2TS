@@ -457,3 +457,273 @@ def test_bridge_preflight_fail_safe_on_bad_wiring(tmp_path) -> None:
         assert not fake_root.exists()
     finally:
         prep._resolve_acp_wiring = original
+
+
+# ---------------------------------------------------------------------------
+# E6-V53EXEC: episode aggregation, budget parity, diagnostic labeling,
+# relax result schema (mock executor — real xtb never in tests)
+# ---------------------------------------------------------------------------
+from pes2ts_core.pesn.models.rollout_v3 import (  # noqa: E402
+    DIVERGENCE_EXCURSION_ANGSTROM,
+    EPISODE_SCHEMA_V3,
+    PhysicsOutcomeV3,
+    RELAX_RECIPE_V3,
+    RELAX_RESULT_SCHEMA_V3,
+    V52_DIAGNOSTIC_LABEL,
+    aggregate_episode_records_v3,
+    check_budget_parity_v3,
+    check_relax_budget_parity_v3,
+    enforce_diagnostic_labeling_v3,
+    execute_relax_episode_v3,
+    is_v52_arm_v3,
+)
+
+
+def _episode_record(arm: str, curve_id: str = "SYN", direction: str = "forward",
+                    n_steps: int = 5, fingerprint: str = "fp0",
+                    **summary_extra) -> dict:
+    base_summary = {
+        "cv_sign_agree_fraction": 0.9,
+        "contact_made_ts_dkey": False,
+        "final_ts_rmsd_all": 0.7,
+        "final_arc_progress": 0.3,
+        "n_collisions": 0,
+        "n_nonfinite": 0,
+        "n_clip_events": 1,
+        "mean_clip_factor": 0.95,
+        "total_displacement": 1.2,
+        "max_atom_excursion": 0.4,
+        "divergence_flag": False,
+        "n_ts_candidate_events": 0,
+    }
+    base_summary.update(summary_extra)
+    v52 = is_v52_arm_v3(arm)
+    return {
+        "schema": EPISODE_SCHEMA_V3,
+        "arm": arm,
+        "curve_id": curve_id,
+        "direction": direction,
+        "n_steps_requested": n_steps,
+        "input_step0_sha256": fingerprint,
+        "diagnostic_only": v52,
+        "diagnostic_label": V52_DIAGNOSTIC_LABEL if v52 else None,
+        "claim_scope": CLAIM_SCOPE_V3,
+        "summary": base_summary,
+    }
+
+
+def _full_matrix_records() -> list[dict]:
+    out = []
+    for curve in ("SYN_A", "SYN_B"):
+        for direction in ("forward", "reverse"):
+            for n in NO_PHYSICS_STEPS_V3:
+                for arm in ARMS_V3:
+                    out.append(_episode_record(
+                        arm, curve_id=curve, direction=direction, n_steps=n,
+                        fingerprint=f"{curve}|{direction}|{n}"))
+    return out
+
+
+def test_diagnostic_labeling_enforced() -> None:
+    enforce_diagnostic_labeling_v3(_full_matrix_records())  # passes
+    bad = _full_matrix_records()
+    v52_rec = next(r for r in bad if r["arm"] == "v52")
+    v52_rec["diagnostic_only"] = False
+    with pytest.raises(RolloutV3Error) as exc:
+        enforce_diagnostic_labeling_v3(bad)
+    assert exc.value.code == "V52_LABELING"
+
+    bad2 = _full_matrix_records()
+    next(r for r in bad2 if r["arm"] == "v52")["diagnostic_label"] = "ok"
+    with pytest.raises(RolloutV3Error):
+        enforce_diagnostic_labeling_v3(bad2)
+
+    # mislabeling in the other direction is also refused
+    bad3 = _full_matrix_records()
+    next(r for r in bad3 if r["arm"] == "r3")[
+        "diagnostic_label"] = V52_DIAGNOSTIC_LABEL
+    with pytest.raises(RolloutV3Error):
+        enforce_diagnostic_labeling_v3(bad3)
+
+
+def test_budget_parity_pass_and_violations() -> None:
+    records = _full_matrix_records()
+    summary = check_budget_parity_v3(records)
+    assert summary["ok"] is True
+    assert summary["arms"] == sorted(ARMS_V3)
+    assert summary["steps"] == list(NO_PHYSICS_STEPS_V3)
+    assert summary["n_groups"] == 2 * 2 * 3  # curves × directions × steps
+
+    # an arm missing one budget point violates parity
+    incomplete = [r for r in records if not (
+        r["curve_id"] == "SYN_A" and r["direction"] == "forward"
+        and r["arm"] == "v52" and r["n_steps_requested"] == 10)]
+    with pytest.raises(RolloutV3Error) as exc:
+        check_budget_parity_v3(incomplete)
+    assert exc.value.code == "BUDGET_PARITY"
+
+    # differing step-0 fingerprints across arms violate parity
+    drifted = _full_matrix_records()
+    next(r for r in drifted if r["curve_id"] == "SYN_B"
+         and r["direction"] == "reverse" and r["arm"] == "classic"
+         and r["n_steps_requested"] == 5)["input_step0_sha256"] = "other"
+    with pytest.raises(RolloutV3Error) as exc:
+        check_budget_parity_v3(drifted)
+    assert exc.value.code == "BUDGET_PARITY"
+
+    # a non-frozen budget is refused outright
+    illegal = _full_matrix_records() + [
+        _episode_record("classic", n_steps=7)]
+    with pytest.raises(RolloutV3Error):
+        check_budget_parity_v3(illegal)
+
+
+def test_aggregate_episode_records_math() -> None:
+    records = [
+        _episode_record("classic", curve_id="A", n_steps=5,
+                        cv_sign_agree_fraction=0.5,
+                        final_ts_rmsd_all=1.0, n_collisions=2,
+                        divergence_flag=True),
+        _episode_record("classic", curve_id="B", n_steps=5,
+                        cv_sign_agree_fraction=1.0,
+                        final_ts_rmsd_all=2.0, n_collisions=0,
+                        contact_made_ts_dkey=True),
+        _episode_record("r3", curve_id="A", n_steps=5,
+                        cv_sign_agree_fraction=0.8,
+                        final_ts_rmsd_all=0.5),
+        _episode_record("v52", curve_id="A", n_steps=5,
+                        cv_sign_agree_fraction=0.9,
+                        final_ts_rmsd_all=0.6, n_ts_candidate_events=3),
+    ]
+    agg = aggregate_episode_records_v3(records)
+    groups = {(g["arm"], g["n_steps_requested"]): g
+              for g in agg["groups"]}
+    classic = groups[("classic", 5)]
+    assert classic["n_episodes"] == 2
+    assert classic["n_curves"] == 2
+    assert classic["cv_sign_agree_fraction_mean"] == pytest.approx(0.75)
+    assert classic["final_ts_rmsd_all_mean"] == pytest.approx(1.5)
+    assert classic["final_ts_rmsd_all_median"] == pytest.approx(1.5)
+    assert classic["collisions_total"] == 2
+    assert classic["episodes_with_collision"] == 1
+    assert classic["divergence_episodes"] == 1
+    assert classic["contact_made_rate"] == pytest.approx(0.5)
+    assert classic["diagnostic_only"] is False
+    assert classic["diagnostic_label"] is None
+
+    r3 = groups[("r3", 5)]
+    assert r3["contact_made_rate"] == pytest.approx(0.0)
+    v52 = groups[("v52", 5)]
+    assert v52["ts_candidate_events_total"] == 3
+    assert v52["diagnostic_only"] is True
+    assert v52["diagnostic_label"] == V52_DIAGNOSTIC_LABEL
+
+    # aggregation refuses mislabeled v52 input
+    bad = _episode_record("v52")
+    bad["diagnostic_label"] = None
+    with pytest.raises(RolloutV3Error):
+        aggregate_episode_records_v3([bad])
+
+
+def test_rollout_summary_displacement_and_divergence_fields() -> None:
+    r = run_rollout_v3(arm="classic", start=_synthetic_start(), n_steps=5)
+    total = sum(s.disp_l1_sum for s in r.steps)
+    assert r.summary["total_displacement"] == pytest.approx(total)
+    assert r.summary["n_clip_events"] == sum(
+        1 for s in r.steps if s.clip_factor < 1.0)
+    assert r.summary["max_atom_excursion"] == pytest.approx(
+        max(s.max_excursion_from_start for s in r.steps))
+    assert isinstance(r.summary["divergence_flag"], bool)
+    assert r.summary["divergence_flag"] == (
+        r.summary["n_nonfinite"] > 0
+        or r.summary["max_atom_excursion"] > DIVERGENCE_EXCURSION_ANGSTROM)
+
+
+# --- relax result schema with a mock executor ----------------------------
+_PAIRS = [(0, 1)]
+_TARGETS = [1.5]
+_REQUEST = {"provenance": {"request_sha256": "deadbeef"}, "source": {},
+            "recipe": {"constraints": []}}
+
+
+def _mock_runner_converged(request, workdir):
+    return PhysicsOutcomeV3(
+        status="converged", returncode=0, wall_seconds=1.0,
+        final_xyz=((0.0, 0.0, 0.0), (1.5004, 0.0, 0.0)),
+        convergence_line="GEOMETRY OPTIMIZATION CONVERGED")
+
+
+def test_relax_result_schema_mock_executor() -> None:
+    res = execute_relax_episode_v3(
+        curve_id="SYN", arm="classic", direction="forward",
+        driver_pairs=_PAIRS, target_distances=_TARGETS,
+        request=_REQUEST, runner=_mock_runner_converged,
+        workdir="/nonexistent")
+    assert res["schema"] == RELAX_RESULT_SCHEMA_V3
+    assert res["status"] == "converged"
+    assert res["wall_seconds"] == 1.0
+    assert res["achieved_distances"] == pytest.approx([1.5004])
+    assert res["dev_from_target"] == pytest.approx([0.0004])
+    assert res["request_sha256"] == "deadbeef"
+    assert res["recipe"] == dict(RELAX_RECIPE_V3)
+    assert res["claim_scope"] == CLAIM_SCOPE_V3
+    assert res["diagnostic_only"] is False
+    assert res["note"]  # TS_candidate-only note present
+
+
+def test_relax_runner_exception_is_physics_failed() -> None:
+    def boom(request, workdir):
+        raise RuntimeError("xtb vanished")
+    res = execute_relax_episode_v3(
+        curve_id="SYN", arm="r3", direction="forward",
+        driver_pairs=_PAIRS, target_distances=_TARGETS,
+        request=_REQUEST, runner=boom, workdir="/nonexistent")
+    assert res["status"] == "physics_failed"
+    assert "xtb vanished" in res["error"]
+    assert res["achieved_distances"] is None
+
+
+def test_relax_v52_arm_forced_diagnostic() -> None:
+    res = execute_relax_episode_v3(
+        curve_id="SYN", arm="v52", direction="forward",
+        driver_pairs=_PAIRS, target_distances=_TARGETS,
+        request=_REQUEST, runner=_mock_runner_converged,
+        workdir="/nonexistent")
+    assert res["diagnostic_only"] is True
+    assert res["diagnostic_label"] == V52_DIAGNOSTIC_LABEL
+
+
+def test_relax_budget_parity_pass_and_violations() -> None:
+    def _rec(arm, targets=_TARGETS, recipe=None):
+        return {
+            "schema": RELAX_RESULT_SCHEMA_V3,
+            "curve_id": "SYN", "arm": arm, "direction": "forward",
+            "status": "converged", "returncode": 0, "wall_seconds": 1.0,
+            "driver_pairs": _PAIRS, "target_distances": list(targets),
+            "recipe": dict(RELAX_RECIPE_V3) if recipe is None else recipe,
+            "claim_scope": CLAIM_SCOPE_V3,
+            "diagnostic_only": arm == "v52",
+            "diagnostic_label": (V52_DIAGNOSTIC_LABEL
+                                 if arm == "v52" else None),
+        }
+    ok = check_relax_budget_parity_v3(
+        [_rec("classic"), _rec("r3"), _rec("v52")])
+    assert ok["ok"] is True and ok["n_curves"] == 1
+
+    # cross-arm target drift violates parity
+    with pytest.raises(RolloutV3Error) as exc:
+        check_relax_budget_parity_v3(
+            [_rec("classic"), _rec("r3", targets=[1.6])])
+    assert exc.value.code == "RELAX_PARITY"
+
+    # recipe drift violates parity
+    drifted_recipe = dict(RELAX_RECIPE_V3, max_cycle=100)
+    with pytest.raises(RolloutV3Error):
+        check_relax_budget_parity_v3(
+            [_rec("classic"), _rec("r3", recipe=drifted_recipe)])
+
+    # non-TS-candidate claim scope violates parity
+    bad_scope = _rec("classic")
+    bad_scope["claim_scope"] = "verified_ts"
+    with pytest.raises(RolloutV3Error):
+        check_relax_budget_parity_v3([bad_scope])
