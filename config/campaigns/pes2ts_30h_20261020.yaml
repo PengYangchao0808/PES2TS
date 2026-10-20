@@ -1,0 +1,142 @@
+# PES2TS 30h 战役协议（E0 冻结件，待签认）
+# 依据: docs/plans/PES2TS_30h_R3_V52_V53_分层训练与验收计划_v1.1_20261020.md
+# 裁定: PD-1..9 (2026-10-20 用户, 见 docs/agent_runs/state/task_state.json pd_rulings)
+# 状态: DRAFT — 签认后任何字段不得变更；变更=重新冻结+新版本号
+schema: pes2ts_30h_campaign_v1
+campaign_id: PES2TS_30H_R3_V52_V53
+version: 0.1.0-draft
+governance:
+  constitution: docs/PES2TS_开发宪法_v1.md
+  contracts:
+    - docs/contracts/PES2TS_ReactionIntent_Contract_v1.md   # 当前语义合同
+    - docs/contracts/PES2TS_GeometryPolicyContract_v1.md    # 历史引用, 数据边界仍有效
+  adrs: [ADR-0026, ADR-0027, ADR-0028, ADR-0029]
+  supervision: docs/agent_runs/PARALLEL_EXECUTION_PLAN.md
+  authorization:
+    formal_training_authorized: false
+    sealed_authorized: false
+    confirm_authorized: false
+    ood_authorized: false
+    fit150plus_authorized: false
+
+data_contract:   # PD-1 (30h §3.1 六表; R3 v3.2)
+  tables_dir: outputs/pesn/30h_campaign/data
+  tables: [irc_curve, irc_node, irc_edge, reaction_intent, curve_quality, sample_view]
+  diagnostics_only: [branch_diagnostics]   # 溯源用, 非六表, 不入模型
+  manifests: [split_manifest_r3.json, data_manifest.json, teacher_manifest.json]
+  d0_primary_angstrom: 0.08
+  delta_xyz_encoding:   # PD-9
+    format: flat float array + shape/offset descriptor
+    binds: [atom mapping, units Angstrom, sha256]
+    side_legality_eps: 1.0e-6
+    ts_authority: ts_index
+  split:
+    unit: near-duplicate connected component   # 同 curve/intent/d0 同折
+    leakage_tests: [T0.4a, T0.4b]
+  sealed_readonly: [outputs/pesn/v5_1/**, outputs/pesn/v5_1_r1/**]
+  truth_access: pes2ts_core.g0.truth.truth_reader only; G0 verifies truth_access_log
+
+feature_contract:   # PD-2 / PD-6 (30h §3.3)
+  slot_superset: F3 (fixed slots; F0/F1/F2 by mask; 禁止臂间偷加参数)
+  f2_content: [pos, elements, K, degK, 无序端点上下文, B_src/B_tgt/ΔB_intent]
+  f3_extra: [current-distance RBF(12)]
+  intent_off_mask:   # PD-6 全 mask
+    - ordered source/target
+    - signed graph edits
+    - intent_role
+    - directed CV descriptors
+    - implicit direction encodings
+  preserved_off_context: 合法无向化学拓扑
+  tolerances:   # PD-2 分层, 禁止自动放宽
+    relabel_invariance_max_abs: 1.0e-6        # 逐比特相同
+    rotation_translation_permutation: {rel: 1.0e-5, abs: 1.0e-6}
+    record_only_reference: 1.0e-4             # r3_v3 旧值, 仅记录性对照
+  forbidden_model_inputs: [future frames, TS coords, true progress, remaining arc,
+                           branch id, split/family, energy/gradient, near_ts/capped,
+                           endpoint geometry, history/hidden state]
+
+r3_training:   # 30h §4.1
+  model:
+    base: StarEGNN (hidden 48, 3 layers, ~59k params) + F3 superset 输入槽位 + 少量头扩展
+    precision: fp32
+  optimizer: {name: AdamW, lr: 1.0e-3, weight_decay: 1.0e-4, warmup_updates: 250,
+              schedule: cosine, grad_clip: 1.0}
+  updates: 3000
+  batch: {size: 32, composition: 8 curves x 4 frames, curve_balanced: true,
+          forward_reverse_balanced_within_curve: true}
+  seeds: [17, 29, 43]
+  inner_split_rule: inner-train/inner-val 只从 outer-train 簇; checkpoint 选择只看 inner-val
+  loss:
+    base: L_atom + 0.5*L_pair + lambda_cos(t)*L_cos
+    lambda_cos_max: 0.02
+    lambda_cos_ramp: R0   # 250 updates 后开始, 250 updates 渐至 0.02 (正式主日程)
+    huber_delta: 0.25
+    d0_normalization_angstrom: 0.08
+    pair_mode: legacy_j
+    cos_active_threshold_angstrom: 0.02
+    strong_bucket: {delta_d_star_min_angstrom: 0.02, formula: huber((Δd̂-Δd*)/max(|Δd*|,0.01))}
+    dead_bucket: {delta_d_star_max_angstrom: 0.005, formula: "max(0,|Δd̂|-0.005)^2 / 0.005^2"}
+    aux_arms: [S2, S10, D2, D10]   # 单独臂, 不混合
+  aux_calibration:   # 需 WP-5 F0 checkpoint + G2 pass 后执行 (30h §4.1; Oracle ORA-1)
+    encoder_gradient_share: [0.02, 0.10]   # 20 个真实 inner-train batch
+    lambda_max: 0.5
+    action_head_share_max: 0.3
+    below_1pct: scale_unreachable
+    lambda_zero_regression: 与 B0-F 逐比特一致
+  run_matrix: {r3_runs: 66, built_by: scripts/agent_ops/runplan/build_r3_runplan.py,
+               pd3_note_required: true, budget_counts_all_attempts: true}
+  metrics_frozen:
+    primary: [key_RMSE_over_zero, SRE_frozen_version]
+    aggregate_unit: independent curve/cluster
+    guards: {rmse_degradation_max_pct: 2, sign_drop_max: 0.01, deadzone_rise_max: 0.01}
+    baselines: [zero step, classic CV/Jacobian step, minimal MLP, new EGNN]
+    old_oof_0824_comparable: false
+
+v52_training:   # 30h §5
+  heads: {move: u_K[K,3], progress: "q=tanh(Linear(64,32)SiLU Linear(32,1))",
+          ts_stop: logit scalar, loss: BCEWithLogitsLoss}
+  qlabel: {definition: 质量加权弧长分段归一, A=-1,TS=0,B=+1, reverse q=-q, zero-arc mask}
+  stop_labels: {positive: d_key_TS<=0.04 Å, negative: d_key_TS>=0.12 Å, middle: Mask,
+                insufficient_positives: insufficient_stop_positives, 禁止偷扩窗}
+  loss: L_move + lambda_q*L_q + lambda_m*L_TSStop
+  schedule: {freeze_encoder_updates: 400, joint_updates: 1500, lr_head: 3.0e-4,
+             lr_encoder: 1.0e-4, lr_note: 建议初值, 冻结前以 1 次 smoke 检查学习稳定性后固定,
+             optimizer: AdamW, grad_clip: 1, fp32}
+  lambda_mono: 0.0
+  lambda_path: 0.0
+  stop_class_weights: 仅 inner-train 估计并冻结; Mask 不进分母
+  run_matrix: {v52_runs: 33, confirm_folds: [3, 4], unseal_onetime: true}
+
+v53_rollout:   # 30h §6
+  no_physics_steps: [5, 10, 20]
+  constrained_relax: {curves: 8-12 预注册代表性曲线, arms: [classic, r3, v52],
+                      same_budget_same_constraints: true, physics_missing: physics_not_run}
+  verified_ts_claim: forbidden   # 只报 TS_candidate; T4.5 需 OptTS+单虚频+IRC+端点
+
+gates:   # 串行验收, fail-closed (scripts/agent_ops/gpu_queue/gate_guard.py)
+  order: [G0-Data, G1-Feature, G2-Move, G3a-Label, G3-V52Supervision, G4-Rollout]
+  states: [pass, fail, blocked, partial, not_run]
+  hard_stops: {H05: G0 fail→停训练, H07: G1 fail→停训练, H12: R3 无可信基线→V5.2 仅合约测试,
+               H20: V5.2 未过→V5.3 仅上限控制器, H30: 无条件停+报告}
+  degraded_delivery:   # PD-4: 21-run 降级集规则
+    partial_campaign: 只可作独立部分战役/探索性结果
+    forbidden: [计入完整 R3 正式终局, scale_controlled 判定, V5.1b 批准]
+
+environment:
+  training_python: /root/miniforge3/envs/pes2ts-gpu/bin/python   # torch 2.14.1+cu130
+  tools_python: system python3
+  gpu: {device: RTX 4060 Ti 8GB, cuda_available: true,
+        free_memory_note: "~5.5GB (Windows 显示栈占 2.6GB, 不清理, PD-8)",
+        mutex: /tmp/opencode/pes2ts_gpu.lock, all_cuda_processes_must_hold: true}
+  throughput_smoke: {updates: 100-300, status: NOT_AUTHORIZED_YET,
+                     note: H00-H02 旧环境 smoke 属战役内容, 随 formal 授权一并开启}
+
+freeze_hashes:   # E0 签认时填实值; REQUIRED_AT_RUNTIME 由 ledger 拒绝
+  code_commit: REQUIRED_AT_RUNTIME
+  protocol_sha256: REQUIRED_AT_RUNTIME
+  config_sha256: REQUIRED_AT_RUNTIME
+  run_plan_sha256: REQUIRED_AT_RUNTIME
+  dataset_sha256: PENDING_E1   # G0 前填入; 两段式 run_id 终绑定
+  split_sha256: PENDING_E1
+  feature_spec_sha256: PENDING_E2
+  teacher_manifest_sha256: PENDING_E1

@@ -24,7 +24,8 @@
       ],
       "read_scopes": ["data/** 但显式排除 data/ground_truth/**（R1：真值仅经 pes2ts_core.g0.truth.truth_reader accessor，G0 校验 truth_access_log）", "outputs/pesn/30h_campaign/**（只读；哈希核对）"],
       "forbidden": ["pes2ts_core/** writes", "outputs/** writes", "data/ground_truth/** 任何直接读取（须走 truth_reader）"],
-      "never_write": ["data/ground_truth/**", "outputs/pesn/v5_1/**", "outputs/pesn/v5_1_r1/**", "config/campaigns/v5_*.yaml（旧协议冻结件）"]
+      "never_write": ["data/ground_truth/**", "outputs/pesn/v5_1/**", "outputs/pesn/v5_1_r1/**", "config/campaigns/v5_sprint.yaml", "config/campaigns/v5_1_sprint.yaml", "config/campaigns/v5_1_r1.yaml"],
+      "never_write_note": "config/campaigns/v5_*.yaml 逐文件列出 = 旧协议冻结件只读",
     },
     "W-FEAT": {
       "name": "Feature/Model",
@@ -59,7 +60,8 @@
       "forbidden": ["pes2ts_core/** writes", "config/campaigns/** writes (protocol freeze is E0, human-signed)"]
     }
   },
-  "never_write_all_lanes": ["data/ground_truth/**", "outputs/pesn/v5_1/**", "outputs/pesn/v5_1_r1/**", "docs/reports/**（报告只读）"],
+  "never_write_all_lanes": ["data/ground_truth/**", "outputs/pesn/v5_1/**", "outputs/pesn/v5_1_r1/**", "docs/reports/**"],
+  "never_write_all_lanes_notes": "docs/reports/** = 报告只读（AGENT.md §9.4）",
   "shared_files": {"scripts/agent_ops/__init__.py": "supervisor-owned（lane 可建占位，合并时取 supervisor 版）", "tests/agent_ops/__init__.py": "同上"},
   "merge_flow": {"pre_merge_check": "git diff --name-only 逐 lane 校验 ⊆ write_scopes（shared_files 除外）；违例即拒并", "gate_binding": "merge commit sha 写入对应 state/gates/G#.json 或 phase 记录"},
   "driver_campaign_root_rule": "复用驱动（run_v5_1_sprint/r1_gradient_probe 等）默认输出根指向 sealed 目录（v5_1/v5_1_r1）——30h 战役一律显式覆盖为 outputs/pesn/30h_campaign/**，驱动启动时断言拒绝 sealed 前缀（WP-L2 实现于 runner）",

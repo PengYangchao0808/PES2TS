@@ -233,7 +233,7 @@ pos
 
 ```text
 F2-intent-on
-F2-intent-off（把 delta_B_intent/intent_role 置零）
+F2-intent-off（PD-6 全 mask：ordered source/target、signed graph edits、intent_role、有向 CV 描述、隐式方向编码全部置零；保留合法无向化学上下文）
 ```
 
 证明 signed intent 是否真的有价值。
@@ -269,8 +269,8 @@ F2-intent-off（把 delta_B_intent/intent_role 置零）
 ```text
 Relabel: max |Δu| < 1e-6（输入应逐比特相同）
 Reverse: output changed, 但不要求 exact negative
-Rotation: equivariance error < 1e-4
-Permutation: equivariance error < 1e-4
+Rotation/Translation/Permutation: PD-2 分层容差 rel 1e-5 + abs 1e-6（fp32）
+记录性对照: abs 1e-4（旧 v3 值，仅记录，禁止作为通过门或自动回退档）
 ```
 
 ---
@@ -371,7 +371,7 @@ L=L_{\rm base}+\lambda_sL_{\rm strong}+\lambda_dL_{\rm dead}
 |---|---|---:|
 | **F-main** | F0/F1/F2/F3，forward-only，fold0 × 3 | 12 |
 | **F-bidir** | F2，A→B + B→A 联合，等曲线预算，fold0 × 3 | 3 |
-| **F-ablate** | F2，屏蔽 signed intent，fold0 × 3 | 3 |
+| **F-ablate** | F2，intent-off 全 mask（PD-6 五类，见 §3.4），fold0 × 3 | 3 |
 | **B** | 选中 F 的 B0-F，补 folds1–4 × 3 | 12 |
 | **L** | S2/S10/D2/D10，fold0 × 3 | 12 |
 | **V** | Top-2，folds1–2 × 3 | 12 |
@@ -410,7 +410,7 @@ B0-F forward fold0 × 3
 | `offline/data/key_atom_dataset_v3.py` | manifest-driven，intent_id |
 | `models/key_atom_egnn_v3.py` | 固定 F3 shape + mask |
 | `offline/training/key_atom_bc_v3.py` | v3 loss、weights |
-| `scripts/campaigns/r3_build_data.py` | 三表 + intent |
+| `scripts/campaigns/r3_build_data.py` | 六表 + intent + manifests（PD-1；见 §2 v3.2 修订） |
 | `scripts/campaigns/r3_build_features.py` | v3 shard |
 | `scripts/campaigns/run_v5_1_r3.py` | 阶段驱动 |
 | `scripts/campaigns/r3_gradient_probe.py` | ρ |
