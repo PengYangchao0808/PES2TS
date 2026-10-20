@@ -1,0 +1,30 @@
+{
+  "version": "r3_data_manifest_v1",
+  "created_at": "2026-10-20T00:00:00+00:00",
+  "files": [
+    {
+      "path": "irc_curve.csv",
+      "sha256": "155ef1f7f1493556e099adebe8c137e2877e496c005f958bc68e015e7364626b"
+    },
+    {
+      "path": "irc_node.csv",
+      "sha256": "aa4fe5939ffff184ab102db0e7ccc3ad2d6463836eb87c1af15e5c6645067dbe"
+    },
+    {
+      "path": "irc_edge.csv",
+      "sha256": "e952498002880c0f1f7c0ea9c9eed99275f0d03d2ba002c9f03f9837298144da"
+    },
+    {
+      "path": "reaction_intent.csv",
+      "sha256": "fee2bc270e26a15e7a2ac102f60d32002313fb9b34c55404c746bd7766ab7bec"
+    },
+    {
+      "path": "curve_quality.csv",
+      "sha256": "12237bb6a88b13f17b224d0bf6eb02fb2629e8e651d1c046aaa2010163fe3327"
+    },
+    {
+      "path": "sample_view.csv",
+      "sha256": "b93ee7299cf85dc2e614634d0abb52fb581cede047a287ee1a7ff424d27614f0"
+    }
+  ]
+}

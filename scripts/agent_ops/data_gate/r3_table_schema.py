@@ -1,23 +1,33 @@
-"""Declarative schema for the six R3 data tables of the 30h plan (dry-run).
+"""Declarative schema for the six R3 data tables of the 30h plan (**v2**).
 
-Source of truth (referenced read-only; this module never opens ``data/``):
+Schema version ``r3_6table_v2`` — round 2 (WP-D2), implementing the **ORA-2**
+blockers on top of the round-1 (``r3_6table_v1``) scaffold.
 
+Normative sources (read-only references; this module never opens ``data/``):
+
+* ``config/campaigns/pes2ts_30h_20261020.yaml`` → ``data_contract`` block
+  (PD-1 six tables, PD-9 flat ``delta_xyz`` encoding, ``d0_primary_angstrom``,
+  split unit, truth_access rule) — **normative**.
 * ``docs/plans/PES2TS_30h_R3_V52_V53_分层训练与验收计划_v1.1_20261020.md``
-  — §3.1 (six tables + three JSON manifests), §3.2 (Data Gate), §7.1 (frozen
-  manifest files), §7.4 (test ids T0.1 / T0.4).
-* ``docs/contracts/PES2TS_ReactionIntent_Contract_v1.md``
-  — §9 数据合同 / 骨架表 (L425–445): ``irc_curve``, ``irc_node``,
-  ``sample_view`` skeleton fields.
+  §3.1–3.2 (six tables + manifests, Data Gate), §7.1 (frozen files),
+  §7.4 (test ids T0.1–T0.4; T0.5 comes from ORA-2, not this doc).
+* ``docs/contracts/PES2TS_ReactionIntent_Contract_v1.md`` §9 数据合同 /
+  骨架表 (L425–445): ``irc_curve`` / ``irc_node`` / ``sample_view`` skeletons.
+* ``docs/plans/PES2TS_V5.1-R3_反应意图条件化与端点标签不变重训方案_v3_20261020.md``
+  v3.2 (PD-1 six-table ruling; PD-9 ``delta_xyz`` flat+shape/offset+SHA).
 
-Where the two documents disagree the 30h plan's **six-table** layout wins and
-the discrepancy is recorded in :data:`SCHEMA_NOTES`; every validation report
-embeds those notes so a machine consumer sees the discrepancy without
-re-reading the docs.
+Disagreements between the documents are resolved in favour of the 30h plan's
+**six-table** layout (PD-1) and recorded in :data:`SCHEMA_NOTES`; every
+validation report embeds those notes so a machine consumer sees the
+discrepancy without re-reading the docs.
 
 Scope note (dry-run grade): the validator enforces column presence, FK
-integrity, TS uniqueness/order, coordinate finiteness and manifest structure.
-Declared ``dtype`` / ``enum`` values are contract for the future E1 data
-builder but are not yet value-enforced by the CLI.
+integrity, TS uniqueness/order, coordinate + PD-9 encoding finiteness,
+intent pairing/involution, reversed-teacher consistency, d0/gauge rules,
+weight-sum invariants and manifest/truth-log structure.  Declared ``dtype`` /
+``enum`` values are contract for the E1 data builder; value-level enum checks
+are enforced only where a gate test names them (label_status / gauge_ref /
+units).
 """
 
 from __future__ import annotations
@@ -25,34 +35,76 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Dict, List, Tuple
 
-SCHEMA_VERSION = "r3_6table_v1"
-VALIDATOR_VERSION = "0.1.0-dryrun"
+SCHEMA_VERSION = "r3_6table_v2"
+VALIDATOR_VERSION = "0.2.0"
 
 SCHEMA_SOURCE: Tuple[str, ...] = (
+    "config/campaigns/pes2ts_30h_20261020.yaml#data_contract (PD-1/PD-9, normative)",
     "docs/plans/PES2TS_30h_R3_V52_V53_分层训练与验收计划_v1.1_20261020.md §3.1-3.2",
     "docs/plans/PES2TS_30h_R3_V52_V53_分层训练与验收计划_v1.1_20261020.md §7.1, §7.4",
     "docs/contracts/PES2TS_ReactionIntent_Contract_v1.md §9 数据合同 (骨架表, L425-445)",
+    "docs/plans/PES2TS_V5.1-R3_反应意图条件化与端点标签不变重训方案_v3_20261020.md v3.2 (PD-1/PD-9)",
 )
 
 SCHEMA_NOTES: Tuple[str, ...] = (
+    # --- document discrepancies (round 1, kept) ---
     "table_count_discrepancy: the 30h plan §3.1 mandates six tables "
     "(irc_curve, irc_node, irc_edge, reaction_intent, curve_quality, sample_view) "
     "and explicitly says '共六张，不是五张' (six, not five), while ReactionIntent "
     "Contract v1 §骨架表 (L425-445) only skeletons three tables (irc_curve, "
     "irc_node, sample_view) from the earlier reduced lineage. Implemented: the "
-    "6-table 30h layout; contract skeleton fields are mapped onto it.",
+    "6-table 30h layout (PD-1); contract skeleton fields are mapped onto it.",
     "split_manifest_name: plan §3.1 names split_manifest_r3.json, but the §7.1 "
     "freeze list names split_manifest.json. Validator prefers "
     "split_manifest_r3.json and records which file it used.",
     "irc_curve in the contract carries progress[]/nodes[] arrays; the CSV row "
     "flattens them to n_nodes/n_edges/ts_index (per-node rows live in "
-    "irc_node, per-step rows in irc_edge).",
+    "irc_node, per-step rows in irc_edge). n_edges counts irc_edge rows for "
+    "the curve across BOTH intent directions (row-count self-consistency is "
+    "not yet gate-enforced).",
     "d0 is not part of curve identity (plan §3.1); it lives in the sample key "
     "(curve_id, node_index, intent_id, d0) of sample_view and in the teacher "
     "protocol, never in irc_curve.",
     "curve_quality.segment_quality/branch_quality are provenance-only (plan "
     "§3.1 '允许保留历史 segment/branch quality 供溯源'): they must never become "
     "split keys, model inputs or identifiers.",
+    # --- ORA-2 round-2 additions ---
+    "PD-9_flat_encoding (ORA-2 #1): irc_edge dropped the legacy scalar "
+    "delta_dx/delta_dy/delta_dz columns. Each row now carries "
+    "delta_xyz_flat (JSON flat float list), delta_xyz_shape ('[M,3]'), "
+    "delta_xyz_offsets (JSON '[start,end)' into the table-level concatenated "
+    "flat buffer, non-decreasing in file order, first row start==0), "
+    "atom_map_sha256 (64-hex; format-checked only — the atom-map payload is "
+    "not yet a table column), units (fixed literal 'angstrom') and "
+    "delta_xyz_sha256. sha256 is defined here as "
+    "sha256(struct.pack('<{M*3}d', *flat)) — IEEE-754 float64 little-endian "
+    "of the parsed flat list; E1 must reproduce this byte encoding exactly. "
+    "Flat length must equal prod(shape)==M*3.",
+    "intent_scoped_edges (ORA-2 #4): irc_edge rows are intent-scoped teacher "
+    "single-step records (intent_id + same_ref_frame columns), because T0.2b "
+    "asserts that the reverse intent stores the mirrored edge (j->i) with "
+    "delta_xyz_flat negated within 1e-6 (PD-9 side/negation eps). Physical "
+    "adjacent-frame geometry alone cannot express 'edge under reverse intent'.",
+    "intent_pairing (ORA-2 #2): reaction_intent carries reverse_of_intent_id "
+    "and intent_pair_id; every curve must have exactly 2 intents forming one "
+    "pair (forward+reverse, mutual reverses, reverse(reverse(x))==x) unless "
+    "flagged intent_underdetermined. Unique key (curve_id, intent_id); "
+    "intent_id alone is NOT assumed globally unique.",
+    "label_weights (ORA-2 #3): sample_view carries label_weight, curve_weight, "
+    "sample_weight, label_status (ok|masked|terminal|conflict), feature_sha, "
+    "label_sha. Invariant (T0.1a): per (curve_id, d0) group, "
+    "sum(curve_weight) == CURVE_WEIGHT_TARGET (1.0) — one curve is one unit "
+    "of weight no matter how many intents/nodes it fans out to, so "
+    "bidirectional augmentation never double-counts a curve.",
+    "truth_access (ORA-2 #6): T0.5 audits truth_access_log.jsonl — every "
+    "entry's accessor must be in TRUTH_ACCESSOR_ALLOWLIST "
+    "(pes2ts_core.g0.truth.truth_reader only, per constitution R1 and the "
+    "campaign data_contract). Missing log under an explicit --truth-log is "
+    "BLOCKED (fail-closed), not failed; without the option an audit that "
+    "finds no log is not_run.",
+    "T0.5 is not part of the 30h plan §7.4 minimal test list; its id comes "
+    "from ORA-2. T0.2a/T0.2b refine plan T0.2 (involution) and T0.3a/T0.3b "
+    "refine plan T0.3 (d0/gauge) into machine-checkable halves.",
 )
 
 
@@ -125,7 +177,40 @@ class TableSchema:
 
 
 # ---------------------------------------------------------------------------
-# The six tables (30h plan §3.1)
+# Normative constants (campaign data_contract / ORA-2)
+# ---------------------------------------------------------------------------
+
+#: fixed target for sum(curve_weight) per (curve_id, d0) group — one curve =
+#: one unit of weight; forward+reverse must not double count (ORA-2 #3).
+CURVE_WEIGHT_TARGET = 1.0
+WEIGHT_SUM_TOL = 1e-9
+
+#: PD-9 primary d0 in Angstrom (campaign data_contract.d0_primary_angstrom).
+PRIMARY_D0_ANGSTROM = 0.08
+D0_TOL = 1e-9
+
+#: PD-9 side-legality / reverse-negation epsilon (data_contract.side_legality_eps).
+DELTA_EPS = 1.0e-6
+
+#: fixed units literal for irc_edge (data_contract.delta_xyz_encoding.binds).
+CANONICAL_UNITS = "angstrom"
+
+GAUGE_REF_VALUES: Tuple[str, ...] = ("local_frame", "unresolved_masked")
+LABEL_STATUS_VALUES: Tuple[str, ...] = ("ok", "masked", "terminal", "conflict")
+
+#: constitution R1 / data_contract.truth_access — the only allowed accessor.
+TRUTH_ACCESSOR_ALLOWLIST: Tuple[str, ...] = (
+    "truth_reader",
+    "pes2ts_core.g0.truth.truth_reader",
+)
+#: truth log filename checked inside --tables-dir when no --truth-log is given.
+TRUTH_LOG_TABLES_DIR_NAME = "truth_access_log.jsonl"
+#: repo-relative fallback when --truth-log is not given (cwd-relative).
+TRUTH_LOG_DEFAULT_SUBPATH = "docs/agent_runs/truth_access_log.jsonl"
+
+
+# ---------------------------------------------------------------------------
+# The six tables (30h plan §3.1, PD-1)
 # ---------------------------------------------------------------------------
 
 IRC_CURVE = TableSchema(
@@ -171,21 +256,30 @@ IRC_NODE = TableSchema(
 IRC_EDGE = TableSchema(
     name="irc_edge",
     filename="irc_edge.csv",
-    primary_key=("curve_id", "edge_index"),
+    primary_key=("curve_id", "intent_id", "edge_index"),
     columns=(
         Column("curve_id", "string", key="pk;fk:irc_curve.curve_id"),
+        # intent-scoped teacher single-step record (ORA-2 #4); src/dst form a
+        # composite FK (curve_id, src|dst node_index) into irc_node — see
+        # COMPOSITE_FK below.
+        Column("intent_id", "string", key="fk:reaction_intent.intent_id"),
         Column("edge_index", "int", key="pk"),
-        # src/dst form a composite FK (curve_id, src|dst node_index) into
-        # irc_node; see COMPOSITE_FK below.
         Column("src_node_index", "int"),
         Column("dst_node_index", "int"),
-        Column("delta_dx", "float", required=False, nullable=True),
-        Column("delta_dy", "float", required=False, nullable=True),
-        Column("delta_dz", "float", required=False, nullable=True),
-        Column("distance", "float", required=False, nullable=True),
+        # PD-9 flat encoding (ORA-2 #1)
+        Column("delta_xyz_flat", "string"),       # JSON list of floats, len M*3
+        Column("delta_xyz_shape", "string"),      # e.g. "[2,3]"
+        Column("delta_xyz_offsets", "string"),    # JSON "[start,end)" offsets
+        Column("atom_map_sha256", "string"),      # 64-hex (format check only)
+        Column("delta_xyz_sha256", "string"),     # 64-hex over packed floats
+        Column("units", "string", enum=(CANONICAL_UNITS,)),
+        Column("same_ref_frame", "bool"),
     ),
-    notes=("raw irc_edge.delta_xyz is kept separate from derived teacher_action_key "
-           "(plan §1.2)",),
+    notes=(
+        "legacy delta_dx/delta_dy/delta_dz columns are REMOVED (PD-9); a file "
+        "carrying them instead is a schema violation",
+        "delta_xyz_sha256 = sha256(struct.pack('<{M*3}d', *flat)) — float64 LE",
+    ),
 )
 
 REACTION_INTENT = TableSchema(
@@ -196,15 +290,24 @@ REACTION_INTENT = TableSchema(
         Column("intent_id", "string", key="pk"),
         Column("curve_id", "string", key="fk:irc_curve.curve_id"),
         Column("direction", "string", enum=("forward", "reverse")),
+        Column("reverse_of_intent_id", "string", key="fk:reaction_intent.intent_id"),
+        Column("intent_pair_id", "string"),
+        Column("intent_underdetermined", "bool"),
         Column("g_src", "string"),
         Column("g_tgt", "string"),
         Column("delta_b_intent", "string"),
         Column("cv_spec", "string"),
         Column("intent_role", "string", required=False, nullable=True),
         Column("rules", "string", required=False, nullable=True),
+        Column("intent_version", "string", required=False, nullable=True),
     ),
-    notes=("every curve carries two opposed intents (plan §3.1); direction "
-           "'reverse' must be a real reversed task, not a relabel",),
+    unique=(("curve_id", "intent_id"),),
+    notes=(
+        "unique key (curve_id, intent_id) — intent_id is not assumed globally "
+        "unique (ORA-2 #2)",
+        "exactly 2 intents per curve forming one mutual-reverse pair unless "
+        "intent_underdetermined (T0.2a)",
+    ),
 )
 
 CURVE_QUALITY = TableSchema(
@@ -236,6 +339,17 @@ SAMPLE_VIEW = TableSchema(
         Column("x", "float"),
         Column("y", "float"),
         Column("z", "float"),
+        # ORA-2 #3 label / weight block
+        Column("label_weight", "float"),
+        Column("curve_weight", "float"),
+        Column("sample_weight", "float"),
+        Column("label_status", "string", enum=LABEL_STATUS_VALUES),
+        Column("feature_sha", "string"),
+        Column("label_sha", "string"),
+        # ORA-2 #5 d0 / gauge block
+        Column("sensitivity_only", "bool"),
+        Column("gauge_ref", "string", enum=GAUGE_REF_VALUES),
+        # teacher targets (optional)
         Column("target_node_index", "int", required=False, nullable=True),
         Column("target_action_u", "string", required=False, nullable=True),
         Column("target_progress_q", "float", required=False, nullable=True),
@@ -244,9 +358,14 @@ SAMPLE_VIEW = TableSchema(
         Column("fold", "int", required=False, nullable=True),
     ),
     unique=(("curve_id", "node_index", "intent_id", "d0"),),
-    notes=("sample_id is the surrogate of the composite key "
-           "(curve_id, node_index, intent_id, d0) per contract §9; fold is "
-           "informational — split_manifest_r3.json is authoritative",),
+    notes=(
+        "sample_id is the surrogate of the composite key "
+        "(curve_id, node_index, intent_id, d0) per contract §9; fold is "
+        "informational — split_manifest_r3.json is authoritative",
+        "per (curve_id, d0): sum(curve_weight) == CURVE_WEIGHT_TARGET (1.0); "
+        "d0==0.08 rows are main-task, other d0 rows need sensitivity_only=true; "
+        "gauge_ref=unresolved_masked requires label_status=masked",
+    ),
 )
 
 TABLES: Dict[str, TableSchema] = {
