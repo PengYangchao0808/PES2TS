@@ -47,6 +47,19 @@ V5.2 在冻结配置下完成实现、校准与训练，结果是**明确的负�
 2. **λq=0.421 偏强 + 1900 updates 联合训练损伤 encoder**：Move +5.5% 退化与该假设一致。λq 消融（0.421→0.1→0.02）在 fold0 上 ~6 个 run 即可回答——但这属超参修订，需你授权。
 3. Stop AUC≈0.5 与"d_key_TS≤0.04Å 窗口在 9655 样本中仅 ~5%"的小样本结构一致：正例太少且几何上难以区分。
 
+
+
+## 5.1 战役后追加诊断（supervisor，analyze-completed-experiments 授权内，无新训练）
+
+两个只读探针（`outputs/pesn/30h_campaign/stats/q_informativeness_probe.json`、`q_doublevaluedness_check.json`）：
+
+1. **线性探针**（5 折 curve 分组 ridge，仅合法几何：key-pair 距离 + intent 符号投影）：MAE 0.4722 vs 常数基线 0.4724——**改进 0.0%，pearson 0.018**。
+2. **双值性检查**：within-(curve,intent) |corr(q, d̄_key)| 中位 **0.743**（q25 0.449 / q75 0.944）；全局池化 corr **−0.045**。
+
+**结论：H1 从 leaning 升级为强证据——弧长 q 在 (X_t, G_intent) 单帧合法输入下不可辨识**。同一 CV 距离剖面在 TS 两侧对应相反 q、跨反应对应不同 q；预测 q 需要路径身份/历史——恰是宪法禁止的输入。V5.2 progress 头的失败是**任务定义层面的不可辨识**，非训练配置错误（H2 降为次要；λq/日程问题仅解释 Move 退化部分）。架构无关论证：任何单帧预测器面对同一非单值映射。
+
+**对 V6 的含义**：进度表征需重设计——如以 d_key_TS（局部可观测）+ 由 u 预测隐含的方向估计构造"相对进度"，或放弃单帧 q 改用序列级进度（需修改输入合同，需你裁定）。
+
 ## 6. H20 后果
 
 V5.3 按 H20 以**上限控制器模式**执行（classic + R3 winner），v52 臂全程 diagnostic-only 标注（`v52_supervision_failed_no_claim`，机器强制）。详见 V53_ROLLOUT_REPORT.md。
