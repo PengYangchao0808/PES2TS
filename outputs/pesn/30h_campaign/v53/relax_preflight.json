@@ -1,0 +1,40 @@
+{
+  "schema": "pes2ts_v53_relax_preflight_v1",
+  "acp": {
+    "available": true,
+    "checks": {
+      "acp_root": "/mnt/e/Calculations/Common_Script/Auto_Calc_Platform/ACP_V1_20260811",
+      "acp_cli_py": "/mnt/e/Calculations/Common_Script/Auto_Calc_Platform/ACP_V1_20260811/src/acp/cli.py",
+      "acp_python": "/root/miniforge3/envs/rph4/bin/python",
+      "acp_config": "/mnt/e/Calculations/Common_Script/Auto_Calc_Platform/ACP_V1_20260811/config/defaults.yaml"
+    }
+  },
+  "xtb": {
+    "xtb_binary": null,
+    "available": false
+  },
+  "executor_runnable": false,
+  "dry_run_request": {
+    "curve_id": "RXN_0000000238",
+    "node_index": 0,
+    "intent_id": "RXN_0000000238_fwd",
+    "driver": {
+      "atoms": [
+        3,
+        4
+      ],
+      "d_now_angstrom": 1.4746362387273735,
+      "delta_xi": 1.0,
+      "target_angstrom": 1.5546362387273736
+    },
+    "request_sha256": "eb5169ed84d5d0478ad2506942ab8bb2463ce8d1b9d95d419c68dd571fdf912d",
+    "request_schema": "pes2ts_xtb_constrained_opt_request_v1",
+    "request_built": true,
+    "request_executed": false
+  },
+  "dry_run_error": null,
+  "physics_missing": "physics_not_run",
+  "physics_executed": false,
+  "authorization": "preflight/dry-run only; real constrained-relax execution requires GPU/queue clearance + supervisor approval (30h plan §6.2); this task never executes physics",
+  "verdict": "wiring_present_xtb_missing"
+}
