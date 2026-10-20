@@ -25,6 +25,30 @@ Design rules enforced here (30h plan ``docs/plans/PES2TS_30h_R3_V52_V53_..._v1.1
   never modified or removed).
 * ``reconcile`` marks ``running`` records whose holder pid is dead as
   ``interrupted`` -- it never deletes anything.
+
+WP-L2 hardening (fail-closed; Oracle ORA-1):
+
+* Formal records carry ``gate_id`` (non-empty str), ``admissibility``
+  (``admissible`` | ``not_admissible_until_gate_pass``), ``evidence_sha``
+  (sha256 of the gate report; required real hex once admissible), ``attempt``
+  (int >= 1) and ``parent_run_id`` (nullable str).  A record carrying any of
+  the formal keys is a *formal* record: all five keys are then mandatory and
+  ``run_id`` switches to the hashed scheme
+  ``sha256(campaign_id|phase|arm|fold|seed|variant|config|data|teacher|features|split)[:16]``
+  so changed-config-same-name becomes a **different run** instead of silent
+  reuse.  Legacy records (none of the formal keys) keep the historical
+  ``campaign:phase:arm:fN:sN`` id -- pre-WP-L2 ledgers stay valid and the
+  state machine (``RunIdConflict`` on identity drift) is unchanged for them.
+* Budget caps (task_state ``budget.run_caps``): any transition into
+  ``running`` counts one launch attempt; attempts include retries and are
+  cross-checked against the bound ``run_plan.jsonl`` (``plan_path``): the
+  campaign+phase plan count is the cap (R3=66, V5.2=33), launching a run not
+  listed in the plan, or a phase absent from a bound plan, raises
+  :class:`BudgetCapExceeded`.  Bound-plan problems (missing/corrupt) raise,
+  never warn.
+* ``confirm_unseal``: launching a fold3/4 **confirm** run consumes the single
+  token in ``state/gates/unseal.json`` (count<=1); a second use, a corrupt
+  file or an unconfigured unseal path raises :class:`UnsealExceeded`.
 """
 
 from __future__ import annotations
@@ -32,6 +56,7 @@ from __future__ import annotations
 import argparse
 import contextlib
 import fcntl
+import hashlib
 import json
 import os
 import re
@@ -45,6 +70,8 @@ from typing import Any, Callable, Dict, Iterator, List, Optional
 
 __all__ = [
     "AppendOutcome",
+    "BudgetCapExceeded",
+    "DEFAULT_CAPS",
     "IllegalTransition",
     "LedgerError",
     "MISSING_PLACEHOLDER",
@@ -53,7 +80,11 @@ __all__ = [
     "RunIdConflict",
     "RunLedger",
     "RunNotFound",
+    "UnsealExceeded",
     "compute_run_id",
+    "confirm_unseal",
+    "is_confirm_run",
+    "is_formal_record",
     "main",
     "pid_alive",
     "validate",
@@ -118,6 +149,13 @@ CONTENT_FIELDS = IDENTITY_FIELDS + (
     "checkpoint_update",
     "checkpoint_sha256",
     "metrics_path",
+    # WP-L2 formal metadata: drift under the same status is a conflict, never
+    # a silent overwrite (identity fields above still never change at all).
+    "gate_id",
+    "admissibility",
+    "evidence_sha",
+    "attempt",
+    "parent_run_id",
 )
 
 KNOWN_STATUSES = ("planned", "running", "done", "failed", "killed", "skipped", "interrupted")
@@ -134,6 +172,19 @@ ALLOWED_TRANSITIONS: Dict[str, frozenset] = {
 #: leaving one of these states by re-entering ``running`` counts as a retry
 RETRY_SOURCES = frozenset({"failed", "interrupted"})
 MAX_RETRIES = 2  # retry_count <= 2 free of charge; the 3rd retry needs override
+
+# -- WP-L2 formal-record schema ------------------------------------------
+FORMAL_FIELDS = ("gate_id", "admissibility", "evidence_sha", "attempt", "parent_run_id")
+ADMISSIBILITY_VALUES = ("admissible", "not_admissible_until_gate_pass")
+
+#: statuses that mean "this run has been launched at least once"
+LAUNCHED_STATES = frozenset({"running", "done", "failed", "killed", "interrupted"})
+
+#: campaign budget caps (task_state budget.run_caps; counts ALL launch attempts)
+DEFAULT_CAPS: Dict[str, int] = {"R3": 66, "V5.2": 33}
+
+#: default unseal token location (relative to the campaign root)
+DEFAULT_UNSEAL_SUBPATH = "docs/agent_runs/state/gates/unseal.json"
 
 DEFAULT_LEDGER_PATH = "outputs/pesn/30h_campaign/run_records.jsonl"
 EVENTS_FILENAME = "events.jsonl"
@@ -162,6 +213,15 @@ class IllegalTransition(LedgerError):
 
 class RetryCapExceeded(LedgerError):
     """Retry budget exhausted without supervisor_override=true."""
+
+
+class BudgetCapExceeded(LedgerError):
+    """Campaign run cap (R3=66 / V5.2=33, all attempts incl. retries) exceeded,
+    or a launch not backed by the bound ``run_plan.jsonl``."""
+
+
+class UnsealExceeded(LedgerError):
+    """fold3/4 confirm unseal token missing/corrupt/already consumed."""
 
 
 class RunNotFound(LedgerError):
@@ -196,19 +256,66 @@ def pid_alive(pid: Any) -> bool:
     return True
 
 
-def compute_run_id(record: Dict[str, Any]) -> str:
-    """Deterministic run_id from (campaign_id, phase, arm, fold, seed[, variant])."""
-    parts = [
-        str(record["campaign_id"]),
-        str(record["phase"]),
-        str(record["arm"]),
-        "f{}".format(record["fold"]),
-        "s{}".format(record["seed"]),
-    ]
-    variant = record.get("variant")
-    if variant:
-        parts.append(str(variant))
-    return ":".join(parts)
+def compute_run_id(record: Dict[str, Any], scheme: Optional[str] = None) -> str:
+    """Deterministic run_id for a record.
+
+    ``scheme`` is one of ``"legacy"`` (``campaign:phase:arm:fN:sN[:variant]``),
+    ``"hashed"`` (``sha256(campaign|phase|arm|fold|seed|variant|config_sha|
+    data_sha|teacher_sha|features_sha|split_sha)[:16]``) or ``"auto"`` /
+    ``None``: formal records (carrying any formal key -- ``gate_id``,
+    ``admissibility``, ``attempt``, ...) get the hashed scheme so a changed
+    config under the same name is a *different* run; legacy records keep the
+    historical id (backward compatible with pre-WP-L2 ledgers).
+    """
+    resolved = scheme or "auto"
+    if resolved == "auto":
+        resolved = "hashed" if is_formal_record(record) else "legacy"
+    if resolved == "legacy":
+        parts = [
+            str(record["campaign_id"]),
+            str(record["phase"]),
+            str(record["arm"]),
+            "f{}".format(record["fold"]),
+            "s{}".format(record["seed"]),
+        ]
+        variant = record.get("variant")
+        if variant:
+            parts.append(str(variant))
+        return ":".join(parts)
+    if resolved != "hashed":
+        raise LedgerError("INVALID_SCHEME: {!r} not in auto/legacy/hashed".format(scheme))
+    joined = "|".join(
+        [
+            str(record["campaign_id"]),
+            str(record["phase"]),
+            str(record["arm"]),
+            str(record["fold"]),
+            str(record["seed"]),
+            str(record.get("variant") or ""),
+            str(record.get("config_sha256")),
+            str(record.get("data_sha256")),
+            str(record.get("teacher_sha256")),
+            str(record.get("features_sha256")),
+            str(record.get("split_sha256")),
+        ]
+    )
+    return hashlib.sha256(joined.encode("utf-8")).hexdigest()[:16]
+
+
+def is_formal_record(record: Dict[str, Any]) -> bool:
+    """True when the record carries any WP-L2 formal-run key."""
+    return any(key in record for key in ("gate_id", "admissibility", "attempt"))
+
+
+def is_confirm_run(record: Dict[str, Any]) -> bool:
+    """fold3/4 confirm runs consume the one-shot unseal token (30h plan 7.3)."""
+    fold = record.get("fold")
+    if isinstance(fold, bool) or not isinstance(fold, int) or fold < 3:
+        return False
+    arm = str(record.get("arm") or "")
+    variant = str(record.get("variant") or "")
+    lowered = "{} {}".format(arm, variant).lower()
+    return arm == "C" or "confirm" in lowered
 
 
 def _identity(record: Dict[str, Any]) -> Dict[str, Any]:
@@ -282,6 +389,50 @@ def validate(record: Any) -> Dict[str, Any]:
             raise LedgerError("INVALID_FIELD: {} must be a non-empty string".format(key))
     if "supervisor_override" in record and not isinstance(record["supervisor_override"], bool):
         raise LedgerError("INVALID_FIELD: supervisor_override must be a bool")
+    # -- WP-L2 formal record schema (fail-closed: all five keys, exact types)
+    formal_keys_present = [k for k in FORMAL_FIELDS if k in record]
+    if formal_keys_present and len(formal_keys_present) != len(FORMAL_FIELDS):
+        missing_formal = [k for k in FORMAL_FIELDS if k not in record]
+        raise LedgerError(
+            "INCOMPLETE_FORMAL_FIELDS: record mixes formal/legacy schema; missing {}".format(
+                ", ".join(missing_formal)
+            )
+        )
+    if formal_keys_present:
+        gate_id = record.get("gate_id")
+        if not (isinstance(gate_id, str) and gate_id):
+            raise LedgerError(
+                "INVALID_GATE_ID: gate_id must be a non-empty string, got {!r}".format(
+                    gate_id
+                )
+            )
+        adm = record.get("admissibility")
+        if adm not in ADMISSIBILITY_VALUES:
+            raise LedgerError(
+                "INVALID_ADMISSIBILITY: {!r} not in {}".format(
+                    adm, ", ".join(ADMISSIBILITY_VALUES)
+                )
+            )
+        attempt = record.get("attempt")
+        if isinstance(attempt, bool) or not isinstance(attempt, int) or attempt < 1:
+            raise LedgerError(
+                "INVALID_ATTEMPT: attempt must be an int >= 1, got {!r}".format(attempt)
+            )
+        parent = record.get("parent_run_id")
+        if parent is not None and not (isinstance(parent, str) and parent):
+            raise LedgerError(
+                "INVALID_PARENT_RUN_ID: parent_run_id must be null or a non-empty string"
+            )
+        evidence = record.get("evidence_sha")
+        if evidence is not None and not (isinstance(evidence, str) and HASH_RE.match(evidence)):
+            raise LedgerError(
+                "INVALID_HASH: evidence_sha must be null or a lowercase 64-char sha256"
+            )
+        if adm == "admissible" and evidence is None:
+            raise PlaceholderHashError(
+                "MISSING_HASH: admissibility=admissible requires evidence_sha "
+                "(sha256 of the gate report)"
+            )
     if status == "done":
         # a finished run must never ship placeholder/absent evidence
         if record.get("checkpoint_sha256") is None:
@@ -364,6 +515,124 @@ def _read_lines(path: Path) -> List[str]:
 
 
 # --------------------------------------------------------------------------
+# run_plan.jsonl cross-check helpers (WP-L2 budget caps)
+# --------------------------------------------------------------------------
+
+
+def read_run_plan(plan_path: Any) -> Dict[str, Any]:
+    """Parse a ``run_plan.jsonl`` for append-time budget cross-checks.
+
+    Returns ``{"counts": {(campaign_id, phase): planned_runs},
+    "keys": {(campaign_id, phase, arm, fold, seed)}}``.  Header lines
+    (``record_type == "plan_header"``) are skipped.  A missing or corrupt plan
+    raises :class:`LedgerError` -- a bound plan is fail-closed, never optional.
+    """
+    path = Path(plan_path)
+    if not path.is_file():
+        raise LedgerError("PLAN_MISSING: bound run_plan.jsonl not found: {}".format(path))
+    lines = [ln for ln in _read_lines(path) if ln.strip()]
+    if not lines:
+        raise LedgerError("PLAN_CORRUPT: bound run_plan.jsonl is empty: {}".format(path))
+    counts: Dict[tuple, int] = {}
+    keys = set()
+    for lineno, line in enumerate(lines, start=1):
+        try:
+            rec = json.loads(line)
+        except json.JSONDecodeError as exc:
+            raise LedgerError(
+                "PLAN_CORRUPT: {} line {}: {}".format(path, lineno, exc)
+            ) from exc
+        if not isinstance(rec, dict):
+            raise LedgerError(
+                "PLAN_CORRUPT: {} line {} is not a JSON object".format(path, lineno)
+            )
+        if rec.get("record_type") == "plan_header":
+            continue
+        for field_name in ("campaign_id", "phase", "arm"):
+            if not (isinstance(rec.get(field_name), str) and rec.get(field_name)):
+                raise LedgerError(
+                    "PLAN_CORRUPT: {} line {} missing/invalid {!r}".format(
+                        path, lineno, field_name
+                    )
+                )
+        for field_name in ("fold", "seed"):
+            value = rec.get(field_name)
+            if isinstance(value, bool) or not isinstance(value, int):
+                raise LedgerError(
+                    "PLAN_CORRUPT: {} line {} invalid {!r}".format(
+                        path, lineno, field_name
+                    )
+                )
+        campaign_phase = (rec["campaign_id"], rec["phase"])
+        counts[campaign_phase] = counts.get(campaign_phase, 0) + 1
+        keys.add(
+            (rec["campaign_id"], rec["phase"], rec["arm"], rec["fold"], rec["seed"])
+        )
+    return {"counts": counts, "keys": keys}
+
+
+# --------------------------------------------------------------------------
+# one-shot fold3/4 unseal token (30h plan section 7.3 / task_state)
+# --------------------------------------------------------------------------
+
+
+def confirm_unseal(unseal_path: Any, run_id: Optional[str] = None) -> Dict[str, Any]:
+    """Consume the single fold3/4 confirm-unseal token.
+
+    ``state/gates/unseal.json`` must satisfy ``count <= 0`` to be consumable:
+    the first use writes ``count=1``; any *second* run (or a tampered file with
+    ``count >= 1`` naming another run) raises :class:`UnsealExceeded`.  A
+    re-entry of the *same* run_id (retry of an already-opened confirm run) is
+    an idempotent no-op -- it never increments the counter.  Corrupt/unreadable
+    content always refuses.  Written via flock + tmp + ``os.replace``.
+    """
+    if unseal_path is None:
+        raise UnsealExceeded(
+            "UNSEAL_NOT_CONFIGURED: fold3/4 confirm runs require an unseal path "
+            "({} default)".format(DEFAULT_UNSEAL_SUBPATH)
+        )
+    path = Path(unseal_path)
+    lock = Path(str(path) + ".lock")
+    with _file_lock(lock):
+        payload: Dict[str, Any]
+        if path.exists():
+            try:
+                raw = path.read_text(encoding="utf-8")
+                payload = json.loads(raw)
+            except (OSError, json.JSONDecodeError) as exc:
+                raise UnsealExceeded(
+                    "UNSEAL_CORRUPT: {} is unreadable/invalid: {}".format(path, exc)
+                ) from exc
+            if not isinstance(payload, dict):
+                raise UnsealExceeded(
+                    "UNSEAL_CORRUPT: {} must contain a JSON object".format(path)
+                )
+            count = payload.get("count")
+            if isinstance(count, bool) or not isinstance(count, int) or count < 0:
+                raise UnsealExceeded(
+                    "UNSEAL_CORRUPT: count must be an int >= 0, got {!r}".format(count)
+                )
+            if count >= 1:
+                owner = payload.get("run_id")
+                if run_id is not None and owner == run_id:
+                    # same run retry: token already consumed by us, no-op
+                    return dict(payload)
+                raise UnsealExceeded(
+                    "UNSEAL_ALREADY_USED: {} already consumed (count={}, run_id={!r}); "
+                    "the fold3/4 confirm unseal is one-shot".format(
+                        path, count, owner
+                    )
+                )
+        else:
+            payload = {}
+        payload["count"] = int(payload.get("count", 0) or 0) + 1
+        payload["used_at"] = _utc_now_iso()
+        payload["run_id"] = run_id
+        _atomic_rewrite(path, json.dumps(payload, sort_keys=True, ensure_ascii=False))
+        return dict(payload)
+
+
+# --------------------------------------------------------------------------
 # ledger
 # --------------------------------------------------------------------------
 
@@ -379,10 +648,32 @@ class AppendOutcome:
 class RunLedger:
     """Append-only run ledger with run_id idempotency and audit events."""
 
-    def __init__(self, path: Any) -> None:
+    def __init__(
+        self,
+        path: Any,
+        *,
+        run_id_scheme: str = "auto",
+        plan_path: Optional[Any] = None,
+        caps: Optional[Dict[str, int]] = None,
+        unseal_path: Optional[Any] = None,
+    ) -> None:
+        if run_id_scheme not in ("auto", "legacy", "hashed"):
+            raise LedgerError(
+                "INVALID_SCHEME: run_id_scheme must be auto/legacy/hashed, got {!r}".format(
+                    run_id_scheme
+                )
+            )
         self.path = Path(path)
         self.events_path = self.path.parent / EVENTS_FILENAME
         self.lock_path = Path(str(self.path) + ".lock")
+        self.run_id_scheme = run_id_scheme
+        #: bound run_plan.jsonl (E0 planning artifact); None = no plan cross-check
+        self.plan_path = Path(plan_path) if plan_path is not None else None
+        self.caps: Dict[str, int] = dict(DEFAULT_CAPS)
+        if caps is not None:
+            self.caps.update(caps)
+        #: one-shot fold3/4 unseal token path (None = confirm launches refuse)
+        self.unseal_path = Path(unseal_path) if unseal_path is not None else None
 
     # -- lifecycle ---------------------------------------------------------
 
@@ -482,15 +773,21 @@ class RunLedger:
         * identical resubmission -> ``noop`` (no new line, no event);
         * changed identity under same run_id, or same-status content drift ->
           :class:`RunIdConflict`;
-        * status change -> state-machine + retry-cap validation, then append.
+        * status change -> state-machine + retry-cap validation, then append;
+        * every transition into ``running`` is a *launch attempt*: it must pass
+          the campaign budget cap cross-check against the bound
+          ``run_plan.jsonl`` (:class:`BudgetCapExceeded`) and, for fold3/4
+          confirm runs, consume the one-shot unseal token
+          (:class:`UnsealExceeded`).
         """
         rec = dict(record)
         validate(rec)
-        run_id = compute_run_id(rec)
+        run_id = compute_run_id(rec, self.run_id_scheme)
         rec["run_id"] = run_id
         now = _utc_now_iso()
         with _file_lock(self.lock_path):
-            latest = self._latest_locked().get(run_id)
+            all_latest = self._latest_locked()
+            latest = all_latest.get(run_id)
             if latest is None:
                 if rec["status"] not in INITIAL_STATUSES:
                     raise IllegalTransition(
@@ -538,6 +835,16 @@ class RunLedger:
                         )
                     )
 
+            if to_status == "running":
+                # WP-L2: every launch attempt is budget-checked (all attempts,
+                # incl. retries) and confirm runs burn the one-shot unseal.
+                previously_launched = from_status in LAUNCHED_STATES
+                self._budget_check_locked(
+                    rec, run_id, all_latest, retry_count, previously_launched
+                )
+                if is_confirm_run(rec):
+                    confirm_unseal(self.unseal_path, run_id=run_id)
+
             entry = dict(latest)
             entry.update(rec)
             entry["run_id"] = run_id
@@ -547,6 +854,85 @@ class RunLedger:
             entry["supervisor_override"] = bool(rec.get("supervisor_override", False))
             self._emit_locked(entry, "transition", from_status)
             return AppendOutcome("transitioned", entry)
+
+    def _budget_check_locked(
+        self,
+        rec: Dict[str, Any],
+        run_id: str,
+        all_latest: Dict[str, Dict[str, Any]],
+        retry_count: int,
+        previously_launched: bool,
+    ) -> None:
+        """Fail-closed launch budget check (caller holds the ledger lock).
+
+        Raises :class:`BudgetCapExceeded` when this launch attempt would take
+        the campaign+phase past its cap (plan count and/or ``DEFAULT_CAPS``),
+        when a cap-bearing phase has no entry in a bound plan, or when the run
+        itself is not listed in a bound plan.
+        """
+        campaign = rec.get("campaign_id")
+        phase = rec.get("phase")
+        cap = self.caps.get(phase)
+        plan_count: Optional[int] = None
+        if self.plan_path is not None:
+            plan = read_run_plan(self.plan_path)
+            plan_count = plan["counts"].get((campaign, phase))
+            if plan_count is None:
+                if cap is not None:
+                    raise BudgetCapExceeded(
+                        "NOT_PLANNED: phase {!r} carries cap {} but has no planned "
+                        "runs in {}".format(phase, cap, self.plan_path)
+                    )
+            else:
+                plan_key = (campaign, phase, rec.get("arm"), rec.get("fold"), rec.get("seed"))
+                if plan_key not in plan["keys"]:
+                    raise BudgetCapExceeded(
+                        "NOT_IN_PLAN: run (campaign={}, phase={}, arm={}, fold={}, "
+                        "seed={}) is not in {}".format(*plan_key, self.plan_path)
+                    )
+                cap = plan_count if cap is None else min(cap, plan_count)
+        if cap is None:
+            return  # phase has neither a cap nor planned runs: not budget-governed
+
+        attempts = 0
+        for rid, entry in all_latest.items():
+            if rid == run_id:
+                continue
+            if entry.get("campaign_id") != campaign or entry.get("phase") != phase:
+                continue
+            if entry.get("status") not in LAUNCHED_STATES:
+                continue
+            attempts += 1 + int(entry.get("retry_count", 0) or 0)
+        if previously_launched:
+            this_run_attempts = 1 + retry_count  # retry_count already incremented
+        else:
+            this_run_attempts = 1
+        candidate = attempts + this_run_attempts
+        if candidate > cap:
+            raise BudgetCapExceeded(
+                "BUDGET_CAP_EXCEEDED: campaign={} phase={} attempt {} of run {} would "
+                "exceed the cap of {} (all launch attempts incl. retries are counted; "
+                "cap source: {})".format(
+                    campaign,
+                    phase,
+                    this_run_attempts,
+                    run_id,
+                    cap,
+                    "run_plan.jsonl"
+                    if self.plan_path is not None and plan_count is not None
+                    else "run_caps",
+                )
+            )
+
+    def confirm_unseal(self, run_id: Optional[str] = None) -> Dict[str, Any]:
+        """Consume the one-shot fold3/4 confirm-unseal token for this ledger."""
+        if self.unseal_path is None:
+            raise UnsealExceeded(
+                "UNSEAL_NOT_CONFIGURED: ledger has no unseal_path (expected {})".format(
+                    DEFAULT_UNSEAL_SUBPATH
+                )
+            )
+        return confirm_unseal(self.unseal_path, run_id=run_id)
 
     def reconcile(
         self, pid_alive_fn: Optional[Callable[[Any], bool]] = None
@@ -598,6 +984,18 @@ def _build_parser() -> argparse.ArgumentParser:
         default=DEFAULT_LEDGER_PATH,
         help="path to run_records.jsonl (events.jsonl is written alongside)",
     )
+    parser.add_argument(
+        "--plan",
+        default=None,
+        help="bind a run_plan.jsonl for append-time budget cross-checks "
+        "(R3=66 / V5.2=33, plan membership enforced)",
+    )
+    parser.add_argument(
+        "--unseal",
+        default=None,
+        help="path of the one-shot fold3/4 confirm unseal token "
+        "(default rule: state/gates/unseal.json under the campaign root)",
+    )
     sub = parser.add_subparsers(dest="cmd", required=True)
 
     sub.add_parser("init", help="create the ledger and events files if missing")
@@ -622,7 +1020,7 @@ def _build_parser() -> argparse.ArgumentParser:
 
 def main(argv: Optional[List[str]] = None) -> int:
     args = _build_parser().parse_args(argv)
-    ledger = RunLedger(args.ledger)
+    ledger = RunLedger(args.ledger, plan_path=args.plan, unseal_path=args.unseal)
     try:
         if args.cmd == "init":
             print(json.dumps(ledger.init(), sort_keys=True))
