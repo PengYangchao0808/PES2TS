@@ -1,11 +1,28 @@
 {
   "config": "/mnt/e/Calculations/AI4S_ML_Studys/PES2TS/docs/agent_runs/state/parallel_config.json",
   "e0_additions": [
-    "pes2ts_core/pesn/**/*_v3.py",
-    "tests/pesn/test_r3_*.py",
+    "pes2ts_core/pesn/contracts/**/*_v3.py",
+    "pes2ts_core/pesn/features/**/*_v3.py",
+    "pes2ts_core/pesn/models/**/*_v3.py",
+    "pes2ts_core/pesn/offline/training/**/*_v3.py",
     "scripts/campaigns/r3_*.py",
-    "scripts/campaigns/run_v5_1_r3.py"
+    "scripts/campaigns/run_v5_1_r3.py",
+    "tests/pesn/test_r3_*.py"
   ],
+  "e0_lane_additions": {
+    "W-DATA": [],
+    "W-FEAT": [
+      "pes2ts_core/pesn/features/**/*_v3.py",
+      "pes2ts_core/pesn/models/**/*_v3.py",
+      "pes2ts_core/pesn/contracts/**/*_v3.py",
+      "tests/pesn/test_r3_*.py"
+    ],
+    "W-LOSS": [
+      "pes2ts_core/pesn/offline/training/**/*_v3.py",
+      "scripts/campaigns/r3_*.py",
+      "scripts/campaigns/run_v5_1_r3.py"
+    ]
+  },
   "frozen_files": {
     "pes2ts_core/pesn/offline/data/key_atom_teacher.py": {
       "prefix": "5708e866858c24e5",
@@ -20,8 +37,57 @@
       "sha256": "75fd708a1dd6be4530f16d59241400acb6cf739b4c030997a9fafdc34b145a57"
     }
   },
-  "generated_at": "2026-10-20T12:04:13+00:00",
+  "generated_at": "2026-10-20T12:37:46+00:00",
   "kind": "e0_write_allowlist",
+  "lanes": {
+    "W-DATA": {
+      "shared_files": [
+        "scripts/agent_ops/__init__.py",
+        "tests/agent_ops/__init__.py"
+      ],
+      "write_allowlist": [
+        "docs/agent_runs/handoffs/W-DATA_*.md",
+        "scripts/agent_ops/data_gate/**",
+        "tests/agent_ops/data_fixtures/**",
+        "tests/agent_ops/test_data_*.py"
+      ]
+    },
+    "W-FEAT": {
+      "shared_files": [
+        "scripts/agent_ops/__init__.py",
+        "tests/agent_ops/__init__.py"
+      ],
+      "write_allowlist": [
+        "docs/agent_runs/handoffs/W-FEAT_*.md",
+        "pes2ts_core/pesn/contracts/**/*_v3.py",
+        "pes2ts_core/pesn/features/**/*_v3.py",
+        "pes2ts_core/pesn/models/**/*_v3.py",
+        "scripts/agent_ops/feature_gate/**",
+        "tests/agent_ops/test_feature_*.py",
+        "tests/pesn/test_r3_*.py"
+      ]
+    },
+    "W-LOSS": {
+      "shared_files": [
+        "scripts/agent_ops/__init__.py",
+        "tests/agent_ops/__init__.py"
+      ],
+      "write_allowlist": [
+        "docs/agent_runs/handoffs/W-LOSS_*.md",
+        "pes2ts_core/pesn/offline/training/**/*_v3.py",
+        "scripts/agent_ops/gpu_queue/**",
+        "scripts/agent_ops/ledger/**",
+        "scripts/agent_ops/runplan/**",
+        "scripts/agent_ops/supervisor/**",
+        "scripts/campaigns/r3_*.py",
+        "scripts/campaigns/run_v5_1_r3.py",
+        "tests/agent_ops/test_gpu_*.py",
+        "tests/agent_ops/test_ledger_*.py",
+        "tests/agent_ops/test_runplan_*.py",
+        "tests/agent_ops/test_supervisor_*.py"
+      ]
+    }
+  },
   "never_write_all_lanes": [
     "data/ground_truth/**",
     "outputs/pesn/v5_1/**",
@@ -36,7 +102,10 @@
     "docs/agent_runs/handoffs/W-DATA_*.md",
     "docs/agent_runs/handoffs/W-FEAT_*.md",
     "docs/agent_runs/handoffs/W-LOSS_*.md",
-    "pes2ts_core/pesn/**/*_v3.py",
+    "pes2ts_core/pesn/contracts/**/*_v3.py",
+    "pes2ts_core/pesn/features/**/*_v3.py",
+    "pes2ts_core/pesn/models/**/*_v3.py",
+    "pes2ts_core/pesn/offline/training/**/*_v3.py",
     "scripts/agent_ops/data_gate/**",
     "scripts/agent_ops/feature_gate/**",
     "scripts/agent_ops/gpu_queue/**",
@@ -45,6 +114,7 @@
     "scripts/agent_ops/supervisor/**",
     "scripts/campaigns/r3_*.py",
     "scripts/campaigns/run_v5_1_r3.py",
+    "tests/agent_ops/data_fixtures/**",
     "tests/agent_ops/test_data_*.py",
     "tests/agent_ops/test_feature_*.py",
     "tests/agent_ops/test_gpu_*.py",

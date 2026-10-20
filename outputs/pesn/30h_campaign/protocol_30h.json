@@ -1,0 +1,79 @@
+{
+  "schema": "pes2ts_30h_protocol_v1",
+  "campaign_id": "PES2TS_30H_R3_V52_V53",
+  "protocol_version": "1.0.0-e0",
+  "frozen_at": "2026-10-20",
+  "frozen_by": "supervisor (orchestrator), per user PD-1..9 rulings 2026-10-20",
+  "human_signoff": "PENDING — E0_SIGNOFF_REPORT.md 审阅后由用户签认; 签认前本文件所有 sha 视为草案",
+  "authorization_at_freeze": {
+    "formal_training_authorized": false,
+    "sealed_authorized": false,
+    "confirm_authorized": false,
+    "ood_authorized": false,
+    "fit150plus_authorized": false
+  },
+  "normative_config": "config/campaigns/pes2ts_30h_20261020.yaml",
+  "config_sha256": "3081e05479007eaf6b5630a9f893c2977578e9861940f355aeb13535568e4ba4",
+  "code_commit_at_freeze": "HEAD at E0 commit (见 git log 'E0 freeze')",
+  "frozen_artifacts": {
+    "run_plan": {
+      "path": "outputs/pesn/30h_campaign/run_plan.jsonl",
+      "sha256_16": "d2a63599727804e9",
+      "sha256_full": "d2a63599727804e9ff407b30c7e5e1bdfc555c38fa7cafd5857a6cf273073163",
+      "campaign_mode": "full",
+      "runs": 99,
+      "unique_run_ids": 99,
+      "counts": {"R3": 66, "V5.2": 33},
+      "pd3_note": "extra-3 beyond 63 = F-bidir per 30h §4.2; matched forward-only control = F2-forward fold0×3 inside F-main (reuse, not new runs)",
+      "two_stage_binding": {
+        "stage_e0": "config_sha256=real; data/teacher/split=PENDING_E1; features=PENDING_E2",
+        "stage_g0": "五 sha 全实值后方可 launch（ledger 强制 PLAN_NOT_FROZEN 拒绝）",
+        "pin_rule": "run_plan sha256+campaign_mode 已钉定于本文件与 task_state.e0_freeze；任何重建须 --force 且视为重新冻结（新版本号+用户签认）"
+      }
+    },
+    "write_allowlist": {
+      "path": "docs/agent_runs/state/e0_write_allowlist.json",
+      "sha256_16": "9a3e27e12e15c50d",
+      "sha256_full": "9a3e27e12e15c50d8ddcc7b9bde1112c8f98dbf2390e62e0db647a49adbc84e0",
+      "patterns": 23,
+      "frozen_files_denylist": [
+        {"path": "pes2ts_core/pesn/offline/evaluation/key_atom_protocols.py", "sha256_16": "d0af17e1213b49aa"},
+        {"path": "pes2ts_core/pesn/offline/training/key_atom_bc.py", "sha256_16": "75fd708a1dd6be45"},
+        {"path": "pes2ts_core/pesn/offline/data/key_atom_teacher.py", "sha256_16": "5708e866858c24e5"}
+      ]
+    }
+  },
+  "pending_artifacts_two_stage": {
+    "data_manifest.json": "PENDING_E1 (G0 前以实值 sha 写入并重验 run_plan stage=g0)",
+    "teacher_manifest.json": "PENDING_E1",
+    "split_manifest_r3.json": "PENDING_E1",
+    "feature_spec.json": "PENDING_E2",
+    "dataset_sha256": "PENDING_E1",
+    "split_sha256": "PENDING_E1",
+    "teacher_sha256": "PENDING_E1",
+    "feature_spec_sha256": "PENDING_E2"
+  },
+  "gates_initial_state": {
+    "order": ["G0-Data", "G1-Feature", "G2-Move", "G3a-Label", "G3-V52Supervision", "G4-Rollout"],
+    "all_at_freeze": "not_run",
+    "records_dir": "docs/agent_runs/state/gates/",
+    "unseal_tokens": "未配置（C/QT-confirm 批次与 metric_unseal 于对应阶段首次使用时创建，批内幂等）"
+  },
+  "reviews": {
+    "ORA-1": "bootstrap 预审: 3 阻塞 → 已处置",
+    "ORA-2": "五组阻塞 → WP-D2/WP-F2/WP-L2-r2 全闭",
+    "ORA-3": "LAUNCH BLOCKERS: NONE (2026-10-20, master b1907c6)"
+  },
+  "known_residuals_pre_E3": [
+    "WP-L3 (E3 前强制): ledger.append 校验钉定 run_plan sha+mode（防 frozen plan 被改后仍可 launch 的残余路径）; metric_unseal 消费接线（B folds3/4 揭示）; monitor 捕获 PlanNotFrozenError",
+    "assert_campaign_root 集成进 driver 于 E3 lane 启动时",
+    "G1 消费者使用 gate state/passed 而非 gate_admissible 字段（yaml 不匹配时 admissible 不复位）— WP-2 注意",
+    "CI/测试解释器: tests/agent_ops 需 torch 环境（/tmp/opencode/venv 或 pes2ts-gpu）; 系统 python3 下 feature 模块跳过"
+  ],
+  "gpu_diagnosis": "RTX 4060 Ti 8GB; 无 CUDA 进程; 2652MiB=Windows 显示栈(PD-8 不清理); 可用~5.5GB; precheck_gpu 阈值 external>1500MiB 拒绝 formal",
+  "test_record": {
+    "full_pytest": "2997 passed, 1 skipped, exit=0 (186s) @ b1907c6",
+    "agent_ops": "349 passed (merged all lanes)",
+    "fail_closed_probes": "launch-stage verify 拒 PENDING(396 problems); PLAN_NOT_FROZEN; RUN_ID_MISMATCH; UNSEAL_OUTSIDE_BATCH/BATCH_MISMATCH; AUTHORIZATION_REQUIRED; GPU_PRECHECK_REFUSED; SEALED_ROOT_REFUSED"
+  }
+}

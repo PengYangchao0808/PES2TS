@@ -20,6 +20,7 @@
       "write_scopes": [
         "scripts/agent_ops/data_gate/**",
         "tests/agent_ops/test_data_*.py",
+        "tests/agent_ops/data_fixtures/**",
         "docs/agent_runs/handoffs/W-DATA_*.md"
       ],
       "read_scopes": ["data/** 但显式排除 data/ground_truth/**（R1：真值仅经 pes2ts_core.g0.truth.truth_reader accessor，G0 校验 truth_access_log）", "outputs/pesn/30h_campaign/**（只读；哈希核对）"],

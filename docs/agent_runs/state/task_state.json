@@ -8,7 +8,18 @@
   "fit150plus_authorized": false,
   "campaign_wall_clock_budget_h": 30,
   "created": "2026-10-20T09:35Z",
-  "updated": "2026-10-20T10:40Z",
+  "e0_freeze": {
+    "status": "assembled_pending_human_signoff",
+    "protocol": "outputs/pesn/30h_campaign/protocol_30h.json",
+    "run_plan_pinned": {"sha256": "d2a63599727804e9ff407b30c7e5e1bdfc555c38fa7cafd5857a6cf273073163", "campaign_mode": "full", "runs": 99, "note": "钉定；重建须 --force 且=重新冻结+用户签认；WP-L3 将在 ledger.append 强制校验此 sha+mode"},
+    "config_pinned": "3081e05479007eaf6b5630a9f893c2977578e9861940f355aeb13535568e4ba4",
+    "allowlist_pinned": "9a3e27e12e15c50d8ddcc7b9bde1112c8f98dbf2390e62e0db647a49adbc84e0",
+    "gates_initialized": "G0..G4 全部 not_run",
+    "two_stage": "data/teacher/split=PENDING_E1, features=PENDING_E2; G0 前填实值并 stage=g0 重验",
+    "ora3_verdict": "LAUNCH BLOCKERS: NONE",
+    "wp_l3_pre_E3": ["ledger.append 校验钉定 run_plan sha+mode", "metric_unseal 消费接线(B folds3/4)", "monitor 捕获 PlanNotFrozenError", "assert_campaign_root 集成 driver(E3 lane)"]
+  },
+  "updated": "2026-10-20T12:10Z",
   "integration": {"merges": ["fc64ac4 lane-a", "5e6d34b lane-b", "03af790 lane-c", "279967b WP-D2", "7fa6aba WP-F2", "b1907c6 WP-L2-r2"], "suite_commit": "fa63e20", "review_commit": "a5fde4b+pytest回填", "main_pytest": "2997 passed, 1 skipped, exit=0 (186s, @b1907c6 全量)", "worktrees": "wt-a/b/c 保留；三分支已并入 master"},
   "bootstrap_status": "DONE — 等待用户 PD 裁定；后续：WP-L2 硬化 → E0 冻结签认 → formal_training_authorized",
   "phases": [
