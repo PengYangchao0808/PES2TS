@@ -148,16 +148,17 @@ G0→G1→G2(+G3a)→G3→G4 严格按 DAG 顺序由 supervisor 串行评估；�
 | ADR-0028 §2.4 | 旧 53-run 证据只读：`outputs/pesn/v5_1/**`（21 runs）+ `outputs/pesn/v5_1_r1/**`（32 runs）（parallel_config `sealed_boundaries`，路径已按 EXP-2 实勘修正） |
 | ADR-0029 | V5.1b/sealed/Confirm/OOD/Fit150+ 保持关闭；双门不互替 |
 
-## 13. 待决策清单（不猜测，等用户）
+## 13. 待决策清单 → **已裁定（2026-10-20 用户，详见 task_state.pd_rulings）**
 
-1. **六表 vs 五表**：30h 计划六表（irc_curve/irc_node/irc_edge/reaction_intent/curve_quality/sample_view）vs V5.1-R3 v3 §2 五表（canonical_irc…）。建议以 30h 六表为准并回改 R3 v3，需确认。
-2. **等变容差**：30h（rel 1e-5 + abs 1e-6，"建议"）vs R3 v3（abs 1e-4）。harness 双预设已建，gate 用哪个须冻结。
-3. **run 数溯源口径**：v2"60-run"/30h"63→66"。执行值 66 已一致，叙述需统一。
-4. **21-run 降级集**是否可在 `PES2TS_30H_R3_V52_V53` 下计为合法 R3 终局（涉及重新冻结规则）。
-5. **campaign_id 写入**：`run_v5_1_r3.py` 是否固定 `PES2TS_30H_R3_V52_V53`。
-6. **F-ablate mask 范围**：以 30h 全 mask（有序端点/signed role/CV 方向）为准？
-7. `docs/agent_runs/` 原请求称"读取"，实际不存在——已按"新建执行套件"处理，请确认。
-8. GPU 现有 2.6GB 占用是否可在启动前清理（正式训练需近全量 8GB）。
+1. ~~六表 vs 五表~~ → **PD-1 APPROVED 六表**；R3 v3 §2 已修订 v3.2。
+2. ~~等变容差~~ → **PD-2 APPROVED 分层**：Relabel 逐比特+max_abs≤1e-6；旋转/平移/置换 rel1e-5+abs1e-6；1e-4 仅记录性对照、禁止自动放宽。
+3. ~~run 数口径~~ → **PD-3 CONDITIONAL**：66=规划上限（63+3）；额外 3-run 身份须比对明确（30h §4.2 定义为 F-bidir；F2-forward fold0×3 已在 F-main 内作配对对照）；冻结 manifest 列 66 唯一 run_id + 自动验证预算/复用（WP-L2 runplan 实现）。
+4. ~~21-run 降级集~~ → **PD-4 APPROVED**：仅独立部分战役/探索性，不计完整 R3 终局，不得 scale_controlled/V5.1b。
+5. ~~campaign_id~~ → **PD-5 APPROVED** `PES2TS_30H_R3_V52_V53`；stage/arm/run_id 唯一。
+6. ~~F-ablate mask~~ → **PD-6 APPROVED 全 mask**（ordered src/tgt、signed edit、intent_role、有向 CV、隐式方向编码；保留无向化学上下文）。
+7. ~~agent_runs 新建~~ → **PD-7 APPROVED**（台账/索引已维护）。
+8. ~~GPU 占用~~ → **PD-8 DIAGNOSIS-ONLY 完成**：无 CUDA 进程；2652MiB=Windows 显示栈；不清理；~5.5GB 可用（E0 smoke 验证）。
+9. ~~delta_xyz 格式~~ → **PD-9 CONDITIONAL APPROVED**：flat 数组+shape/offset+映射/单位/SHA；eps=1e-6；TS 身份=ts_index。
 
 ## 14. 并行 dry-run 结果（2026-10-20，全部完成并经 supervisor 复核）
 
