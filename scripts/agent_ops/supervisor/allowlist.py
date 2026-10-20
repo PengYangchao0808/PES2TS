@@ -38,6 +38,7 @@ __all__ = [
     "DEFAULT_ALLOWLIST_PATH",
     "DEFAULT_CONFIG_PATH",
     "E0_ADDITIONS",
+    "E0_LANE_ADDITIONS",
     "FROZEN_FILES",
     "AllowlistError",
     "check_frozen",
@@ -50,13 +51,30 @@ __all__ = [
 DEFAULT_CONFIG_PATH = "docs/agent_runs/state/parallel_config.json"
 DEFAULT_ALLOWLIST_PATH = "docs/agent_runs/state/e0_write_allowlist.json"
 
-#: E0 additions on top of the lane write_scopes (interface-freeze scope)
-E0_ADDITIONS = [
-    "pes2ts_core/pesn/**/*_v3.py",
-    "tests/pesn/test_r3_*.py",
-    "scripts/campaigns/r3_*.py",
-    "scripts/campaigns/run_v5_1_r3.py",
-]
+#: E0 additions on top of the lane write_scopes (interface-freeze scope).
+#: Ownership mapping per PARALLEL_EXECUTION_PLAN.md §5.1 (interface-freeze
+#: allowlist line) and the §5 WP table: WP-2/WP-6 deliver pesn features /
+#: models / contracts v3 + tests/pesn/test_r3_* to W-FEAT; WP-4 delivers pesn
+#: offline/training v3 + scripts/campaigns/{r3_*,run_v5_1_r3} to W-LOSS;
+#: W-DATA gets no pes2ts_core E0 addition (WP-1 writes scripts/campaigns via
+#: its own scope).  Hardcoded here on purpose -- parallel_config stays
+#: lane-scope-only (do NOT move this mapping into parallel_config).
+E0_LANE_ADDITIONS = {
+    "W-DATA": [],
+    "W-FEAT": [
+        "pes2ts_core/pesn/features/**/*_v3.py",
+        "pes2ts_core/pesn/models/**/*_v3.py",
+        "pes2ts_core/pesn/contracts/**/*_v3.py",
+        "tests/pesn/test_r3_*.py",
+    ],
+    "W-LOSS": [
+        "pes2ts_core/pesn/offline/training/**/*_v3.py",
+        "scripts/campaigns/r3_*.py",
+        "scripts/campaigns/run_v5_1_r3.py",
+    ],
+}
+#: global (supervisor) union of every lane's E0 addition
+E0_ADDITIONS = sorted({p for pats in E0_LANE_ADDITIONS.values() for p in pats})
 
 #: frozen files pinned at allowlist generation; any later hash drift = alarm
 FROZEN_FILES = [
@@ -122,14 +140,36 @@ def _load_allowlist(allowlist_path: Path) -> Dict[str, Any]:
     return data
 
 
+def _match_components(path_segs: List[str], pat_segs: List[str]) -> bool:
+    """Component-wise glob: ``*``/``?`` match ONE segment (never cross ``/``);
+    ``**`` matches zero or more path segments (ORA-2 blocker 6)."""
+    if not pat_segs:
+        return not path_segs
+    head, rest = pat_segs[0], pat_segs[1:]
+    if head == "**":
+        for i in range(len(path_segs) + 1):
+            if _match_components(path_segs[i:], rest):
+                return True
+        return False
+    if not path_segs:
+        return False
+    if fnmatch.fnmatchcase(path_segs[0], head):
+        return _match_components(path_segs[1:], rest)
+    return False
+
+
 def path_allowed(path: str, patterns: Sequence[str]) -> bool:
     """True when ``path`` matches at least one allowlist pattern.
 
-    ``**`` matches across directory separators (via ``fnmatch`` semantics).
+    Matching is component-wise (slash-aware): ``tests/pesn/test_r3_*.py``
+    does NOT match ``tests/pesn/sub/test_r3_x.py`` because ``*`` stays inside
+    one path component; ``**`` is the only wildcard that crosses ``/``.
     """
-    normalized = path.strip().lstrip("./")
+    normalized = str(path).strip().replace("\\", "/")
+    path_segs = [s for s in normalized.split("/") if s and s != "."]
     for pattern in patterns:
-        if fnmatch.fnmatch(normalized, pattern.replace("**", "*")):
+        pat_segs = [s for s in str(pattern).split("/") if s and s != "."]
+        if pat_segs and _match_components(path_segs, pat_segs):
             return True
     return False
 
@@ -145,12 +185,14 @@ def generate_allowlist(
     config = _load_config(config_path)
 
     patterns: List[str] = []
+    lanes: Dict[str, Dict[str, Any]] = {}
     for lane, workflow in sorted(config["workflows"].items()):
         scopes = workflow.get("write_scopes")
         if not isinstance(scopes, list) or not scopes:
             raise AllowlistError(
                 "CONFIG_CORRUPT: workflow {!r} has no write_scopes".format(lane)
             )
+        lane_patterns: List[str] = []
         for scope in scopes:
             if not isinstance(scope, str) or not scope:
                 raise AllowlistError(
@@ -159,10 +201,16 @@ def generate_allowlist(
                     )
                 )
             patterns.append(scope)
+            lane_patterns.append(scope)
+        # lane-scoped E0 additions (see E0_LANE_ADDITIONS comment, §5.1)
+        lane_patterns.extend(E0_LANE_ADDITIONS.get(lane, []))
+        lanes[lane] = {"write_allowlist": sorted(set(lane_patterns))}
     shared = config.get("shared_files")
     if not isinstance(shared, dict) or not shared:
         raise AllowlistError("CONFIG_CORRUPT: missing shared_files object")
     shared_files = sorted(shared.keys())
+    for lane in lanes:
+        lanes[lane]["shared_files"] = list(shared_files)
 
     frozen: Dict[str, Dict[str, str]] = {}
     for rel in FROZEN_FILES:
@@ -181,8 +229,11 @@ def generate_allowlist(
         "kind": "e0_write_allowlist",
         "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "config": str(config_path),
+        # supervisor/global union (lane sets are authoritative per --lane)
         "write_allowlist": sorted(set(patterns) | set(E0_ADDITIONS)),
+        "lanes": lanes,
         "e0_additions": list(E0_ADDITIONS),
+        "e0_lane_additions": {k: list(v) for k, v in E0_LANE_ADDITIONS.items()},
         "shared_files": shared_files,
         "never_write_all_lanes": config.get("never_write_all_lanes", []),
         "frozen_files": frozen,
@@ -230,10 +281,14 @@ def check_merge(
     allowlist_path: Optional[Any] = None,
     repo_root: Optional[Any] = None,
     allowlist: Optional[Dict[str, Any]] = None,
+    lane: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Diff ``base..branch``; every changed file must be allowlisted.
 
-    Returns ``{"ok": bool, "violations": [...], "files": [...]}`` -- the caller
+    ``lane`` (e.g. ``"W-LOSS"``) validates against that lane's scoped set
+    (write_scopes + its E0 additions + shared files); without a lane the
+    global union is used (supervisor/merge integration view).  Returns
+    ``{"ok": bool, "violations": [...], "files": [...]}`` -- the caller
     (or the CLI) turns ``ok=False`` into exit code 1.
     """
     root = Path(repo_root) if repo_root is not None else Path(__file__).resolve().parents[3]
@@ -243,8 +298,29 @@ def check_merge(
         )
         allowlist = _load_allowlist(allowlist_path)
 
-    patterns: List[str] = list(allowlist.get("write_allowlist", []))
-    shared: List[str] = list(allowlist.get("shared_files", []))
+    if lane is not None:
+        lanes = allowlist.get("lanes")
+        if not isinstance(lanes, dict) or not lanes:
+            raise AllowlistError(
+                "ALLOWLIST_CORRUPT: {} has no per-lane sets (regenerate with this "
+                "tool version)".format(allowlist_path or "<payload>")
+            )
+        if lane not in lanes:
+            raise AllowlistError(
+                "LANE_UNKNOWN: {!r} not in {}".format(lane, ", ".join(sorted(lanes)))
+            )
+        lane_entry = lanes[lane]
+        if not isinstance(lane_entry, dict) or not isinstance(
+            lane_entry.get("write_allowlist"), list
+        ):
+            raise AllowlistError(
+                "ALLOWLIST_CORRUPT: lane {!r} has no write_allowlist".format(lane)
+            )
+        patterns = list(lane_entry["write_allowlist"])
+        shared = list(lane_entry.get("shared_files", allowlist.get("shared_files", [])))
+    else:
+        patterns = list(allowlist.get("write_allowlist", []))
+        shared = list(allowlist.get("shared_files", []))
     never: List[str] = list(allowlist.get("never_write_all_lanes", []))
     allowed = patterns + shared
 
@@ -259,6 +335,7 @@ def check_merge(
         "ok": not violations,
         "base": base,
         "branch": branch,
+        "lane": lane,
         "files": files,
         "violations": violations,
     }
@@ -310,6 +387,12 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--config", default=None, help="parallel_config.json path")
     parser.add_argument("--allowlist", default=None, help="allowlist json path")
+    parser.add_argument(
+        "--lane",
+        default=None,
+        help="check against this lane's scoped allowlist (e.g. W-LOSS); "
+        "omit for the supervisor/global union",
+    )
     sub = parser.add_subparsers(dest="cmd", required=True)
 
     gen = sub.add_parser("generate", help="write the allowlist + frozen denylist json")
@@ -348,19 +431,26 @@ def main(argv: Optional[List[str]] = None) -> int:
                 args.base,
                 allowlist_path=allowlist_path,
                 repo_root=root,
+                lane=args.lane,
             )
             if result["ok"]:
                 print(
-                    "MERGE OK: {} file(s) in {}..{} are within the allowlist".format(
-                        len(result["files"]), args.base, args.branch
+                    "MERGE OK: {} file(s) in {}..{}{} within the allowlist".format(
+                        len(result["files"]),
+                        args.base,
+                        args.branch,
+                        " for lane {}".format(args.lane) if args.lane else "",
                     )
                 )
                 return 0
             for violation in result["violations"]:
                 sys.stderr.write("WRITE_SCOPE_VIOLATION: {}\n".format(violation))
             sys.stderr.write(
-                "MERGE REFUSED: {} violation(s) in {}..{}\n".format(
-                    len(result["violations"]), args.base, args.branch
+                "MERGE REFUSED: {} violation(s) in {}..{}{}\n".format(
+                    len(result["violations"]),
+                    args.base,
+                    args.branch,
+                    " for lane {}".format(args.lane) if args.lane else "",
                 )
             )
             return 1

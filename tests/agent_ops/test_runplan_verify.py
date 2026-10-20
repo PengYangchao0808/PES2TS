@@ -388,3 +388,255 @@ def test_run_id_matches_ledger_hash_scheme(plan_path):
     rec2 = dict(rec)
     rec2["config_sha256"] = "e" * 64
     assert compute_run_id(rec2, scheme="hashed") != rec["run_id"]
+
+
+# ---------------------------------------------------------------------------
+# ORA-2 blocker 1: two-stage sha binding (--stage {e0,g0,launch})
+# ---------------------------------------------------------------------------
+
+FROZEN_SHAS = {
+    "config_sha256": "e5" * 32,
+    "data_sha256": "a1" * 32,
+    "teacher_sha256": "b2" * 32,
+    "features_sha256": "c3" * 32,
+    "split_sha256": "d4" * 32,
+}
+
+
+def test_stage_e0_default_passes_with_pending_tokens(plan_path):
+    ok, problems, summary = verifier.verify_plan(plan_path, stage="e0")
+    assert ok, problems
+    assert summary["stage"] == "e0"
+
+
+def test_stage_g0_and_launch_refuse_pending_shas(plan_path):
+    for stage in ("g0", "launch"):
+        ok, problems, _ = verifier.verify_plan(plan_path, stage=stage)
+        assert not ok, stage
+        assert any(p.startswith("STAGE_") and "PENDING" in p for p in problems), (
+            stage, problems[:3],
+        )
+
+
+def test_stage_e0_requires_real_config_sha(plan_path):
+    header, runs = read_plan(plan_path)
+    runs[10]["config_sha256"] = "PENDING_E1"  # config must be REAL at e0
+    rewrite_plan(plan_path, header, runs)
+    ok, problems, _ = verifier.verify_plan(plan_path, stage="e0")
+    assert not ok
+    assert any(p.startswith("STAGE_E0") and "config_sha256" in p for p in problems)
+
+
+def test_stage_e0_requires_pending_tokens_for_data_shas(plan_path):
+    header, runs = read_plan(plan_path)
+    runs[10]["data_sha256"] = "a1" * 32  # a real data sha means stage g0, not e0
+    rewrite_plan(plan_path, header, runs)
+    ok, problems, _ = verifier.verify_plan(plan_path, stage="e0")
+    assert not ok
+    assert any(p.startswith("STAGE_E0") and "data_sha256" in p for p in problems)
+
+
+def test_zero_sha_fails_at_every_stage(plan_path):
+    for stage in ("e0", "g0", "launch"):
+        header, runs = read_plan(plan_path)
+        runs[50]["config_sha256"] = "0" * 64
+        rewrite_plan(plan_path, header, runs)
+        ok, problems, _ = verifier.verify_plan(plan_path, stage=stage)
+        assert not ok, stage
+        assert any(p.startswith("SHA_ZERO") for p in problems), stage
+
+
+def test_frozen_build_passes_g0_and_launch_but_fails_e0(tmp_path):
+    out = tmp_path / "run_plan.jsonl"
+    builder.write_plan(out, shas=FROZEN_SHAS)
+    for stage in ("g0", "launch"):
+        ok, problems, _ = verifier.verify_plan(out, stage=stage)
+        assert ok, (stage, problems[:5])
+    # frozen plan no longer satisfies the e0 pending-token rule
+    ok, problems, _ = verifier.verify_plan(out, stage="e0")
+    assert not ok
+    assert any(p.startswith("STAGE_E0") for p in problems)
+
+
+def test_invalid_stage_argument_refused(plan_path):
+    ok, problems, _ = verifier.verify_plan(plan_path, stage="whenever")
+    assert not ok
+    assert any(p.startswith("INVALID_STAGE") for p in problems)
+
+
+def test_two_stage_binding_header_required(plan_path):
+    header, runs = read_plan(plan_path)
+    del header["two_stage_binding"]
+    rewrite_plan(plan_path, header, runs)
+    ok, problems, _ = verifier.verify_plan(plan_path)
+    assert not ok
+    assert any(p.startswith("TWO_STAGE_BINDING") for p in problems)
+
+    header["two_stage_binding"] = "trust me, it is bound"
+    rewrite_plan(plan_path, header, runs)
+    ok, problems, _ = verifier.verify_plan(plan_path)
+    assert not ok
+    assert any(p.startswith("TWO_STAGE_BINDING") for p in problems)
+
+
+def test_header_sha_status_reported_per_sha(plan_path):
+    header, runs = read_plan(plan_path)
+    # honest per-sha map exists and matches the plan lines (no single flag)
+    assert header["sha_status"] == {
+        "config_sha256": "real",
+        "data_sha256": "PENDING_E1",
+        "teacher_sha256": "PENDING_E1",
+        "features_sha256": "PENDING_E2",
+        "split_sha256": "PENDING_E1",
+    }
+    assert header["identity_sha_source"] == "two_stage_pending"
+    assert "provided_shas" not in header  # the misleading flag is gone
+
+    header["sha_status"]["config_sha256"] = "zero"  # stale/wrong report
+    rewrite_plan(plan_path, header, runs)
+    ok, problems, _ = verifier.verify_plan(plan_path)
+    assert not ok
+    assert any(p.startswith("HEADER: sha_status") for p in problems)
+
+    header, runs = read_plan(plan_path)
+    del header["sha_status"]
+    rewrite_plan(plan_path, header, runs)
+    ok, problems, _ = verifier.verify_plan(plan_path)
+    assert not ok
+    assert any("missing per-sha sha_status" in p for p in problems)
+
+
+def test_build_refuses_zero_shas(tmp_path):
+    with pytest.raises(builder.BuildError) as excinfo:
+        builder.write_plan(tmp_path / "p.jsonl", shas={"config_sha256": "0" * 64})
+    assert "INVALID_SHAS" in str(excinfo.value)
+    assert "zero" in str(excinfo.value).lower()
+
+
+def test_cli_verify_stage_exit_codes(plan_path):
+    assert (
+        _run_cli("scripts.agent_ops.runplan.verify", ["--plan", str(plan_path), "--stage", "e0"]).returncode
+        == 0
+    )
+    for stage in ("g0", "launch"):
+        proc = _run_cli(
+            "scripts.agent_ops.runplan.verify", ["--plan", str(plan_path), "--stage", stage]
+        )
+        assert proc.returncode == 1, stage
+        assert "VERIFY FAIL" in proc.stderr
+
+
+# ---------------------------------------------------------------------------
+# ORA-2 blocker 8: PD-4 partial (21-run) mode
+# ---------------------------------------------------------------------------
+
+
+def test_partial_mode_build_and_verify(tmp_path):
+    out = tmp_path / "partial.jsonl"
+    summary = builder.write_plan(out, mode="partial")
+    assert summary["campaign_mode"] == "partial"
+    assert summary["R3"] == 21 and summary["runs"] == 21
+    assert summary["unique_run_ids"] == 21
+    assert summary["pd4_note"] is not None and "21-run" in summary["pd4_note"]
+
+    ok, problems, vsummary = verifier.verify_plan(out, stage="e0")
+    assert ok, problems
+    assert vsummary["mode"] == "partial"
+    assert vsummary["R3"] == 21 and vsummary["V5.2"] == 0
+    assert vsummary["substages"] == builder.PARTIAL_SUBSTAGE_COUNTS
+
+    header, runs = read_plan(out)
+    assert header["campaign_mode"] == "partial"
+    assert "21" in header["pd4_note"]
+    assert header["budget"] == {"R3": 21}
+    assert all(r["exploratory_only"] is True for r in runs)
+    assert all(r["confirm"] is False for r in runs)  # no confirm runs in the partial set
+    assert {r["phase"] for r in runs} == {"R3"}
+
+
+def test_partial_line_not_marked_exploratory_refused(tmp_path):
+    out = tmp_path / "partial.jsonl"
+    builder.write_plan(out, mode="partial")
+    header, runs = read_plan(out)
+    runs[0]["exploratory_only"] = False
+    rewrite_plan(out, header, runs)
+    ok, problems, _ = verifier.verify_plan(out)
+    assert not ok
+    assert any("exploratory_only" in p for p in problems)
+
+
+def test_full_line_marked_exploratory_refused(plan_path):
+    header, runs = read_plan(plan_path)
+    runs[0]["exploratory_only"] = True
+    rewrite_plan(plan_path, header, runs)
+    ok, problems, _ = verifier.verify_plan(plan_path)
+    assert not ok
+    assert any("must not be exploratory_only" in p for p in problems)
+
+
+def test_full_plan_marked_partial_refused_by_counts(plan_path):
+    header, runs = read_plan(plan_path)
+    header["campaign_mode"] = "partial"  # 99 lines cannot be a 21-run plan
+    rewrite_plan(plan_path, header, runs)
+    ok, problems, _ = verifier.verify_plan(plan_path)
+    assert not ok
+    assert any(p.startswith("COUNT") and "21" in p for p in problems)
+
+
+def test_partial_header_requires_pd4_note(tmp_path):
+    out = tmp_path / "partial.jsonl"
+    builder.write_plan(out, mode="partial")
+    header, runs = read_plan(out)
+    del header["pd4_note"]
+    rewrite_plan(out, header, runs)
+    ok, problems, _ = verifier.verify_plan(out)
+    assert not ok
+    assert any(p.startswith("PD4_NOTE") for p in problems)
+
+
+def test_cli_build_and_verify_partial(tmp_path):
+    out = tmp_path / "partial.jsonl"
+    proc = _run_cli(
+        "scripts.agent_ops.runplan.build_r3_runplan", ["--out", str(out), "--mode", "partial"]
+    )
+    assert proc.returncode == 0, proc.stderr
+    assert json.loads(proc.stdout)["R3"] == 21
+    proc = _run_cli("scripts.agent_ops.runplan.verify", ["--plan", str(out)])
+    assert proc.returncode == 0, proc.stderr
+    assert "mode=partial R3=21 total=21 unique_run_ids=21" in proc.stdout
+
+
+# ---------------------------------------------------------------------------
+# ORA-2 blocker 2: explicit confirm flags (no heuristics)
+# ---------------------------------------------------------------------------
+
+
+def test_confirm_flags_emitted_exactly_on_confirm_lines(plan_path):
+    _, runs = read_plan(plan_path)
+    flagged = {(r["substage"], r["fold"]) for r in runs if r["confirm"] is True}
+    assert flagged == {("C", 3), ("C", 4), ("QT-confirm", 3), ("QT-confirm", 4)}
+    confirm_lines = [r for r in runs if r["confirm"] is True]
+    assert len(confirm_lines) == 12  # 6 C + 6 QT-confirm
+    assert all(r["fold"] in (3, 4) for r in confirm_lines)
+    # every confirm substage line carries the flag (none missing)
+    assert len([r for r in runs if r["substage"] in ("C", "QT-confirm")]) == 12
+
+
+def test_confirm_flag_missing_on_confirm_line_refused(plan_path):
+    header, runs = read_plan(plan_path)
+    target = next(r for r in runs if r["substage"] == "QT-confirm")
+    target["confirm"] = False
+    rewrite_plan(plan_path, header, runs)
+    ok, problems, _ = verifier.verify_plan(plan_path)
+    assert not ok
+    assert any(p.startswith("CONFIRM") and "confirm=true" in p for p in problems)
+
+
+def test_confirm_flag_set_on_non_confirm_line_refused(plan_path):
+    header, runs = read_plan(plan_path)
+    target = next(r for r in runs if r["substage"] == "F-main")
+    target["confirm"] = True
+    rewrite_plan(plan_path, header, runs)
+    ok, problems, _ = verifier.verify_plan(plan_path)
+    assert not ok
+    assert any(p.startswith("CONFIRM") and "outside" in p for p in problems)

@@ -43,12 +43,19 @@ WP-L2 hardening (fail-closed; Oracle ORA-1):
   ``running`` counts one launch attempt; attempts include retries and are
   cross-checked against the bound ``run_plan.jsonl`` (``plan_path``): the
   campaign+phase plan count is the cap (R3=66, V5.2=33), launching a run not
-  listed in the plan, or a phase absent from a bound plan, raises
-  :class:`BudgetCapExceeded`.  Bound-plan problems (missing/corrupt) raise,
-  never warn.
-* ``confirm_unseal``: launching a fold3/4 **confirm** run consumes the single
-  token in ``state/gates/unseal.json`` (count<=1); a second use, a corrupt
-  file or an unconfigured unseal path raises :class:`UnsealExceeded`.
+  EXACTLY matching a planned run_id (identity = full hashed run_id incl.
+  variant), or a phase absent from a bound plan, raises
+  :class:`BudgetCapExceeded`; a plan line whose five identity shas are still
+  ``PENDING_*``/zero at launch raises :class:`PlanNotFrozenError`.
+* ``confirm_unseal`` (ORA-2/3): the token is consumed FOR A BATCH of
+  pre-registered ``confirm: true`` run_ids (C-stage + QT-confirm lines of the
+  bound plan): first launch opens the batch for all of its runs (idempotent
+  per run), runs outside the batch and second/different batches raise
+  :class:`UnsealExceeded`.  ``metric_unseal`` is a separate one-shot token
+  for B-stage folds3/4 sealed-baseline metric reveal (30h §4.2).
+* Partial (PD-4, 21-run) plans force ``admissibility =
+  not_admissible_exploratory`` at launch and refuse ``scale_controlled``/
+  ``V5.1b`` keywords in any finalize (:class:`ExploratoryOnlyError`).
 """
 
 from __future__ import annotations
@@ -72,10 +79,12 @@ __all__ = [
     "AppendOutcome",
     "BudgetCapExceeded",
     "DEFAULT_CAPS",
+    "ExploratoryOnlyError",
     "IllegalTransition",
     "LedgerError",
     "MISSING_PLACEHOLDER",
     "PLACEHOLDER",
+    "PlanNotFrozenError",
     "RetryCapExceeded",
     "RunIdConflict",
     "RunLedger",
@@ -85,8 +94,11 @@ __all__ = [
     "confirm_unseal",
     "is_confirm_run",
     "is_formal_record",
+    "is_frozen_sha",
     "main",
+    "metric_unseal",
     "pid_alive",
+    "read_run_plan",
     "validate",
 ]
 
@@ -156,6 +168,9 @@ CONTENT_FIELDS = IDENTITY_FIELDS + (
     "evidence_sha",
     "attempt",
     "parent_run_id",
+    # explicit confirm-run flag (mirrors run_plan ``confirm: true``; ORA-2/2
+    # forbids heuristic arm/variant detection)
+    "confirm",
 )
 
 KNOWN_STATUSES = ("planned", "running", "done", "failed", "killed", "skipped", "interrupted")
@@ -173,9 +188,14 @@ ALLOWED_TRANSITIONS: Dict[str, frozenset] = {
 RETRY_SOURCES = frozenset({"failed", "interrupted"})
 MAX_RETRIES = 2  # retry_count <= 2 free of charge; the 3rd retry needs override
 
-# -- WP-L2 formal-record schema ------------------------------------------
+#: -- WP-L2 formal-record schema ------------------------------------------
 FORMAL_FIELDS = ("gate_id", "admissibility", "evidence_sha", "attempt", "parent_run_id")
-ADMISSIBILITY_VALUES = ("admissible", "not_admissible_until_gate_pass")
+ADMISSIBILITY_VALUES = (
+    "admissible",
+    "not_admissible_until_gate_pass",
+    # PD-4 partial (21-run exploratory) campaigns can NEVER be admissible:
+    "not_admissible_exploratory",
+)
 
 #: statuses that mean "this run has been launched at least once"
 LAUNCHED_STATES = frozenset({"running", "done", "failed", "killed", "interrupted"})
@@ -183,8 +203,12 @@ LAUNCHED_STATES = frozenset({"running", "done", "failed", "killed", "interrupted
 #: campaign budget caps (task_state budget.run_caps; counts ALL launch attempts)
 DEFAULT_CAPS: Dict[str, int] = {"R3": 66, "V5.2": 33}
 
-#: default unseal token location (relative to the campaign root)
+#: default unseal token locations (relative to the campaign root)
 DEFAULT_UNSEAL_SUBPATH = "docs/agent_runs/state/gates/unseal.json"
+DEFAULT_METRIC_UNSEAL_SUBPATH = "docs/agent_runs/state/gates/metric_unseal.json"
+
+#: keywords forbidden in any finalize of a partial (PD-4) campaign plan
+PARTIAL_FORBIDDEN_FINALIZE_KEYWORDS = ("scale_controlled", "v5.1b")
 
 DEFAULT_LEDGER_PATH = "outputs/pesn/30h_campaign/run_records.jsonl"
 EVENTS_FILENAME = "events.jsonl"
@@ -220,8 +244,18 @@ class BudgetCapExceeded(LedgerError):
     or a launch not backed by the bound ``run_plan.jsonl``."""
 
 
+class PlanNotFrozenError(LedgerError):
+    """Plan line for this run still carries PENDING/zero identity shas, or the
+    launched run_id does not exactly match the planned run_id (ORA-2/1,2)."""
+
+
+class ExploratoryOnlyError(LedgerError):
+    """A partial (PD-4) plan can never yield an admissible record."""
+
+
 class UnsealExceeded(LedgerError):
-    """fold3/4 confirm unseal token missing/corrupt/already consumed."""
+    """fold3/4 confirm / metric unseal token missing/corrupt/already consumed
+    for a different batch."""
 
 
 class RunNotFound(LedgerError):
@@ -308,14 +342,13 @@ def is_formal_record(record: Dict[str, Any]) -> bool:
 
 
 def is_confirm_run(record: Dict[str, Any]) -> bool:
-    """fold3/4 confirm runs consume the one-shot unseal token (30h plan 7.3)."""
-    fold = record.get("fold")
-    if isinstance(fold, bool) or not isinstance(fold, int) or fold < 3:
-        return False
-    arm = str(record.get("arm") or "")
-    variant = str(record.get("variant") or "")
-    lowered = "{} {}".format(arm, variant).lower()
-    return arm == "C" or "confirm" in lowered
+    """Confirm runs are declared EXPLICITLY (``confirm: true``), never inferred.
+
+    The run_plan builder emits ``confirm: true`` only for fold3/4 confirm
+    lines (R3 arm-C folds3/4 and V5.2 QT-confirm); ORA-2 blocker 2 forbids
+    arm/variant heuristics.
+    """
+    return record.get("confirm") is True
 
 
 def _identity(record: Dict[str, Any]) -> Dict[str, Any]:
@@ -389,6 +422,12 @@ def validate(record: Any) -> Dict[str, Any]:
             raise LedgerError("INVALID_FIELD: {} must be a non-empty string".format(key))
     if "supervisor_override" in record and not isinstance(record["supervisor_override"], bool):
         raise LedgerError("INVALID_FIELD: supervisor_override must be a bool")
+    if "confirm" in record and not isinstance(record.get("confirm"), bool):
+        raise LedgerError(
+            "INVALID_CONFIRM: confirm must be a bool (explicit plan flag), got {!r}".format(
+                record.get("confirm")
+            )
+        )
     # -- WP-L2 formal record schema (fail-closed: all five keys, exact types)
     formal_keys_present = [k for k in FORMAL_FIELDS if k in record]
     if formal_keys_present and len(formal_keys_present) != len(FORMAL_FIELDS):
@@ -520,12 +559,26 @@ def _read_lines(path: Path) -> List[str]:
 
 
 def read_run_plan(plan_path: Any) -> Dict[str, Any]:
-    """Parse a ``run_plan.jsonl`` for append-time budget cross-checks.
+    """Parse a ``run_plan.jsonl`` for append-time budget/identity cross-checks.
 
-    Returns ``{"counts": {(campaign_id, phase): planned_runs},
-    "keys": {(campaign_id, phase, arm, fold, seed)}}``.  Header lines
-    (``record_type == "plan_header"``) are skipped.  A missing or corrupt plan
-    raises :class:`LedgerError` -- a bound plan is fail-closed, never optional.
+    Returns::
+
+        {
+          "counts":   {(campaign_id, phase): planned_runs},
+          "keys":     {(campaign_id, phase, arm, fold, seed, variant)},
+          "run_ids":  {run_id, ...},
+          "by_run_id": {run_id: line},
+          "mode":     "full" | "partial",
+          "confirm_run_ids": [run_id, ...],   # lines with explicit confirm=true
+          "header":   plan_header dict,
+        }
+
+    Plan identity (ORA-2 blocker 2): membership is checked against the final
+    ``run_id`` (and the 6-tuple including ``variant`` for diagnostics), not the
+    5-tuple alone -- changed-config-same-name must never match a planned run.
+    Header lines (``record_type == "plan_header"``) are skipped for membership;
+    a missing or corrupt plan raises :class:`LedgerError` -- a bound plan is
+    fail-closed, never optional.
     """
     path = Path(plan_path)
     if not path.is_file():
@@ -535,6 +588,12 @@ def read_run_plan(plan_path: Any) -> Dict[str, Any]:
         raise LedgerError("PLAN_CORRUPT: bound run_plan.jsonl is empty: {}".format(path))
     counts: Dict[tuple, int] = {}
     keys = set()
+    by_key: Dict[tuple, str] = {}
+    run_ids = set()
+    by_run_id: Dict[str, Dict[str, Any]] = {}
+    confirm_run_ids: List[str] = []
+    header: Dict[str, Any] = {}
+    seen_header = False
     for lineno, line in enumerate(lines, start=1):
         try:
             rec = json.loads(line)
@@ -547,6 +606,12 @@ def read_run_plan(plan_path: Any) -> Dict[str, Any]:
                 "PLAN_CORRUPT: {} line {} is not a JSON object".format(path, lineno)
             )
         if rec.get("record_type") == "plan_header":
+            if seen_header:
+                raise LedgerError(
+                    "PLAN_CORRUPT: {} has more than one plan_header".format(path)
+                )
+            seen_header = True
+            header = rec
             continue
         for field_name in ("campaign_id", "phase", "arm"):
             if not (isinstance(rec.get(field_name), str) and rec.get(field_name)):
@@ -563,73 +628,224 @@ def read_run_plan(plan_path: Any) -> Dict[str, Any]:
                         path, lineno, field_name
                     )
                 )
+        run_id = rec.get("run_id")
+        if not (isinstance(run_id, str) and run_id):
+            raise LedgerError(
+                "PLAN_CORRUPT: {} line {} missing run_id".format(path, lineno)
+            )
+        if run_id in by_run_id:
+            raise LedgerError(
+                "PLAN_CORRUPT: {} duplicate run_id {}".format(path, run_id)
+            )
         campaign_phase = (rec["campaign_id"], rec["phase"])
         counts[campaign_phase] = counts.get(campaign_phase, 0) + 1
-        keys.add(
-            (rec["campaign_id"], rec["phase"], rec["arm"], rec["fold"], rec["seed"])
+        key6 = (
+            rec["campaign_id"],
+            rec["phase"],
+            rec["arm"],
+            rec["fold"],
+            rec["seed"],
+            rec.get("variant"),
         )
-    return {"counts": counts, "keys": keys}
+        keys.add(key6)
+        if key6 in by_key and by_key[key6] != run_id:
+            raise LedgerError(
+                "PLAN_CORRUPT: {} duplicate (campaign,phase,arm,fold,seed,variant) "
+                "key {} under run_ids {} and {}".format(path, key6, by_key[key6], run_id)
+            )
+        by_key[key6] = run_id
+        run_ids.add(run_id)
+        by_run_id[run_id] = rec
+        if rec.get("confirm") is True:
+            confirm_run_ids.append(run_id)
+    mode = header.get("campaign_mode", "full")
+    if mode not in ("full", "partial"):
+        raise LedgerError("PLAN_CORRUPT: campaign_mode {!r} not in full/partial".format(mode))
+    return {
+        "counts": counts,
+        "keys": keys,
+        "by_key": by_key,
+        "run_ids": run_ids,
+        "by_run_id": by_run_id,
+        "mode": mode,
+        "confirm_run_ids": sorted(confirm_run_ids),
+        "header": header,
+    }
+
+
+def is_frozen_sha(value: Any) -> bool:
+    """A real, bound, non-placeholder 64-hex digest (not zero, not PENDING_*)."""
+    return bool(
+        isinstance(value, str)
+        and HASH_RE.match(value)
+        and value != "0" * 64
+    )
 
 
 # --------------------------------------------------------------------------
-# one-shot fold3/4 unseal token (30h plan section 7.3 / task_state)
+# one-shot unseal tokens: BATCH semantics (30h plan 7.3 / ORA-2 blocker 3)
 # --------------------------------------------------------------------------
 
 
-def confirm_unseal(unseal_path: Any, run_id: Optional[str] = None) -> Dict[str, Any]:
-    """Consume the single fold3/4 confirm-unseal token.
+def _consume_batch_token(
+    path: Any,
+    *,
+    batch_id: Any,
+    allowed_run_ids: Any,
+    run_id: Optional[str],
+    kind: str,
+    missing_code: str,
+) -> Dict[str, Any]:
+    """Consume a one-shot token FOR A BATCH of pre-registered run_ids.
 
-    ``state/gates/unseal.json`` must satisfy ``count <= 0`` to be consumable:
-    the first use writes ``count=1``; any *second* run (or a tampered file with
-    ``count >= 1`` naming another run) raises :class:`UnsealExceeded`.  A
-    re-entry of the *same* run_id (retry of an already-opened confirm run) is
-    an idempotent no-op -- it never increments the counter.  Corrupt/unreadable
-    content always refuses.  Written via flock + tmp + ``os.replace``.
+    Token file schema: ``{kind, batch_id, allowed_run_ids[], count,
+    consumed_at, run_id}``.  First use writes ``count=1`` covering the whole
+    batch; every run inside ``allowed_run_ids`` is then admissible
+    (idempotent, never re-increments); a run outside the registered batch, or
+    a *second, different* batch (different run_id set), raises
+    :class:`UnsealExceeded`.  Corrupt/missing structure always refuses.
+    Written via flock + tmp + ``os.replace``.
     """
-    if unseal_path is None:
+    if path is None:
         raise UnsealExceeded(
-            "UNSEAL_NOT_CONFIGURED: fold3/4 confirm runs require an unseal path "
-            "({} default)".format(DEFAULT_UNSEAL_SUBPATH)
+            "{}: {} token path not configured".format(missing_code, kind)
         )
-    path = Path(unseal_path)
-    lock = Path(str(path) + ".lock")
+    if not (isinstance(batch_id, str) and batch_id):
+        raise UnsealExceeded(
+            "UNSEAL_CORRUPT: batch_id must be a non-empty string, got {!r}".format(batch_id)
+        )
+    if not isinstance(allowed_run_ids, (list, tuple)) or not allowed_run_ids:
+        raise UnsealExceeded(
+            "UNSEAL_CORRUPT: allowed_run_ids must be a non-empty list of run_ids"
+        )
+    normalized = sorted({str(r) for r in allowed_run_ids if str(r)})
+    if not normalized or len(normalized) != len(set(str(r) for r in allowed_run_ids)):
+        raise UnsealExceeded(
+            "UNSEAL_CORRUPT: allowed_run_ids must be unique non-empty strings"
+        )
+    if run_id is not None and run_id not in normalized:
+        # the batch is PRE-REGISTERED: an unregistered run can never open it
+        raise UnsealExceeded(
+            "UNSEAL_OUTSIDE_BATCH: run {!r} is not in the pre-registered batch "
+            "{!r} ({})".format(run_id, batch_id, normalized)
+        )
+
+    token_path = Path(path)
+    lock = Path(str(token_path) + ".lock")
     with _file_lock(lock):
         payload: Dict[str, Any]
-        if path.exists():
+        if token_path.exists():
             try:
-                raw = path.read_text(encoding="utf-8")
+                raw = token_path.read_text(encoding="utf-8")
                 payload = json.loads(raw)
             except (OSError, json.JSONDecodeError) as exc:
                 raise UnsealExceeded(
-                    "UNSEAL_CORRUPT: {} is unreadable/invalid: {}".format(path, exc)
+                    "UNSEAL_CORRUPT: {} is unreadable/invalid: {}".format(token_path, exc)
                 ) from exc
             if not isinstance(payload, dict):
                 raise UnsealExceeded(
-                    "UNSEAL_CORRUPT: {} must contain a JSON object".format(path)
+                    "UNSEAL_CORRUPT: {} must contain a JSON object".format(token_path)
                 )
             count = payload.get("count")
             if isinstance(count, bool) or not isinstance(count, int) or count < 0:
                 raise UnsealExceeded(
                     "UNSEAL_CORRUPT: count must be an int >= 0, got {!r}".format(count)
                 )
-            if count >= 1:
-                owner = payload.get("run_id")
-                if run_id is not None and owner == run_id:
-                    # same run retry: token already consumed by us, no-op
-                    return dict(payload)
+            stored_ids = payload.get("allowed_run_ids")
+            if not isinstance(stored_ids, list) or not all(
+                isinstance(r, str) and r for r in stored_ids
+            ):
                 raise UnsealExceeded(
-                    "UNSEAL_ALREADY_USED: {} already consumed (count={}, run_id={!r}); "
-                    "the fold3/4 confirm unseal is one-shot".format(
-                        path, count, owner
+                    "UNSEAL_CORRUPT: stored allowed_run_ids invalid in {}".format(token_path)
+                )
+            if count >= 1:
+                if sorted(stored_ids) != normalized:
+                    # a *different* pre-registered batch after consumption: refuse
+                    raise UnsealExceeded(
+                        "UNSEAL_BATCH_MISMATCH: {} already consumed for batch {!r} "
+                        "({} run_ids); second different batch refused".format(
+                            token_path, payload.get("batch_id"), len(stored_ids)
+                        )
                     )
+                if run_id is not None and run_id in stored_ids:
+                    return dict(payload)  # in-batch run (incl. same-run retry): idempotent
+                raise UnsealExceeded(
+                    "UNSEAL_OUTSIDE_BATCH: run {!r} is not in the consumed batch "
+                    "{!r} ({})".format(run_id, payload.get("batch_id"), token_path)
                 )
         else:
             payload = {}
+        payload["kind"] = kind
+        payload["batch_id"] = batch_id
+        payload["allowed_run_ids"] = normalized
         payload["count"] = int(payload.get("count", 0) or 0) + 1
-        payload["used_at"] = _utc_now_iso()
+        payload["consumed_at"] = _utc_now_iso()
         payload["run_id"] = run_id
-        _atomic_rewrite(path, json.dumps(payload, sort_keys=True, ensure_ascii=False))
+        _atomic_rewrite(token_path, json.dumps(payload, sort_keys=True, ensure_ascii=False))
         return dict(payload)
+
+
+def confirm_unseal(
+    unseal_path: Any,
+    run_id: Optional[str] = None,
+    *,
+    batch_id: Optional[str] = None,
+    allowed_run_ids: Any = None,
+) -> Dict[str, Any]:
+    """Consume the one-shot fold3/4 confirm-unseal token for a registered batch.
+
+    ``allowed_run_ids`` is the pre-registered confirm run set (from
+    ``run_plan.jsonl`` lines with ``confirm: true``; defaults to the single
+    ``run_id`` for ad-hoc use).  See :func:`_consume_batch_token` for the
+    batch semantics.
+    """
+    if allowed_run_ids is None:
+        if run_id is None:
+            raise UnsealExceeded(
+                "UNSEAL_CORRUPT: allowed_run_ids or run_id required to register a batch"
+            )
+        allowed_run_ids = [run_id]
+    if batch_id is None:
+        batch_id = "confirm-batch"
+    return _consume_batch_token(
+        unseal_path,
+        batch_id=batch_id,
+        allowed_run_ids=allowed_run_ids,
+        run_id=run_id,
+        kind="confirm",
+        missing_code="UNSEAL_NOT_CONFIGURED",
+    )
+
+
+def metric_unseal(
+    metric_unseal_path: Any,
+    run_id: Optional[str] = None,
+    *,
+    batch_id: Optional[str] = None,
+    allowed_run_ids: Any = None,
+) -> Dict[str, Any]:
+    """One-shot reveal of B-stage folds3/4 sealed-baseline metrics (30h §4.2).
+
+    Same batch semantics as :func:`confirm_unseal` but a *separate* token
+    (``state/gates/metric_unseal.json``): consuming it never consumes the
+    confirm token, and vice versa.
+    """
+    if allowed_run_ids is None:
+        if run_id is None:
+            raise UnsealExceeded(
+                "UNSEAL_CORRUPT: allowed_run_ids or run_id required to register a batch"
+            )
+        allowed_run_ids = [run_id]
+    if batch_id is None:
+        batch_id = "metric-batch"
+    return _consume_batch_token(
+        metric_unseal_path,
+        batch_id=batch_id,
+        allowed_run_ids=allowed_run_ids,
+        run_id=run_id,
+        kind="metric",
+        missing_code="METRIC_UNSEAL_NOT_CONFIGURED",
+    )
 
 
 # --------------------------------------------------------------------------
@@ -656,6 +872,7 @@ class RunLedger:
         plan_path: Optional[Any] = None,
         caps: Optional[Dict[str, int]] = None,
         unseal_path: Optional[Any] = None,
+        metric_unseal_path: Optional[Any] = None,
     ) -> None:
         if run_id_scheme not in ("auto", "legacy", "hashed"):
             raise LedgerError(
@@ -672,8 +889,12 @@ class RunLedger:
         self.caps: Dict[str, int] = dict(DEFAULT_CAPS)
         if caps is not None:
             self.caps.update(caps)
-        #: one-shot fold3/4 unseal token path (None = confirm launches refuse)
+        #: one-shot fold3/4 confirm BATCH unseal token (None = confirm refuses)
         self.unseal_path = Path(unseal_path) if unseal_path is not None else None
+        #: separate one-shot B-stage folds3/4 metric-reveal token
+        self.metric_unseal_path = (
+            Path(metric_unseal_path) if metric_unseal_path is not None else None
+        )
 
     # -- lifecycle ---------------------------------------------------------
 
@@ -836,14 +1057,74 @@ class RunLedger:
                     )
 
             if to_status == "running":
-                # WP-L2: every launch attempt is budget-checked (all attempts,
-                # incl. retries) and confirm runs burn the one-shot unseal.
+                # WP-L2/ORA-2: every launch attempt is plan-bound (exact run_id
+                # membership + frozen identity shas), budget-checked (all
+                # attempts incl. retries), partial-plan-forced exploratory, and
+                # confirm runs burn the one-shot BATCH unseal token.
                 previously_launched = from_status in LAUNCHED_STATES
-                self._budget_check_locked(
-                    rec, run_id, all_latest, retry_count, previously_launched
+                plan = (
+                    read_run_plan(self.plan_path)
+                    if self.plan_path is not None
+                    else None
                 )
-                if is_confirm_run(rec):
-                    confirm_unseal(self.unseal_path, run_id=run_id)
+                plan_line: Optional[Dict[str, Any]] = None
+                if plan is not None:
+                    plan_line = plan["by_run_id"].get(run_id)
+                    if plan["mode"] == "partial":
+                        adm = rec.get("admissibility")
+                        if adm != "not_admissible_exploratory":
+                            raise ExploratoryOnlyError(
+                                "NOT_ADMISSIBLE_EXPLORATORY: partial (PD-4) plan "
+                                "{!r} forbids admissibility={!r}; records must be "
+                                "not_admissible_exploratory".format(
+                                    str(self.plan_path), adm
+                                )
+                            )
+                self._budget_check_locked(
+                    rec, run_id, all_latest, retry_count, previously_launched, plan
+                )
+                effective_confirm = is_confirm_run(rec)
+                if plan_line is not None:
+                    plan_confirm = plan_line.get("confirm") is True
+                    if "confirm" in rec and bool(rec["confirm"]) != plan_confirm:
+                        raise LedgerError(
+                            "CONFIRM_FLAG_MISMATCH: record confirm={!r} but plan "
+                            "line {} says confirm={!r} (plan is authoritative)".format(
+                                rec.get("confirm"), run_id, plan_confirm
+                            )
+                        )
+                    effective_confirm = plan_confirm
+                if effective_confirm:
+                    if plan is not None:
+                        allowed = plan["confirm_run_ids"]
+                        batch_id = "plan-confirm-batch"
+                    else:
+                        allowed = [run_id]
+                        batch_id = "solo-confirm-{}".format(run_id)
+                    confirm_unseal(
+                        self.unseal_path,
+                        run_id,
+                        batch_id=batch_id,
+                        allowed_run_ids=allowed,
+                    )
+
+            if to_status == "done":
+                # PD-4: partial-campaign finalizes may never claim these
+                if self.plan_path is not None:
+                    plan = read_run_plan(self.plan_path)
+                    if plan["mode"] == "partial":
+                        for field_name, value in rec.items():
+                            if not isinstance(value, str):
+                                continue
+                            lowered = value.lower()
+                            for keyword in PARTIAL_FORBIDDEN_FINALIZE_KEYWORDS:
+                                if keyword in lowered:
+                                    raise ExploratoryOnlyError(
+                                        "PARTIAL_FINALIZE_FORBIDDEN: keyword {!r} in "
+                                        "{} of a partial-plan finalize (PD-4: no "
+                                        "scale_controlled/V5.1b from 21-run "
+                                        "exploratory sets)".format(keyword, field_name)
+                                    )
 
             entry = dict(latest)
             entry.update(rec)
@@ -862,20 +1143,26 @@ class RunLedger:
         all_latest: Dict[str, Dict[str, Any]],
         retry_count: int,
         previously_launched: bool,
+        plan: Optional[Dict[str, Any]],
     ) -> None:
-        """Fail-closed launch budget check (caller holds the ledger lock).
+        """Fail-closed launch budget/identity check (caller holds the lock).
 
-        Raises :class:`BudgetCapExceeded` when this launch attempt would take
-        the campaign+phase past its cap (plan count and/or ``DEFAULT_CAPS``),
-        when a cap-bearing phase has no entry in a bound plan, or when the run
-        itself is not listed in a bound plan.
+        With a bound plan (ORA-2 blockers 1+2):
+          * the launched ``run_id`` must EQUAL a planned run_id
+            (:class:`BudgetCapExceeded` ``NOT_IN_PLAN`` otherwise; a matching
+            6-tuple with a different run_id is ``PlanNotFrozenError``
+            ``RUN_ID_MISMATCH`` -- the plan was built with other shas);
+          * the plan line's five identity shas must be REAL (no PENDING/zero)
+            at launch stage, else :class:`PlanNotFrozenError`
+            ``PLAN_NOT_FROZEN``;
+          * the plan count for the phase is the effective cap.
+        Without a plan the phase ``DEFAULT_CAPS`` (R3=66 / V5.2=33) applies.
         """
         campaign = rec.get("campaign_id")
         phase = rec.get("phase")
         cap = self.caps.get(phase)
         plan_count: Optional[int] = None
-        if self.plan_path is not None:
-            plan = read_run_plan(self.plan_path)
+        if plan is not None:
             plan_count = plan["counts"].get((campaign, phase))
             if plan_count is None:
                 if cap is not None:
@@ -884,12 +1171,56 @@ class RunLedger:
                         "runs in {}".format(phase, cap, self.plan_path)
                     )
             else:
-                plan_key = (campaign, phase, rec.get("arm"), rec.get("fold"), rec.get("seed"))
-                if plan_key not in plan["keys"]:
-                    raise BudgetCapExceeded(
-                        "NOT_IN_PLAN: run (campaign={}, phase={}, arm={}, fold={}, "
-                        "seed={}) is not in {}".format(*plan_key, self.plan_path)
+                line = plan["by_run_id"].get(run_id)
+                if line is None:
+                    key6 = (
+                        campaign,
+                        phase,
+                        rec.get("arm"),
+                        rec.get("fold"),
+                        rec.get("seed"),
+                        rec.get("variant"),
                     )
+                    planned_for_key = plan["by_key"].get(key6)
+                    if planned_for_key is not None:
+                        # same planned run, different run_id: the plan line's
+                        # shas decide WHICH refusal this is (blocker 1)
+                        planned_line = plan["by_run_id"][planned_for_key]
+                        for sha_field in REQUIRED_HASH_FIELDS:
+                            if not is_frozen_sha(planned_line.get(sha_field)):
+                                raise PlanNotFrozenError(
+                                    "PLAN_NOT_FROZEN: planned run {} still carries "
+                                    "{}={!r} (stage e0 pending/zero); bind all five "
+                                    "identity shas (stage g0/launch) and rebuild "
+                                    "the plan before launching".format(
+                                        planned_for_key,
+                                        sha_field,
+                                        planned_line.get(sha_field),
+                                    )
+                                )
+                        raise PlanNotFrozenError(
+                            "RUN_ID_MISMATCH: planned run_id {} for (campaign={}, "
+                            "phase={}, arm={}, fold={}, seed={}, variant={!r}) but "
+                            "launched {} -- rebuild the plan with the frozen shas "
+                            "or fix the record identity".format(
+                                planned_for_key, *key6, run_id
+                            )
+                        )
+                    raise BudgetCapExceeded(
+                        "NOT_IN_PLAN: run_id {} (campaign={}, phase={}, arm={}, "
+                        "fold={}, seed={}, variant={!r}) is not in {}".format(
+                            run_id, *key6, self.plan_path
+                        )
+                    )
+                for sha_field in REQUIRED_HASH_FIELDS:
+                    if not is_frozen_sha(line.get(sha_field)):
+                        raise PlanNotFrozenError(
+                            "PLAN_NOT_FROZEN: planned run {} still carries "
+                            "{}={!r}; bind all five identity shas (stage "
+                            "g0/launch) before launching".format(
+                                run_id, sha_field, line.get(sha_field)
+                            )
+                        )
                 cap = plan_count if cap is None else min(cap, plan_count)
         if cap is None:
             return  # phase has neither a cap nor planned runs: not budget-governed
@@ -919,20 +1250,73 @@ class RunLedger:
                     run_id,
                     cap,
                     "run_plan.jsonl"
-                    if self.plan_path is not None and plan_count is not None
+                    if plan is not None and plan_count is not None
                     else "run_caps",
                 )
             )
 
-    def confirm_unseal(self, run_id: Optional[str] = None) -> Dict[str, Any]:
-        """Consume the one-shot fold3/4 confirm-unseal token for this ledger."""
+    def confirm_unseal(
+        self,
+        run_id: Optional[str] = None,
+        *,
+        batch_id: Optional[str] = None,
+        allowed_run_ids: Optional[List[str]] = None,
+    ) -> Dict[str, Any]:
+        """Consume the one-shot fold3/4 confirm-unseal token for a registered batch.
+
+        When the ledger has a bound plan and no explicit batch is given, the
+        batch is the plan's ``confirm: true`` run set (all C-stage + QT-confirm
+        run_ids); otherwise the batch defaults to the single ``run_id``.
+        """
         if self.unseal_path is None:
             raise UnsealExceeded(
                 "UNSEAL_NOT_CONFIGURED: ledger has no unseal_path (expected {})".format(
                     DEFAULT_UNSEAL_SUBPATH
                 )
             )
-        return confirm_unseal(self.unseal_path, run_id=run_id)
+        if allowed_run_ids is None and self.plan_path is not None:
+            plan = read_run_plan(self.plan_path)
+            allowed_run_ids = list(plan["confirm_run_ids"])
+            batch_id = batch_id or "plan-confirm-batch"
+            if not allowed_run_ids:
+                raise UnsealExceeded(
+                    "UNSEAL_CORRUPT: bound plan {} registers no confirm:true runs"
+                    .format(self.plan_path)
+                )
+        if batch_id is None:
+            if run_id is None:
+                raise UnsealExceeded(
+                    "UNSEAL_CORRUPT: run_id required to register a solo batch"
+                )
+            batch_id = "solo-confirm-{}".format(run_id)
+        return confirm_unseal(
+            self.unseal_path,
+            run_id,
+            batch_id=batch_id,
+            allowed_run_ids=allowed_run_ids,
+        )
+
+    def metric_unseal(
+        self,
+        run_id: Optional[str] = None,
+        *,
+        batch_id: Optional[str] = None,
+        allowed_run_ids: Any = None,
+    ) -> Dict[str, Any]:
+        """Consume the separate one-shot B-stage folds3/4 metric-reveal token."""
+        if getattr(self, "metric_unseal_path", None) is None:
+            raise UnsealExceeded(
+                "METRIC_UNSEAL_NOT_CONFIGURED: ledger has no metric_unseal_path "
+                "(expected {})".format(DEFAULT_METRIC_UNSEAL_SUBPATH)
+            )
+        if batch_id is None:
+            batch_id = "metric-batch"
+        return metric_unseal(
+            self.metric_unseal_path,
+            run_id,
+            batch_id=batch_id,
+            allowed_run_ids=allowed_run_ids,
+        )
 
     def reconcile(
         self, pid_alive_fn: Optional[Callable[[Any], bool]] = None
@@ -993,8 +1377,14 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--unseal",
         default=None,
-        help="path of the one-shot fold3/4 confirm unseal token "
+        help="path of the one-shot fold3/4 confirm BATCH unseal token "
         "(default rule: state/gates/unseal.json under the campaign root)",
+    )
+    parser.add_argument(
+        "--metric-unseal",
+        default=None,
+        help="path of the separate one-shot B-stage folds3/4 metric-reveal token "
+        "(default rule: state/gates/metric_unseal.json)",
     )
     sub = parser.add_subparsers(dest="cmd", required=True)
 
@@ -1020,7 +1410,12 @@ def _build_parser() -> argparse.ArgumentParser:
 
 def main(argv: Optional[List[str]] = None) -> int:
     args = _build_parser().parse_args(argv)
-    ledger = RunLedger(args.ledger, plan_path=args.plan, unseal_path=args.unseal)
+    ledger = RunLedger(
+        args.ledger,
+        plan_path=args.plan,
+        unseal_path=args.unseal,
+        metric_unseal_path=args.metric_unseal,
+    )
     try:
         if args.cmd == "init":
             print(json.dumps(ledger.init(), sort_keys=True))

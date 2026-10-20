@@ -20,8 +20,10 @@ import pytest
 from scripts.agent_ops.ledger.run_ledger import (
     DEFAULT_CAPS,
     BudgetCapExceeded,
+    ExploratoryOnlyError,
     IllegalTransition,
     LedgerError,
+    PlanNotFrozenError,
     PlaceholderHashError,
     RunIdConflict,
     RunLedger,
@@ -156,6 +158,8 @@ def test_admissible_requires_gate_report_evidence():
     assert "MISSING_HASH" in str(excinfo.value)
     # not-admissible-until-gate-pass may legitimately have no evidence yet
     validate(make_formal(admissibility="not_admissible_until_gate_pass", evidence_sha=None))
+    # PD-4 partial value is valid schema too (still no evidence claim)
+    validate(make_formal(admissibility="not_admissible_exploratory", evidence_sha=None))
 
 
 def test_admissibility_same_status_drift_is_conflict(ledger):
@@ -300,7 +304,12 @@ def test_uncapped_phase_is_not_budget_governed(tmp_path):
 
 
 def write_plan_file(path: Path, rows) -> Path:
-    header = {"record_type": "plan_header", "campaign_id": CAMPAIGN, "pd3_note": "x"}
+    header = {
+        "record_type": "plan_header",
+        "campaign_id": CAMPAIGN,
+        "pd3_note": "x",
+        "campaign_mode": "full",
+    }
     lines = [json.dumps(header)]
     lines.extend(json.dumps(r) for r in rows)
     path.write_text("".join(ln + "\n" for ln in lines), encoding="utf-8")
@@ -308,19 +317,26 @@ def write_plan_file(path: Path, rows) -> Path:
 
 
 def synthetic_plan_row(**overrides):
+    """A frozen (real-sha) planned row whose run_id matches make_formal()."""
     row = {
-        "run_id": "0000000000000000",
         "campaign_id": CAMPAIGN,
         "phase": "R3",
         "substage": "F-main",
         "arm": "F0",
         "fold": 0,
         "seed": 17,
-        "variant": "forward",
+        "variant": None,
         "reuses": [],
         "status": "planned",
+        "data_sha256": "a1" * 32,
+        "teacher_sha256": "b2" * 32,
+        "features_sha256": "c3" * 32,
+        "split_sha256": "d4" * 32,
+        "config_sha256": "e5" * 32,
     }
     row.update(overrides)
+    if "run_id" not in overrides:
+        row["run_id"] = compute_run_id(row, scheme="hashed")
     return row
 
 
@@ -391,21 +407,31 @@ def test_plan_count_is_the_effective_cap_including_retries(tmp_path):
     assert "BUDGET_CAP_EXCEEDED" in str(excinfo.value)
 
 
+#: identity shas that make plan run_ids match make_formal()/make_record()
+FULL_SHAS = {
+    "config_sha256": "e5" * 32,
+    "data_sha256": "a1" * 32,
+    "teacher_sha256": "b2" * 32,
+    "features_sha256": "c3" * 32,
+    "split_sha256": "d4" * 32,
+}
+
+
 def test_real_run_plan_binds_f_main_launches(tmp_path):
     from scripts.agent_ops.runplan.build_r3_runplan import write_plan
 
     plan = tmp_path / "run_plan.jsonl"
-    write_plan(plan)
+    write_plan(plan, shas=FULL_SHAS)  # stage g0/launch: all five shas frozen
     led = RunLedger(
         tmp_path / "r.jsonl", plan_path=plan, caps={"R3": 66, "V5.2": 33}
     )
     led.init()
-    # three in-plan F-main launches (real 66-run plan rows)
+    # three in-plan F-main launches (real 66-run plan rows; variant must match)
     for seed in (17, 29, 43):
-        rec = make_formal(arm="F0", fold=0, seed=seed)
+        rec = make_formal(arm="F0", fold=0, seed=seed, variant="forward")
         led.append(rec)
         assert led.append(launch(rec)).action == "transitioned"
-    # V5.2 QT row from the plan also binds
+    # V5.2 QT row from the plan also binds (variant None on both sides)
     qt = make_record(phase="V5.2", arm="QT", fold=0, seed=17)
     qt.update(
         {
@@ -419,60 +445,140 @@ def test_real_run_plan_binds_f_main_launches(tmp_path):
     led.append(qt)
     assert led.append(launch(qt)).action == "transitioned"
     # seed outside the legal plan seeds -> NOT_IN_PLAN
-    bad = make_formal(arm="F0", fold=0, seed=99)
+    bad = make_formal(arm="F0", fold=0, seed=99, variant="forward")
     led.append(bad)
     with pytest.raises(BudgetCapExceeded) as excinfo:
         led.append(launch(bad))
     assert "NOT_IN_PLAN" in str(excinfo.value)
 
 
+def test_plan_not_frozen_rejects_pending_plan_launch(tmp_path):
+    """Default (stage-e0) plan still carries PENDING shas -> launch refused."""
+    from scripts.agent_ops.runplan.build_r3_runplan import write_plan
+
+    plan = tmp_path / "run_plan.jsonl"
+    write_plan(plan)  # config real, data/teacher/features/split = PENDING_*
+    led = RunLedger(tmp_path / "r.jsonl", plan_path=plan)
+    led.init()
+    rec = make_formal(arm="F0", fold=0, seed=17, variant="forward")
+    led.append(rec)  # registration is fine
+    with pytest.raises(PlanNotFrozenError) as excinfo:
+        led.append(launch(rec))
+    assert "PLAN_NOT_FROZEN" in str(excinfo.value)
+    assert "PENDING" in str(excinfo.value)
+
+
+def test_run_id_mismatch_same_key_different_shas_refused(tmp_path):
+    from scripts.agent_ops.runplan.build_r3_runplan import write_plan
+
+    plan = tmp_path / "run_plan.jsonl"
+    write_plan(plan, shas=FULL_SHAS)
+    led = RunLedger(tmp_path / "r.jsonl", plan_path=plan)
+    led.init()
+    # same (campaign, phase, arm, fold, seed, variant) but a different config
+    # sha -> different run_id; the plan is frozen so this is RUN_ID_MISMATCH
+    rec = make_formal(arm="F0", fold=0, seed=17, variant="forward", config_sha256="ff" * 32)
+    led.append(rec)
+    with pytest.raises(PlanNotFrozenError) as excinfo:
+        led.append(launch(rec))
+    assert "RUN_ID_MISMATCH" in str(excinfo.value)
+    assert "PLAN_NOT_FROZEN" not in str(excinfo.value)
+
+
 # ---------------------------------------------------------------------------
-# one-shot fold3/4 confirm unseal counter
+# one-shot unseal tokens: BATCH semantics (ORA-2 blocker 3)
 # ---------------------------------------------------------------------------
 
 
-def test_is_confirm_run_detection():
-    assert is_confirm_run(make_formal(arm="C", fold=3)) is True
-    assert is_confirm_run(make_formal(arm="C", fold=4)) is True
-    assert is_confirm_run(make_formal(arm="QT", variant="confirm", fold=4)) is True
-    assert is_confirm_run(make_formal(arm="QT", variant="confirm", fold=2)) is False
+def test_is_confirm_run_detection_is_explicit_flag_only():
+    # the explicit confirm flag is the ONLY trigger (no arm/variant heuristics)
+    assert is_confirm_run(make_formal(confirm=True, fold=3)) is True
+    assert is_confirm_run(make_formal(confirm=True, fold=4)) is True
+    assert is_confirm_run(make_formal(arm="C", fold=3)) is False
+    assert is_confirm_run(make_formal(arm="QT", variant="confirm", fold=4)) is False
+    assert is_confirm_run(make_formal(arm="C", fold=3, confirm=False)) is False
     assert is_confirm_run(make_formal(arm="B", fold=3)) is False  # sealed eval != confirm
-    assert is_confirm_run(make_formal(arm="C", fold=0)) is False
+    with pytest.raises(LedgerError) as excinfo:
+        validate(make_formal(confirm="yes"))
+    assert "INVALID_CONFIRM" in str(excinfo.value)
 
 
-def test_confirm_unseal_one_shot(tmp_path):
+def test_confirm_unseal_solo_batch_one_shot(tmp_path):
     unseal = tmp_path / "unseal.json"
     led = RunLedger(tmp_path / "r.jsonl", unseal_path=unseal)
     led.init()
 
-    first = make_formal(arm="C", fold=3, seed=17)
+    first = make_formal(arm="C", fold=3, seed=17, confirm=True)
     led.append(first)
     assert led.append(launch(first)).action == "transitioned"
     token = json.loads(unseal.read_text(encoding="utf-8"))
+    first_id = compute_run_id(first)
+    assert token["kind"] == "confirm"
+    assert token["batch_id"] == "solo-confirm-{}".format(first_id)
+    assert token["allowed_run_ids"] == [first_id]
     assert token["count"] == 1
-    assert token["run_id"] == compute_run_id(first)
-    assert token["used_at"]
+    assert token["consumed_at"]
+    assert token["run_id"] == first_id
 
     # same-run retry: token already ours -> idempotent, never re-incremented
     led.append(fail(first))
     led.append(launch(first))
     assert json.loads(unseal.read_text(encoding="utf-8"))["count"] == 1
 
-    # a DIFFERENT confirm run must be refused (one-shot unseal)
-    second = make_formal(arm="C", fold=4, seed=29)
+    # a DIFFERENT confirm run = a second, different batch -> refused
+    second = make_formal(arm="C", fold=4, seed=29, confirm=True)
     led.append(second)
     before = len(read_lines(led.path))
     with pytest.raises(UnsealExceeded) as excinfo:
         led.append(launch(second))
-    assert "UNSEAL_ALREADY_USED" in str(excinfo.value)
+    assert "UNSEAL_BATCH_MISMATCH" in str(excinfo.value)
     assert len(read_lines(led.path)) == before
     assert json.loads(unseal.read_text(encoding="utf-8"))["count"] == 1
+
+
+def test_confirm_unseal_plan_batch_covers_all_registered_runs(tmp_path):
+    from scripts.agent_ops.runplan.build_r3_runplan import write_plan
+
+    plan = tmp_path / "run_plan.jsonl"
+    write_plan(plan, shas=FULL_SHAS)
+    unseal = tmp_path / "unseal.json"
+    led = RunLedger(tmp_path / "r.jsonl", plan_path=plan, unseal_path=unseal)
+    led.init()
+
+    # bound plan registers C folds3/4 (6) + QT-confirm (6) = ONE batch of 12
+    c1 = make_formal(arm="C", fold=3, seed=17, confirm=True)
+    led.append(c1)
+    assert led.append(launch(c1)).action == "transitioned"
+    token = json.loads(unseal.read_text(encoding="utf-8"))
+    assert token["batch_id"] == "plan-confirm-batch"
+    assert token["count"] == 1
+    assert len(token["allowed_run_ids"]) == 12
+    assert compute_run_id(c1) in token["allowed_run_ids"]
+
+    # every other pre-registered batch member is admissible (no re-burn)
+    c2 = make_formal(arm="C", fold=4, seed=29, confirm=True)
+    led.append(c2)
+    assert led.append(launch(c2)).action == "transitioned"
+    qt = make_formal(
+        phase="V5.2", arm="QT", variant="confirm", fold=3, seed=17, confirm=True
+    )
+    led.append(qt)
+    assert led.append(launch(qt)).action == "transitioned"
+    token = json.loads(unseal.read_text(encoding="utf-8"))
+    assert token["count"] == 1  # one consumption covers the whole batch
+
+    # record/plan confirm-flag disagreement refuses fail-closed
+    clash = make_formal(arm="C", fold=3, seed=29, confirm=False)
+    led.append(clash)
+    with pytest.raises(LedgerError) as excinfo:
+        led.append(launch(clash))
+    assert "CONFIRM_FLAG_MISMATCH" in str(excinfo.value)
 
 
 def test_confirm_run_without_unseal_config_refused(tmp_path):
     led = RunLedger(tmp_path / "r.jsonl")  # unseal_path=None (fail-closed default)
     led.init()
-    rec = make_formal(arm="C", fold=3, seed=17)
+    rec = make_formal(arm="C", fold=3, seed=17, confirm=True)
     led.append(rec)
     with pytest.raises(UnsealExceeded) as excinfo:
         led.append(launch(rec))
@@ -496,20 +602,83 @@ def test_corrupt_or_tampered_unseal_refused(tmp_path):
         confirm_unseal(unseal, run_id="R-x")
     assert "UNSEAL_CORRUPT" in str(excinfo.value)
 
-    unseal.write_text(json.dumps({"count": "many"}), encoding="utf-8")
+    unseal.write_text(
+        json.dumps({"count": "many", "batch_id": "b", "allowed_run_ids": ["R-x"]}),
+        encoding="utf-8",
+    )
     with pytest.raises(UnsealExceeded) as excinfo:
         confirm_unseal(unseal, run_id="R-x")
     assert "UNSEAL_CORRUPT" in str(excinfo.value)
 
-    # tampered counter already consumed by someone else -> refuse
-    unseal.write_text(json.dumps({"count": 7, "run_id": "intruder"}), encoding="utf-8")
+    # consumed by a DIFFERENT pre-registered batch -> refuse (second batch)
+    unseal.write_text(
+        json.dumps({"count": 7, "batch_id": "intruder", "allowed_run_ids": ["someone-else"]}),
+        encoding="utf-8",
+    )
     with pytest.raises(UnsealExceeded) as excinfo:
         confirm_unseal(unseal, run_id="R-x")
-    assert "UNSEAL_ALREADY_USED" in str(excinfo.value)
+    assert "UNSEAL_BATCH_MISMATCH" in str(excinfo.value)
+
+    # same registered batch but the asking run is outside it -> refuse
+    unseal.write_text(
+        json.dumps({"count": 1, "batch_id": "b", "allowed_run_ids": ["R-x"]}),
+        encoding="utf-8",
+    )
+    with pytest.raises(UnsealExceeded) as excinfo:
+        confirm_unseal(unseal, run_id="intruder", allowed_run_ids=["R-x"])
+    assert "UNSEAL_OUTSIDE_BATCH" in str(excinfo.value)
+
+    # first use cannot OPEN a batch it is not registered for (pre-registration)
+    unseal.unlink()
+    with pytest.raises(UnsealExceeded) as excinfo:
+        confirm_unseal(unseal, run_id="R-x", allowed_run_ids=["R-y"])
+    assert "UNSEAL_OUTSIDE_BATCH" in str(excinfo.value)
 
     with pytest.raises(UnsealExceeded) as excinfo:
-        confirm_unseal(None)
+        confirm_unseal(None, run_id="R-x")
     assert "UNSEAL_NOT_CONFIGURED" in str(excinfo.value)
+
+    with pytest.raises(UnsealExceeded) as excinfo:
+        confirm_unseal(tmp_path / "fresh.json", run_id=None, allowed_run_ids=[])
+    assert "UNSEAL_CORRUPT" in str(excinfo.value)
+
+    with pytest.raises(UnsealExceeded) as excinfo:
+        confirm_unseal(tmp_path / "fresh.json")
+    assert "UNSEAL_CORRUPT" in str(excinfo.value)
+
+
+def test_metric_unseal_is_a_separate_one_shot_token(tmp_path):
+    unseal = tmp_path / "unseal.json"
+    metric = tmp_path / "metric_unseal.json"
+    led = RunLedger(
+        tmp_path / "r.jsonl", unseal_path=unseal, metric_unseal_path=metric
+    )
+    led.init()
+    out = led.metric_unseal(
+        run_id="R-b-fold3", allowed_run_ids=["R-b-fold3"], batch_id="B-metrics"
+    )
+    assert out["kind"] == "metric"
+    assert out["count"] == 1
+    assert out["batch_id"] == "B-metrics"
+    token = json.loads(metric.read_text(encoding="utf-8"))
+    assert token["allowed_run_ids"] == ["R-b-fold3"]
+    assert not unseal.exists()  # the confirm token is untouched
+
+    # second, different metric batch -> refused (B-stage reveal is one-shot)
+    with pytest.raises(UnsealExceeded) as excinfo:
+        led.metric_unseal(run_id="R-other", allowed_run_ids=["R-other"], batch_id="B2")
+    assert "UNSEAL_BATCH_MISMATCH" in str(excinfo.value)
+
+    # same registered batch member stays admissible
+    assert led.metric_unseal(
+        run_id="R-b-fold3", allowed_run_ids=["R-b-fold3"], batch_id="B-metrics"
+    )["count"] == 1
+
+    plain = RunLedger(tmp_path / "r2.jsonl")
+    plain.init()
+    with pytest.raises(UnsealExceeded) as excinfo:
+        plain.metric_unseal(run_id="x", allowed_run_ids=["x"])
+    assert "METRIC_UNSEAL_NOT_CONFIGURED" in str(excinfo.value)
 
 
 def test_ledger_confirm_unseal_method(tmp_path):
@@ -533,10 +702,35 @@ def test_plan_reader_rejects_bad_rows(tmp_path):
         read_run_plan(bad)
     assert "PLAN_CORRUPT" in str(excinfo.value)
 
-    bad.write_text('{"record_type": "plan_header"}\n', encoding="utf-8")
-    assert read_run_plan(bad) == {"counts": {}, "keys": set()}  # header-only is valid
+    # missing run_id / duplicate run_id are corrupt (identity binding, ORA-2/2)
+    bad.write_text(
+        '{"campaign_id": "c", "phase": "R3", "arm": "F0", "fold": 0, "seed": 17}\n',
+        encoding="utf-8",
+    )
+    with pytest.raises(LedgerError) as excinfo:
+        read_run_plan(bad)
+    assert "PLAN_CORRUPT" in str(excinfo.value)
+    row = synthetic_plan_row()
+    bad.write_text(json.dumps(row) + "\n" + json.dumps(row) + "\n", encoding="utf-8")
+    with pytest.raises(LedgerError) as excinfo:
+        read_run_plan(bad)
+    assert "duplicate run_id" in str(excinfo.value)
+
+    # header-only is a valid (empty) full plan
+    bad.write_text('{"record_type": "plan_header", "campaign_mode": "full"}\n', encoding="utf-8")
+    result = read_run_plan(bad)
+    assert result["counts"] == {} and result["keys"] == set()
+    assert result["mode"] == "full" and result["confirm_run_ids"] == []
 
     bad.write_text('{"campaign_id": "c", "phase": "R3", "arm": "F0", "fold": "x", "seed": 17}\n', encoding="utf-8")
+    with pytest.raises(LedgerError) as excinfo:
+        read_run_plan(bad)
+    assert "PLAN_CORRUPT" in str(excinfo.value)
+
+    # invalid campaign_mode refuses (fail-closed)
+    bad.write_text(
+        '{"record_type": "plan_header", "campaign_mode": "halfway"}\n', encoding="utf-8"
+    )
     with pytest.raises(LedgerError) as excinfo:
         read_run_plan(bad)
     assert "PLAN_CORRUPT" in str(excinfo.value)
@@ -544,3 +738,94 @@ def test_plan_reader_rejects_bad_rows(tmp_path):
     with pytest.raises(LedgerError) as excinfo:
         read_run_plan(tmp_path / "absent.jsonl")
     assert "PLAN_MISSING" in str(excinfo.value)
+
+
+# ---------------------------------------------------------------------------
+# PD-4 partial (21-run exploratory) campaign enforcement
+# ---------------------------------------------------------------------------
+
+
+def test_partial_plan_forces_exploratory_admissibility(tmp_path):
+    from scripts.agent_ops.runplan.build_r3_runplan import write_plan
+
+    plan = tmp_path / "partial.jsonl"
+    write_plan(plan, mode="partial", shas=FULL_SHAS)
+    led = RunLedger(tmp_path / "r.jsonl", plan_path=plan)
+    led.init()
+
+    rec = make_formal(arm="B", fold=0, seed=17, admissibility="admissible")
+    led.append(rec)  # registration alone is not a claim of admissibility
+    with pytest.raises(ExploratoryOnlyError) as excinfo:
+        led.append(launch(rec))
+    assert "NOT_ADMISSIBLE_EXPLORATORY" in str(excinfo.value)
+
+    # corrected record: the plan FORCES not_admissible_exploratory
+    fixed = make_formal(
+        arm="B", fold=0, seed=17, admissibility="not_admissible_exploratory"
+    )
+    assert led.append(launch(fixed)).action == "transitioned"
+    entry = led.status(compute_run_id(fixed))
+    assert entry["admissibility"] == "not_admissible_exploratory"
+    assert len(read_lines(led.path)) == 2  # planned + running only
+
+
+def test_partial_plan_finalize_refuses_forbidden_keywords(tmp_path):
+    from scripts.agent_ops.runplan.build_r3_runplan import write_plan
+
+    plan = tmp_path / "partial.jsonl"
+    write_plan(plan, mode="partial", shas=FULL_SHAS)
+    led = RunLedger(tmp_path / "r.jsonl", plan_path=plan)
+    led.init()
+
+    def done_record(metrics_path):
+        return make_formal(
+            arm="B",
+            fold=0,
+            seed=17,
+            admissibility="not_admissible_exploratory",
+            status="done",
+            checkpoint_update=3000,
+            checkpoint_sha256="ab" * 32,
+            metrics_path=metrics_path,
+        )
+
+    rec = make_formal(arm="B", fold=0, seed=17, admissibility="not_admissible_exploratory")
+    led.append(rec)
+    led.append(launch(rec))
+
+    for keyword in ("scale_controlled", "V5.1b"):
+        bad = done_record(
+            "outputs/pesn/30h_campaign/metrics/{}.json".format(keyword)
+        )
+        with pytest.raises(ExploratoryOnlyError) as excinfo:
+            led.append(bad)
+        assert "PARTIAL_FINALIZE_FORBIDDEN" in str(excinfo.value)
+        assert keyword.lower() in str(excinfo.value).lower()
+
+    clean = done_record("outputs/pesn/30h_campaign/metrics/baseline.json")
+    assert led.append(clean).action == "transitioned"
+    assert led.status(compute_run_id(clean))["status"] == "done"
+
+
+def test_full_plan_finalize_still_allows_outcome_keywords(tmp_path):
+    """scale_controlled remains a legitimate R3 full-campaign outcome (§4.3)."""
+    from scripts.agent_ops.runplan.build_r3_runplan import write_plan
+
+    plan = tmp_path / "run_plan.jsonl"
+    write_plan(plan, shas=FULL_SHAS)
+    led = RunLedger(tmp_path / "r.jsonl", plan_path=plan)
+    led.init()
+    rec = make_formal(arm="F0", fold=0, seed=17, variant="forward")
+    led.append(rec)
+    led.append(launch(rec))
+    done = make_formal(
+        arm="F0",
+        fold=0,
+        seed=17,
+        variant="forward",
+        status="done",
+        checkpoint_update=3000,
+        checkpoint_sha256="ab" * 32,
+        metrics_path="outputs/pesn/30h_campaign/metrics/scale_controlled.json",
+    )
+    assert led.append(done).action == "transitioned"
