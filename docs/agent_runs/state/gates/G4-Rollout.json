@@ -1,1 +1,22 @@
-{"gate_id": "G4-Rollout", "status": "not_run", "evidence": null, "evaluated_at": null, "protocol_sha256_16": "3081e05479007eaf"}
+{
+  "authorization_effect": "campaign scientific execution COMPLETE; remaining: E7 final stats + E8 archive",
+  "campaign_id": "PES2TS_30H_R3_V52_V53",
+  "evaluated_at": "2026-10-21T01:10:00Z",
+  "evaluated_by": "supervisor (orchestrator)",
+  "evidence": {
+    "claims_audit": "0 positive verified-TS claims (16 mentions all negated/forbidden context); frequency verification NOT attempted",
+    "cost": "rollout 8s + relax 49s wall; GPU unused",
+    "evidence_pack": "outputs/pesn/30h_campaign/v53/g4_evidence_pack.json (engineering_closure_ok=true)",
+    "relax": "36 real xtb 6.7.1 constrained runs (identical frozen recipe+CV targets across arms, parity machine-checked): 5 converged (CV dev <=6e-4A), 15 not_converged, 16 physics_failed (15/16 attributed to clashed rollout-endpoint seeds, |grad|>500 abort)",
+    "rollout_findings": "classic collapses (sign-agree 0.24, 215 collision steps @20, tsRMSD 0.68->1.02A); r3 best upper bound (sign-agree 0.88) but arc progress saturates ~0.62, contact-made 0.08; v52 smooth-looking but chance-level (40 stop events @20) consistent with G3 FAIL",
+    "rollouts": "216 episodes = 12 frozen curves x {forward,reverse} x steps{5,10,20} x arms{classic,r3,v52-diagnostic}; determinism bitwise (2 re-runs); budget parity 72 groups machine-checked"
+  },
+  "gate": "G4-Rollout",
+  "honest_caveats": [
+    "no arm demonstrates TS-approach competence; r3 saturation (arc 0.62) means 20 steps at d0=0.08 budget does not reach TS vicinity on most curves",
+    "classic arm unsuitable as comparison baseline (drift collapse) - recorded",
+    "TS-candidate seeds in relax/runs/*/xtbopt.xyz are UNVERIFIED candidates (OptTS + single imaginary freq + IRC connection required before any TS claim)"
+  ],
+  "scope": "ENGINEERING CLOSURE ONLY — explicitly NOT scientific validation; H20 mode (V5.2 supervision failed -> upper-bound controllers only); TS_candidate_only; verified_ts_claim=forbidden",
+  "status": "pass"
+}
