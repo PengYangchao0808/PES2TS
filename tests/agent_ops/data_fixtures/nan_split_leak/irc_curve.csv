@@ -1,0 +1,3 @@
+curve_id,canonical_irc_id,n_nodes,n_edges,ts_index,endpoint_a_index,endpoint_b_index,source_path
+c0,irc_c0,10,9,5,0,9,synthetic://c0_irc.log
+c1,irc_c1,10,9,5,0,9,synthetic://c1_irc.log

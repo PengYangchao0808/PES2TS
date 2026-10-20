@@ -1,0 +1,5 @@
+intent_id,curve_id,direction,g_src,g_tgt,delta_b_intent,cv_spec,intent_role
+c0_fwd,c0,forward,"{""bonds"": [[0, 1]]}","{""bonds"": []}",[+0-1],distance:0:1,"{""forming"": [1], ""breaking"": [0]}"
+c0_rev,c0,reverse,"{""bonds"": []}","{""bonds"": [[0, 1]]}",[-0+1],distance:0:1,"{""forming"": [0], ""breaking"": [1]}"
+c1_fwd,c1,forward,"{""bonds"": [[0, 1]]}","{""bonds"": []}",[+0-1],distance:0:1,"{""forming"": [1], ""breaking"": [0]}"
+c1_rev,c1,reverse,"{""bonds"": []}","{""bonds"": [[0, 1]]}",[-0+1],distance:0:1,"{""forming"": [0], ""breaking"": [1]}"
