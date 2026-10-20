@@ -12,6 +12,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -23,6 +24,28 @@ from scripts.agent_ops.supervisor import allowlist as al
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 REAL_CONFIG = PROJECT_ROOT / al.DEFAULT_CONFIG_PATH
+
+
+def load_config_text() -> str:
+    """Valid JSON text of the real parallel_config.
+
+    Master's config currently carries a JSON trailing-comma delimiter bug
+    (``never_write_note`` before ``}``); the *generator* must refuse corrupt
+    input fail-closed, so tests that exercise generation use this
+    narrow repair (trailing commas only) and fail loudly if anything else
+    is broken.  ``test_real_config_load_is_fail_closed`` covers the raw file.
+    """
+    text = REAL_CONFIG.read_text(encoding="utf-8")
+    fixed = re.sub(r",(\s*[}\]])", r"\1", text)
+    json.loads(fixed)  # anything beyond trailing commas -> loud test failure
+    return fixed
+
+
+@pytest.fixture
+def config_copy(tmp_path) -> Path:
+    path = tmp_path / "parallel_config.json"
+    path.write_text(load_config_text(), encoding="utf-8")
+    return path
 
 
 def _env():
@@ -59,11 +82,11 @@ def sha256_of(path: Path) -> str:
 
 @pytest.fixture
 def fake_root(tmp_path) -> Path:
-    """Minimal repo root holding the real config copies + the 3 frozen files."""
+    """Minimal repo root holding a valid config copy + the 3 frozen files."""
     root = tmp_path / "repo"
     config = root / al.DEFAULT_CONFIG_PATH
     config.parent.mkdir(parents=True)
-    shutil.copyfile(REAL_CONFIG, config)
+    config.write_text(load_config_text(), encoding="utf-8")
     for rel in al.FROZEN_FILES:
         dst = root / rel
         dst.parent.mkdir(parents=True, exist_ok=True)
@@ -88,14 +111,16 @@ def _git_init(repo: Path, branch: str = "base") -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_generate_records_write_scopes_and_e0_additions(tmp_path):
-    payload = al.generate_allowlist(tmp_path / "allow.json", repo_root=PROJECT_ROOT)
+def test_generate_records_write_scopes_and_e0_additions(tmp_path, config_copy):
+    payload = al.generate_allowlist(
+        tmp_path / "allow.json", config_path=config_copy, repo_root=PROJECT_ROOT
+    )
     patterns = payload["write_allowlist"]
     # lane write_scopes from parallel_config
     assert "scripts/agent_ops/ledger/**" in patterns
     assert "scripts/agent_ops/gpu_queue/**" in patterns
     assert "tests/agent_ops/test_ledger_*.py" in patterns
-    # E0 additions
+    # E0 additions (global union = every lane's additions)
     for addition in al.E0_ADDITIONS:
         assert addition in patterns
     # shared supervisor-owned files
@@ -104,8 +129,10 @@ def test_generate_records_write_scopes_and_e0_additions(tmp_path):
     assert any("ground_truth" in p for p in payload["never_write_all_lanes"])
 
 
-def test_generate_records_frozen_sha256_prefixes(tmp_path):
-    payload = al.generate_allowlist(tmp_path / "allow.json", repo_root=PROJECT_ROOT)
+def test_generate_records_frozen_sha256_prefixes(tmp_path, config_copy):
+    payload = al.generate_allowlist(
+        tmp_path / "allow.json", config_path=config_copy, repo_root=PROJECT_ROOT
+    )
     frozen = payload["frozen_files"]
     assert sorted(frozen.keys()) == sorted(al.FROZEN_FILES)
     for rel in al.FROZEN_FILES:
@@ -114,9 +141,9 @@ def test_generate_records_frozen_sha256_prefixes(tmp_path):
         assert frozen[rel]["prefix"] == expected[:16]
 
 
-def test_generate_writes_loadable_json(tmp_path):
+def test_generate_writes_loadable_json(tmp_path, config_copy):
     out = tmp_path / "sub" / "allow.json"
-    al.generate_allowlist(out, repo_root=PROJECT_ROOT)
+    al.generate_allowlist(out, config_path=config_copy, repo_root=PROJECT_ROOT)
     data = json.loads(out.read_text(encoding="utf-8"))
     assert data["kind"] == "e0_write_allowlist"
     assert isinstance(data["write_allowlist"], list) and data["write_allowlist"]
@@ -146,18 +173,16 @@ def test_generate_corrupt_config_refused(tmp_path):
     assert "CONFIG_CORRUPT" in str(excinfo.value)
 
 
-def test_generate_missing_frozen_file_refused(tmp_path):
-    config = tmp_path / "config.json"
-    shutil.copyfile(REAL_CONFIG, config)
+def test_generate_missing_frozen_file_refused(tmp_path, config_copy):
     with pytest.raises(al.AllowlistError) as excinfo:
         al.generate_allowlist(
-            tmp_path / "a.json", config_path=config, repo_root=tmp_path / "nofiles"
+            tmp_path / "a.json", config_path=config_copy, repo_root=tmp_path / "nofiles"
         )
     assert "FROZEN_FILE_MISSING" in str(excinfo.value)
 
 
 def test_generate_missing_workflow_scope_refused(tmp_path):
-    config = json.loads(REAL_CONFIG.read_text(encoding="utf-8"))
+    config = json.loads(load_config_text())
     config["workflows"]["W-LOSS"]["write_scopes"] = []
     config_path = tmp_path / "config.json"
     config_path.write_text(json.dumps(config), encoding="utf-8")
@@ -338,6 +363,42 @@ def test_cli_generate_check_merge_exit_codes(fake_root, tmp_path):
     assert "WRITE_SCOPE_VIOLATION: pes2ts_core/pesn/oops.py" in proc.stderr
     assert "MERGE REFUSED" in proc.stderr
 
+    # lane-scoped CLI: clean set passes for the owning lane, violations refuse
+    proc = _run_cli(
+        [
+            "--root",
+            str(fake_root),
+            "--allowlist",
+            str(allow),
+            "--lane",
+            "W-LOSS",
+            "check-merge",
+            "--base",
+            "base",
+            "--branch",
+            "base",
+        ]
+    )
+    assert proc.returncode == 0, proc.stderr
+    assert "MERGE OK" in proc.stdout and "lane W-LOSS" in proc.stdout
+    proc = _run_cli(
+        [
+            "--root",
+            str(fake_root),
+            "--allowlist",
+            str(allow),
+            "--lane",
+            "W-LOSS",
+            "check-merge",
+            "--base",
+            "base",
+            "--branch",
+            "lane",
+        ]
+    )
+    assert proc.returncode == 1
+    assert "for lane W-LOSS" in proc.stderr
+
     # frozen check on the untouched frozen files -> exit 0
     proc = _run_cli(
         ["--root", str(fake_root), "--allowlist", str(allow), "check-frozen"]
@@ -352,3 +413,121 @@ def test_cli_missing_config_exits_nonzero(tmp_path):
     )
     assert proc.returncode == 1
     assert "CONFIG_MISSING" in proc.stderr
+
+
+# ---------------------------------------------------------------------------
+# ORA-2 blocker 6: component-wise matching + lane-scoped sets
+# ---------------------------------------------------------------------------
+
+
+def test_path_allowed_is_component_wise():
+    p = al.path_allowed
+    # "*" stays inside one segment: never crosses "/"
+    assert p("tests/pesn/test_r3_model.py", ["tests/pesn/test_r3_*.py"])
+    assert not p("tests/pesn/sub/test_r3_model.py", ["tests/pesn/test_r3_*.py"])
+    assert p("tests/pesn/test_r3_model.py", ["tests/*/test_r3_model.py"])
+    assert not p("tests/pesn/x/test_r3_model.py", ["tests/*/test_r3_model.py"])
+    # "**" is the only wildcard that crosses "/" (zero segments allowed)
+    assert p("a/b/c.py", ["a/**/c.py"])
+    assert p("a/c.py", ["a/**/c.py"])
+    assert p("a/b/x/c.py", ["a/**/c.py"])
+    assert not p("ab/c.py", ["a/**/c.py"])
+    assert p("scripts/agent_ops/ledger/deep/nested.py", ["scripts/agent_ops/ledger/**"])
+    # E0 additions: _v3.py only, at any depth below features/
+    assert p(
+        "pes2ts_core/pesn/features/spec/key_atom_spec_v3.py",
+        ["pes2ts_core/pesn/features/**/*_v3.py"],
+    )
+    assert not p("pes2ts_core/pesn/train.py", ["pes2ts_core/pesn/**/*_v3.py"])
+    assert not p("pes2ts_core/pesn/features/spec_v2.py", ["pes2ts_core/pesn/features/**/*_v3.py"])
+    # literal segments match exactly (no implicit wildcards)
+    assert not p("scripts/agent_ops/ledgerX/a.py", ["scripts/agent_ops/ledger/**"])
+
+
+def test_lane_scoped_allowlists_emitted(tmp_path, config_copy):
+    payload = al.generate_allowlist(
+        tmp_path / "allow.json", config_path=config_copy, repo_root=PROJECT_ROOT
+    )
+    lanes = payload["lanes"]
+    assert set(lanes) == {"W-DATA", "W-FEAT", "W-LOSS"}
+    assert payload["e0_lane_additions"] == al.E0_LANE_ADDITIONS
+
+    loss = lanes["W-LOSS"]["write_allowlist"]
+    assert "scripts/agent_ops/ledger/**" in loss
+    assert "pes2ts_core/pesn/offline/training/**/*_v3.py" in loss
+    assert "scripts/campaigns/r3_*.py" in loss
+    assert "scripts/campaigns/run_v5_1_r3.py" in loss
+    assert "scripts/agent_ops/data_gate/**" not in loss  # W-DATA's scope
+    assert "tests/pesn/test_r3_*.py" not in loss
+
+    feat = lanes["W-FEAT"]["write_allowlist"]
+    for addition in al.E0_LANE_ADDITIONS["W-FEAT"]:
+        assert addition in feat
+    assert "tests/pesn/test_r3_*.py" in feat
+    assert "pes2ts_core/pesn/offline/training/**/*_v3.py" not in feat
+
+    data = lanes["W-DATA"]["write_allowlist"]
+    assert "scripts/agent_ops/data_gate/**" in data
+    assert not any(p.startswith("pes2ts_core") for p in data)  # no pes2ts_core E0 write
+
+    for entry in lanes.values():
+        assert "scripts/agent_ops/__init__.py" in entry["shared_files"]
+        assert "tests/agent_ops/__init__.py" in entry["shared_files"]
+
+
+def test_check_merge_lane_scoped_validation(fake_root):
+    _git_init(fake_root, branch="base")
+    _git(fake_root, "checkout", "-q", "-b", "lane-both")
+    # one W-LOSS-scoped change + one W-DATA-scoped change on the same branch
+    (fake_root / "scripts" / "agent_ops" / "ledger" / "a.py").write_text(
+        "X = 4\n", encoding="utf-8"
+    )
+    data_gate = fake_root / "scripts" / "agent_ops" / "data_gate" / "d.py"
+    data_gate.parent.mkdir(parents=True, exist_ok=True)
+    data_gate.write_text("Y = 1\n", encoding="utf-8")
+    _git(fake_root, "add", "-A")
+    _git(fake_root, "commit", "-q", "-m", "mixed lane changes")
+
+    payload = al.generate_allowlist(fake_root / "allow.json", repo_root=fake_root)
+
+    # lane W-LOSS: the data_gate file is out of scope
+    result = al.check_merge("lane-both", "base", repo_root=fake_root, allowlist=payload, lane="W-LOSS")
+    assert result["ok"] is False
+    assert result["violations"] == ["scripts/agent_ops/data_gate/d.py"]
+
+    # lane W-DATA: the ledger file is out of scope
+    result = al.check_merge("lane-both", "base", repo_root=fake_root, allowlist=payload, lane="W-DATA")
+    assert result["ok"] is False
+    assert result["violations"] == ["scripts/agent_ops/ledger/a.py"]
+
+    # supervisor/global union: both lanes' scopes are allowed
+    result = al.check_merge("lane-both", "base", repo_root=fake_root, allowlist=payload)
+    assert result["ok"] is True, result
+
+    # unknown lane / lane-less payload -> fail-closed refusal
+    with pytest.raises(al.AllowlistError) as excinfo:
+        al.check_merge("lane-both", "base", repo_root=fake_root, allowlist=payload, lane="W-NOPE")
+    assert "LANE_UNKNOWN" in str(excinfo.value)
+    stripped = {"write_allowlist": payload["write_allowlist"], "frozen_files": {}}
+    with pytest.raises(al.AllowlistError) as excinfo:
+        al.check_merge("lane-both", "base", repo_root=fake_root, allowlist=stripped, lane="W-LOSS")
+    assert "ALLOWLIST_CORRUPT" in str(excinfo.value)
+
+
+def test_real_config_load_is_fail_closed(tmp_path):
+    """Raw master config: valid -> generate must succeed; corrupt (current
+    trailing-comma delimiter bug in 29f0e25) -> generate must REFUSE
+    (CONFIG_CORRUPT), never warn-and-continue."""
+    raw = REAL_CONFIG.read_text(encoding="utf-8")
+    try:
+        json.loads(raw)
+        raw_valid = True
+    except json.JSONDecodeError:
+        raw_valid = False
+    if raw_valid:
+        payload = al.generate_allowlist(tmp_path / "a.json", repo_root=PROJECT_ROOT)
+        assert set(payload["lanes"]) == {"W-DATA", "W-FEAT", "W-LOSS"}
+    else:
+        with pytest.raises(al.AllowlistError) as excinfo:
+            al.generate_allowlist(tmp_path / "a.json", repo_root=PROJECT_ROOT)
+        assert "CONFIG_CORRUPT" in str(excinfo.value)

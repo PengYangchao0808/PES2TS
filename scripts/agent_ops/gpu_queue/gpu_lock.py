@@ -28,6 +28,7 @@ import errno
 import fcntl
 import json
 import os
+import subprocess
 import sys
 import tempfile
 import time
@@ -40,20 +41,90 @@ from scripts.agent_ops.gpu_queue.gate_guard import GateNotPassedError, assert_ru
 
 __all__ = [
     "DEFAULT_LOCK_PATH",
+    "EXTERNAL_MEMORY_LIMIT_MIB",
     "GateNotPassedError",
+    "GpuPrecheckError",
     "LockHandle",
     "acquire",
     "holder_path",
     "main",
     "pid_alive",
+    "precheck_gpu",
     "probe_status",
     "read_holder",
 ]
 
 DEFAULT_LOCK_PATH = "/tmp/opencode/pes2ts_gpu.lock"
 HOLDER_SUFFIX = ".holder.json"
+#: external (other-process) compute memory ceiling before a formal run may start
+EXTERNAL_MEMORY_LIMIT_MIB = 1500
 #: repository root = parents[3] of scripts/agent_ops/gpu_queue/gpu_lock.py
 DEFAULT_CAMPAIGN_ROOT = Path(__file__).resolve().parents[3]
+
+
+class GpuPrecheckError(RuntimeError):
+    """CUDA precheck refused a formal acquisition (external occupancy / probe failure)."""
+
+
+def precheck_gpu(smi: str = "nvidia-smi") -> Dict[str, Any]:
+    """nvidia-smi occupancy probe (blocker 5).
+
+    Returns ``{"ok", "external_memory_mib", "threshold_mib", "error", "reason"}``
+    where ``external_memory_mib`` is the summed ``used_memory`` of *other*
+    compute processes (this pid excluded).  ``ok=False`` when the probe cannot
+    run or external usage exceeds :data:`EXTERNAL_MEMORY_LIMIT_MIB`.  Never
+    raises for probe problems -- callers decide warn vs refuse.
+    """
+    result: Dict[str, Any] = {
+        "ok": False,
+        "external_memory_mib": None,
+        "threshold_mib": EXTERNAL_MEMORY_LIMIT_MIB,
+        "error": None,
+        "reason": None,
+    }
+    try:
+        proc = subprocess.run(
+            [
+                smi,
+                "--query-compute-apps=pid,used_memory",
+                "--format=csv,noheader,nounits",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+    except (OSError, subprocess.SubprocessError) as exc:
+        result["error"] = "nvidia-smi probe failed: {}".format(exc)
+        result["reason"] = "probe_failure"
+        return result
+    if proc.returncode != 0:
+        result["error"] = "nvidia-smi exited {}: {}".format(
+            proc.returncode, (proc.stderr or "").strip()[:200]
+        )
+        result["reason"] = "probe_failure"
+        return result
+
+    external = 0
+    for line in proc.stdout.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        parts = [p.strip() for p in line.split(",")]
+        if len(parts) < 2:
+            continue
+        try:
+            pid = int(parts[0])
+            mem = float(parts[1])
+        except ValueError:
+            continue
+        if pid != os.getpid():
+            external += mem
+    result["external_memory_mib"] = int(round(external))
+    if external > EXTERNAL_MEMORY_LIMIT_MIB:
+        result["reason"] = "external_memory"
+        return result
+    result["ok"] = True
+    return result
 
 
 def holder_path(lock_path: Any) -> Path:
@@ -193,24 +264,37 @@ def acquire(
     gate_id: Optional[str] = None,
     campaign_root: Optional[Union[str, Path]] = None,
     protocol_file: Optional[str] = None,
+    cuda: bool = True,
 ) -> Optional[LockHandle]:
     """Try to take the GPU mutex.
 
     Returns a :class:`LockHandle` on success, or ``None`` when the lock is
     held by someone else and ``blocking=False``.
 
-    Formal-run gate enforcement (WP-L2): when ``gate_id`` is given (or
-    ``run_meta`` marks the acquisition formal), the gate is verified via
-    :func:`gate_guard.assert_runnable` **before** touching the lock file.
-    Missing/invalid/corrupt gate record, ``status != "pass"`` or a protocol
-    sha256 mismatch raises :class:`GateNotPassedError`; a formal acquisition
-    without any ``gate_id`` also raises.  ``campaign_root`` defaults to the
-    repository root (``run_meta["campaign_root"]`` wins if present).
+    Formal-run gate enforcement (WP-L2 / ORA-2): when ``gate_id`` is given
+    (or ``run_meta`` marks the acquisition formal), the gate is verified via
+    :func:`gate_guard.assert_runnable` **before** touching the lock file --
+    serial upstream chain, campaign-yaml protocol pin, and (blocker 4b) the
+    ``task_state.json`` ``formal_training_authorized`` flag must all hold.
+    Missing/invalid/corrupt input, a non-pass gate, a broken chain or missing
+    authorization raises :class:`GateNotPassedError`; a formal acquisition
+    without any ``gate_id`` also raises.
+
+    CUDA occupancy (blocker 5): ``cuda=True`` (the default for new callers;
+    the old never-probed path is deprecated ``cuda=False``) runs
+    :func:`precheck_gpu` after the gate check.  Formal runs **refuse** on
+    probe failure or external usage above
+    :data:`EXTERNAL_MEMORY_LIMIT_MIB` (:class:`GpuPrecheckError`);
+    non-formal (fixture) acquisitions only warn and continue.
+
+    ``campaign_root`` defaults to the repository root
+    (``run_meta["campaign_root"]`` wins if present).
     """
     meta: Dict[str, Any] = dict(run_meta) if isinstance(run_meta, dict) else {}
     effective_gate_id = gate_id if gate_id is not None else meta.get("gate_id")
     gate_report: Optional[Dict[str, Any]] = None
-    if _is_formal_run(run_meta, gate_id):
+    formal = _is_formal_run(run_meta, gate_id)
+    if formal:
         if effective_gate_id in (None, ""):
             raise GateNotPassedError(
                 "GATE_REQUIRED: formal GPU acquisition without gate_id is refused "
@@ -220,8 +304,24 @@ def acquire(
         if root is None:
             root = DEFAULT_CAMPAIGN_ROOT
         gate_report = assert_runnable(
-            effective_gate_id, root, protocol_file=protocol_file
+            effective_gate_id, root, protocol_file=protocol_file, formal=True
         )
+
+    if cuda:
+        precheck = precheck_gpu()
+        if not precheck.get("ok"):
+            detail = "{}: {}".format(
+                precheck.get("reason"), precheck.get("error") or "external_memory_mib={}".format(
+                    precheck.get("external_memory_mib")
+                )
+            )
+            if formal:
+                raise GpuPrecheckError(
+                    "GPU_PRECHECK_REFUSED: formal acquisition blocked ({})".format(detail)
+                )
+            sys.stderr.write(
+                "warning: gpu precheck issue for non-formal acquisition: {}\n".format(detail)
+            )
 
     path = Path(lock_path)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -244,6 +344,7 @@ def acquire(
         "lock_path": str(path),
         "gate_id": effective_gate_id,
         "gate_checked": gate_report is not None,
+        "cuda_checked": bool(cuda),
     }
     if gate_report is not None:
         holder["gate_status"] = gate_report.get("status")
