@@ -83,6 +83,11 @@
       "at": "2026-10-20T15:35:00Z",
       "record": "docs/agent_runs/state/gates/G0-Data.json",
       "status": "pass"
+    },
+    "G1-Feature": {
+      "at": "2026-10-20T16:05:00Z",
+      "record": "docs/agent_runs/state/gates/G1-Feature.json",
+      "status": "pass"
     }
   },
   "integration": {
@@ -139,7 +144,7 @@
     {
       "gate": "G1-Feature",
       "id": "E2",
-      "status": "planned",
+      "status": "done_gate_pass",
       "title": "Feature/Loss Tests",
       "wall": "H05-H07",
       "wp": [
@@ -289,10 +294,13 @@
       "wp": "E1 six-table build"
     },
     "E2-FEAT": {
+      "commit": "b789fe7",
       "dispatched_at": "2026-10-20T13:45:00Z",
       "lane": "W-FEAT",
+      "merge": "badb141",
       "scope": "contracts/features/models/**/*_v3.py + offline/data/key_atom_dataset_v3.py (granted) + feature_gate/** + test_r3_*/test_feature_* (fixture-level)",
-      "status": "dispatched",
+      "status": "done_merged",
+      "verified_by": "supervisor rerun (136 battery, 1165 suite, real-data G1 6/6, scope 19 files)",
       "wp": "E2 feature/model/loss + math tests"
     },
     "EXP-1-docs-digest": {
@@ -383,5 +391,5 @@
     },
     "rule": "dynamic scheduling targets; expiry at hard stop unconditional; last 2h no new long tasks"
   },
-  "updated": "2026-10-20T15:35:00Z"
+  "updated": "2026-10-20T16:05:00Z"
 }

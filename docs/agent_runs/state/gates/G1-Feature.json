@@ -1,1 +1,46 @@
-{"gate_id": "G1-Feature", "status": "not_run", "evidence": null, "evaluated_at": null, "protocol_sha256_16": "3081e05479007eaf"}
+{
+  "authorization_effect": "with WP-L3 + stage-g0 rebind + pre-training audit -> formal_training_authorized",
+  "campaign_id": "PES2TS_30H_R3_V52_V53",
+  "evaluated_at": "2026-10-20T16:05:00Z",
+  "evaluated_by": "supervisor (orchestrator)",
+  "evidence": {
+    "fixture_battery": "tests/pesn/test_r3_*.py + test_feature_v3_gate.py = 136 passed (supervisor rerun); tests/pesn+tests/agent_ops = 1165 passed / 22 skipped (venv)",
+    "gate_admissible": true,
+    "harness": "scripts/agent_ops/feature_gate/equivariance_harness.py build_gate_report(preset=30h_v1.1_normative)",
+    "lambda_zero_bitwise": "key_atom_loss_v3 λ=0 torch.equal vs frozen B0-F baseline (tested across seeds/masks/weights)",
+    "model_forward_on_real_batch": "u shape (43,3), finite=True",
+    "param_count": "StarEGNNV3 = 55,441 (<70k budget; ~59k estimate deviation documented: illegal v1 inputs removed)",
+    "passed": true,
+    "real_data_batch": "7 samples from E1 G0 tables (5 curves, folds 0-4, 5 forward + 2 reverse intents)",
+    "state": "pass",
+    "tests": {
+      "T1.1": "pass",
+      "T1.2": "pass",
+      "T1.3": "pass",
+      "T1.4": "pass",
+      "T1.4b": "pass",
+      "T1.4c": "pass"
+    },
+    "yaml_sha256": "3081e05479007eaf... (bound)"
+  },
+  "feature_spec_binding": {
+    "path": "outputs/pesn/30h_campaign/feature_spec.json",
+    "schema": "pesn_r3_feature_spec_v3",
+    "sha256": "0e7de362458e2b0f718de777e5091de8df65f213e0c0787760742c0a26f74869",
+    "sources": {
+      "campaign_yaml": "3081e05479007eaf6b5630a9f893c2977578e9861940f355aeb13535568e4ba4",
+      "data_manifest": "c21ff84b3790282b4c60764e6a356b8cb3c46e5f3b76f2bf785eeb8e70a56cbc",
+      "reaction_intent_contract": "31fca057d92640a84ff455e27911a9f74bae359f62822599c7022f9e6c6f9160",
+      "split_manifest_r3": "7cc1f98e5d28077ae202eb8bf04554c53647f9c9467f0877c34365850b055879",
+      "teacher_manifest": "bc02a2bd6f6496dff32d04533ca233a1c8175779410295e2b136d17ee89ce26a"
+    }
+  },
+  "gate": "G1-Feature",
+  "notes": [
+    "supervisor ran the gate on REAL E1 data (not fixtures); harness requires to_torch_batch() conversion for real collate batches (numpy) — integration note, fixture path converts internally",
+    "G1 report consumed via state/passed (not gate_admissible alone) per E0 residual note",
+    "fixture-level E2 results now become admissible: G0+G1 both pass",
+    "interface freeze: endpoint_names = display-only metadata (never in compute graph); forward determinism = two-call bitwise test"
+  ],
+  "status": "pass"
+}
