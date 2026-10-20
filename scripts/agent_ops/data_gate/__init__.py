@@ -5,6 +5,9 @@ Submodules
 ``r3_table_schema``
     Declarative column/dtype/key schemas for the six R3 tables plus the
     split/data/teacher manifests (30h plan v1.1 §3.1, §7.1).
+``r3_build_tables``
+    E1 dataset builder: six tables + branch diagnostics + manifests from
+    the wp2_fit50 IRC export (schema r3_6table_v2; PD-1/PD-9).
 ``validate_r3_tables``
     CLI that machine-checks Data Gate tests T0.1a/b/c and T0.4a/b.
 
