@@ -1,0 +1,103 @@
+{
+  "$schema": "./schema/parallel_config.schema.md",
+  "config_id": "PES2TS_30H_PARALLEL_v0.2",
+  "status": "dryrun_passed_pending_user_decisions_and_WP-L2",
+  "supersedes": "single-lane bootstrap mode (no parallel policy; implicit max_parallel=1)",
+  "created": "2026-10-20",
+  "concurrency": {
+    "max_parallel_lanes": 3,
+    "lane_slots": ["lane-1", "lane-2", "lane-3"],
+    "oracle_policy": "reuse freed slot; never a 4th concurrent agent; read-only review scope",
+    "provider_concurrency_limit": "empirical: verified by 3-parallel dry-run 2026-10-20 (result recorded in BOOTSTRAP_REVIEW.md)",
+    "rate_limit_backoff": "on provider 429/5xx: supervisor pauses new dispatch 120s, retries once, then downgrades lane to sequential"
+  },
+  "workflows": {
+    "W-DATA": {
+      "name": "Data/Teacher",
+      "default_agent": "fixer",
+      "worktree": "/tmp/opencode/pes2ts-wt-a",
+      "branch": "ops/par-dryrun-a",
+      "write_scopes": [
+        "scripts/agent_ops/data_gate/**",
+        "tests/agent_ops/test_data_*.py",
+        "docs/agent_runs/handoffs/W-DATA_*.md"
+      ],
+      "read_scopes": ["data/** 但显式排除 data/ground_truth/**（R1：真值仅经 pes2ts_core.g0.truth.truth_reader accessor，G0 校验 truth_access_log）", "outputs/pesn/30h_campaign/**（只读；哈希核对）"],
+      "forbidden": ["pes2ts_core/** writes", "outputs/** writes", "data/ground_truth/** 任何直接读取（须走 truth_reader）"],
+      "never_write": ["data/ground_truth/**", "outputs/pesn/v5_1/**", "outputs/pesn/v5_1_r1/**", "config/campaigns/v5_*.yaml（旧协议冻结件）"]
+    },
+    "W-FEAT": {
+      "name": "Feature/Model",
+      "default_agent": "fixer",
+      "worktree": "/tmp/opencode/pes2ts-wt-b",
+      "branch": "ops/par-dryrun-b",
+      "write_scopes": [
+        "scripts/agent_ops/feature_gate/**",
+        "tests/agent_ops/test_feature_*.py",
+        "docs/agent_runs/handoffs/W-FEAT_*.md"
+      ],
+      "read_scopes": ["pes2ts_core/pesn/** (read-only until interface freeze sign-off)"],
+      "forbidden": ["pes2ts_core/** writes before interface freeze", "outputs/pesn/** writes"]
+    },
+    "W-LOSS": {
+      "name": "Loss/Training",
+      "default_agent": "fixer",
+      "worktree": "/tmp/opencode/pes2ts-wt-c",
+      "branch": "ops/par-dryrun-c",
+      "write_scopes": [
+        "scripts/agent_ops/ledger/**",
+        "scripts/agent_ops/gpu_queue/**",
+        "tests/agent_ops/test_ledger_*.py",
+        "tests/agent_ops/test_gpu_*.py",
+        "docs/agent_runs/handoffs/W-LOSS_*.md"
+      ],
+      "read_scopes": ["outputs/pesn/30h_campaign/** (ledger reads)", "config/campaigns/** (read-only)"],
+      "forbidden": ["pes2ts_core/** writes", "config/campaigns/** writes (protocol freeze is E0, human-signed)"]
+    }
+  },
+  "never_write_all_lanes": ["data/ground_truth/**", "outputs/pesn/v5_1/**", "outputs/pesn/v5_1_r1/**", "docs/reports/**（报告只读）"],
+  "shared_files": {"scripts/agent_ops/__init__.py": "supervisor-owned（lane 可建占位，合并时取 supervisor 版）", "tests/agent_ops/__init__.py": "同上"},
+  "merge_flow": {"pre_merge_check": "git diff --name-only 逐 lane 校验 ⊆ write_scopes（shared_files 除外）；违例即拒并", "gate_binding": "merge commit sha 写入对应 state/gates/G#.json 或 phase 记录"},
+  "driver_campaign_root_rule": "复用驱动（run_v5_1_sprint/r1_gradient_probe 等）默认输出根指向 sealed 目录（v5_1/v5_1_r1）——30h 战役一律显式覆盖为 outputs/pesn/30h_campaign/**，驱动启动时断言拒绝 sealed 前缀（WP-L2 实现于 runner）",
+  "serial_gates": ["G0-Data", "G1-Feature", "G2-Move", "G3a-Label", "G3-V52Supervision", "G4-Rollout"],
+  "gate_rule": "gates evaluated strictly in DAG order by supervisor; no downstream lane starts formal (non-fixture) execution on a failed/blocked upstream gate; fixture-level test-scaffolding work may proceed in parallel but its results are marked not_admissible_until_gate_pass",
+  "gpu": {
+    "queue": "single",
+    "mutex": "/tmp/opencode/pes2ts_gpu.lock (flock；**一切 CUDA 进程**持有：正式训练/评测、E0 吞吐 smoke、lane CUDA 测试；holder 元数据含 pid/lane/run_id)",
+    "concurrent_gpu_jobs": 1,
+    "precheck": "派发前 nvidia-smi 校验无外部占用（当前 2.6GB 占用须先查明归属，禁盲杀——PD-8）",
+    "during_training_parallel_cpu_work": [
+      "CPU data analysis",
+      "test design",
+      "V5.2 head development behind frozen interface",
+      "V5.3 executor development"
+    ],
+    "frozen_version_rule": "while a formal run is active, no lane may modify files hash-pinned in that run's config_sha256 set; supervisor enforces via ledger pre-write check"
+  },
+  "fix_policy": {
+    "max_rounds_per_task": 2,
+    "single_owner": true,
+    "cross_module": "oracle read-only review first; then re-dispatch to one owner lane",
+    "no_auto_fix_classes": ["E-SCI-DEF", "E-DATA-SCI", "E-GATE-FAIL", "E-NO-GAIN", "E-LEAK-SUSPECT"],
+    "scientific_immutable": ["metric definitions", "gate thresholds", "loss formulas", "data identity/split semantics", "label semantics"]
+  },
+  "agent_report_schema": {
+    "required_fields": ["task_id", "lane", "summary", "changed_files", "test_status", "artifact_paths", "commit", "downstream_deps"],
+    "max_summary_lines": 40,
+    "raw_logs": "forbidden in report; cite paths under worktree / logs dir only"
+  },
+  "resume_policy": {
+    "on_interrupt": ["check running processes (pgrep patterns per lane)", "verify artifacts + ledger state", "reconcile task_status", "only then re-dispatch; duplicate run_id submission forbidden"],
+    "ledger": "run_plan.jsonl（E0 规划件，supervisor 专属，防止规划 run 被误计完成）与 run_records.jsonl（执行账本，append-only，run_id unique）分离；ledger 仅索引终态记录；成本账含失败/重试",
+    "run_id_key": "campaign_id+phase+arm+fold+seed+config/data/teacher/feature/split sha 前缀；attempt/parent_run_id 字段追踪重试；66/33 上限计所有 launch attempt",
+    "deadline": "E0 写死 campaign 起止绝对时间；phase 级 deadline_utc 超时自动 blocked；剩余预算不足任务预估即拒派"
+  },
+  "launch_guard": {
+    "formal_training_authorized": false,
+    "sealed_unseal_token": false,
+    "token_rule": "formal_training_authorized 仅授权 30h 正式训练；sealed/Confirm/OOD 解封与 Fit150+ 是**独立审批 token**，本战役恒为 false（ADR-0029 §2.4、30h §7.3），任何阶段不得由该开关连带打开",
+    "requires": "user explicit confirmation after BOOTSTRAP_REVIEW.md dry-run section signed",
+    "sealed_boundaries": ["outputs/pesn/v5_1/**", "outputs/pesn/v5_1_r1/**", "old 53-run evidence = outputs/pesn/v5_1 (21 runs) + v5_1_r1 (32 runs), per ADR-0028 §2.4"],
+    "hard_no": ["Fit150+", "sealed/Confirm/OOD opening", "confirm-fold tuning", "ACP bypass", "modifying frozen 30h protocol after E0 sign-off"]
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "campaign_id": "PES2TS_30H_R3_V52_V53",
+  "mode": "parallel_execution_v0.1",
+  "formal_training_authorized": false,
+  "campaign_wall_clock_budget_h": 30,
+  "created": "2026-10-20T09:35Z",
+  "updated": "2026-10-20T09:55Z",
+  "phases": [
+    {"id": "E0", "title": "协议冻结/测速", "gate": null, "status": "blocked_on_user_decisions", "wp": ["WP-0"], "wall": "H00-H02"},
+    {"id": "E1", "title": "Curve/Intent/Data", "gate": "G0-Data", "status": "planned", "wp": ["WP-1", "WP-D1"], "wall": "H02-H05"},
+    {"id": "E2", "title": "Feature/Loss Tests", "gate": "G1-Feature", "status": "planned", "wp": ["WP-2", "WP-F1"], "wall": "H05-H07"},
+    {"id": "E3", "title": "R3 Training (<=66 runs)", "gate": "G2-Move", "status": "planned", "wp": ["WP-4", "WP-L1", "WP-5"], "wall": "H07-H12"},
+    {"id": "E4", "title": "V5.2 Labels/Heads", "gate": "G3a-Label", "status": "planned", "wp": ["WP-6"], "wall": "H12-H15"},
+    {"id": "E5", "title": "V5.2 Training (<=33 runs)", "gate": "G3-V52Supervision", "status": "planned", "wp": ["WP-7"], "wall": "H15-H20"},
+    {"id": "E6", "title": "V5.3 Rollout", "gate": "G4-Rollout", "status": "planned", "wp": ["WP-8", "WP-9"], "wall": "H20-H26"},
+    {"id": "E7", "title": "统计复核", "gate": "Report", "status": "planned", "wp": ["WP-10"], "wall": "H26-H28"},
+    {"id": "E8", "title": "缓冲/归档", "gate": "H30-HARD-STOP", "status": "planned", "wp": ["WP-11"], "wall": "H28-H30"}
+  ],
+  "gate_order": ["G0-Data", "G1-Feature", "G2-Move", "G3a-Label", "G3-V52Supervision", "G4-Rollout"],
+  "gates": {},
+  "tasks": {
+    "EXP-1-docs-digest": {"lane": "read-only", "status": "done", "session": "ses_ea75cf308ffetDK0U6Y2Ry5mWN", "output": "7 conflicts + R3 deliverable file list"},
+    "EXP-2-code-recon": {"lane": "read-only", "status": "done", "session": "ses_ea75cf307ffeznOdfkzpxPaMrb", "output": "代码地图+11 gaps；训练环境=/root/miniforge3/envs/pes2ts-gpu/bin/python(torch2.14.1+cu130)，driver用PES2TS_GPU_PYTHON覆盖"},
+    "DRYRUN-A": {"lane": "W-DATA", "wp": "WP-D1", "status": "done_verified", "session": "ses_ea757b829ffea3UqECaayGrZRw", "worktree": "/tmp/opencode/pes2ts-wt-a", "branch": "ops/par-dryrun-a", "commit": "2eda543", "tests": "18 passed (supervisor rerun; CLI clean=0/orphan=1 复核)", "notes": "open→PD-9: irc_edge.delta_xyz flat vs JSON 及 eps=1e-6 为lane归一化选择需E0确认; dtype未值校验→WP-1扩展; T0.2/T0.3 未实现→WP-1"},
+    "DRYRUN-B": {"lane": "W-FEAT", "wp": "WP-F1", "status": "done_verified", "session": "ses_ea757b828ffeIhhEoG3i7CGgH0", "worktree": "/tmp/opencode/pes2ts-wt-b", "branch": "ops/par-dryrun-b", "commit": "121fbce", "tests": "41 passed (supervisor rerun)", "notes": "容差双预设+显式警告(→PD-2); 4种bug模式均被捕获; 需确认真实StarEGNN v3 forward确定性(no dropout)→WP-2验收项; 其运行venv=/tmp/opencode/venv(系统py3无torch)→解释器一致性入review"},
+    "DRYRUN-C": {"lane": "W-LOSS", "wp": "WP-L1", "status": "done_verified", "session": "ses_ea757b827ffejrHkjLlaH3bUib", "worktree": "/tmp/opencode/pes2ts-wt-c", "branch": "ops/par-dryrun-c", "commits": ["e2133cf", "efe5bce(supervisor path-fix)"], "tests": "11 passed (supervisor rerun)", "rulings": "retry2轮+第3次override=符合限额; 首记录planned=采纳; done需checkpoint证据=采纳; 默认路径已修正为outputs/pesn/30h_campaign"}
+    "ORA-1-compliance-review": {"lane": "oracle-read-only", "status": "done", "session": "ses_ea7444bd4ffekxGry2vq4gDSe9", "verdict": "可继续dry-run；不满足正式训练授权。3项启动阻塞：①data/**与outputs/pesn/**读域过宽+驱动默认写sealed ②单一开关绑sealed解封+gate纯声明 ③WP-4'依赖错误+预算不可执行。修正已应用于config/plan/README；代码级硬化=WP-L2"}
+  },
+  "prelaunch_hardening": {"task_id": "WP-L2", "lane": "W-LOSS", "status": "planned", "scope": ["gpu_lock取锁前强制校验state/gates/G#.json==pass+protocol hash", "ledger行加gate_id/admissibility/evidence_sha字段", "run_plan.jsonl(E0规划件)与run_records.jsonl分离", "run_id幂等键扩为campaign+phase+arm+fold+seed+config/data/teacher/feature/split sha前缀+attempt/parent_run_id; 66/33上限计所有launch attempt", "E0 per-file allowlist生成器(仅*_v3.py/tests/pesn/test_r3_*/scripts/campaigns/r3_*)+冻结hash denylist", "phase绝对deadline_utc字段+超时自动blocked", "fold3/4解封计数器(confirm_unseal_count<=1)"], "acceptance": "oracle复审pass"},
+  "pending_user_decisions": ["PD-1[宪法阻塞] 六表vs五表(数据身份)", "PD-2[宪法阻塞] 等变容差预设(看数据前须冻结,ADR-0029预注册)", "PD-3 run数溯源口径", "PD-4[宪法阻塞] 21-run降级集若计R3终局=旧证据替代G2门", "PD-5 campaign_id写入run_v5_1_r3.py", "PD-6[宪法阻塞] F-ablate mask范围(30h已冻结全mask)", "PD-7 docs/agent_runs新建+台账登记", "PD-8 GPU占用清理(禁盲杀,先核进程归属)", "PD-9 irc_edge.delta_xyz存储格式(flat/JSON)与侧合法性eps归一化"],
+  "time_control": {"campaign_started_at_utc": null, "hard_stop_at_utc": null, "rule": "E0签认时写死绝对起止；remaining=hard_stop-now动态计算；各phase存deadline_utc，超时自动blocked；剩余不足任务预估即拒派"},
+  "sealed_readonly": ["outputs/pesn/v5_1/**", "outputs/pesn/v5_1_r1/**", "旧53-run证据=outputs/pesn/v5_1(21)+v5_1_r1(32), 见ADR-0028§2.4"],
+  "budget": {"max_parallel_lanes": 3, "gpu_jobs": 1, "fix_rounds_per_task": 2, "run_caps": {"R3": 66, "V5.2": 33, "counting": "所有launch attempt含retry均计数"}},
+  "remaining_wall_clock_h": null
+}
