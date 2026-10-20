@@ -47,8 +47,12 @@
       "write_scopes": [
         "scripts/agent_ops/ledger/**",
         "scripts/agent_ops/gpu_queue/**",
+        "scripts/agent_ops/supervisor/**",
+        "scripts/agent_ops/runplan/**",
         "tests/agent_ops/test_ledger_*.py",
         "tests/agent_ops/test_gpu_*.py",
+        "tests/agent_ops/test_supervisor_*.py",
+        "tests/agent_ops/test_runplan_*.py",
         "docs/agent_runs/handoffs/W-LOSS_*.md"
       ],
       "read_scopes": ["outputs/pesn/30h_campaign/** (ledger reads)", "config/campaigns/** (read-only)"],
