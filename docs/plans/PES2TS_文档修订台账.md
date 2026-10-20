@@ -587,3 +587,9 @@
 主QC预算为3877episode+156诊断宏步，串行上限982小时15分/468360请求；仅RL主采集是500小时/240000请求。离线训练、制备、严格验证及条件消融实测后另冻结并计入总成本。最先真实小包上限64小时15分/27720请求，不能把计划总包络当已启动任务或实际费用。
 
 本次只修改规划与入口、完成文档/算术核验，未启动训练/QC、访问新增真值或修业务代码。宪法内容v2.6、正式阶段/能力/默认和权限保持；新schema实施前另按既有架构流程登记。改版前四份入口原字节与hash见[快照](../archive/20261008_pre_scale20k_rl2k/README.md)。
+
+## 24. PES2TS-30H 并行执行套件（2026-10-20）
+
+30h 战役（PES2TS_30H_R3_V52_V53）升级为并行研究执行模式。新增执行套件目录 [docs/agent_runs/](../agent_runs/)（非规范层）：[PARALLEL_EXECUTION_PLAN.md](../agent_runs/PARALLEL_EXECUTION_PLAN.md)（3-lane 并发/DAG/11+1 WP/串行 gate/合规映射/待决策清单）、[BOOTSTRAP_REVIEW.md](../agent_runs/BOOTSTRAP_REVIEW.md)（环境核查、3-lane dry-run 复核、Oracle ORA-1 预审处置）、state/parallel_config.json、state/task_state.json。配套脚手架 `scripts/agent_ops/{data_gate,feature_gate,ledger,gpu_queue}` 与 `tests/agent_ops`（70 项新测试）。
+
+并行 dry-run（3 独立 worktree lane）已过；Oracle 预审 3 项启动阻塞已处置或列入 WP-L2 预启动硬化。未启动训练/QC；未触碰 sealed 目录与 data/ground_truth；未修改科研指标/阈值/损失/数据语义；旧 53-run 证据（outputs/pesn/v5_1 + v5_1_r1）只读。正式启动被 PD-1/2/4/6（宪法阻塞决策）+ WP-L2 + E0 冻结签认阻挡，`formal_training_authorized=false`。
