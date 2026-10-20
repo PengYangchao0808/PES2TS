@@ -93,8 +93,8 @@ r3_training:   # 30h §4.1
     old_oof_0824_comparable: false
 
 v52_training:   # 30h §5
-  heads: {move: u_K[K,3], progress: "q=tanh(Linear(64,32)SiLU Linear(32,1))",
-          ts_stop: logit scalar, loss: BCEWithLogitsLoss}
+  heads: {move: "u_K [K,3]", progress: "q=tanh(Linear(64,32)SiLU Linear(32,1))",
+          ts_stop: "logit scalar", loss: "BCEWithLogitsLoss"}
   qlabel: {definition: 质量加权弧长分段归一, A=-1,TS=0,B=+1, reverse q=-q, zero-arc mask}
   stop_labels: {positive: d_key_TS<=0.04 Å, negative: d_key_TS>=0.12 Å, middle: Mask,
                 insufficient_positives: insufficient_stop_positives, 禁止偷扩窗}
