@@ -4,7 +4,9 @@
   "formal_training_authorized": false,
   "campaign_wall_clock_budget_h": 30,
   "created": "2026-10-20T09:35Z",
-  "updated": "2026-10-20T09:55Z",
+  "updated": "2026-10-20T10:40Z",
+  "integration": {"merges": ["fc64ac4 lane-a", "5e6d34b lane-b", "03af790 lane-c"], "suite_commit": "fa63e20", "review_commit": "a5fde4b+pytest回填", "main_pytest": "2718 passed, 1 skipped, exit=0 (153s)", "worktrees": "保留 wt-a/b/c 供 WP 续作；分支已并入 master"},
+  "bootstrap_status": "DONE — 等待用户 PD 裁定；后续：WP-L2 硬化 → E0 冻结签认 → formal_training_authorized",
   "phases": [
     {"id": "E0", "title": "协议冻结/测速", "gate": null, "status": "blocked_on_user_decisions", "wp": ["WP-0"], "wall": "H00-H02"},
     {"id": "E1", "title": "Curve/Intent/Data", "gate": "G0-Data", "status": "planned", "wp": ["WP-1", "WP-D1"], "wall": "H02-H05"},

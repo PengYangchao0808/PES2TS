@@ -56,7 +56,7 @@
 4. GPU 2.6GB 占用查属清理（PD-8）；主树全量 pytest 绿（进行中，结果回填本节）；
 5. 用户显式 `formal_training_authorized=true`（不连带任何解封）。
 
-**主树全量 pytest**：2719 项（2649 旧 + 70 新）——结果：`见 git log 后续 commit / 状态机记录`。
+**主树全量 pytest**：**2718 passed, 1 skipped, 10 deselected, exit=0**（153s，2026-10-20；2649 旧 + 70 新 agent_ops 全绿，含三分支合并后）。
 
 ## 6. 合规声明
 
