@@ -1,56 +1,90 @@
 {
+  "authorization": {
+    "confirm_authorized": false,
+    "fit150plus_authorized": false,
+    "formal_training_authorized": false,
+    "ood_authorized": false,
+    "sealed_authorized": false
+  },
+  "bootstrap_status": "DONE — 等待用户 PD 裁定；后续：WP-L2 硬化 → E0 冻结签认 → formal_training_authorized",
+  "budget": {
+    "fix_rounds_per_task": 2,
+    "gpu_jobs": 1,
+    "max_parallel_lanes": 3,
+    "run_caps": {
+      "R3": 66,
+      "V5.2": 33,
+      "counting": "所有launch attempt含retry均计数"
+    }
+  },
   "campaign_id": "PES2TS_30H_R3_V52_V53",
-  "mode": "parallel_execution_v0.1",
-  "formal_training_authorized": false,
-  "sealed_authorized": false,
-  "confirm_authorized": false,
-  "ood_authorized": false,
-  "fit150plus_authorized": false,
   "campaign_wall_clock_budget_h": 30,
+  "confirm_authorized": false,
   "created": "2026-10-20T09:35Z",
   "e0_freeze": {
-    "status": "assembled_pending_human_signoff",
-    "protocol": "outputs/pesn/30h_campaign/protocol_30h.json",
-    "run_plan_pinned": {"sha256": "d2a63599727804e9ff407b30c7e5e1bdfc555c38fa7cafd5857a6cf273073163", "campaign_mode": "full", "runs": 99, "note": "钉定；重建须 --force 且=重新冻结+用户签认；WP-L3 将在 ledger.append 强制校验此 sha+mode"},
-    "config_pinned": "3081e05479007eaf6b5630a9f893c2977578e9861940f355aeb13535568e4ba4",
     "allowlist_pinned": "9a3e27e12e15c50d8ddcc7b9bde1112c8f98dbf2390e62e0db647a49adbc84e0",
+    "config_pinned": "3081e05479007eaf6b5630a9f893c2977578e9861940f355aeb13535568e4ba4",
     "gates_initialized": "G0..G4 全部 not_run",
-    "two_stage": "data/teacher/split=PENDING_E1, features=PENDING_E2; G0 前填实值并 stage=g0 重验",
     "ora3_verdict": "LAUNCH BLOCKERS: NONE",
-    "wp_l3_pre_E3": ["ledger.append 校验钉定 run_plan sha+mode", "metric_unseal 消费接线(B folds3/4)", "monitor 捕获 PlanNotFrozenError", "assert_campaign_root 集成 driver(E3 lane)"]
+    "protocol": "outputs/pesn/30h_campaign/protocol_30h.json",
+    "run_plan_pinned": {
+      "campaign_mode": "full",
+      "note": "钉定；重建须 --force 且=重新冻结+用户签认；WP-L3 将在 ledger.append 强制校验此 sha+mode",
+      "runs": 99,
+      "sha256": "d2a63599727804e9ff407b30c7e5e1bdfc555c38fa7cafd5857a6cf273073163"
+    },
+    "status": "approved_conditional_24h",
+    "two_stage": "data/teacher/split=PENDING_E1, features=PENDING_E2; G0 前填实值并 stage=g0 重验",
+    "wp_l3_pre_E3": [
+      "ledger.append 校验钉定 run_plan sha+mode",
+      "metric_unseal 消费接线(B folds3/4)",
+      "monitor 捕获 PlanNotFrozenError",
+      "assert_campaign_root 集成 driver(E3 lane)"
+    ]
   },
-  "updated": "2026-10-20T12:10Z",
-  "integration": {"merges": ["fc64ac4 lane-a", "5e6d34b lane-b", "03af790 lane-c", "279967b WP-D2", "7fa6aba WP-F2", "b1907c6 WP-L2-r2"], "suite_commit": "fa63e20", "review_commit": "a5fde4b+pytest回填", "main_pytest": "2997 passed, 1 skipped, exit=0 (186s, @b1907c6 全量)", "worktrees": "wt-a/b/c 保留；三分支已并入 master"},
-  "bootstrap_status": "DONE — 等待用户 PD 裁定；后续：WP-L2 硬化 → E0 冻结签认 → formal_training_authorized",
-  "phases": [
-    {"id": "E0", "title": "协议冻结/测速", "gate": null, "status": "blocked_on_user_decisions", "wp": ["WP-0"], "wall": "H00-H02"},
-    {"id": "E1", "title": "Curve/Intent/Data", "gate": "G0-Data", "status": "planned", "wp": ["WP-1", "WP-D1"], "wall": "H02-H05"},
-    {"id": "E2", "title": "Feature/Loss Tests", "gate": "G1-Feature", "status": "planned", "wp": ["WP-2", "WP-F1"], "wall": "H05-H07"},
-    {"id": "E3", "title": "R3 Training (<=66 runs)", "gate": "G2-Move", "status": "planned", "wp": ["WP-4", "WP-L1", "WP-5"], "wall": "H07-H12"},
-    {"id": "E4", "title": "V5.2 Labels/Heads", "gate": "G3a-Label", "status": "planned", "wp": ["WP-6"], "wall": "H12-H15"},
-    {"id": "E5", "title": "V5.2 Training (<=33 runs)", "gate": "G3-V52Supervision", "status": "planned", "wp": ["WP-7"], "wall": "H15-H20"},
-    {"id": "E6", "title": "V5.3 Rollout", "gate": "G4-Rollout", "status": "planned", "wp": ["WP-8", "WP-9"], "wall": "H20-H26"},
-    {"id": "E7", "title": "统计复核", "gate": "Report", "status": "planned", "wp": ["WP-10"], "wall": "H26-H28"},
-    {"id": "E8", "title": "缓冲/归档", "gate": "H30-HARD-STOP", "status": "planned", "wp": ["WP-11"], "wall": "H28-H30"}
+  "e1_execution_grant": {
+    "build_script_location": "scripts/agent_ops/data_gate/ (W-DATA lane scope; plan-doc path scripts/campaigns/r3_build_data.py belongs to W-LOSS scope per frozen allowlist — single-writer rule, deviation documented)",
+    "constraints": [
+      "data tables + branch_diagnostics + 3 manifests only",
+      "protocol_30h.json / run_plan.jsonl / run_records.jsonl remain supervisor-only",
+      "e0_write_allowlist.json immutable (SHA-pinned); this grant recorded here instead",
+      "sealed dirs outputs/pesn/v5_1/**, outputs/pesn/v5_1_r1/** read-forbidden as before",
+      "data/ground_truth/** only via pes2ts_core.g0.truth.truth_reader"
+    ],
+    "granted_by": "user 24h authorization (E1 explicitly auto-authorized)",
+    "lane": "W-DATA",
+    "write_scope_addition": [
+      "outputs/pesn/30h_campaign/data/**"
+    ]
+  },
+  "fit150plus_authorized": false,
+  "formal_training_authorized": false,
+  "gate_order": [
+    "G0-Data",
+    "G1-Feature",
+    "G2-Move",
+    "G3a-Label",
+    "G3-V52Supervision",
+    "G4-Rollout"
   ],
-  "gate_order": ["G0-Data", "G1-Feature", "G2-Move", "G3a-Label", "G3-V52Supervision", "G4-Rollout"],
   "gates": {},
-  "tasks": {
-    "EXP-1-docs-digest": {"lane": "read-only", "status": "done", "session": "ses_ea75cf308ffetDK0U6Y2Ry5mWN", "output": "7 conflicts + R3 deliverable file list"},
-    "EXP-2-code-recon": {"lane": "read-only", "status": "done", "session": "ses_ea75cf307ffeznOdfkzpxPaMrb", "output": "代码地图+11 gaps；训练环境=/root/miniforge3/envs/pes2ts-gpu/bin/python(torch2.14.1+cu130)，driver用PES2TS_GPU_PYTHON覆盖"},
-    "DRYRUN-A": {"lane": "W-DATA", "wp": "WP-D1", "status": "done_verified", "session": "ses_ea757b829ffea3UqECaayGrZRw", "worktree": "/tmp/opencode/pes2ts-wt-a", "branch": "ops/par-dryrun-a", "commit": "2eda543", "tests": "18 passed (supervisor rerun; CLI clean=0/orphan=1 复核)", "notes": "open→PD-9: irc_edge.delta_xyz flat vs JSON 及 eps=1e-6 为lane归一化选择需E0确认; dtype未值校验→WP-1扩展; T0.2/T0.3 未实现→WP-1"},
-    "DRYRUN-B": {"lane": "W-FEAT", "wp": "WP-F1", "status": "done_verified", "session": "ses_ea757b828ffeIhhEoG3i7CGgH0", "worktree": "/tmp/opencode/pes2ts-wt-b", "branch": "ops/par-dryrun-b", "commit": "121fbce", "tests": "41 passed (supervisor rerun)", "notes": "容差双预设+显式警告(→PD-2); 4种bug模式均被捕获; 需确认真实StarEGNN v3 forward确定性(no dropout)→WP-2验收项; 其运行venv=/tmp/opencode/venv(系统py3无torch)→解释器一致性入review"},
-    "DRYRUN-C": {"lane": "W-LOSS", "wp": "WP-L1", "status": "done_verified", "session": "ses_ea757b827ffejrHkjLlaH3bUib", "worktree": "/tmp/opencode/pes2ts-wt-c", "branch": "ops/par-dryrun-c", "commits": ["e2133cf", "efe5bce(supervisor path-fix)"], "tests": "11 passed (supervisor rerun)", "rulings": "retry2轮+第3次override=符合限额; 首记录planned=采纳; done需checkpoint证据=采纳; 默认路径已修正为outputs/pesn/30h_campaign"},
-    "ORA-1-compliance-review": {"lane": "oracle-read-only", "status": "done", "session": "ses_ea7444bd4ffekxGry2vq4gDSe9", "verdict": "bootstrap 预审：3 项启动阻塞（读域过宽+驱动默认写 sealed/单一开关绑解封/gate 纯声明+WP-4' 依赖错误），已全部处置并触发 WP-L2"},
-    "ORA-2-compliance-rereview": {"lane": "oracle-read-only", "status": "done", "session": "ses_ea6f9e45cffesnS9FZJL8duVNU", "verdict": "E0 保持 BLOCKED。5 组阻塞：①PD-2/PD-6 文档残留+gate 未绑定 ②零 sha/两段绑定+计划键漏洞 ③confirm_unseal 批次语义 ④教师 schema/involution/权重/T0.2 缺 ⑤driver sealed-root+truth_access_log 审计缺", "disposition": "R3 v3.2 残留已修(29f0e25)；代码修复三 lane 并行：W-LOSS r2(零sha/计划键/批次解封/gate链/allowlist lane化/21-run模式)、W-DATA WP-D2(PD-9 flat/intent配对/权重/T0.2/T0.3/T0.5)、W-FEAT WP-F2(规范预设绑定/禁入类补全/正向allowlist/intent-off全mask)"},
-    "WP-L2-r2": {"lane": "W-LOSS", "status": "done_merged", "session": "ses_ea72216ddffeiI5nhhVSQRg2Hf", "worktree": "/tmp/opencode/pes2ts-wt-c", "branch": "ops/wp-l2-r2", "commit": "7d7d848", "merge": "b1907c6", "tests": "245 lane / 349 合并全量 (supervisor rerun)", "closes": "ORA-2 #2 #3 #5: 两段式sha绑定+PlanNotFrozen/计划键+variant/批次unseal+metric token/gate链+授权token+yaml pin/campaign_root断言/lane化allowlist/PD-4 partial模式", "rulings": "RUN_ID_MISMATCH优先于NOT_IN_PLAN(均拒绝)=待Oracle终审确认", "notes": "两段式实证: e0 verify PASS(99唯一run_id, PENDING tokens), launch stage 正确拒绝 PENDING"},
-    "WP-D2": {"lane": "W-DATA", "status": "done_merged", "session": "ses_ea757b829ffea3UqECaayGrZRw", "worktree": "/tmp/opencode/pes2ts-wt-a", "branch": "ops/wp-d2", "commit": "135817d", "merge": "279967b", "tests": "52 lane + 217 全量 (supervisor rerun)", "closes": "ORA-2 #4 全部: PD-9 flat/intent配对/权重和=1/T0.2ab/T0.3ab/T0.5; schema r3_6table_v2", "notes": "其报告发现 master parallel_config 尾逗号(supervisor 修复 1c56fc6); E1 解释器注意: delta_xyz_sha256=float64-LE打包, edge行 intent-scoped, atom_map暂仅格式校验"},
-    "WP-F2": {"lane": "W-FEAT", "status": "done_merged", "session": "ses_ea757b828ffeIhhEoG3i7CGgH0", "worktree": "/tmp/opencode/pes2ts-wt-b", "branch": "ops/wp-f2", "commit": "5ea7313", "merge": "7fa6aba", "tests": "287 全量 (supervisor rerun)", "closes": "ORA-2 #1 特征侧: 规范预设绑定(1e-4→record-only+inadmissible)/11禁入类/正向allowlist T1.4b/intent-off全mask T1.4c/G1报告CLI(yaml_sha256绑定)", "rulings": "r3_v3_record→blocked(非fail)语义=采纳; endpoint_names合法性→WP-2接口冻结时确认", "notes": "发现并经supervisor修复 campaign yaml L96 语法缺陷(710a3f5)"}
+  "integration": {
+    "main_pytest": "2997 passed, 1 skipped, exit=0 (186s, @b1907c6 全量)",
+    "merges": [
+      "fc64ac4 lane-a",
+      "5e6d34b lane-b",
+      "03af790 lane-c",
+      "279967b WP-D2",
+      "7fa6aba WP-F2",
+      "b1907c6 WP-L2-r2"
+    ],
+    "review_commit": "a5fde4b+pytest回填",
+    "suite_commit": "fa63e20",
+    "worktrees": "wt-a/b/c 保留；三分支已并入 master"
   },
-  "process_deviation_log": [{"event": "WP-D2 merge 先于 check-merge 执行", "cause": "master 未提交 e0_write_allowlist.json + 对已并 master 的分支用整体 diff 导致 master 侧文件误报 90 violations", "remedy": "事后按 lane 自有提交(135817d)精确复核=100% scope 内; 教训入规程: check-merge 必须基于 lane-authored commits(--first-parent master 侧剥离), 且 e0_write_allowlist.json 随 E0 包入库", "committed_evidence": "1c56fc6(config fix) + 279967b(merge)"}],
-  "prelaunch_hardening": {"task_id": "WP-L2(+r2)", "lane": "W-LOSS", "status": "in_progress_r2", "scope": ["gpu_lock取锁前强制校验state/gates/G#.json==pass+protocol hash", "ledger行加gate_id/admissibility/evidence_sha字段", "run_plan.jsonl(E0规划件)与run_records.jsonl分离", "run_id幂等键扩为campaign+phase+arm+fold+seed+config/data/teacher/feature/split sha前缀+attempt/parent_run_id; 66/33上限计所有launch attempt", "E0 per-file allowlist生成器(仅*_v3.py/tests/pesn/test_r3_*/scripts/campaigns/r3_*)+冻结hash denylist", "phase绝对deadline_utc字段+超时自动blocked", "fold3/4解封计数器(confirm_unseal_count<=1)"], "acceptance": "oracle复审pass"},
+  "mode": "parallel_execution_v0.1",
+  "ood_authorized": false,
   "pd_rulings": {
-    "ruled_at": "2026-10-20 by user",
     "PD-1": "APPROVED 六表为准；R3 v3 §2 已修订为 v3.2",
     "PD-2": "APPROVED 分层容差：Relabel 逐比特+max_abs<=1e-6；旋转/平移/置换 rel1e-5+abs1e-6；1e-4 仅记录性对照禁止自动放宽",
     "PD-3": "CONDITIONAL 66=规划上限；以63为基础+3，额外3-run身份须与30h §4.2 F-bidir比对明确；冻结前manifest列66唯一run_id+自动验证预算与复用",
@@ -60,11 +94,274 @@
     "PD-7": "APPROVED docs/agent_runs按新增目录，维护台账/索引",
     "PD-8": "DIAGNOSIS-ONLY 完成：无CUDA进程，2652MiB=Windows显示栈(Disp.A=On)，不清理；~5.5GB可用，E0 smoke验证",
     "PD-9": "CONDITIONAL APPROVED delta_xyz=flat数组+可验证shape/offset+原子映射/单位/SHA；进度侧eps=1e-6；TS权威身份=ts_index",
-    "next_authorized": "WP-L2 → Oracle复审 → E0冻结签认；之后停止等用户独立授权"
+    "next_authorized": "WP-L2 → Oracle复审 → E0冻结签认；之后停止等用户独立授权",
+    "ruled_at": "2026-10-20 by user"
   },
-  "authorization": {"formal_training_authorized": false, "sealed_authorized": false, "confirm_authorized": false, "ood_authorized": false, "fit150plus_authorized": false},
-  "time_control": {"campaign_started_at_utc": null, "hard_stop_at_utc": null, "rule": "E0签认时写死绝对起止；remaining=hard_stop-now动态计算；各phase存deadline_utc，超时自动blocked；剩余不足任务预估即拒派"},
-  "sealed_readonly": ["outputs/pesn/v5_1/**", "outputs/pesn/v5_1_r1/**", "旧53-run证据=outputs/pesn/v5_1(21)+v5_1_r1(32), 见ADR-0028§2.4"],
-  "budget": {"max_parallel_lanes": 3, "gpu_jobs": 1, "fix_rounds_per_task": 2, "run_caps": {"R3": 66, "V5.2": 33, "counting": "所有launch attempt含retry均计数"}},
-  "remaining_wall_clock_h": null
+  "phases": [
+    {
+      "gate": null,
+      "id": "E0",
+      "status": "blocked_on_user_decisions",
+      "title": "协议冻结/测速",
+      "wall": "H00-H02",
+      "wp": [
+        "WP-0"
+      ]
+    },
+    {
+      "gate": "G0-Data",
+      "id": "E1",
+      "status": "planned",
+      "title": "Curve/Intent/Data",
+      "wall": "H02-H05",
+      "wp": [
+        "WP-1",
+        "WP-D1"
+      ]
+    },
+    {
+      "gate": "G1-Feature",
+      "id": "E2",
+      "status": "planned",
+      "title": "Feature/Loss Tests",
+      "wall": "H05-H07",
+      "wp": [
+        "WP-2",
+        "WP-F1"
+      ]
+    },
+    {
+      "gate": "G2-Move",
+      "id": "E3",
+      "status": "planned",
+      "title": "R3 Training (<=66 runs)",
+      "wall": "H07-H12",
+      "wp": [
+        "WP-4",
+        "WP-L1",
+        "WP-5"
+      ]
+    },
+    {
+      "gate": "G3a-Label",
+      "id": "E4",
+      "status": "planned",
+      "title": "V5.2 Labels/Heads",
+      "wall": "H12-H15",
+      "wp": [
+        "WP-6"
+      ]
+    },
+    {
+      "gate": "G3-V52Supervision",
+      "id": "E5",
+      "status": "planned",
+      "title": "V5.2 Training (<=33 runs)",
+      "wall": "H15-H20",
+      "wp": [
+        "WP-7"
+      ]
+    },
+    {
+      "gate": "G4-Rollout",
+      "id": "E6",
+      "status": "planned",
+      "title": "V5.3 Rollout",
+      "wall": "H20-H26",
+      "wp": [
+        "WP-8",
+        "WP-9"
+      ]
+    },
+    {
+      "gate": "Report",
+      "id": "E7",
+      "status": "planned",
+      "title": "统计复核",
+      "wall": "H26-H28",
+      "wp": [
+        "WP-10"
+      ]
+    },
+    {
+      "gate": "H30-HARD-STOP",
+      "id": "E8",
+      "status": "planned",
+      "title": "缓冲/归档",
+      "wall": "H28-H30",
+      "wp": [
+        "WP-11"
+      ]
+    }
+  ],
+  "prelaunch_hardening": {
+    "acceptance": "oracle复审pass",
+    "lane": "W-LOSS",
+    "scope": [
+      "gpu_lock取锁前强制校验state/gates/G#.json==pass+protocol hash",
+      "ledger行加gate_id/admissibility/evidence_sha字段",
+      "run_plan.jsonl(E0规划件)与run_records.jsonl分离",
+      "run_id幂等键扩为campaign+phase+arm+fold+seed+config/data/teacher/feature/split sha前缀+attempt/parent_run_id; 66/33上限计所有launch attempt",
+      "E0 per-file allowlist生成器(仅*_v3.py/tests/pesn/test_r3_*/scripts/campaigns/r3_*)+冻结hash denylist",
+      "phase绝对deadline_utc字段+超时自动blocked",
+      "fold3/4解封计数器(confirm_unseal_count<=1)"
+    ],
+    "status": "in_progress_r2",
+    "task_id": "WP-L2(+r2)"
+  },
+  "process_deviation_log": [
+    {
+      "cause": "master 未提交 e0_write_allowlist.json + 对已并 master 的分支用整体 diff 导致 master 侧文件误报 90 violations",
+      "committed_evidence": "1c56fc6(config fix) + 279967b(merge)",
+      "event": "WP-D2 merge 先于 check-merge 执行",
+      "remedy": "事后按 lane 自有提交(135817d)精确复核=100% scope 内; 教训入规程: check-merge 必须基于 lane-authored commits(--first-parent master 侧剥离), 且 e0_write_allowlist.json 随 E0 包入库"
+    }
+  ],
+  "remaining_wall_clock_h": null,
+  "sealed_authorized": false,
+  "sealed_readonly": [
+    "outputs/pesn/v5_1/**",
+    "outputs/pesn/v5_1_r1/**",
+    "旧53-run证据=outputs/pesn/v5_1(21)+v5_1_r1(32), 见ADR-0028§2.4"
+  ],
+  "tasks": {
+    "DRYRUN-A": {
+      "branch": "ops/par-dryrun-a",
+      "commit": "2eda543",
+      "lane": "W-DATA",
+      "notes": "open→PD-9: irc_edge.delta_xyz flat vs JSON 及 eps=1e-6 为lane归一化选择需E0确认; dtype未值校验→WP-1扩展; T0.2/T0.3 未实现→WP-1",
+      "session": "ses_ea757b829ffea3UqECaayGrZRw",
+      "status": "done_verified",
+      "tests": "18 passed (supervisor rerun; CLI clean=0/orphan=1 复核)",
+      "worktree": "/tmp/opencode/pes2ts-wt-a",
+      "wp": "WP-D1"
+    },
+    "DRYRUN-B": {
+      "branch": "ops/par-dryrun-b",
+      "commit": "121fbce",
+      "lane": "W-FEAT",
+      "notes": "容差双预设+显式警告(→PD-2); 4种bug模式均被捕获; 需确认真实StarEGNN v3 forward确定性(no dropout)→WP-2验收项; 其运行venv=/tmp/opencode/venv(系统py3无torch)→解释器一致性入review",
+      "session": "ses_ea757b828ffeIhhEoG3i7CGgH0",
+      "status": "done_verified",
+      "tests": "41 passed (supervisor rerun)",
+      "worktree": "/tmp/opencode/pes2ts-wt-b",
+      "wp": "WP-F1"
+    },
+    "DRYRUN-C": {
+      "branch": "ops/par-dryrun-c",
+      "commits": [
+        "e2133cf",
+        "efe5bce(supervisor path-fix)"
+      ],
+      "lane": "W-LOSS",
+      "rulings": "retry2轮+第3次override=符合限额; 首记录planned=采纳; done需checkpoint证据=采纳; 默认路径已修正为outputs/pesn/30h_campaign",
+      "session": "ses_ea757b827ffejrHkjLlaH3bUib",
+      "status": "done_verified",
+      "tests": "11 passed (supervisor rerun)",
+      "worktree": "/tmp/opencode/pes2ts-wt-c",
+      "wp": "WP-L1"
+    },
+    "E1-DATA": {
+      "dispatched_at": "2026-10-20T13:45:00Z",
+      "lane": "W-DATA",
+      "scope": "scripts/agent_ops/data_gate/** + outputs/pesn/30h_campaign/data/** (grant above)",
+      "status": "dispatched",
+      "wp": "E1 six-table build"
+    },
+    "E2-FEAT": {
+      "dispatched_at": "2026-10-20T13:45:00Z",
+      "lane": "W-FEAT",
+      "scope": "*_v3.py stack + tests/pesn/test_r3_* (fixture-level until G0+G1)",
+      "status": "dispatched",
+      "wp": "E2 feature/model/loss + math tests"
+    },
+    "EXP-1-docs-digest": {
+      "lane": "read-only",
+      "output": "7 conflicts + R3 deliverable file list",
+      "session": "ses_ea75cf308ffetDK0U6Y2Ry5mWN",
+      "status": "done"
+    },
+    "EXP-2-code-recon": {
+      "lane": "read-only",
+      "output": "代码地图+11 gaps；训练环境=/root/miniforge3/envs/pes2ts-gpu/bin/python(torch2.14.1+cu130)，driver用PES2TS_GPU_PYTHON覆盖",
+      "session": "ses_ea75cf307ffeznOdfkzpxPaMrb",
+      "status": "done"
+    },
+    "ORA-1-compliance-review": {
+      "lane": "oracle-read-only",
+      "session": "ses_ea7444bd4ffekxGry2vq4gDSe9",
+      "status": "done",
+      "verdict": "bootstrap 预审：3 项启动阻塞（读域过宽+驱动默认写 sealed/单一开关绑解封/gate 纯声明+WP-4' 依赖错误），已全部处置并触发 WP-L2"
+    },
+    "ORA-2-compliance-rereview": {
+      "disposition": "R3 v3.2 残留已修(29f0e25)；代码修复三 lane 并行：W-LOSS r2(零sha/计划键/批次解封/gate链/allowlist lane化/21-run模式)、W-DATA WP-D2(PD-9 flat/intent配对/权重/T0.2/T0.3/T0.5)、W-FEAT WP-F2(规范预设绑定/禁入类补全/正向allowlist/intent-off全mask)",
+      "lane": "oracle-read-only",
+      "session": "ses_ea6f9e45cffesnS9FZJL8duVNU",
+      "status": "done",
+      "verdict": "E0 保持 BLOCKED。5 组阻塞：①PD-2/PD-6 文档残留+gate 未绑定 ②零 sha/两段绑定+计划键漏洞 ③confirm_unseal 批次语义 ④教师 schema/involution/权重/T0.2 缺 ⑤driver sealed-root+truth_access_log 审计缺"
+    },
+    "WP-D2": {
+      "branch": "ops/wp-d2",
+      "closes": "ORA-2 #4 全部: PD-9 flat/intent配对/权重和=1/T0.2ab/T0.3ab/T0.5; schema r3_6table_v2",
+      "commit": "135817d",
+      "lane": "W-DATA",
+      "merge": "279967b",
+      "notes": "其报告发现 master parallel_config 尾逗号(supervisor 修复 1c56fc6); E1 解释器注意: delta_xyz_sha256=float64-LE打包, edge行 intent-scoped, atom_map暂仅格式校验",
+      "session": "ses_ea757b829ffea3UqECaayGrZRw",
+      "status": "done_merged",
+      "tests": "52 lane + 217 全量 (supervisor rerun)",
+      "worktree": "/tmp/opencode/pes2ts-wt-a"
+    },
+    "WP-F2": {
+      "branch": "ops/wp-f2",
+      "closes": "ORA-2 #1 特征侧: 规范预设绑定(1e-4→record-only+inadmissible)/11禁入类/正向allowlist T1.4b/intent-off全mask T1.4c/G1报告CLI(yaml_sha256绑定)",
+      "commit": "5ea7313",
+      "lane": "W-FEAT",
+      "merge": "7fa6aba",
+      "notes": "发现并经supervisor修复 campaign yaml L96 语法缺陷(710a3f5)",
+      "rulings": "r3_v3_record→blocked(非fail)语义=采纳; endpoint_names合法性→WP-2接口冻结时确认",
+      "session": "ses_ea757b828ffeIhhEoG3i7CGgH0",
+      "status": "done_merged",
+      "tests": "287 全量 (supervisor rerun)",
+      "worktree": "/tmp/opencode/pes2ts-wt-b"
+    },
+    "WP-L2-r2": {
+      "branch": "ops/wp-l2-r2",
+      "closes": "ORA-2 #2 #3 #5: 两段式sha绑定+PlanNotFrozen/计划键+variant/批次unseal+metric token/gate链+授权token+yaml pin/campaign_root断言/lane化allowlist/PD-4 partial模式",
+      "commit": "7d7d848",
+      "lane": "W-LOSS",
+      "merge": "b1907c6",
+      "notes": "两段式实证: e0 verify PASS(99唯一run_id, PENDING tokens), launch stage 正确拒绝 PENDING",
+      "rulings": "RUN_ID_MISMATCH优先于NOT_IN_PLAN(均拒绝)=待Oracle终审确认",
+      "session": "ses_ea72216ddffeiI5nhhVSQRg2Hf",
+      "status": "done_merged",
+      "tests": "245 lane / 349 合并全量 (supervisor rerun)",
+      "worktree": "/tmp/opencode/pes2ts-wt-c"
+    },
+    "WP-L3": {
+      "dispatched_at": "2026-10-20T13:45:00Z",
+      "lane": "W-LOSS",
+      "scope": "ledger.append plan-sha+mode pinning, metric_unseal wiring, PlanNotFrozen capture, positive+rejection tests",
+      "status": "dispatched",
+      "wp": "ledger hardening"
+    }
+  },
+  "time_control": {
+    "budget_basis": "user 24h authorization window (overrides 30h draft wall clock; protocol budget retained as ceiling reference only)",
+    "campaign_started_at_utc": "2026-10-20T13:45:00Z",
+    "hard_stop_at_utc": "2026-10-21T13:45:00Z",
+    "phase_deadlines_utc": {
+      "E1+WP-L3+E2_parallel": "2026-10-20T17:45:00Z",
+      "E3_R3_training_and_G2": "2026-10-21T00:30:00Z",
+      "E4_labels_G3a": "2026-10-21T02:00:00Z",
+      "E5_V52_training_G3": "2026-10-21T07:30:00Z",
+      "E6_V53_rollout_G4": "2026-10-21T11:00:00Z",
+      "E7_stats_report": "2026-10-21T12:30:00Z",
+      "E8_freeze_archive": "2026-10-21T13:45:00Z",
+      "G0_Data_Gate": "2026-10-20T18:30:00Z",
+      "G1_Feature_Gate": "2026-10-20T19:15:00Z"
+    },
+    "rule": "dynamic scheduling targets; expiry at hard stop unconditional; last 2h no new long tasks"
+  },
+  "updated": "2026-10-20T13:45:00Z"
 }
