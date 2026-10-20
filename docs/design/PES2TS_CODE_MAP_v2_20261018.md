@@ -1,9 +1,9 @@
 # PES2TS 代码地图 v2（按 G 能力 / V 战役）
 
 > 状态：参考（非规范）；规范以[开发宪法](../PES2TS_开发宪法_v1.md)和[阶段定义](../plans/PES2TS_阶段定义_G0-G3.md)为准
-> 日期：2026-10-18
-> 上游依赖：[ADR-0025](decisions/ADR-0025-G-V双轴映射与战役注册.md)、[G–V 映射](PES2TS_G_V_MAPPING_v1_20261018.md)
-> 当前版本：v2.0 / 2026-10-18
+> 日期：2026-10-18（原文）；架构修订：2026-10-20
+> 上游依赖：[ADR-0025](decisions/ADR-0025-G-V双轴映射与战役注册.md)、[G–V 映射](PES2TS_G_V_MAPPING_v1_20261018.md)、[V5–V7 v2.0](../plans/PES2TS_V5-V7_三阶段研究与架构修订方案_v2.0_20261020.md)
+> 当前版本：v2.1 / 2026-10-20（V5/V6/V7 按 v2.0 修订；旧 v2.0 保留为历史）
 
 ## 1. 两条轴
 
@@ -12,7 +12,7 @@
 | **G** | 代码/物理能力阶段 | `pes2ts_core/g0`、`g1`、`generation`、`integration`、`pesn` 内的能力名 |
 | **V** | 训练/测试战役 | `config/campaigns`、`scripts/campaigns`、`outputs/campaigns`、`docs/reports` 的战役名 |
 
-V5–V7 不是新 G 阶段：V5 → G3.P；V6 → G3.2；V7-A/B → G4.1；V7-C → G4.0→G4.1；M0.5/M6.5 → G2.T。
+V5–V7 不是新 G 阶段：V5 → G3.P；V6 → G3.2 + G2.T（xTB 探测/验证）；V7 → G4.0/G4.1；M0.5/M6.5 → G2.T。V5.1-R2 仍属 G3.P.2；V5.2 起新合同仍归 G3.P.0–.3。
 
 ## 2. 代码根与阶段归属
 
@@ -45,37 +45,49 @@ pes2ts_core/pesn/offline/evaluation/dual_ts_protocols.py
 
 规则：不删除、不改语义；只允许状态头/注释与共享 bug 修复（单独 PR + V4 回归）。V4.7 负结果（MSE/零动作 1.132、0/8 组、cos 0.180、near-TS 0.248）保留。
 
-### V5（proposed，G3.P）
+### V5.1-R2 / V5.2–V5.4（proposed，G3.P）
+
+**V5.1-R2（旧任务机制修复；不新增网络）**
 
 ```text
-pes2ts_core/pesn/contracts/key_atom.py          # ReactionTask/KeyAtomSet/MoveProposal
+pes2ts_core/pesn/offline/training/key_atom_bc.py      # 无量纲 strong/dead loss + gradient ratio 记录
+pes2ts_core/pesn/offline/evaluation/key_atom_protocols.py
+scripts/campaigns/run_v5_1_r2.py                       # planned
+config/campaigns/v5_1_r2.yaml                          # planned
+```
+
+**V5.2–V5.4（新 Key-Atom-only 合同；从 V5.2 起另建）**
+
+```text
+pes2ts_core/pesn/contracts/key_atom.py                 # 旧合同保留；新字段/新 schema 另版本
+pes2ts_core/pesn/contracts/geometry_policy.py          # planned: GeometryPolicyContract v1
 pes2ts_core/pesn/features/key_atom_spec.py
 pes2ts_core/pesn/features/key_atom_graph.py
-pes2ts_core/pesn/offline/data/key_atom_teacher.py
+pes2ts_core/pesn/offline/data/key_atom_teacher.py      # T0/T1/T2 + stop labels
 pes2ts_core/pesn/offline/data/key_atom_dataset.py
-pes2ts_core/pesn/offline/data/pre_relax.py
+pes2ts_core/pesn/models/key_atom_egnn.py               # MoveHead + StopHead
+pes2ts_core/pesn/models/key_atom_painn.py              # comparison only
 pes2ts_core/pesn/offline/training/key_atom_bc.py
-pes2ts_core/pesn/models/key_atom_mlp.py
-pes2ts_core/pesn/models/key_atom_egnn.py
-pes2ts_core/pesn/models/key_atom_painn.py
 pes2ts_core/pesn/offline/evaluation/key_atom_protocols.py
-pes2ts_core/generation/planning/key_atom_writer.py
+scripts/campaigns/run_v5_2_contract.py                  # planned
+scripts/campaigns/run_v5_3_geometry.py                  # planned
+scripts/campaigns/run_v5_4_rollout.py                   # planned
+```
+
+### V6（proposed，G3.2 + G2.T）
+
+```text
+pes2ts_core/pesn/models/v6_physics_mlp.py               # planned: 单点 xTB E/g 校正
+pes2ts_core/pesn/models/v6_physics_cnn.py               # planned: 3–5 点局部曲线
+pes2ts_core/pesn/offline/data/xtb_probe.py              # planned: 受限拉伸探测
+pes2ts_core/pesn/offline/training/v6_train.py           # planned
+pes2ts_core/pesn/offline/evaluation/physics_protocols.py  # planned
 pes2ts_core/integration/acp/xtb_freeze_request.py
 pes2ts_core/integration/acp/xtb_freeze_transport.py
 pes2ts_core/integration/validation/xtb_ts_verification.py
-```
-
-### V6（proposed，G3.2）
-
-```text
-pes2ts_core/pesn/contracts/decision.py
-pes2ts_core/pesn/models/v6_progress.py
-pes2ts_core/pesn/models/v6_decoder.py
-pes2ts_core/pesn/offline/data/decision_dataset.py
-pes2ts_core/pesn/offline/splits/decision_split.py
-pes2ts_core/pesn/offline/training/v6_train.py
-pes2ts_core/pesn/offline/training/decision_train.py
-pes2ts_core/pesn/offline/evaluation/decision_protocols.py
+scripts/campaigns/run_v6_1_mlp.py                       # planned
+scripts/campaigns/run_v6_2_cnn.py                       # planned
+scripts/campaigns/run_v6_3_verify.py                    # planned
 ```
 
 ### V7（proposed，G4.0/G4.1）
@@ -87,8 +99,12 @@ pes2ts_core/integration/acp/
 pes2ts_core/pesn/offline/transitions.py
 pes2ts_core/pesn/offline/control_trainer.py
 pes2ts_core/pesn/contracts/qc_transition.py
-scripts/campaigns/run_v7_rollout.py
+scripts/campaigns/run_v7_1_env.py                       # planned
+scripts/campaigns/run_v7_2_offline_rl.py                # planned
+scripts/campaigns/run_v7_3_online_rl.py                 # planned
 ```
+
+> 旧 v1.2 的 `v6_progress.py`、`v6_decoder.py`、`decision_*` 与 V7-A/B/C 路线已于 2026-10-20 归档，不再作为当前代码落点；保留为历史设计。
 
 ## 4. 导入边界
 
@@ -117,8 +133,9 @@ scripts/campaigns/run_v7_rollout.py
 
 - `bin/pes2ts` → `pes2ts_core/cli.py`：G0/G1/G2/G2.T/ACP 命令。
 - `python -m pes2ts_core.pesn` → PES-N 离线 CLI（inventory/split/build-teacher/train/evaluate/export/predict）。
-- V5 新战役入口：`scripts/campaigns/run_v5_sprint.py`（编排），底层训练脚本按 G 能力命名。
-- V7 新战役入口：`scripts/campaigns/run_v7_rollout.py`。
+- V5.1-R2 新战役入口：`scripts/campaigns/run_v5_1_r2.py`（planned）。
+- V5.2–V5.4 新战役入口：`scripts/campaigns/run_v5_2_contract.py`、`run_v5_3_geometry.py`、`run_v5_4_rollout.py`（planned）。
+- V6/V7 新战役入口：`scripts/campaigns/run_v6_1_mlp.py`、`run_v6_2_cnn.py`、`run_v6_3_verify.py`、`run_v7_1_env.py`、`run_v7_2_offline_rl.py`、`run_v7_3_online_rl.py`（planned）。
 
 ## 7. 已知债务（不在本次清理中重构）
 

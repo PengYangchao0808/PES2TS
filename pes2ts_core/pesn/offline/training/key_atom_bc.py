@@ -2,6 +2,13 @@
 
 Schema/version: ``pesn_key_atom_bc_v1`` (loss-schema bump for V5.1a runs:
 ``pesn_key_atom_bc_loss_v2``, see :data:`LOSS_SCHEMA_VERSION`).
+V5.1a-R1 (campaign V5_1A_R1_REPAIR) adds two strictly config-gated,
+ADDITIVE pair-bucket terms — ``L_strong`` (bucket-mean Huber on
+strong-bucket pairs) and ``L_dead2`` (bucket-mean squared hinge inside
+the dead zone) — whose activation bumps the reported loss schema to
+``pesn_key_atom_bc_loss_v3`` (see :data:`LOSS_SCHEMA_VERSION_R1` and
+:func:`loss_schema_version`); with both r1 lambdas 0 the loss is
+bit-identical to the pre-R1 code (gated short-circuit).
 
 Losses (plan §4, verbatim): radial Huber h_δ(e) = e²/2 (e≤δ) else
 δ(e−δ/2), δ=0.25, on the normalized radial error e_i = ‖u_i−y_i‖/0.08;
@@ -74,6 +81,11 @@ SCHEMA_VERSION: Final[str] = "pesn_key_atom_bc_v1"
 #: supervision terms; emitted ONLY in v51-mode run records so V5 screen/
 #: formal artifacts keep their frozen ``pesn_key_atom_bc_v1`` stamp.
 LOSS_SCHEMA_VERSION: Final[str] = "pesn_key_atom_bc_loss_v2"
+#: V5.1a-R1 (campaign V5_1A_R1_REPAIR, protocol_r1.json ``new_losses``):
+#: reported by runs when EITHER r1 lambda (``lambda_strong`` /
+#: ``lambda_dead2``) is active (> 0); otherwise runs keep
+#: :data:`LOSS_SCHEMA_VERSION` untouched.
+LOSS_SCHEMA_VERSION_R1: Final[str] = "pesn_key_atom_bc_loss_v3"
 RUN_RECORD_SCHEMA: Final[str] = "pesn_key_atom_bc_run_v1"
 CHECKPOINT_SCHEMA: Final[str] = "pesn_key_atom_bc_checkpoint_v1"
 CAMPAIGN_ID: Final[str] = "V5_SPRINT"
@@ -81,8 +93,9 @@ EXPECTED_CONFIG_SCHEMA: Final[str] = "pesn_v5_sprint_draft2"
 #: V5.1a config schema (config/campaigns/v5_1_sprint.yaml, driver lane);
 #: the trainer accepts BOTH schemas in every mode — the v51 yaml is a
 #: superset of the V5 loss keys and legacy modes default identically.
+#: V5.1a-R1 adds ``pesn_v5_1_r1_v1`` (config/campaigns/v5_1_r1.yaml).
 ACCEPTED_CONFIG_SCHEMAS: Final[tuple[str, ...]] = (
-    "pesn_v5_sprint_draft2", "pesn_v5_1_sprint_v1")
+    "pesn_v5_sprint_draft2", "pesn_v5_1_sprint_v1", "pesn_v5_1_r1_v1")
 
 #: Status vocabulary (plan §5.7 / sprint contract + V5.1a addition).
 STATUS_COMPLETE: Final[str] = "complete"
@@ -173,6 +186,22 @@ class KeyAtomLossConfig:
     #: ``aux_ramp_updates`` (plan §3.3: 前 250 步只开 L_atom + L_pair_reg).
     aux_start_update: int = 250
     aux_ramp_updates: int = 250
+    # --- V5.1a-R1 (campaign V5_1A_R1_REPAIR; protocol_r1.json) ---
+    #: L_strong weight (strong-bucket pair regression).  0.0 = inactive.
+    lambda_strong: float = 0.0
+    #: L_dead2 weight (dead-bucket suppression).  0.0 = inactive.
+    lambda_dead2: float = 0.0
+    #: Strong bucket lower edge: |Δd_true| >= 0.02 Å (inclusive).
+    strong_threshold_angstrom: float = 0.02
+    #: Dead bucket: strictly |Δd_true| < 0.005 Å (0.005 itself is NOT
+    #: dead — the edge belongs to the stronger bucket).
+    dead_bucket_threshold_angstrom: float = 0.005
+    #: τ_d for L_dead2: max(0, |Δd_pred| − τ_d)².
+    tau_dead2_angstrom: float = 0.005
+    #: Normalization AND Huber δ of the L_strong term (single frozen
+    #: constant, protocol formula ``Huber((dd_pred−dd_true)/huber_delta_
+    #: strong_normalized)``): e = |Δd_pred−Δd_true| / 0.25 → h_δ(e), δ=0.25.
+    huber_delta_strong_normalized: float = 0.25
 
     def __post_init__(self) -> None:
         if self.pair_loss not in PAIR_LOSS_MODES:
@@ -186,11 +215,15 @@ class KeyAtomLossConfig:
         # V5.1a yaml (driver lane) nests the new knobs under ``v51:``;
         # flat top-level spellings remain accepted so ad-hoc/test configs
         # stay ergonomic.  Precedence: nested v51 block > flat key >
-        # legacy default.
+        # legacy default.  V5.1a-R1 knobs live under ``v51.r1`` (with the
+        # flat fallbacks ``lambda_strong`` / ``r1_default_lambda_strong``
+        # etc.) and default to INACTIVE (0.0) + the frozen protocol
+        # thresholds.
         v51 = dict(config.get("v51", {}) or {})
         mag_blk = dict(v51.get("magnitude_head", {}) or {})
         pair_blk = dict(v51.get("pair_exact", {}) or {})
         ramp_blk = dict(v51.get("ramp", {}) or {})
+        r1_blk = dict(v51.get("r1", {}) or {})
         return cls(
             loss_scale_angstrom=float(config.get("a_ref_angstrom", A_REF)),
             huber_delta=float(config.get("huber_delta_normalized", 0.25)),
@@ -223,7 +256,41 @@ class KeyAtomLossConfig:
                 "start_update", config.get("aux_start_update", 250))),
             aux_ramp_updates=int(ramp_blk.get(
                 "ramp_updates", config.get("aux_ramp_updates", 250))),
+            lambda_strong=float(r1_blk.get(
+                "lambda_strong", config.get(
+                    "lambda_strong",
+                    config.get("r1_default_lambda_strong", 0.0)))),
+            lambda_dead2=float(r1_blk.get(
+                "lambda_dead2", config.get(
+                    "lambda_dead2",
+                    config.get("r1_default_lambda_dead2", 0.0)))),
+            strong_threshold_angstrom=float(r1_blk.get(
+                "strong_threshold_angstrom",
+                config.get("strong_threshold_angstrom", 0.02))),
+            dead_bucket_threshold_angstrom=float(r1_blk.get(
+                "dead_bucket_threshold_angstrom",
+                config.get("dead_bucket_threshold_angstrom", 0.005))),
+            tau_dead2_angstrom=float(r1_blk.get(
+                "tau_dead2_angstrom",
+                config.get("tau_dead2_angstrom", 0.005))),
+            huber_delta_strong_normalized=float(r1_blk.get(
+                "huber_delta_strong_normalized",
+                config.get("huber_delta_strong_normalized", 0.25))),
         )
+
+
+def loss_schema_version(config: KeyAtomLossConfig) -> str:
+    """Loss-schema stamp reported by run records / metrics.json.
+
+    ``pesn_key_atom_bc_loss_v3`` iff either V5.1a-R1 lambda is active
+    (``lambda_strong > 0`` or ``lambda_dead2 > 0``); otherwise the
+    unchanged V5.1a ``pesn_key_atom_bc_loss_v2``.  Zero-valued r1 knobs
+    must leave every V5/V5.1 artifact byte-compatible.
+    """
+    if (float(config.lambda_strong) != 0.0
+            or float(config.lambda_dead2) != 0.0):
+        return LOSS_SCHEMA_VERSION_R1
+    return LOSS_SCHEMA_VERSION
 
 
 def cos_lambda(update: int, config: KeyAtomLossConfig) -> float:
@@ -315,6 +382,8 @@ def key_atom_bc_loss_vectorized(
     lambda_mag: float = 0.0,
     lambda_sign: float = 0.0,
     lambda_dead: float = 0.0,
+    lambda_strong: float = 0.0,
+    lambda_dead2: float = 0.0,
 ) -> dict:
     """Vectorized twin of :func:`key_atom_bc_loss` (identical math).
 
@@ -330,6 +399,24 @@ def key_atom_bc_loss_vectorized(
     ``last_magnitudes``, NOT the raw softplus head output) enables
     log-form L_mag supervision toward ‖y‖.  Zero multipliers keep the
     legacy totals bit-identical.
+
+    V5.1a-R1 (campaign V5_1A_R1_REPAIR, protocol_r1.json ``new_losses``):
+    ``lambda_strong`` / ``lambda_dead2`` activate two ADDITIVE,
+    strictly-gated bucket terms over changed pairs (``pair_edit != 0``),
+    both computed from the EXACT Δd machinery in the sample's common
+    coordinates (``pos`` and ``u``/``y`` share the frame — no gauge
+    mixing) and both BUCKET-MEAN normalized (sum over the bucket ÷
+    n_pairs_in_bucket_in_batch, exactly 0 when the bucket is empty)::
+
+        L_strong = mean_{|Δd_true| ≥ strong_threshold}
+                   h_δ((Δd_pred − Δd_true) / huber_delta_strong_normalized)
+        L_dead2  = mean_{|Δd_true| < dead_bucket_threshold}
+                   max(0, |Δd_pred| − tau_dead2)²
+
+    The caller ramps both lambdas by :func:`aux_ramp_fraction` (same
+    schedule as the other aux terms).  When either lambda is 0 the
+    corresponding bucket is not even computed and the total is
+    BIT-identical to the pre-R1 function.
     """
     cfg = config or KeyAtomLossConfig()
     _require_loss(bool(torch.isfinite(u).all()),
@@ -340,6 +427,11 @@ def key_atom_bc_loss_vectorized(
     if pair_index is not None and pair_index.numel() > 0:
         pair_index = global_pair_rows_to_slots(
             pair_index, key_index, int(pos.shape[0]))
+    # V5.1a-R1: the r1 bucket terms see EVERY pair (slot space, still
+    # row-aligned with ``pair_edit``) and apply the ``pair_edit != 0``
+    # filter themselves — the exact_trio edit filter below may DROP rows
+    # and would desynchronize ``pair_edit``.
+    pair_index_r1 = pair_index
     pair_index = _apply_pair_edit_filter(
         pair_index, pair_edit, mode=cfg.pair_loss)
     if (cfg.pair_loss == "exact_trio" and pair_index is not None
@@ -436,6 +528,65 @@ def key_atom_bc_loss_vectorized(
             pair_cnt.index_add_(0, pair_frame, torch.ones_like(pair_h))
         l_pair = pair_sum / pair_cnt.clamp(min=1.0)
 
+    # --- V5.1a-R1 bucket terms (ADDITIVE; strictly lambda-gated) --------
+    # Buckets follow protocol_r1.json pair_buckets_angstrom (half-open
+    # [lo, hi): a pair exactly on an edge belongs to the STRONGER bucket;
+    # dead is strictly |Δd_true| < 0.005 A).  Δd_pred/Δd_true both come
+    # from exact_delta_d_torch on the SAME sample coordinates (pos is the
+    # common frame of x and u — no gauge mixing).  Both reductions are
+    # BATCH bucket means: sum over the bucket ÷ n_bucket_pairs_in_batch
+    # (0 exactly when the bucket is empty).
+    l_strong = torch.zeros((), dtype=dtype, device=device)
+    l_dead2 = torch.zeros((), dtype=dtype, device=device)
+    n_strong_pairs = 0
+    n_dead2_pairs = 0
+    want_strong = float(lambda_strong) != 0.0
+    want_dead2 = float(lambda_dead2) != 0.0
+    if want_strong or want_dead2:
+        _require_loss(
+            pair_edit is not None, "R1_NEEDS_PAIR_EDIT",
+            "r1 strong/dead2 losses require batch.pair_edit")
+        _require_loss(
+            pair_index_r1 is not None and pair_index_r1.numel() > 0,
+            "R1_NEEDS_PAIRS",
+            "r1 strong/dead2 losses require batch.pair_index")
+        _require_loss(
+            int(pair_edit.numel()) == int(pair_index_r1.shape[1]),
+            "R1_PAIR_EDIT_SHAPE",
+            f"pair_edit ({int(pair_edit.numel())}) must align with "
+            f"pair_index ({int(pair_index_r1.shape[1])}) rows")
+        pi_r = pair_index_r1[0].long()
+        pj_r = pair_index_r1[1].long()
+        pair_frame_r = atom_frame[pi_r]
+        # changed pairs only, in ACTIVE frames (frame_mask / key range)
+        edit_r1 = pair_edit.to(device=pair_index_r1.device) != 0
+        eligible = edit_r1 & active[pair_frame_r]
+        if bool(eligible.any()):
+            x_key = pos[key_index]
+            dd_u_r = exact_delta_d_torch(x_key, pair_index_r1, u)
+            dd_y_r = exact_delta_d_torch(x_key, pair_index_r1, y)
+            if want_strong:
+                strong = eligible & (
+                    dd_y_r.abs()
+                    >= float(cfg.strong_threshold_angstrom))
+                n_strong_pairs = int(strong.sum())
+                if n_strong_pairs > 0:
+                    hds = float(cfg.huber_delta_strong_normalized)
+                    e_strong = (
+                        (dd_u_r[strong] - dd_y_r[strong]).abs() / hds)
+                    l_strong = (radial_huber(e_strong, hds).sum()
+                                / strong.sum().to(dtype=dtype))
+            if want_dead2:
+                dead = eligible & (
+                    dd_y_r.abs()
+                    < float(cfg.dead_bucket_threshold_angstrom))
+                n_dead2_pairs = int(dead.sum())
+                if n_dead2_pairs > 0:
+                    slack = (dd_u_r[dead].abs()
+                             - float(cfg.tau_dead2_angstrom)).clamp(min=0.0)
+                    l_dead2 = ((slack * slack).sum()
+                               / dead.sum().to(dtype=dtype))
+
     g = (y.norm(dim=-1) > float(cfg.tau_norm_angstrom)).to(dtype)
     c = soft_cosine(u, y, cfg.cos_soft_norm_angstrom).to(dtype=dtype)
     wg = w * g
@@ -473,6 +624,13 @@ def key_atom_bc_loss_vectorized(
               + float(lambda_dead) * l_dead)
     keep = active.to(dtype)
     total = (frames * keep).sum() / n_used
+    # V5.1a-R1: additive bucket terms; the += branches are skipped
+    # entirely when the lambdas are 0 so the total stays BIT-identical
+    # to the pre-R1 function.
+    if want_strong:
+        total = total + float(lambda_strong) * l_strong
+    if want_dead2:
+        total = total + float(lambda_dead2) * l_dead2
     _require_loss(bool(torch.isfinite(total)), "NONFINITE_LOSS",
                   "total loss is not finite")
     return {
@@ -484,10 +642,16 @@ def key_atom_bc_loss_vectorized(
         "l_mag": (l_mag * keep).sum() / n_used,
         "l_sign": (l_sign * keep).sum() / n_used,
         "l_dead": (l_dead * keep).sum() / n_used,
+        "l_strong": l_strong,
+        "l_dead2": l_dead2,
         "lambda_cos": float(lambda_cos),
         "lambda_mag": float(lambda_mag),
         "lambda_sign": float(lambda_sign),
         "lambda_dead": float(lambda_dead),
+        "lambda_strong": float(lambda_strong),
+        "lambda_dead2": float(lambda_dead2),
+        "n_strong_pairs": int(n_strong_pairs),
+        "n_dead2_pairs": int(n_dead2_pairs),
         "pair_loss": str(cfg.pair_loss),
         "n_pairs_active": int(n_pairs_active),
         "n_frames": n_used,
@@ -1437,6 +1601,13 @@ class KeyAtomArmSpec:
     V5.1a additions (plan §3.2/§3.3): ``magnitude_head`` (direction–
     magnitude decoupling, anchor-on only) and ``pair_loss``
     (``legacy_j`` | ``exact_trio``).
+
+    V5.1a-R1 additions (campaign V5_1A_R1_REPAIR): ``r1_strong`` /
+    ``r1_dead`` on/off flags (mirror the anchor on/off convention — arm
+    table entries only) mapped to the CONFIGURED screening lambdas
+    (``v51.r1.lambda_strong`` / ``v51.r1.lambda_dead2``): flag on → use
+    the configured weight, flag off → 0.  Arms without r1 flags resolve
+    to 0/0, i.e. bit-identical legacy behavior.
     """
 
     arm_id: str
@@ -1444,11 +1615,25 @@ class KeyAtomArmSpec:
     d0: float
     magnitude_head: bool = False
     pair_loss: str = "legacy_j"
+    r1_strong: bool = False
+    r1_dead: bool = False
+    lambda_strong: float = 0.0
+    lambda_dead2: float = 0.0
 
     def to_payload(self) -> dict:
-        return {"arm_id": self.arm_id, "anchor": self.anchor,
-                "d0": self.d0, "magnitude_head": self.magnitude_head,
-                "pair_loss": self.pair_loss}
+        payload = {"arm_id": self.arm_id, "anchor": self.anchor,
+                   "d0": self.d0, "magnitude_head": self.magnitude_head,
+                   "pair_loss": self.pair_loss}
+        if (self.r1_strong or self.r1_dead
+                or float(self.lambda_strong) != 0.0
+                or float(self.lambda_dead2) != 0.0):
+            # r1 block travels ONLY for r1 arms — legacy arm payloads stay
+            # byte-compatible with the pre-R1 5-key block.
+            payload.update({"r1_strong": bool(self.r1_strong),
+                            "r1_dead": bool(self.r1_dead),
+                            "lambda_strong": float(self.lambda_strong),
+                            "lambda_dead2": float(self.lambda_dead2)})
+        return payload
 
 
 def _as_bool(value, *, field: str, arm_id: str) -> bool:
@@ -1507,8 +1692,27 @@ def resolve_arm(config: Mapping, arm_id: str) -> KeyAtomArmSpec:
     _require(not magnitude_head or anchor == "on", "ARM_HEAD_ANCHOR_REQUIRED",
              f"arm {arm_id}: magnitude_head=true requires anchor=on "
              f"(V5.1 plan §3.2)")
+    # --- V5.1a-R1 (campaign V5_1A_R1_REPAIR): r1 loss-term flags --------
+    # arm_table entries may carry ``r1_strong`` / ``r1_dead`` (on/off,
+    # same YAML-1.1 tolerant spelling as ``anchor``).  Flag ON → the arm
+    # uses the CONFIGURED screening weight (``v51.r1.lambda_*``, flat
+    # ``lambda_*`` / ``r1_default_lambda_*`` fallbacks, default 0.0);
+    # flag OFF (or absent) → 0, i.e. the r1 terms are gated off even if
+    # the config carries a nonzero placeholder weight.
+    r1_strong = _as_bool(
+        entry.get("r1_strong", False),
+        field="r1_strong", arm_id=arm_id)
+    r1_dead = _as_bool(
+        entry.get("r1_dead", False),
+        field="r1_dead", arm_id=arm_id)
+    r1_cfg = KeyAtomLossConfig.from_campaign_config(config)
+    lambda_strong = float(r1_cfg.lambda_strong) if r1_strong else 0.0
+    lambda_dead2 = float(r1_cfg.lambda_dead2) if r1_dead else 0.0
     return KeyAtomArmSpec(arm_id=arm_id, anchor=anchor, d0=d0,
-                          magnitude_head=magnitude_head, pair_loss=pair_loss)
+                          magnitude_head=magnitude_head, pair_loss=pair_loss,
+                          r1_strong=r1_strong, r1_dead=r1_dead,
+                          lambda_strong=lambda_strong,
+                          lambda_dead2=lambda_dead2)
 
 
 # ---------------------------------------------------------------------------
@@ -1687,9 +1891,15 @@ class KeyAtomBCTrainer:
         self.run_dir.mkdir(parents=True, exist_ok=True)
 
         loss_cfg = KeyAtomLossConfig.from_campaign_config(config)
-        # arm-controlled pair-loss switch (plan §3.3); arm wins over config
-        self.loss_config = (loss_cfg if loss_cfg.pair_loss == arm.pair_loss
-                            else replace(loss_cfg, pair_loss=arm.pair_loss))
+        # arm-controlled pair-loss switch (plan §3.3); arm wins over config.
+        # V5.1a-R1: the arm's resolved r1 lambdas (on → configured weight,
+        # off → 0) likewise win over the config placeholders so A0/B0 arms
+        # are bit-identical to the pre-R1 loss.
+        self.loss_config = replace(
+            loss_cfg,
+            pair_loss=arm.pair_loss,
+            lambda_strong=float(arm.lambda_strong),
+            lambda_dead2=float(arm.lambda_dead2))
         self.eval_every = int(config.get("eval_every_updates", 250))
         self.batch_size = int(config.get("batch_size", 32))
         self.reactions_per_batch = int(
@@ -1832,8 +2042,9 @@ class KeyAtomBCTrainer:
         is_v51 = self.mode == "v51"
         payload = {
             "schema_version": RUN_RECORD_SCHEMA,
-            "loss_schema_version": (LOSS_SCHEMA_VERSION if is_v51
-                                    else SCHEMA_VERSION),
+            "loss_schema_version": (
+                loss_schema_version(self.loss_config) if is_v51
+                else SCHEMA_VERSION),
             "run_id": self.run_dir.name,
             "status": "running",
             "campaign_id": self.campaign_id,
@@ -2224,6 +2435,11 @@ class KeyAtomBCTrainer:
                 lam_mag = cfg.lambda_mag * aux
                 lam_sign = cfg.lambda_sign * aux
                 lam_dead = cfg.lambda_dead * aux
+                # V5.1a-R1: the new bucket terms ride the SAME aux ramp
+                # as the other auxiliary terms (0 before aux_start_update,
+                # linear to λ over aux_ramp_updates).
+                lam_strong = cfg.lambda_strong * aux
+                lam_dead2 = cfg.lambda_dead2 * aux
                 for batch in batches:
                     u, _z = self.model(batch)
                     if batch.y_teacher is None:
@@ -2239,7 +2455,9 @@ class KeyAtomBCTrainer:
                         config=cfg, lambda_cos=lam_cos,
                         pair_edit=batch.pair_edit, s=s,
                         lambda_mag=lam_mag, lambda_sign=lam_sign,
-                        lambda_dead=lam_dead)
+                        lambda_dead=lam_dead,
+                        lambda_strong=lam_strong,
+                        lambda_dead2=lam_dead2)
                     loss = out["loss"]
                     if not bool(torch.isfinite(loss)):
                         raise KeyAtomBCTrainerError(
@@ -2402,7 +2620,7 @@ class KeyAtomBCTrainer:
                 "sign_accuracy")
             doc["inner_val_split_hash"] = (self._inner_split or {}).get("hash")
             doc["selection_exposed"] = False
-            doc["loss_schema_version"] = LOSS_SCHEMA_VERSION
+            doc["loss_schema_version"] = loss_schema_version(self.loss_config)
         (self.run_dir / "metrics.json").write_text(
             json.dumps(doc, indent=2, ensure_ascii=False) + "\n",
             encoding="utf-8")

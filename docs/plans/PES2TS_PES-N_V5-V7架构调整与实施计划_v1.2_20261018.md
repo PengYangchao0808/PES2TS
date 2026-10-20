@@ -1,6 +1,8 @@
 # PES2TS / PES-N V5–V7 架构调整与实施计划
 
-> 状态：Proposed v1.2（规划与合同草案；不修改业务代码、不启动训练/QC/扩量）
+> **SUPERSEDED（2026-10-20）**：本 v1.2 的 V5/V6/V7 分工与 V6 progress-decoder 路线已被 [V5–V7 三阶段研究与架构修订方案 v2.0](PES2TS_V5-V7_三阶段研究与架构修订方案_v2.0_20261020.md) 取代。保留为历史设计，不得据此启动 V6.0–V6.2 / V7-A/B/C。关键变化：V5 增加 Move/No-Move 曲线停止；V6 改为 xTB 物理响应 + MLP/CNN 残差修正；V7 改为 cost-aware RL；V5.1-R2 + S1 先行；V5.1b、sealed、Fit150+ 继续关闭。
+>
+> 状态：Proposed v1.2（历史；规划与合同草案；不修改业务代码、不启动训练/QC/扩量）
 > 日期：2026-10-18
 > 层级：G3.P.0–.3（V5 离线学习）、G3.2（V6 决策）、G4.0/G4.1（V7-B/C 闭环与离线 RL）、G2.T（M0.5/M6.5 执行验证）；G4.2 发布门不变
 > G–V 映射：`config/registry/g_v_map.yaml` @ `2026-10-18.1`；V5.0–V5.2 / V6.0–V6.2 / V7-A/B/C 的 primary/supporting G 与代码范围见 [G–V 映射表](../design/PES2TS_G_V_MAPPING_v1_20261018.md)

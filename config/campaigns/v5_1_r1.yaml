@@ -1,0 +1,160 @@
+# V5.1a-R1 new-loss repair campaign config (Lane: campaign driver).
+# Provenance: outputs/pesn/v5_1_r1/protocol_r1.json (frozen BEFORE any R1
+#             training; new_losses + pair_buckets_angstrom sections).
+# Consumer: scripts/campaigns/run_v5_1_r1.py (V5_1A_R1_REPAIR — NO formal
+#           OOF, NO Confirm/OOD unseal; development evidence only).
+# Copy of config/campaigns/v5_1_sprint.yaml with:
+#   * schema pesn_v5_1_r1_v1 (accepted by the core v51 trainer lane),
+#   * sprint arms [A0, A2, A3, A4] with r1_strong/r1_dead on/off flags,
+#   * the v51.r1 loss-term block (thresholds frozen in protocol_r1.json;
+#     lambda placeholders 0.1 pending the preregistered weight screen —
+#     scripts/campaigns/run_v5_1_r1.py may override them via a
+#     CLI-passed patched config),
+#   * output paths under outputs/pesn/v5_1_r1/.
+# data/manifests + feature paths are IDENTICAL to v5_1_sprint.yaml
+# (split manifest sha a2f72dd96f77609e... preserved — shared data pool).
+schema: pesn_v5_1_r1_v1
+
+# --- data / action contract (V5 split untouched) ---
+d0_angstrom: 0.05
+a_ref_angstrom: 0.08
+teacher_atom_cap_angstrom: 0.20
+legacy_cap_diagnostic_angstrom: 0.12
+huber_delta_normalized: 0.25  # 对应误差0.02 Å
+
+# --- loss weights (frozen λs inherited from V5.1a, plan §3.3) ---
+lambda_pair: 0.5              # L_pair_reg coefficient (legacy pair term)
+lambda_cos: 0.02              # λ_cos
+cos_start_update: 250         # ramp start_update
+cos_ramp_updates: 250         # ramp_updates
+tau_norm_angstrom: 0.02
+cos_soft_norm_angstrom: 0.0001
+
+# --- V5.1a-R1 loss-term weight defaults (driver-facing; the trainer
+#     reads v51.r1.* with these flat fallbacks).  0.1 placeholders
+#     pending the preregistered gradient-ratio screen
+#     (scripts/campaigns/r1_weight_screen.py; pick rule frozen in
+#     protocol_r1.json new_losses.weight_screen) — the campaign driver
+#     overrides them via a CLI-passed config patch. ---
+r1_default_lambda_strong: 0.1
+r1_default_lambda_dead2: 0.1
+
+# --- optimizer / schedule (inherited from V5) ---
+optimizer: AdamW
+lr: 0.001
+weight_decay: 0.0001
+warmup_updates: 250
+scheduler: cosine
+min_lr: 0.0001
+batch_size: 32
+reactions_per_batch: 8
+frames_per_reaction: 4
+grad_clip_norm: 1.0
+precision: fp32
+
+campaign_mode: label_first
+fixed_model: subgraph_egnn_w48_l3
+max_start_frames_per_branch_cycle: 16
+
+# --- V5.1a training budget (identical to B0: protocol_r1.json
+#     new_losses.training_control) ---
+formal_updates: 3000
+eval_every_updates: 50        # inner-val cadence
+formal_outer_early_stopping: false
+early_stop_metric: inner_val_reaction_median_key_rmse_over_zero
+early_stop_patience_checks: 8 # V5.1 inner-val selection patience
+early_stop_min_delta: 0.005
+seeds: [17, 29, 43]
+folds: 5                      # frozen V5 5-fold split — NEVER rebuilt here
+radius_angstrom: 4.5
+spatial_neighbors_target: 32
+wall_minutes: 600
+
+# --- paths (V5 manifests/features reused verbatim; R1 outputs under
+#     v5_1_r1 — split_manifest/data hashes IDENTICAL to v5_1_sprint) ---
+paths:
+  root_from_repo: .
+  manifests_dir: data/manifests
+  split_manifest: data/manifests/v5/split_manifest.json
+  dataset_audit: data/manifests/v5/dataset_audit.json
+  frame_contract: data/manifests/v5/frame_contract.json
+  native_root: outputs/pesn/v5/native
+  teacher_root: outputs/pesn/v5/teacher
+  task_root: outputs/pesn/v5/tasks
+  feature_root: outputs/pesn/v5/features
+  output_root: outputs/pesn/v5_1_r1/sprint   # manifest / decisions / tables
+  runs_root: outputs/pesn/v5_1_r1/runs       # per-run dirs (A0 fill + r1 arms)
+  protocol: outputs/pesn/v5_1_r1/protocol_r1.json
+  diagnostics_root: outputs/pesn/v5_1_r1/diagnostics
+  report_root: outputs/pesn/v5_1_r1          # stage summary CSVs, reports
+  truth_caller: v5_sprint_key_atom_teacher
+
+sprint:
+  campaign_id: V5_1A_R1_REPAIR
+  arms: [A0, A2, A3, A4]
+  # r1_strong / r1_dead: on -> use the configured screening weight
+  # (v51.r1.lambda_*), off -> 0.  A0 = pure B0 (bit-identical legacy
+  # loss); A2 = B0 + strong; A3 = B0 + dead; A4 = B0 + both.  Every arm
+  # keeps magnitude_head=false, pair_loss=legacy_j, anchor=on, d0=0.05.
+  arm_table:
+    A0: {d0: 0.05, anchor: on, magnitude_head: false, pair_loss: legacy_j, r1_strong: off, r1_dead: off}
+    A2: {d0: 0.05, anchor: on, magnitude_head: false, pair_loss: legacy_j, r1_strong: on,  r1_dead: off}
+    A3: {d0: 0.05, anchor: on, magnitude_head: false, pair_loss: legacy_j, r1_strong: off, r1_dead: on}
+    A4: {d0: 0.05, anchor: on, magnitude_head: false, pair_loss: legacy_j, r1_strong: on,  r1_dead: on}
+  # stage plans (R1 driver plans live in scripts/campaigns/run_v5_1_r1.py;
+  # the keys here are documentary — plan/fold/seed routing is enforced
+  # there, never widened post-hoc)
+  baseline_fill: {arm: B0, config: config/campaigns/v5_1_sprint.yaml, updates: 3000, mode: v51}
+  dev: {arms: [A2, A3], folds: [0, 1, 2], seeds: [17, 29, 43], updates: 3000, mode: v51}
+  confirm: {folds: [3, 4], seeds: [17, 29, 43], updates: 3000, mode: v51}
+
+device:
+  device: cuda:0
+  require_cuda: true
+  single_training_process: true
+
+# --- V5.1a blocks (consumed by the core v51 trainer lane) ---
+v51:
+  inner_val:
+    n_val_clusters: 8                 # 40 train clusters -> 32/8 family+size
+    stratify: [family, size]
+    seed: 20261019
+    selection:
+      rmse_tolerance: 1.02            # rmse <= best * 1.02
+      patience_checks: 8
+      min_delta: 0.005
+      min_update_floor: 500           # no rank-based stop before update 500
+  magnitude_head:
+    lambda_mag: 0.5                   # λ_mag
+    init_angstrom: 0.05
+    mode: per_atom
+  pair_exact:
+    lambda_pair_reg: 0.5              # 0.5 * L_pair_reg (exact Δd)
+    lambda_sign: 0.2                  # λ_sign
+    lambda_dead: 0.1                  # λ_dead
+    tau_sign_angstrom: 0.005
+    tau_dead_angstrom: 0.005
+    active_threshold_angstrom: 0.005  # |Δd_true| >= 0.005 A active pairs
+  ramp:
+    start_update: 250                 # first 250 updates: L_atom + L_pair_reg only
+    ramp_updates: 250                 # then 250 updates linear ramp of aux terms
+  # --- V5.1a-R1 new-loss block (protocol_r1.json new_losses; thresholds
+  #     FROZEN before any R1 training — no post-hoc relaxation) ---
+  r1:
+    lambda_strong: 0.1                # L_strong placeholder (screened weight overrides)
+    lambda_dead2: 0.1                 # L_dead2 placeholder (screened weight overrides)
+    strong_threshold_angstrom: 0.02   # strong bucket: |dd_true| >= 0.02 A (inclusive)
+    dead_bucket_threshold_angstrom: 0.005  # dead bucket: STRICTLY |dd_true| < 0.005 A
+    tau_dead2_angstrom: 0.005         # τ_d: max(0, |dd_pred| − τ_d)²
+    huber_delta_strong_normalized: 0.25    # Huber((dd_pred−dd_true)/0.25), δ=0.25
+
+# --- frozen gate constants (mirrored by protocol_r1.json) ---
+gates:
+  math_fixture_count: 100
+  rotations_per_fixture: 20
+  permutations_per_fixture: 10
+  bootstrap_count: 2000
+  bootstrap_seed: 20261018
+  split_seed: 20261018
+  effective_atom_norm_angstrom: 0.02
+  near_ts_fraction: 0.20

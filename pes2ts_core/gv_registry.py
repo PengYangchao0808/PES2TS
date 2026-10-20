@@ -65,6 +65,7 @@ class GVMap:
     path: Path
     stages: Mapping[str, StageEntry]
     campaigns: Mapping[str, CampaignEntry]
+    plan_revision: str | None = None
 
 
 def _require_mapping(value: Any, where: str) -> Mapping[str, Any]:
@@ -167,6 +168,8 @@ def load_gv_map(path: str | Path | None = None) -> GVMap:
             f"schema must be {GV_MAP_SCHEMA!r}, got {document.get('schema')!r}"
         )
     map_version = _require_str(document.get("map_version"), "map_version")
+    plan_revision = _optional_str(
+        document.get("plan_revision"), "plan_revision")
 
     stages_raw = _require_mapping(document.get("stages"), "stages")
     if not stages_raw:
@@ -190,6 +193,7 @@ def load_gv_map(path: str | Path | None = None) -> GVMap:
         path=map_path,
         stages=stages,
         campaigns=campaigns,
+        plan_revision=plan_revision,
     )
 
 

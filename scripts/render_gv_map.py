@@ -45,6 +45,8 @@ def render_markdown(gv_map: GVMap) -> str:
     lines.append("")
     lines.append("> 状态：权威（机器可读源：`config/registry/g_v_map.yaml`）")
     lines.append(f"> 映射版本：`{gv_map.map_version}`")
+    if gv_map.plan_revision:
+        lines.append(f"> 计划修订：`{gv_map.plan_revision}`")
     lines.append("> 生成命令：`python scripts/render_gv_map.py --write`")
     lines.append("> 校验命令：`python scripts/render_gv_map.py --check`")
     lines.append("")
@@ -92,7 +94,7 @@ def render_markdown(gv_map: GVMap) -> str:
     lines.append("")
     lines.append("1. `proposed` 允许代码/配置/数据路径尚不存在；`active`/`executed` 必须存在，由 `validate_gv_map` 强制。")
     lines.append("2. 同一 V 战役只有一个 `primary_g`；跨阶段工作放 `supporting_g`，不得把 V7 执行代码塞进 `pesn/offline`。")
-    lines.append("3. V4 `dual_ts`/`direct` 只作 `comparison_only`，不得被 V5/V6 主结论复用为初始化权重。")
+    lines.append("3. V4 `dual_ts`/`direct` 只作 `comparison_only`，不得被 V5/V6/V7 主结论复用为初始化权重。")
     lines.append("4. 任何 run record 的 `gv.campaign_id` 必须能在本表解析；`map_version` 必须与当前映射一致。")
     lines.append("5. 新增/修改 V 战役先改 YAML，再跑 `--write`，最后提交生成文档；不要手改本文件。")
     lines.append("")

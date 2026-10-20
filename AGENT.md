@@ -152,7 +152,7 @@ R/P与H → 化学控制模板 → ReactiveState → Classic/残差候选
 
 ## 10. 当前进度指针
 
-**2026-10-18 V4.7 负结果 + V5–V7 Proposed**：V4.2–V4.7 已执行，V4.7 FINAL 三种子四项门全部未通过（MSE/零动作 1.132、0/8 组、整体 cos 0.180、near-TS cos 0.248）；**不晋级、不部署、不扩量**，V4 权重/合同/bundle 保留为冻结证据。当前活跃提案为 [V5–V7 架构计划 v1.2](docs/plans/PES2TS_PES-N_V5-V7架构调整与实施计划_v1.2_20261018.md) 与 [V5.0–V5.2 冲刺方案](docs/plans/PES2TS_V5.0-V5.2_十小时冲刺训练与验证执行方案_v1_20261018.md)：V5=G3.P.0–.3、V6=G3.2、V7-A/B=G4.1、V7-C=G4.0→G4.1、M0.5/M6.5=G2.T；G4.2 发布门不变。G/V 双轴与战役注册见 [ADR-0025](docs/design/decisions/ADR-0025-G-V双轴映射与战役注册.md)、[G–V 映射](docs/design/PES2TS_G_V_MAPPING_v1_20261018.md)、[代码地图 v2](docs/design/PES2TS_CODE_MAP_v2_20261018.md)。两份 V5 文档均为 Proposed；未实现脚本、未启动训练/QC。
+**2026-10-20 V5.1a/R1 closed + V5–V7 v2.0 Proposed**：V5.1a 五折门被拒，V5.1a-R1 无候选准入；**V5.1b 继续关闭**。当前活跃提案为 [V5–V7 三阶段修订 v2.0](docs/plans/PES2TS_V5-V7_三阶段研究与架构修订方案_v2.0_20261020.md)：V5=Geometry Policy（关键原子 Move/No-Move）、V6=xTB 物理修正 MLP/CNN、V7=cost-aware RL；立即执行 [V5.1-R2](docs/plans/PES2TS_V5.1-R2_损失尺度与数据完整性修复方案_v1_20261020.md) + S1。新合同见 [GeometryPolicyContract v1](docs/contracts/PES2TS_GeometryPolicyContract_v1.md)、[ADR-0028](docs/design/decisions/ADR-0028-关键原子几何策略合同与V5-V7任务拆分.md)、[ADR-0029](docs/design/decisions/ADR-0029-V5.2+双门评估与封存边界.md)。本轮未实现脚本、未启动训练/QC、未解除封存。
 
 **以下为旧版本证据及历史指针（2026-10-17 及更早）**：
 

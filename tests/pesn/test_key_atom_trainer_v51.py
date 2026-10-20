@@ -821,7 +821,7 @@ def test_status_values_keep_v5_and_add_patience():
     assert kbc.LOSS_SCHEMA_VERSION == "pesn_key_atom_bc_loss_v2"
     assert kbc.CHECKPOINT_SCHEMA == "pesn_key_atom_bc_checkpoint_v1"
     assert kbc.ACCEPTED_CONFIG_SCHEMAS == (
-        "pesn_v5_sprint_draft2", "pesn_v5_1_sprint_v1")
+        "pesn_v5_sprint_draft2", "pesn_v5_1_sprint_v1", "pesn_v5_1_r1_v1")
     assert kbc.V51_INNER_SPLIT_SEED == 20261019
     assert kbc.V51_QUALIFY_FACTOR == 1.02
     assert kbc.V51_PATIENCE_FLOOR_UPDATE == 500

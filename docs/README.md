@@ -1,19 +1,30 @@
 # PES2TS 文档索引
 
-## 0. G–V 双轴映射（2026-10-18）
+## 2026-10-20 V5–V7 研究范式修订（v2.0）与 V5.1-R2
+
+- **[V5–V7 三阶段研究与架构修订方案 v2.0](plans/PES2TS_V5-V7_三阶段研究与架构修订方案_v2.0_20261020.md)**（Proposed）：V5 = Geometry Policy（关键原子位移 + 曲线停止位置）；V6 = xTB 物理响应 + MLP/CNN 修正；V7 = Cost-aware RL。**取代 V5–V7 v1.2 的 V6 progress-decoder 路线**；V5.1b、sealed、Fit150+ 继续关闭。
+- **[V5.1-R2 损失尺度与数据完整性修复方案](plans/PES2TS_V5.1-R2_损失尺度与数据完整性修复方案_v1_20261020.md)**（Proposed）：旧 V5.1 任务上的无量纲 strong/dead loss、梯度占比 2%/10%、ramp/checkpoint 修复 + S1 数据质量审计；含 WBS、日程、命令与完成定义；验收是可靠结论，不要求晋级。
+- **[GeometryPolicyContract v1](contracts/PES2TS_GeometryPolicyContract_v1.md)**（设计冻结草案）：`π(X_t,G) → (ΔX_K, m)`、K 定义、No-Move 曲线停止语义、在线禁止项与验证点。
+- **[ADR-0027](design/decisions/ADR-0027-V5.1参考架fallback与双分母评估.md)**：参考架 fallback 研究门；8.6% gauge unresolved 不实现新 fallback，主分母不变。
+- **[ADR-0028](design/decisions/ADR-0028-关键原子几何策略合同与V5-V7任务拆分.md)**：冻结新合同；V5.1-R2 与 V5.2 新任务拆分；旧 V5.1a/R1 证据冻结。
+- **[ADR-0029](design/decisions/ADR-0029-V5.2+双门评估与封存边界.md)**：监督门 + 物理搜索门；G5.2/G5.3/G5.4 保留，不被新门覆盖。
+- 影响：`config/registry/g_v_map.yaml` 新增 `V5.1-R2`/`V5.2`/`V5.3`/`V5.4`；`V5_SPRINT`/`V5_1A_SPRINT` 记 executed；V5.1a-R1 证据在 `outputs/pesn/v5_1_r1/`（代码提交后再注册）；旧 `V6.0–V6.2`、`V7-A/B/C` 归档。**新 V6.1–V6.3 / V7.1–V7.3 在 V5.2 合同冻结后再注册**；当前映射中的 V6/V7 旧条目仅作历史。本轮仅文档/注册修订，未启动训练/QC、未解除封存。
+
+## 0. G–V 双轴映射（2026-10-18；2026-10-20 内容修订）
 
 - **G = 代码/物理能力**（G0–G4.2），**V = 训练/测试战役**（V4.x/V5.x/V6/V7）；V5–V7 不是新 G 阶段。
 - 权威入口：[G–V 映射表](design/PES2TS_G_V_MAPPING_v1_20261018.md)、[ADR-0025](design/decisions/ADR-0025-G-V双轴映射与战役注册.md)、[代码地图 v2](design/PES2TS_CODE_MAP_v2_20261018.md)。
 - 机器可读源：`config/registry/g_v_map.yaml`；生成/校验：`python scripts/render_gv_map.py --write|--check`。
+- 2026-10-20 内容修订：`plan_revision: 2026-10-20.1`；`map_version: 2026-10-18.1` 保持不变（schema 未变）。新增 V5.1-R2/V5.2–V5.4，旧 V6.0–V6.2/V7-A/B/C 归档。
 - 状态图例：`Canonical`（规范根）/ `Active-Proposed`（当前提案）/ `Executed-Frozen`（已执行、冻结证据）/ `Superseded`（被取代）/ `Evidence-Historical`（历史报告）。
 
-## 2026-10-18 V5–V7 终审与第一阶段冲刺提案
+## 2026-10-18 V5–V7 终审与第一阶段冲刺提案（历史）
 
 - **冲刺方案内容v1.1更新**：[50簇输入/标签快速筛选与粗到细路线](plans/PES2TS_V5.0-V5.2_十小时冲刺训练与验证执行方案_v1_20261018.md#5-600分钟执行预算与熔断v11先筛标签再扩量再精修)：固定小EGNN，anchor on/off×0.05/0.08/0.12 Å共6臂、1500更新短训练、每分支16起点轮换、密集验证、Top-2跨划分三seed复核；OOF按测速条件执行。200/500簇扩量与粗到细配对实验置于后续窗口，600分钟内不叠加旧四架构/30run矩阵。仅更新提案，未启动训练/QC。
 
-- [PES-N V5–V7 架构调整与实施计划 v1.2](plans/PES2TS_PES-N_V5-V7架构调整与实施计划_v1.2_20261018.md)：Proposed；V5=G3.P.0–.3、V6=G3.2、V7-A/B=G4.1、V7-C=G4.0→G4.1、M0.5/M6.5=G2.T。未修改业务代码、未启动训练/QC。
+- [PES-N V5–V7 架构调整与实施计划 v1.2](plans/PES2TS_PES-N_V5-V7架构调整与实施计划_v1.2_20261018.md)：**Superseded（2026-10-20）**；保留为历史设计，V5/V6/V7 分工与 V6 progress-decoder 已被 v2.0 取代。未修改业务代码、未启动训练/QC。
 
-- [V5.0–V5.2 十小时冲刺训练与验证执行方案](plans/PES2TS_V5.0-V5.2_十小时冲刺训练与验证执行方案_v1_20261018.md)：七模块专项方案，含参考架/手性/泄漏终审、精确张量与损失、600分钟条件预算、OOF与四级Gate。Proposed；未实现脚本、未启动训练/QC，不升级能力或生产默认。作为[V5–V7架构计划v1.2](plans/PES2TS_PES-N_V5-V7架构调整与实施计划_v1.2_20261018.md)的专项评审提案，原计划保留；具体冲突裁决见新方案§0，实现前另行正式接口/ADR登记。
+- [V5.0–V5.2 十小时冲刺训练与验证执行方案](plans/PES2TS_V5.0-V5.2_十小时冲刺训练与验证执行方案_v1_20261018.md)：七模块专项方案，含参考架/手性/泄漏终审、精确张量与损失、600分钟条件预算、OOF与四级Gate。**V5.1a 已执行并 `rejected_gate`；V5.1a-R1 无候选准入；本文件保留为历史执行依据**。未实现脚本、未启动训练/QC，不升级能力或生产默认。作为[V5–V7架构计划v1.2](plans/PES2TS_PES-N_V5-V7架构调整与实施计划_v1.2_20261018.md)的专项评审提案，原计划保留；具体冲突裁决见新方案§0，实现前另行正式接口/ADR登记。
 
 ## 2026-10-18 V4.2–V4.7 执行结果与实现报告
 
@@ -26,7 +37,7 @@
 
 ## 历史训练与项目进度入口（2026-10-15，保留为历史）
 
-> 以下 v4 排期为 2026-10-15 的历史入口；当前活跃提案是上方 V5–V7 v1.2 与 V5.0–V5.2 冲刺。V4.2–V4.7 已执行并判定负结果，保留为冻结证据。
+> 以下 v4 排期为 2026-10-15 的历史入口；当前活跃提案是上方 V5–V7 v2.0 与 V5.1-R2。V4.2–V4.7 已执行并判定负结果，保留为冻结证据。
 
 - [双端训练与项目进度统一方案v4](plans/PES2TS_双端拓扑条件训练与项目进度统一方案_v4_20261015.md)：唯一当前训练排期入口；B节证据基线，C节阶段进度，D节WP0–WP7，E节冲突裁决，F节预算，G节验收，I节用户完整规格。
 - [ADR-0021](design/decisions/ADR-0021-无序双端拓扑与完整双侧TS教师主线.md)：用户确认的无序双端/完整双侧TS主线，取代旧有向任务近期安排。
@@ -74,9 +85,9 @@ WSL专项/训练链路：实施计划v3.4 §11.9–11.11。GPU环境与P0/P1已�
 | [ADR-0018](design/decisions/ADR-0018-RL纠错与动作支持研究计划.md) | **Proposed（规划登记）**：动作支持、快照/分支、成对监督及新合同草案；正式schema/能力升级待实施审查 |
 | [Demo24真实RL闭环与对照实施方案](plans/PES2TS_Demo24_真实RL闭环与对照实施方案_v1_20261007.md) | **round0真实闭环已运行，2026-10-08发现对照资格缺陷**：258转移/51探索、369次模型非零执行证据保留；BC实际按CQL训练且两包同权重，不能当纯BC/CQL对照；Q标签支持门全回退，收益未成立。旧产物保留，下一轮按纠错方案推进 |
 | [ADR-0017](design/decisions/ADR-0017-统一残差决策与G2有限回退.md) | **Accepted（规划）**：局部取代步长分类优先顺序；MDP近似、原生/混合环境冻结、宏步/控制/bundle新版本草案 |
-| [PES2TS_阶段定义_G0-G3.md](plans/PES2TS_阶段定义_G0-G3.md) | **阶段与边界定义唯一来源（内容 v4.6）**：G0–G4、G3.P并行、统一研究入口及正式退出条件 |
+| [PES2TS_阶段定义_G0-G3.md](plans/PES2TS_阶段定义_G0-G3.md) | **阶段与边界定义唯一来源（内容 v4.7）**：G0–G4、G3.P并行、统一研究入口及正式退出条件；V5–V7 为 V 战役，不是新 G 阶段 |
 | [PES2TS_整体开发与发布方案_v2.md](plans/PES2TS_整体开发与发布方案_v2.md) | **项目级开发与发布主方案（内容 v3.5）**：双线依赖、预测器在线/离线分发、研究/正式能力分开发布、模型版本与兼容/回滚 |
-| [PES2TS_PES-N未来开发计划_v2_20261005.md](plans/PES2TS_PES-N未来开发计划_v2_20261005.md) | **历史（已被 V5–V7 v1.2 取代；内容 v2.5）**：统一研究闭环先于扩量；正式STOP→残差→离线Q→闭环、数据/接口和数学边界保持 |
+| [PES2TS_PES-N未来开发计划_v2_20261005.md](plans/PES2TS_PES-N未来开发计划_v2_20261005.md) | **历史（已被 V5–V7 v2.0 取代；内容 v2.5）**：统一研究闭环先于扩量；正式STOP→残差→离线Q→闭环、数据/接口和数学边界保持 |
 | [G2-AB4 ORCA驱动xTB试点](plans/PES2TS_G2_AB4_ORCA驱动xTB约束优化试点方案_20261007.md) | **当前小批方案 v1.1，未实施**：原3失败点+1正常点/60秒及回退门保持；统一G2单步和逻辑目标配额；策略不选优化器 |
 | [ADR-0016](design/decisions/ADR-0016-ORCA驱动xTB硬约束优化试点.md) | **Accepted（设计）**：外部xTB/ORCA新配方、请求/收据v1及混合结果/trace v2草案；真实能力另验收 |
 | [轻量控制与RL衔接计划](plans/PES2TS_轻量控制与RL衔接计划_v1_20261007.md) | **当前增量计划 v1.2**：研究入口保持，近期顺序由统一方案承接；单一模型/逐坐标候选Q，原有限步长为可选对照 |
@@ -111,9 +122,9 @@ WSL专项/训练链路：实施计划v3.4 §11.9–11.11。GPU环境与P0/P1已�
 | --- | --- | --- |
 | [G–V 映射表](design/PES2TS_G_V_MAPPING_v1_20261018.md) | **权威（生成）** | G 能力 × V 战役矩阵；由 `config/registry/g_v_map.yaml` 生成，`--check` 校验 |
 | [ADR-0025](design/decisions/ADR-0025-G-V双轴映射与战役注册.md) | **Accepted** | G = 代码/物理能力，V = 训练/测试战役；RunRecord `gv` 块与命名规则 |
-| [代码地图 v2](design/PES2TS_CODE_MAP_v2_20261018.md) | **参考（非规范）** | 阶段代码根、V4/V5/V6/V7 落点、导入边界与存储分级 |
-| [V5–V7 架构计划 v1.2](plans/PES2TS_PES-N_V5-V7架构调整与实施计划_v1.2_20261018.md) | **Active-Proposed** | V5=G3.P、V6=G3.2、V7=G4.1/G4.0；未实现代码/未启动训练 |
-| [V5.0–V5.2 冲刺方案](plans/PES2TS_V5.0-V5.2_十小时冲刺训练与验证执行方案_v1_20261018.md) | **Active-Proposed** | 数据/数学、架构/消融、冻结/OOF/封存三阶段；模型别名 B0–B4 |
+| [代码地图 v2](design/PES2TS_CODE_MAP_v2_20261018.md) | **参考（非规范）** | 阶段代码根、V4/V5/V6/V7 落点、导入边界与存储分级（v2.1，2026-10-20 架构修订） |
+| [V5–V7 架构计划 v1.2](plans/PES2TS_PES-N_V5-V7架构调整与实施计划_v1.2_20261018.md) | **Superseded（2026-10-20）** | 保留为历史；当前采用 [v2.0](plans/PES2TS_V5-V7_三阶段研究与架构修订方案_v2.0_20261020.md) |
+| [V5.0–V5.2 冲刺方案](plans/PES2TS_V5.0-V5.2_十小时冲刺训练与验证执行方案_v1_20261018.md) | **Executed-Frozen（V5.1a）/ Historical** | 数据/数学、架构/消融、冻结/OOF/封存三阶段；B3 已 rejected；V5.1b 关闭 |
 | [V4.2–V4.7 实验方案](plans/PES2TS_V4.2-V4.7_十小时训练实验方案_20261017.md) | **Executed-Frozen** | 23 个正式 run；10-18 判定负结果，保留证据 |
 | [V4.2–V4.7 实施合同与战役冻结](contracts/PES2TS_V4.2-V4.7_实施合同与战役冻结_v1.md) | **Executed-Frozen** | 冻结配方/战役合同；不改写为 V5 |
 | [ADR-0023](design/decisions/ADR-0023-V4.2原生重连数据与内部开发划分.md) | **Accepted（历史）** | V4.2 原生重连数据与内部开发划分 |
@@ -125,6 +136,8 @@ WSL专项/训练链路：实施计划v3.4 §11.9–11.11。GPU环境与P0/P1已�
 
 | 文档 | 状态 | 内容 |
 | --- | --- | --- |
+| [V5–V7 三阶段研究与架构修订方案 v2.0](plans/PES2TS_V5-V7_三阶段研究与架构修订方案_v2.0_20261020.md) | **Active-Proposed** | V5 Geometry Policy / V6 xTB 物理修正 / V7 cost-aware RL；取代 v1.2 的 V6 progress-decoder |
+| [V5.1-R2 损失尺度与数据完整性修复方案](plans/PES2TS_V5.1-R2_损失尺度与数据完整性修复方案_v1_20261020.md) | **Active-Proposed** | 无量纲 strong/dead loss、梯度占比 2%/10%、ramp/checkpoint、S1 数据质量；不产生正式 OOF |
 | [统一残差决策与G2有限回退实施方案](plans/PES2TS_统一残差决策与G2有限回退实施方案_v1_20261007.md) | **已实施（fixture_passed）；待真实运行** | 六包交付顺序、统一网络/MDP、真实宏步和AB4有限救援，先RL后扩量（§10 实施记录） |
 | [PES2TS_G3_P1_IRC教师预训练与模型版本计划_v1_20261006.md](plans/PES2TS_G3_P1_IRC教师预训练与模型版本计划_v1_20261006.md) | **实施进行中，验收依任务证据** | G3-P1版本路线、方法/分裂/污染审计、教师进度/方向/协同、多任务小模型、扩量与研究冻结 |
 | [PES2TS_G2_AB3功能整合与原生扫描改造方案_20261006.md](plans/PES2TS_G2_AB3功能整合与原生扫描改造方案_20261006.md) | **已实现并有24例真实产物；未切默认** | 功能整合、原生优化接缝、13/9/2终态与兼容；严格validated=0 |
@@ -161,6 +174,10 @@ WSL专项/训练链路：实施计划v3.4 §11.9–11.11。GPU环境与P0/P1已�
 
 | 文档 | 内容 |
 | --- | --- |
+| [GeometryPolicyContract v1](contracts/PES2TS_GeometryPolicyContract_v1.md) | **Proposed / design freeze**：`π(X_t,G) → (ΔX_K,m)`、K 定义、No-Move 曲线停止语义、在线禁止项与验证点 |
+| [ADR-0027](design/decisions/ADR-0027-V5.1参考架fallback与双分母评估.md) | **Proposed**：gauge fallback 研究门；不实现新 fallback；主分母不变 |
+| [ADR-0028](design/decisions/ADR-0028-关键原子几何策略合同与V5-V7任务拆分.md) | **Proposed**：冻结新合同；V5.1-R2 与 V5.2 任务拆分；旧证据冻结 |
+| [ADR-0029](design/decisions/ADR-0029-V5.2+双门评估与封存边界.md) | **Proposed**：监督门 + 物理搜索门；G5.2–G5.4 保留 |
 | [预测器产品与G3代码模块划分 v1](design/PES2TS_预测器产品与G3代码模块划分_v1_20261007.md) | **当前实施范围**：源码对照、产品/文件责任、B0–B7、运行接口、离线训练、配置/依赖及测试/包导出；待实现 |
 | [ADR-0014](design/decisions/ADR-0014-预测器产品归属与G3代码范围.md) | **Accepted（规划）**：部分取代ADR-0013目录建议，所有新增业务代码在预测器，在线/离线隔离 |
 | [ADR-0013-G3并行IRC预训练与模型版本体系.md](design/decisions/ADR-0013-G3并行IRC预训练与模型版本体系.md) | **Accepted（规划）**：G3.P、G3-P1、首代研究模型/合同版本，真实决策与物理门保留 |

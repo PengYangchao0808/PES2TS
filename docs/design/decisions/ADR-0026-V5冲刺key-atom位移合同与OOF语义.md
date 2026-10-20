@@ -1,5 +1,7 @@
 # ADR-0026：V5 冲刺 key-atom 位移合同与 OOF 语义
 
+> **2026-10-20 后续注记**：V5.1a 已 `rejected_gate`；V5.1a-R1 无候选准入；V5.1b 继续关闭。本 ADR 的旧 key-atom 合同保留用于 V5.1-R2 的可比对照；**V5.2 起采用 [GeometryPolicyContract v1](../../contracts/PES2TS_GeometryPolicyContract_v1.md) 与 [ADR-0028](ADR-0028-关键原子几何策略合同与V5-V7任务拆分.md) 的新任务语义**。本 ADR 不被删除或改写，历史证据继续有效。
+>
 > 状态：Accepted（实现交付中；能力状态按四层纪律单列，见 §7）
 > 层级：G3.P.0–G3.P.3（V5.0 数据/数学、V5.1 输入/标签筛选、V5.2 条件 OOF）、G0/G1 仅数据资格增量
 > 取代关系：不取代任何 ADR；落实 [V5 冲刺方案 v1.1](../../plans/PES2TS_V5.0-V5.2_十小时冲刺训练与验证执行方案_v1_20261018.md) §0 的"实现前版本化"要求

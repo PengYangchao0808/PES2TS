@@ -4,7 +4,7 @@
 
 ## Current project direction
 
-**2026-10-18 status:** V4.2–V4.7 have been executed and V4.7 FINAL failed all four gates across three seeds (MSE/zero-action 1.132, 0/8 groups, overall cos 0.180, near-TS cos 0.248). V4 is **frozen negative evidence**, not promoted or scaled. The active proposal is [V5–V7 plan v1.2](docs/plans/PES2TS_PES-N_V5-V7架构调整与实施计划_v1.2_20261018.md) with the [V5.0–V5.2 sprint](docs/plans/PES2TS_V5.0-V5.2_十小时冲刺训练与验证执行方案_v1_20261018.md): V5 = G3.P.0–.3, V6 = G3.2, V7-A/B = G4.1, V7-C = G4.0→G4.1, M0.5/M6.5 = G2.T; G4.2 release gate unchanged. G (code/physics capability) and V (training/test campaign) are now bound by [ADR-0025](docs/design/decisions/ADR-0025-G-V双轴映射与战役注册.md) and [the G–V map](docs/design/PES2TS_G_V_MAPPING_v1_20261018.md). Both V5 documents are Proposed: no code, training or QC has started.
+**2026-10-20 status:** V5.1a was rejected at the 5-fold gate and V5.1a-R1 found no admissible candidate. V5.1b remains **closed**. The active proposal is [V5–V7 three-stage revision v2.0](docs/plans/PES2TS_V5-V7_三阶段研究与架构修订方案_v2.0_20261020.md): V5 = geometry-only key-atom policy (Move/No-Move), V6 = xTB physics-corrected policy (MLP/CNN), V7 = cost-aware RL. The immediate next step is [V5.1-R2](docs/plans/PES2TS_V5.1-R2_损失尺度与数据完整性修复方案_v1_20261020.md) (loss-scale + S1 data integrity) before the new [GeometryPolicyContract v1](docs/contracts/PES2TS_GeometryPolicyContract_v1.md) and V5.2. V4 remains frozen negative evidence. G/V registration is in [the G–V map](docs/design/PES2TS_G_V_MAPPING_v1_20261018.md); no code, training, QC, sealed evaluation or Fit150+ has started.
 
 **2026-10-15 plan (historical):** [双端训练与项目进度统一方案 v4](docs/plans/PES2TS_双端拓扑条件训练与项目进度统一方案_v4_20261015.md) aligns the next training round with G0–G4. The current sequence is unordered endpoint topologies → complete A→TS and B→TS teachers → real pointwise xTB E/g → normalized EGNN → BC → compatible IQL. Validate a small set and rebuild complete fit50 first; fit500/2k and three seeds follow the new gates and pricing. SAC is deferred.
 
@@ -12,7 +12,7 @@ The old direct fit50 preparation and BC/IQL runs have real evidence; the new dua
 
 ### Earlier version records
 
-The entries below retain their original dates and task scope. References to “current”, “next”, “not started” and old estimates below describe those versions; V5–V7 v1.2 controls the active research proposal; v4 remains the historical schedule. Old rewards, endpoints, budgets and model capabilities are not relabeled as v2 evidence.
+The entries below retain their original dates and task scope. References to “current”, “next”, “not started” and old estimates below describe those versions; V5–V7 v2.0 controls the active research proposal; v4 remains the historical schedule. Old rewards, endpoints, budgets and model capabilities are not relabeled as v2 evidence.
 
 
 WSL GPU follow-up: plan v3.3 sections 11.9–11.10 record the executed P0/P1 steps: disk budget GO (E: keeps >=10 GiB reserve), isolated `pes2ts-gpu` environment built from the official torch 2.14.1+cu130 wheel (same core version as the CPU env), and CUDA small-tensor plus synthetic variable-size graph-batch forward/backward/optimizer verified on cuda:0 with BF16 support confirmed. Probe script, infra config draft and both environment freezes are checked in; execution record under docs/reports. Business device migration (P2), FP32 throughput baseline, ACP concurrency comparisons and all training/QC remain not started; no measured speedup is claimed.

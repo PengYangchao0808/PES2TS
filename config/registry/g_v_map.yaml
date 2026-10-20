@@ -3,6 +3,8 @@
 # table in docs/design/PES2TS_G_V_MAPPING_v1_20261018.md is rendered from it.
 schema: pes2ts_gv_map_v1
 map_version: "2026-10-18.1"
+plan_revision: "2026-10-20.1"
+plan_revision_note: "V5–V7 v2.0 architecture revision: V5.1-R2/V5.2–V5.4 proposed; old V6.0–V6.2 and V7-A/B/C archived; new V6/V7 campaigns register only after V5.2 contract freeze."
 
 stages:
   G0:
@@ -179,8 +181,8 @@ campaigns:
     evidence: docs/plans/PES2TS_V5.0-V5.2_十小时冲刺训练与验证执行方案_v1_20261018.md
     comparison_only: []
   V5.1:
-    title: V5.1 architecture and ablation screen
-    status: proposed
+    title: V5.1 architecture and ablation screen (historical)
+    status: archived
     primary_g: G3.P.2
     supporting_g: [G0, G1]
     data_dependencies: [G0, G1]
@@ -193,30 +195,93 @@ campaigns:
     data_manifest: data/manifests/v5/split_manifest.json
     gates: [V5-G1, V5-G2, V5-G3, V5-G4]
     evidence: docs/plans/PES2TS_V5.0-V5.2_十小时冲刺训练与验证执行方案_v1_20261018.md
+    gate_note: superseded by V5.1a/V5.1a-R1/V5.1-R2; retained as historical registration only
+    comparison_only:
+      - pes2ts_core/pesn/models/dual_egnn.py
+      - pes2ts_core/pesn/models/dual_egnn_painn.py
+      - pes2ts_core/pesn/models/dual_ts_policy.py
+  V5.1-R2:
+    title: V5.1-R2 loss scale and data integrity repair (old task; no formal OOF)
+    status: proposed
+    primary_g: G3.P.2
+    supporting_g: [G3.P.0, G3.P.1, G3.P.3, G0, G1]
+    data_dependencies: [G0, G1]
+    code_scope:
+      - pes2ts_core/pesn/offline/training/key_atom_bc.py
+      - pes2ts_core/pesn/offline/evaluation/key_atom_protocols.py
+      - scripts/campaigns/run_v5_1_r2.py
+    config: config/campaigns/v5_1_r2.yaml
+    data_manifest: data/manifests/v5/split_manifest.json
+    gates: [V5-G1, V5.1-R2-loss, V5.1-R2-data]
+    evidence: docs/plans/PES2TS_V5.1-R2_损失尺度与数据完整性修复方案_v1_20261020.md
+    gate_note: loss scale + S1 data quality only; no new architecture, no formal OOF, no sealed; V5.1b stays closed
     comparison_only:
       - pes2ts_core/pesn/models/dual_egnn.py
       - pes2ts_core/pesn/models/dual_egnn_painn.py
       - pes2ts_core/pesn/models/dual_ts_policy.py
   V5.2:
-    title: V5.2 frozen recipe, OOF and sealed evaluation
+    title: V5.2 key-atom action contract, S1 audit, multi-scale IRC teacher
     status: proposed
-    primary_g: G3.P.3
-    supporting_g: [G3.P.2, G3.2]
+    primary_g: G3.P.1
+    supporting_g: [G3.P.0, G3.P.3, G0, G1]
+    data_dependencies: [G0, G1]
+    code_scope:
+      - pes2ts_core/pesn/contracts/geometry_policy.py
+      - pes2ts_core/pesn/contracts/key_atom.py
+      - pes2ts_core/pesn/features/key_atom_spec.py
+      - pes2ts_core/pesn/features/key_atom_graph.py
+      - pes2ts_core/pesn/offline/data/key_atom_teacher.py
+      - pes2ts_core/pesn/offline/data/key_atom_dataset.py
+      - scripts/campaigns/run_v5_2_contract.py
+    config: config/campaigns/v5_2_key_atom_contract.yaml
+    data_manifest: data/manifests/v5/split_manifest.json
+    gates: [V5.2-contract, V5.2-labels, V5.2-identifiability]
+    evidence: docs/plans/PES2TS_V5-V7_三阶段研究与架构修订方案_v2.0_20261020.md
+    gate_note: redefined by v2.0; old V5.2 formal OOF/sealed sequence is NOT active; contract/labels/gauge only
+    comparison_only:
+      - pes2ts_core/pesn/models/dual_egnn.py
+      - pes2ts_core/pesn/models/dual_ts_policy.py
+  V5.3:
+    title: V5.3 pure-geometry EGNN Move/Stop baseline
+    status: proposed
+    primary_g: G3.P.2
+    supporting_g: [G3.P.1, G3.P.3, G0, G1]
+    data_dependencies: [G0, G1]
+    code_scope:
+      - pes2ts_core/pesn/models/key_atom_egnn.py
+      - pes2ts_core/pesn/models/key_atom_painn.py
+      - pes2ts_core/pesn/offline/training/key_atom_bc.py
+      - pes2ts_core/pesn/offline/evaluation/key_atom_protocols.py
+      - scripts/campaigns/run_v5_3_geometry.py
+    config: config/campaigns/v5_3_geometry.yaml
+    data_manifest: data/manifests/v5/split_manifest.json
+    gates: [V5-G1, V5.3-move, V5.3-stop, V5.3-generalization]
+    evidence: docs/plans/PES2TS_V5-V7_三阶段研究与架构修订方案_v2.0_20261020.md
+    gate_note: supervision gate only; no formal OOF, no sealed; PaiNN is comparison-only
+    comparison_only:
+      - pes2ts_core/pesn/models/dual_egnn.py
+      - pes2ts_core/pesn/models/dual_ts_policy.py
+  V5.4:
+    title: V5.4 path-consistency, controlled rollout and stop localization
+    status: proposed
+    primary_g: G3.P.2
+    supporting_g: [G3.P.1, G3.P.3, G0, G1]
     data_dependencies: [G0, G1]
     code_scope:
       - pes2ts_core/pesn/offline/training/key_atom_bc.py
       - pes2ts_core/pesn/offline/evaluation/key_atom_protocols.py
-      - pes2ts_core/pesn/bundle/key_atom_v5.py
-    config: config/campaigns/v5_2_freeze.yaml
+      - scripts/campaigns/run_v5_4_rollout.py
+    config: config/campaigns/v5_4_rollout.yaml
     data_manifest: data/manifests/v5/split_manifest.json
-    gates: [V5-G1, V5-G2, V5-G3, V5-G4, V5-sealed]
-    evidence: docs/plans/PES2TS_V5.0-V5.2_十小时冲刺训练与验证执行方案_v1_20261018.md
+    gates: [V5-G1, V5.4-field, V5.4-rollout, V5.4-stop]
+    evidence: docs/plans/PES2TS_V5-V7_三阶段研究与架构修订方案_v2.0_20261020.md
+    gate_note: development evidence only; formal OOF requires a separate preregistered approval
     comparison_only:
       - pes2ts_core/pesn/models/dual_egnn.py
       - pes2ts_core/pesn/models/dual_ts_policy.py
   V5_SPRINT:
     title: V5 phase-1 ten-hour sprint (label screen, recheck, conditional OOF)
-    status: active
+    status: executed
     primary_g: G3.P.0
     supporting_g: [G3.P.1, G3.P.2, G3.P.3, G0, G1]
     data_dependencies: [G0, G1]
@@ -243,7 +308,7 @@ campaigns:
       - pes2ts_core/pesn/models/dual_ts_policy.py
   V5_1A_SPRINT:
     title: V5.1a repair sprint (inner-val best checkpoint, magnitude/pair ablation; no formal OOF)
-    status: active
+    status: executed
     primary_g: G3.P.2
     supporting_g: [G3.P.0, G3.P.1, G3.P.3, G0, G1]
     data_dependencies: [G0, G1]
@@ -263,14 +328,14 @@ campaigns:
     data_manifest: data/manifests/v5/split_manifest.json
     gates: [V5-G1, V5-G2, V5-G3, V5-G4]
     evidence: docs/plans/PES2TS_V5.1_修复冲刺与扩量准入方案_v1_20261019.md
-    gate_note: repair sprint only — D1 diagnostics + 2x2 ablation + 5-fold confirm; sealed confirm/OOD stay unopened; formal 3-seed OOF belongs to V5.1b/V5.2
+    gate_note: repair sprint only — D1 diagnostics + 2x2 ablation + 5-fold confirm; sealed confirm/OOD stay unopened; B3 rejected_gate; V5.1b stays closed
     comparison_only:
       - pes2ts_core/pesn/models/dual_egnn.py
       - pes2ts_core/pesn/models/dual_egnn_painn.py
       - pes2ts_core/pesn/models/dual_ts_policy.py
   V6.0:
-    title: V6.0 OOF/pre-relaxed decision data
-    status: proposed
+    title: V6.0 OOF/pre-relaxed decision data (historical)
+    status: archived
     primary_g: G3.2
     supporting_g: [G3.P.3]
     data_dependencies: [G0, G1]
@@ -281,10 +346,11 @@ campaigns:
     data_manifest: data/manifests/v6/split_manifest.json
     gates: [V6-OOF, V6-leakage]
     evidence: docs/plans/PES2TS_PES-N_V5-V7架构调整与实施计划_v1.2_20261018.md
+    gate_note: archived by V5–V7 v2.0; old progress/decision data route is not active
     comparison_only: []
   V6.1:
-    title: V6.1 progress and uncertainty model
-    status: proposed
+    title: V6.1 progress and uncertainty model (historical)
+    status: archived
     primary_g: G3.2
     supporting_g: [G3.P.3]
     data_dependencies: [G0, G1]
@@ -295,10 +361,11 @@ campaigns:
     data_manifest: data/manifests/v6/split_manifest.json
     gates: [V6-progress, V6-conformal]
     evidence: docs/plans/PES2TS_PES-N_V5-V7架构调整与实施计划_v1.2_20261018.md
+    gate_note: archived by V5–V7 v2.0; replaced by xTB physics correction (V6.1–V6.3, pending re-registration)
     comparison_only: []
   V6.2:
-    title: V6.2 decoder, STOP rule and calibration
-    status: proposed
+    title: V6.2 decoder, STOP rule and calibration (historical)
+    status: archived
     primary_g: G3.2
     supporting_g: [G3.P.3]
     data_dependencies: [G0, G1]
@@ -309,10 +376,11 @@ campaigns:
     data_manifest: data/manifests/v6/split_manifest.json
     gates: [V6-decoder, V6-stop]
     evidence: docs/plans/PES2TS_PES-N_V5-V7架构调整与实施计划_v1.2_20261018.md
+    gate_note: archived by V5–V7 v2.0; STOP now lives in V5 GeometryPolicyContract + V6 physics correction
     comparison_only: []
   V7-A:
-    title: V7-A frozen-model real QC rollout
-    status: proposed
+    title: V7-A frozen-model real QC rollout (historical)
+    status: archived
     primary_g: G4.1
     supporting_g: [G2.T, G3.2, G4.0]
     data_dependencies: [G0, G1]
@@ -325,10 +393,11 @@ campaigns:
     data_manifest: data/manifests/v7/rollout_cohort.json
     gates: [V7-verified-TS, V7-cost]
     evidence: docs/plans/PES2TS_PES-N_V5-V7架构调整与实施计划_v1.2_20261018.md
+    gate_note: archived by V5–V7 v2.0; new V7.1–V7.3 register only after V6.3 real-validation gate
     comparison_only: []
   V7-B:
-    title: V7-B supervised STOP/step calibration
-    status: proposed
+    title: V7-B supervised STOP/step calibration (historical)
+    status: archived
     primary_g: G4.1
     supporting_g: [G3.2, G2.T]
     data_dependencies: [G0, G1]
@@ -340,10 +409,11 @@ campaigns:
     data_manifest: data/manifests/v7/rollout_cohort.json
     gates: [V7-calibration, V7-cost]
     evidence: docs/plans/PES2TS_PES-N_V5-V7架构调整与实施计划_v1.2_20261018.md
+    gate_note: archived by V5–V7 v2.0; offline RL is now V7.2
     comparison_only: []
   V7-C:
-    title: V7-C conservative offline RL
-    status: proposed
+    title: V7-C conservative offline RL (historical)
+    status: archived
     primary_g: G4.0
     supporting_g: [G4.1, G2.T, G3.2]
     data_dependencies: [G0, G1]
@@ -355,4 +425,5 @@ campaigns:
     data_manifest: data/manifests/v7/transition_cohort.json
     gates: [V7-RL, V7-cost]
     evidence: docs/plans/PES2TS_PES-N_V5-V7架构调整与实施计划_v1.2_20261018.md
+    gate_note: archived by V5–V7 v2.0; offline RL is now V7.2 (IQL/AWR after BC)
     comparison_only: []

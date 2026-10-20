@@ -1,5 +1,16 @@
 # PES2TS 文档修订台账（协同性）
 
+## 2026-10-20 增量登记：V5–V7 v2.0 架构修订与 V5.1-R2
+
+- 新增 [V5–V7 三阶段研究与架构修订方案 v2.0](../plans/PES2TS_V5-V7_三阶段研究与架构修订方案_v2.0_20261020.md)：V5=Geometry Policy（仅关键原子位移 + 曲线停止位置）、V6=xTB 物理响应 + MLP/CNN 修正、V7=cost-aware RL。**取代** [v1.2](../plans/PES2TS_PES-N_V5-V7架构调整与实施计划_v1.2_20261018.md) 的 V6 progress-decoder 路线；v1.2 保留为历史设计。
+- 新增 [V5.1-R2 损失尺度与数据完整性修复方案](../plans/PES2TS_V5.1-R2_损失尺度与数据完整性修复方案_v1_20261020.md)：旧 V5.1 任务上的无量纲 strong Huber、τ 归一化 dead hinge、梯度占比 2%/10%、ramp/checkpoint 修复、S1 数据质量审计；验收是可靠结论，不要求晋级。
+- 新增 [GeometryPolicyContract v1](../contracts/PES2TS_GeometryPolicyContract_v1.md)：冻结 `π(X_t,G) → (ΔX_K,m)`、K 定义、No-Move 曲线停止语义、在线禁止项与验证点。
+- 新增 [ADR-0027](../design/decisions/ADR-0027-V5.1参考架fallback与双分母评估.md)（gauge fallback 研究门）、[ADR-0028](../design/decisions/ADR-0028-关键原子几何策略合同与V5-V7任务拆分.md)（合同/任务拆分）、[ADR-0029](../design/decisions/ADR-0029-V5.2+双门评估与封存边界.md)（监督门/物理搜索门，旧 G5.2–G5.4 保留）。
+- 注册更新：`V5.1-R2`、`V5.2`、`V5.3`、`V5.4` proposed；`V5_SPRINT`、`V5_1A_SPRINT` executed；旧 `V6.0–V6.2`、`V7-A/B/C` archived。V5.1a-R1 的证据登记在 `outputs/pesn/v5_1_r1/` 与本台账，**暂不新增 executed 战役条目**（其代码/脚本尚未提交；提交并打 tag 后再注册）。G–V 映射文档已由 `scripts/render_gv_map.py --write` 同步；`map_version` 保持 2026-10-18.1（schema 不变），新增 `plan_revision: 2026-10-20.1`。
+- 关键边界：V5.1a 已 `rejected_gate`；V5.1a-R1 无候选准入；**V5.1b 继续关闭**；不启动正式 OOF、Confirm/OOD/sealed、Fit150+。R2 不得自我批准 V5.1b；新 V5.2 不得靠改名绕过旧封存协议。
+- 文档影响：根 README、AGENT、docs 索引、阶段定义、代码地图 v2.1、V5.1 方案、ADR-0026 均加修订/取代指针；历史报告、V5.1a/R1 冻结产物不改写。
+- 本轮仅文档/注册修订；未修改业务代码、未启动训练/QC、未访问新真值。
+
 ## 2026-10-19 增量登记：V5 第一阶段冲刺执行完成（complete_oof_1seed）
 
 - 按 [V5.0–V5.2 十小时方案 v1.1](PES2TS_V5.0-V5.2_十小时冲刺训练与验证执行方案_v1_20261018.md) 与 [ADR-0026](../design/decisions/ADR-0026-V5冲刺key-atom位移合同与OOF语义.md) 完成五阶段执行：prepare-audit（split 冻结/三跨度教师/冲突审计/特征/测速/G5.1）→ label-screen（六臂×1500 更新）→ recipe-recheck（Top-2×双折×三种子，A05/A12 双双稳定，胜者 A05=d0 0.05+anchor on）→ crossfit（测速阶梯降档 5fold×1seed 正式 OOF，3000 更新/折，`move_proposal_v5_draft1.parquet` 5088 行无删失，selection-exposed）→ report（封存 REFUSED 正确登记）。
@@ -42,7 +53,7 @@
 > 取代关系：本文持续登记；2026-10-05 当前学习主线按 ADR-0010 更新，旧日期记录保留
 > 上游依赖：[开发宪法](../PES2TS_开发宪法_v1.md)、[阶段定义](PES2TS_阶段定义_G0-G3.md)
 > 下游消费者：文档索引、执行投影、各阶段开发与审计
-> 当前版本：v3.17 @ 2026-10-19（V5 第一阶段冲刺执行完成 complete_oof_1seed；ADR-0026 V5 冲刺实现与 V5_SPRINT 战役注册；v3.15 的 G–V 映射/ADR-0025、V5–V7 v1.2 与 V5.0–V5.2 冲刺登记及历史记录保留）
+> 当前版本：v3.18 @ 2026-10-20（V5–V7 v2.0 架构修订；V5.1-R2 + S1 立项；GeometryPolicyContract v1；ADR-0027/0028/0029；V5.1b 继续关闭）
 
 ---
 

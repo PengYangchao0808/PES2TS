@@ -1,9 +1,11 @@
 # PES2TS / PES-N V5.1a 修复冲刺与扩量准入方案 v1
 
-> 日期：2026-10-19
+> **2026-10-20 修订注记（v2.0 架构调整）**：V5.1a 已执行并 `rejected_gate`；V5.1a-R1 已完成且无候选准入；**V5.1b 继续关闭**。下一轮改为 [V5.1-R2 损失尺度与数据完整性修复方案](PES2TS_V5.1-R2_损失尺度与数据完整性修复方案_v1_20261020.md)，只做损失尺度、ramp/checkpoint 与 S1 数据质量，不增加新网络。**V5.2 起按 [V5–V7 v2.0](PES2TS_V5-V7_三阶段研究与架构修订方案_v2.0_20261020.md) 的新 Key-Atom 合同重新立项**；本文件 §3–§5 的 V5.1a 配置保留为冻结历史，不再作为下一轮执行依据。
+>
+> 日期：2026-10-19（原文）；修订：2026-10-20
 > 层级：G3.P（V5 线）；G–V 映射：`config/registry/g_v_map.yaml` @ 2026-10-18.1
 > 前置：`docs/plans/PES2TS_V5.0-V5.2_十小时冲刺训练与验证执行方案_v1_20261018.md`（V5 sprint phase-1 已执行，状态 `complete_oof_1seed`）
-> 决策记录：ADR-0026（key-atom 位移合同与 OOF 语义）；ADR-0027（幅度解耦与参考架 fallback，条件启用）
+> 决策记录：ADR-0026（key-atom 位移合同与 OOF 语义）；ADR-0027（参考架 fallback 与双分母）；ADR-0028/0029（2026-10-20 v2.0 任务拆分/双门）
 
 ## 0. 对上一版 V5.1 草案的三处方案级纠正（本方案的前提）
 
@@ -179,7 +181,7 @@ V5.1a 冻结配方后：seeds 17/29/43 × folds 0–4 = 15 runs，从零训练�
 ```
 config/campaigns/v5_1_sprint.yaml
 docs/plans/PES2TS_V5.1_修复冲刺与扩量准入方案_v1_20261019.md   (本文件)
-docs/design/decisions/ADR-0027-V5.1幅度解耦与参考架fallback.md   # 仅当做 fallback
+docs/design/decisions/ADR-0027-V5.1参考架fallback与双分母评估.md   # 仅当做 fallback
 outputs/pesn/v5_1/diagnostics/
 outputs/pesn/v5_1/runs/
 outputs/pesn/v5_1/move_proposal_v5_1_3seed.parquet              # V5.1b/V5.2
@@ -207,6 +209,8 @@ run record 至少包含：arm、fold、seed、updates、best_update、inner_val_
 ### 7.3 扩量节奏
 当前 Fit50/49 簇 → V5.1a（2×2 + 5 折确认）→ V5.1b/V5.2（15-run OOF + 全 Gate）→ Fit150 → Confirm/OOD → Fit500+。
 禁止 Fit50 直接跳 Fit500；禁止 V5.1 未过门时开 Confirm/OOD。
+
+> **2026-10-20 修订**：V5.1a 已 `rejected_gate`，V5.1a-R1 无候选准入；上述“V5.1b/V5.2 15-run OOF”不再作为下一站。新顺序为：V5.1-R2（损失尺度 + S1）→ V5.2 新 Key-Atom 合同 → V5.3–V5.4 纯几何/rollout → V6.1–V6.3 物理修正 → V7.1–V7.3 RL。V5.1b 继续关闭；S0–S4 原门保留，但新任务另设监督门/物理搜索门（ADR-0029）。
 
 ## 8. 三天执行排期
 
