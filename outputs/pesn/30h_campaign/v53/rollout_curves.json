@@ -1,0 +1,170 @@
+{
+  "schema": "pes2ts_v53_rollout_curves_v1",
+  "frozen": true,
+  "selection_rule": "pool = curves with ≥1 label_status=ok sample AND fold in {0,1,2} (Development only); strata = fold × K-quartile (rank-based over (K, curve_id) order); per-stratum winner = min sha256(f'v53-rollout|{seed}|<curve_id>'); one per stratum in (fold, quartile) stratum order, capped at 12; start node = endpoint A; both intent directions recorded",
+  "seed": 17,
+  "dev_folds": [
+    0,
+    1,
+    2
+  ],
+  "n_pool": 28,
+  "n_strata": 12,
+  "n_curves": 12,
+  "no_physics_steps": [
+    5,
+    10,
+    20
+  ],
+  "arms": [
+    "classic",
+    "r3",
+    "v52"
+  ],
+  "verified_ts_claim": "forbidden",
+  "curves": [
+    {
+      "curve_id": "RXN_0000000238",
+      "fold": 2,
+      "k_size": 6,
+      "k_quartile": 1,
+      "forward_intent_id": "RXN_0000000238_fwd",
+      "reverse_intent_id": "RXN_0000000238_rev",
+      "start_node_index": 0,
+      "n_nodes": 62,
+      "ts_index_record_only": 31
+    },
+    {
+      "curve_id": "RXN_0000000406",
+      "fold": 1,
+      "k_size": 6,
+      "k_quartile": 1,
+      "forward_intent_id": "RXN_0000000406_fwd",
+      "reverse_intent_id": "RXN_0000000406_rev",
+      "start_node_index": 0,
+      "n_nodes": 124,
+      "ts_index_record_only": 63
+    },
+    {
+      "curve_id": "RXN_0000000582",
+      "fold": 2,
+      "k_size": 4,
+      "k_quartile": 0,
+      "forward_intent_id": "RXN_0000000582_fwd",
+      "reverse_intent_id": "RXN_0000000582_rev",
+      "start_node_index": 0,
+      "n_nodes": 121,
+      "ts_index_record_only": 60
+    },
+    {
+      "curve_id": "RXN_0000000908",
+      "fold": 1,
+      "k_size": 7,
+      "k_quartile": 3,
+      "forward_intent_id": "RXN_0000000908_fwd",
+      "reverse_intent_id": "RXN_0000000908_rev",
+      "start_node_index": 0,
+      "n_nodes": 126,
+      "ts_index_record_only": 71
+    },
+    {
+      "curve_id": "RXN_0000001309",
+      "fold": 0,
+      "k_size": 6,
+      "k_quartile": 2,
+      "forward_intent_id": "RXN_0000001309_fwd",
+      "reverse_intent_id": "RXN_0000001309_rev",
+      "start_node_index": 0,
+      "n_nodes": 123,
+      "ts_index_record_only": 61
+    },
+    {
+      "curve_id": "RXN_0000001423",
+      "fold": 1,
+      "k_size": 4,
+      "k_quartile": 0,
+      "forward_intent_id": "RXN_0000001423_fwd",
+      "reverse_intent_id": "RXN_0000001423_rev",
+      "start_node_index": 0,
+      "n_nodes": 146,
+      "ts_index_record_only": 77
+    },
+    {
+      "curve_id": "RXN_0000001675",
+      "fold": 0,
+      "k_size": 4,
+      "k_quartile": 0,
+      "forward_intent_id": "RXN_0000001675_fwd",
+      "reverse_intent_id": "RXN_0000001675_rev",
+      "start_node_index": 0,
+      "n_nodes": 84,
+      "ts_index_record_only": 76
+    },
+    {
+      "curve_id": "RXN_0000001715",
+      "fold": 2,
+      "k_size": 6,
+      "k_quartile": 2,
+      "forward_intent_id": "RXN_0000001715_fwd",
+      "reverse_intent_id": "RXN_0000001715_rev",
+      "start_node_index": 0,
+      "n_nodes": 128,
+      "ts_index_record_only": 71
+    },
+    {
+      "curve_id": "RXN_0000001745",
+      "fold": 1,
+      "k_size": 6,
+      "k_quartile": 2,
+      "forward_intent_id": "RXN_0000001745_fwd",
+      "reverse_intent_id": "RXN_0000001745_rev",
+      "start_node_index": 0,
+      "n_nodes": 105,
+      "ts_index_record_only": 43
+    },
+    {
+      "curve_id": "RXN_0000001847",
+      "fold": 2,
+      "k_size": 6,
+      "k_quartile": 3,
+      "forward_intent_id": "RXN_0000001847_fwd",
+      "reverse_intent_id": "RXN_0000001847_rev",
+      "start_node_index": 0,
+      "n_nodes": 121,
+      "ts_index_record_only": 60
+    },
+    {
+      "curve_id": "RXN_0000002062",
+      "fold": 0,
+      "k_size": 5,
+      "k_quartile": 1,
+      "forward_intent_id": "RXN_0000002062_fwd",
+      "reverse_intent_id": "RXN_0000002062_rev",
+      "start_node_index": 0,
+      "n_nodes": 106,
+      "ts_index_record_only": 46
+    },
+    {
+      "curve_id": "RXN_0000002090",
+      "fold": 0,
+      "k_size": 6,
+      "k_quartile": 3,
+      "forward_intent_id": "RXN_0000002090_fwd",
+      "reverse_intent_id": "RXN_0000002090_rev",
+      "start_node_index": 0,
+      "n_nodes": 121,
+      "ts_index_record_only": 60
+    }
+  ],
+  "source_sha256": {
+    "branch_diagnostics.csv": "61c068a0ff563fc3a9b09f92adc5739024c363b988daa0bce86347bf14a728f1",
+    "curve_quality.csv": "cfbcd638d9001681e8cd9d0a1420d285c63de39012523f01293ce1dfc5894af9",
+    "irc_curve.csv": "c7f50ee820b912517297f1987a99296811648d3edf1404459090781b872c295a",
+    "irc_edge.csv": "12fc4a63f67ba27c978a2d4c1660355b7f79f45a37a03a0ddc149c9d7c1d7ca5",
+    "irc_node.csv": "edef4b32b6b43650bf2f08a96398234bf36c7b1950d523a27bf5b0826e592ac0",
+    "reaction_intent.csv": "b8b0def8688f458e6b329909a559d18cfe0aed34bc89183d4af9d11254434e45",
+    "sample_view.csv": "1e0f4b810ce6c5db1f38fb9f0c2c19d822bbfe7423959d8557e58d6f42143dea",
+    "data_manifest.json": "c21ff84b3790282b4c60764e6a356b8cb3c46e5f3b76f2bf785eeb8e70a56cbc"
+  },
+  "curve_list_sha256": "7ec3e1928824c690c718ce9c6f7c8244c3248108efa2a045a2ff60bd5c49da09"
+}
