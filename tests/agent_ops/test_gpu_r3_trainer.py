@@ -274,3 +274,291 @@ def test_aux_arm_loss_wiring(dataset, tmp_path):
     train_logs = [e for e in log if "loss" in e]
     assert train_logs[0]["lambda_strong"] == pytest.approx(0.05)
     assert train_logs[0]["lambda_dead"] == 0.0
+
+
+# ---------------------------------------------------------------------------
+# E3-CONT: lambda calibration probe math (plan 5.4)
+# ---------------------------------------------------------------------------
+
+
+def test_probe_bucket_ratios_and_median():
+    probe = pytest.importorskip("scripts.campaigns.r3_gradient_probe")
+    r_enc, r_head = probe.bucket_ratios(2.0, 0.1, 4.0, 2.0)
+    assert r_enc == pytest.approx(0.05)
+    assert r_head == pytest.approx(0.5)
+    # zero base (degenerate) refuses to div-zero (epsilon in denominator)
+    r_enc, _ = probe.bucket_ratios(0.0, 0.3, 0.0, 0.3)
+    assert r_enc == pytest.approx(0.3 / 1e-12)
+    assert probe.median([3.0, 1.0, 2.0]) == 2.0
+    assert probe.median([4.0, 1.0, 2.0, 3.0]) == 2.5
+
+
+def test_probe_calibrate_lambda_verdicts():
+    probe = pytest.importorskip("scripts.campaigns.r3_gradient_probe")
+    # calibrated: ratio 1.0 -> lambda = target exactly
+    out = probe.calibrate_lambda(1.0, 0.02)
+    assert out["verdict"] == "calibrated"
+    assert out["lambda"] == pytest.approx(0.02)
+    assert out["share_at_lambda"] == pytest.approx(0.02)
+    # target_unreachable: even lambda=0.5 stays under the 10% target but
+    # above the 1% scale floor
+    out = probe.calibrate_lambda(0.5, 0.10)   # needs lambda=0.2 -> ok
+    assert out["verdict"] == "calibrated" and out["lambda"] == pytest.approx(0.2)
+    out = probe.calibrate_lambda(0.5, 0.02)   # needs 0.04 -> ok
+    assert out["verdict"] == "calibrated"
+    out = probe.calibrate_lambda(0.25, 0.10)  # needs 0.4 -> ok
+    assert out["verdict"] == "calibrated"
+    out = probe.calibrate_lambda(0.3, 0.10)   # needs 0.333 -> ok
+    assert out["verdict"] == "calibrated"
+    out = probe.calibrate_lambda(0.21, 0.10)  # needs 0.476 -> ok
+    assert out["verdict"] == "calibrated"
+    out = probe.calibrate_lambda(0.15, 0.02)  # needs 0.133 -> ok
+    assert out["verdict"] == "calibrated"
+    out = probe.calibrate_lambda(0.22, 0.10)  # needs 0.4545 -> ok
+    assert out["verdict"] == "calibrated"
+    out = probe.calibrate_lambda(0.224, 0.10)  # needs 0.446 -> ok
+    assert out["verdict"] == "calibrated"
+    out = probe.calibrate_lambda(0.24, 0.10)  # needs 0.4167 -> ok
+    assert out["verdict"] == "calibrated"
+    out = probe.calibrate_lambda(0.3, 0.02)   # needs 0.0667 -> ok
+    assert out["verdict"] == "calibrated"
+    # target_unreachable: share at lambda_max < target but >= 1% floor
+    out = probe.calibrate_lambda(0.15, 0.10)  # needs 0.667 > 0.5; share@0.5=0.075
+    assert out["verdict"] == "target_unreachable"
+    assert out["lambda"] == 0.5
+    assert out["share_at_lambda"] == pytest.approx(0.075)
+    # scale_unreachable: even lambda_max stays below the 1% floor
+    out = probe.calibrate_lambda(0.01, 0.10)  # share@0.5 = 0.005 < 0.01
+    assert out["verdict"] == "scale_unreachable"
+    assert out["lambda"] == 0.5
+    out = probe.calibrate_lambda(0.0, 0.02)   # no gradient at all
+    assert out["verdict"] == "scale_unreachable"
+    assert out["lambda"] is None
+    # head flag
+    assert probe.head_flag(0.3) == "ok"
+    assert probe.head_flag(0.3001) == "head_overweighted"
+
+
+def test_probe_calibration_json_shape_and_lambda_zero_regression(dataset):
+    """The shipped probe output is well-formed; aux lambda=0 == B0-F bitwise.
+
+    Bit-identity is asserted at the LOSS level (one process, same tensors):
+    the aux codepath at lambda=0 must return exactly the base loss value
+    and gradients -- the trainer passes lambda_strong/dead=0.0, which makes
+    the frozen loss skip the bucket terms entirely.
+    """
+    from pes2ts_core.pesn.models.key_atom_losses_v3 import (
+        KeyAtomLossV3Config,
+        aux_arm_lambdas_v3,
+        key_atom_loss_v3,
+    )
+    # aux_arm_lambdas_v3 places lambda on the arm's bucket only
+    assert aux_arm_lambdas_v3("S2", 0.0) == (0.0, 0.0)
+    assert aux_arm_lambdas_v3("S10", 0.1) == (0.1, 0.0)
+    assert aux_arm_lambdas_v3("D10", 0.1) == (0.0, 0.1)
+
+    # loss-level bit identity: base vs aux-arm-at-0 on one real batch
+    # (single-thread: CPU reduction order is otherwise free to vary between
+    # separate backward calls, which would mask true bit-identity)
+    prev_threads = torch.get_num_threads()
+    torch.set_num_threads(1)
+    try:
+        torch.manual_seed(17)
+        train_idx, _ = make_inner_split(dataset.samples, 17)
+        from pes2ts_core.pesn.offline.data.key_atom_dataset_v3 import (
+            build_feature_batches,
+        )
+        from pes2ts_core.pesn.contracts.key_atom_v3 import (
+            NODE_DEGK_KEY,
+            NODE_KEY_SET_KEY,
+            NODE_POS_KEY,
+            forward_view_v3,
+        )
+        batch = build_feature_batches(
+            dataset, train_idx[:8], level="F2", device="cpu")
+        from pes2ts_core.pesn.models.key_atom_egnn_v3 import StarEGNNV3
+        model = StarEGNNV3()
+        n_keys = batch["n_keys"].long()
+        key_ptr = torch.cat(
+            [torch.zeros(1, dtype=torch.long), torch.cumsum(n_keys, dim=0)])
+
+        def _loss(**kwargs):
+            out = model(forward_view_v3(batch))
+            return key_atom_loss_v3(
+                out["u"], batch["y_teacher"],
+                batch[NODE_DEGK_KEY][batch[NODE_KEY_SET_KEY]], key_ptr,
+                batch[NODE_POS_KEY], batch[NODE_KEY_SET_KEY],
+                batch["pair_index"], config=KeyAtomLossV3Config(),
+                lambda_cos=0.02, frame_weight=batch["frame_weight"],
+                pair_edit=batch["pair_edit"], **kwargs)
+
+        base = _loss()
+        aux0 = _loss(aux_arm="S2", lambda_strong=0.0, lambda_dead=0.0)
+        assert float(base["loss"]) == float(aux0["loss"])      # bit-identical
+        assert float(base["l_atom"]) == float(aux0["l_atom"])
+        assert float(aux0["l_strong"]) == 0.0
+        # gradient bit-identity
+        base["loss"].backward()
+        grads_base = [p.grad.clone() for p in model.parameters()
+                      if p.grad is not None]
+        model.zero_grad()
+        aux0["loss"].backward()
+        grads_aux = [p.grad.clone() for p in model.parameters()
+                     if p.grad is not None]
+        assert len(grads_base) == len(grads_aux) > 0
+        for ga, gb in zip(grads_base, grads_aux):
+            assert torch.equal(ga, gb)
+    finally:
+        torch.set_num_threads(prev_threads)
+
+    # the shipped calibration file (when present) has the frozen schema
+    cal = Path(__file__).resolve().parents[2] / \
+        "outputs/pesn/30h_campaign/r3_runs/lambda_calibration.json"
+    if cal.is_file():
+        doc = json.loads(cal.read_text(encoding="utf-8"))
+        assert doc["schema"] == probe_schema
+        assert set(doc["arms"]) == {"S2", "S10", "D2", "D10"}
+        for arm, v in doc["arms"].items():
+            assert v["verdict"] in ("calibrated", "target_unreachable",
+                                    "scale_unreachable")
+            if v["lambda"] is not None:
+                assert 0.0 < v["lambda"] <= 0.5
+            assert v["target_encoder_share"] == (0.02 if arm.endswith("2")
+                                                 else 0.10)
+
+
+probe_schema = "pesn_r3_lambda_probe_v1"
+
+
+# ---------------------------------------------------------------------------
+# E3-CONT: seal semantics (plan 4.2: folds3/4 excluded from aggregation)
+# ---------------------------------------------------------------------------
+
+
+def test_seal_semantics_folds34_excluded_from_selection():
+    ev = pytest.importorskip("scripts.campaigns.r3_g2_evidence")
+    entries = [
+        {"run_id": "b-f1-s17", "arm": "B", "fold": 1, "seed": 17,
+         "rmse_over_zero": 0.9, "median_rmse": 0.05, "sign_median": 0.9,
+         "sre_median": 0.2, "dead_zone_fraction": 0.1,
+         "classic_sign_median": 0.0, "classic_sre_median": 0.5,
+         "selected_update": 250, "last_train_loss": 0.1,
+         "checkpoint_sha256": "aa" * 32},
+        {"run_id": "fb-f0-s17", "arm": "F2-bidir", "fold": 0, "seed": 17,
+         "rmse_over_zero": 0.884, "median_rmse": 0.05, "sign_median": 0.764,
+         "sre_median": 0.41, "dead_zone_fraction": 0.1,
+         "classic_sign_median": 0.0, "classic_sre_median": 0.5,
+         "selected_update": 250, "last_train_loss": 0.12,
+         "checkpoint_sha256": "ee" * 32},
+        {"run_id": "b-f3-s17", "arm": "B", "fold": 3, "seed": 17,
+         "rmse_over_zero": 0.5, "median_rmse": 0.01, "sign_median": 1.0,
+         "sre_median": 0.05, "dead_zone_fraction": 0.0,
+         "classic_sign_median": 0.0, "classic_sre_median": 0.5,
+         "selected_update": 250, "last_train_loss": 0.05,
+         "checkpoint_sha256": "bb" * 32},
+        {"run_id": "l-s2-f0-s17", "arm": "S2", "fold": 0, "seed": 17,
+         "rmse_over_zero": 0.95, "median_rmse": 0.052, "sign_median": 0.85,
+         "sre_median": 0.25, "dead_zone_fraction": 0.12,
+         "classic_sign_median": 0.0, "classic_sre_median": 0.5,
+         "selected_update": 500, "last_train_loss": 0.09,
+         "checkpoint_sha256": "cc" * 32},
+        {"run_id": "b-f4-s29", "arm": "B", "fold": 4, "seed": 29,
+         "rmse_over_zero": 0.4, "median_rmse": 0.005, "sign_median": 1.0,
+         "sre_median": 0.01, "dead_zone_fraction": 0.0,
+         "classic_sign_median": 0.0, "classic_sre_median": 0.5,
+         "selected_update": 250, "last_train_loss": 0.01,
+         "checkpoint_sha256": "dd" * 32},
+    ]
+    assert ev.is_sealed_fold(3) and ev.is_sealed_fold(4)
+    assert not ev.is_sealed_fold(0) and not ev.is_sealed_fold(2)
+    dev, sealed = ev.split_entries(entries)
+    # sealed values never reach the dev aggregate; ids listed for audit
+    assert sorted(sealed) == ["b-f3-s17", "b-f4-s29"]
+    assert {e["run_id"] for e in dev} == {
+        "b-f1-s17", "fb-f0-s17", "l-s2-f0-s17"}
+    pack = ev.build_evidence(entries)
+    assert pack["n_sealed_runs_excluded"] == 2
+    assert pack["sealed_run_ids"] == ["b-f3-s17", "b-f4-s29"]
+    # the spectacularly-good sealed fold3 metrics must NOT leak into B stats
+    b_arm = pack["per_arm"]["B"]
+    assert b_arm["n_runs"] == 1
+    assert b_arm["mean_rmse_over_zero"] == pytest.approx(0.9)
+    assert b_arm["min_rmse_over_zero"] == pytest.approx(0.9)
+    assert b_arm["folds"] == [1]
+    # guards compare the L arm against its matched B0-F (same fold+seed)
+    (guard,) = pack["guards_vs_matched_b0f"]
+    assert guard["baseline_run_id"] == "fb-f0-s17"
+    assert guard["rmse_degradation_pct"] == pytest.approx(
+        100.0 * (0.052 - 0.05) / 0.05)
+    assert guard["sign_drop"] == pytest.approx(0.764 - 0.85)
+    assert guard["deadzone_rise"] == pytest.approx(0.12 - 0.1)
+    assert not guard["within_rmse_guard"]   # 4% > 2% -- recorded, not gating
+    # early-overfit accounting (sealed entries excluded)
+    assert pack["early_overfit_note"]["n_selected_at_or_before_250"] == 2
+    assert pack["early_overfit_note"]["n_selected_total"] == 3
+
+
+# ---------------------------------------------------------------------------
+# E3-CONT: driver lambda/arm wiring
+# ---------------------------------------------------------------------------
+
+
+def _load_driver():
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "r3_drv_cont",
+        str(Path(__file__).resolve().parents[2] /
+            "scripts/campaigns/run_v5_1_r3.py"))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_driver_arm_map_and_lambda_required():
+    drv = _load_driver()
+    # B0-F and Top-1/aux arms inherit the winner's bidirectional config
+    assert drv.ARM_MAP["B"]["bidirectional"] is True
+    assert drv.ARM_MAP["V-top1"]["bidirectional"] is True
+    assert drv.ARM_MAP["S2"]["bidirectional"] is True
+    assert drv.ARM_MAP["D10"]["bidirectional"] is True
+    assert drv.ARM_MAP["V-top2"].get("bidirectional") is not True
+    assert drv.SEALED_FOLDS == (3, 4)
+
+    line = {"arm": "S2", "fold": 0, "seed": 17, "variant": None,
+            "campaign_id": "PES2TS_30H_R3_V52_V53", "phase": "R3",
+            "data_sha256": "a1" * 32, "teacher_sha256": "b2" * 32,
+            "features_sha256": "c3" * 32, "split_sha256": "d4" * 32,
+            "config_sha256": "e5" * 32, "confirm": False}
+
+    class Args:
+        level = "F2"
+        lambda_arm = None
+        device = "cpu"
+
+    from pes2ts_core.pesn.offline.training.key_atom_bc_v3 import TrainerError
+    with pytest.raises(TrainerError) as excinfo:
+        drv._trainer_config_from_line(line, Args())
+    assert "AUX_LAMBDA_REQUIRED" in str(excinfo.value)
+
+    class Args2:
+        level = "F2"
+        lambda_arm = "0.019056400705052445"
+        device = "cpu"
+
+    cfg = drv._trainer_config_from_line(line, Args2())
+    assert cfg.aux_arm == "S2"
+    assert cfg.lambda_arm == pytest.approx(0.019056400705052445)
+    assert cfg.bidirectional is True
+    assert cfg.level == "F2"
+
+    # B arm with explicit winner level -> bidirectional B0-F config
+    b_line = dict(line, arm="B")
+
+    class Args3:
+        level = "F2"
+        lambda_arm = None
+        device = "cpu"
+
+    cfg_b = drv._trainer_config_from_line(b_line, Args3())
+    assert cfg_b.bidirectional is True and cfg_b.aux_arm is None
