@@ -342,7 +342,7 @@ def synthetic_plan_row(**overrides):
 
 def test_plan_missing_or_corrupt_refused_at_launch(tmp_path):
     missing = tmp_path / "plan.jsonl"
-    led = RunLedger(tmp_path / "r.jsonl", plan_path=missing)
+    led = RunLedger(tmp_path / "r.jsonl", plan_path=missing, plan_pin=None)
     led.init()
     rec = make_formal()
     led.append(rec)  # registration does not consume budget
@@ -352,7 +352,7 @@ def test_plan_missing_or_corrupt_refused_at_launch(tmp_path):
 
     corrupt = tmp_path / "plan2.jsonl"
     corrupt.write_text("{broken\n", encoding="utf-8")
-    led2 = RunLedger(tmp_path / "r2.jsonl", plan_path=corrupt)
+    led2 = RunLedger(tmp_path / "r2.jsonl", plan_path=corrupt, plan_pin=None)
     led2.init()
     led2.append(rec)
     with pytest.raises(LedgerError) as excinfo:
@@ -361,7 +361,7 @@ def test_plan_missing_or_corrupt_refused_at_launch(tmp_path):
 
     empty = tmp_path / "plan3.jsonl"
     empty.write_text("\n", encoding="utf-8")
-    led3 = RunLedger(tmp_path / "r3.jsonl", plan_path=empty)
+    led3 = RunLedger(tmp_path / "r3.jsonl", plan_path=empty, plan_pin=None)
     led3.init()
     led3.append(rec)
     with pytest.raises(LedgerError) as excinfo:
@@ -371,7 +371,7 @@ def test_plan_missing_or_corrupt_refused_at_launch(tmp_path):
 
 def test_plan_not_in_plan_and_not_planned_refused(tmp_path):
     plan = write_plan_file(tmp_path / "plan.jsonl", [synthetic_plan_row()])
-    led = RunLedger(tmp_path / "r.jsonl", plan_path=plan)
+    led = RunLedger(tmp_path / "r.jsonl", plan_path=plan, plan_pin=None)
     led.init()
 
     # in-plan run launches fine
@@ -396,7 +396,7 @@ def test_plan_not_in_plan_and_not_planned_refused(tmp_path):
 
 def test_plan_count_is_the_effective_cap_including_retries(tmp_path):
     plan = write_plan_file(tmp_path / "plan.jsonl", [synthetic_plan_row()])
-    led = RunLedger(tmp_path / "r.jsonl", plan_path=plan)
+    led = RunLedger(tmp_path / "r.jsonl", plan_path=plan, plan_pin=None)
     led.init()
     rec = make_formal()
     led.append(rec)
@@ -423,7 +423,7 @@ def test_real_run_plan_binds_f_main_launches(tmp_path):
     plan = tmp_path / "run_plan.jsonl"
     write_plan(plan, shas=FULL_SHAS)  # stage g0/launch: all five shas frozen
     led = RunLedger(
-        tmp_path / "r.jsonl", plan_path=plan, caps={"R3": 66, "V5.2": 33}
+        tmp_path / "r.jsonl", plan_path=plan, plan_pin=None, caps={"R3": 66, "V5.2": 33}
     )
     led.init()
     # three in-plan F-main launches (real 66-run plan rows; variant must match)
@@ -458,7 +458,7 @@ def test_plan_not_frozen_rejects_pending_plan_launch(tmp_path):
 
     plan = tmp_path / "run_plan.jsonl"
     write_plan(plan)  # config real, data/teacher/features/split = PENDING_*
-    led = RunLedger(tmp_path / "r.jsonl", plan_path=plan)
+    led = RunLedger(tmp_path / "r.jsonl", plan_path=plan, plan_pin=None)
     led.init()
     rec = make_formal(arm="F0", fold=0, seed=17, variant="forward")
     led.append(rec)  # registration is fine
@@ -473,7 +473,7 @@ def test_run_id_mismatch_same_key_different_shas_refused(tmp_path):
 
     plan = tmp_path / "run_plan.jsonl"
     write_plan(plan, shas=FULL_SHAS)
-    led = RunLedger(tmp_path / "r.jsonl", plan_path=plan)
+    led = RunLedger(tmp_path / "r.jsonl", plan_path=plan, plan_pin=None)
     led.init()
     # same (campaign, phase, arm, fold, seed, variant) but a different config
     # sha -> different run_id; the plan is frozen so this is RUN_ID_MISMATCH
@@ -542,7 +542,9 @@ def test_confirm_unseal_plan_batch_covers_all_registered_runs(tmp_path):
     plan = tmp_path / "run_plan.jsonl"
     write_plan(plan, shas=FULL_SHAS)
     unseal = tmp_path / "unseal.json"
-    led = RunLedger(tmp_path / "r.jsonl", plan_path=plan, unseal_path=unseal)
+    led = RunLedger(
+        tmp_path / "r.jsonl", plan_path=plan, plan_pin=None, unseal_path=unseal
+    )
     led.init()
 
     # bound plan registers C folds3/4 (6) + QT-confirm (6) = ONE batch of 12
@@ -750,7 +752,7 @@ def test_partial_plan_forces_exploratory_admissibility(tmp_path):
 
     plan = tmp_path / "partial.jsonl"
     write_plan(plan, mode="partial", shas=FULL_SHAS)
-    led = RunLedger(tmp_path / "r.jsonl", plan_path=plan)
+    led = RunLedger(tmp_path / "r.jsonl", plan_path=plan, plan_pin=None)
     led.init()
 
     rec = make_formal(arm="B", fold=0, seed=17, admissibility="admissible")
@@ -774,7 +776,7 @@ def test_partial_plan_finalize_refuses_forbidden_keywords(tmp_path):
 
     plan = tmp_path / "partial.jsonl"
     write_plan(plan, mode="partial", shas=FULL_SHAS)
-    led = RunLedger(tmp_path / "r.jsonl", plan_path=plan)
+    led = RunLedger(tmp_path / "r.jsonl", plan_path=plan, plan_pin=None)
     led.init()
 
     def done_record(metrics_path):
@@ -813,7 +815,7 @@ def test_full_plan_finalize_still_allows_outcome_keywords(tmp_path):
 
     plan = tmp_path / "run_plan.jsonl"
     write_plan(plan, shas=FULL_SHAS)
-    led = RunLedger(tmp_path / "r.jsonl", plan_path=plan)
+    led = RunLedger(tmp_path / "r.jsonl", plan_path=plan, plan_pin=None)
     led.init()
     rec = make_formal(arm="F0", fold=0, seed=17, variant="forward")
     led.append(rec)
