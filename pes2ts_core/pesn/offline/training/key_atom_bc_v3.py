@@ -385,7 +385,7 @@ def _predict_batches(
     batch_size: int = 64,
 ) -> List[Dict[str, Any]]:
     """Run the model over ``positions``; return per-sample blocks."""
-    model.eval()
+    model.train(False)
     out: List[Dict[str, Any]] = []
     with torch.no_grad():
         for start in range(0, len(positions), batch_size):
@@ -813,7 +813,7 @@ def _inner_val_loss(
     batch_size: int = 64,
 ) -> float:
     """Weighted mean inner-val loss (same loss, λ_cos frozen at R0 end value)."""
-    model.eval()
+    model.train(False)
     total = 0.0
     weight_sum = 0.0
     with torch.no_grad():
