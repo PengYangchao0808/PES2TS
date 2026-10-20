@@ -57,6 +57,17 @@
       "outputs/pesn/30h_campaign/data/**"
     ]
   },
+  "e2_coordination": {
+    "build_script_location": "scripts/agent_ops/data_gate/ (W-DATA) instead of plan-doc scripts/campaigns/r3_build_data.py (W-LOSS scope) - single-writer rule, documented deviation",
+    "loss_split": {
+      "loss_functions": "pes2ts_core/pesn/models/key_atom_losses_v3.py -> W-FEAT (models/**/*_v3.py in scope); full math tests in E2",
+      "training_loop": "pes2ts_core/pesn/offline/training/key_atom_bc_v3.py -> W-LOSS (wave 2, after WP-L3); consumes loss functions read-only"
+    },
+    "recorded_at": "2026-10-20T13:50:00Z",
+    "scope_gap_fix": {
+      "pes2ts_core/pesn/offline/data/key_atom_dataset_v3.py": "granted to W-FEAT (no lane owned offline/data/*_v3.py in frozen allowlist; dataset pairs with feature shards; allowlist file itself immutable)"
+    }
+  },
   "fit150plus_authorized": false,
   "formal_training_authorized": false,
   "gate_order": [
@@ -271,7 +282,7 @@
     "E2-FEAT": {
       "dispatched_at": "2026-10-20T13:45:00Z",
       "lane": "W-FEAT",
-      "scope": "*_v3.py stack + tests/pesn/test_r3_* (fixture-level until G0+G1)",
+      "scope": "contracts/features/models/**/*_v3.py + offline/data/key_atom_dataset_v3.py (granted) + feature_gate/** + test_r3_*/test_feature_* (fixture-level)",
       "status": "dispatched",
       "wp": "E2 feature/model/loss + math tests"
     },
