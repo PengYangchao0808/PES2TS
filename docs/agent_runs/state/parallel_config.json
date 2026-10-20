@@ -25,7 +25,7 @@
       "read_scopes": ["data/** 但显式排除 data/ground_truth/**（R1：真值仅经 pes2ts_core.g0.truth.truth_reader accessor，G0 校验 truth_access_log）", "outputs/pesn/30h_campaign/**（只读；哈希核对）"],
       "forbidden": ["pes2ts_core/** writes", "outputs/** writes", "data/ground_truth/** 任何直接读取（须走 truth_reader）"],
       "never_write": ["data/ground_truth/**", "outputs/pesn/v5_1/**", "outputs/pesn/v5_1_r1/**", "config/campaigns/v5_sprint.yaml", "config/campaigns/v5_1_sprint.yaml", "config/campaigns/v5_1_r1.yaml"],
-      "never_write_note": "config/campaigns/v5_*.yaml 逐文件列出 = 旧协议冻结件只读",
+      "never_write_note": "config/campaigns/v5_*.yaml 逐文件列出 = 旧协议冻结件只读"
     },
     "W-FEAT": {
       "name": "Feature/Model",
