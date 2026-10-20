@@ -148,11 +148,17 @@ def flip_first_confirm_flag(src: Path, dst: Path) -> None:
 
 
 def test_pinned_constants_match_task_state_and_protocol():
-    """The compiled pin IS the E0-frozen pin (task_state / protocol source)."""
-    assert PINNED_RUN_PLAN_SHA256 == (
-        "d2a63599727804e9ff407b30c7e5e1bdfc555c38fa7cafd5857a6cf273073163"
-    )
-    assert PINNED_CAMPAIGN_MODE == "full"
+    """The compiled pin IS the campaign-frozen pin (task_state / protocol source).
+
+    Stage-aware: after the sanctioned stage-g0 rebind (two-stage binding per
+    the signed protocol), the authoritative pin lives in task_state
+    ``e0_freeze.run_plan_pinned`` (with the E0 original kept in
+    ``run_plan_pinned_history``); the compiled constant must track it.
+    """
+    if REAL_TASK_STATE.is_file():
+        pinned = load_campaign_pin(REAL_TASK_STATE)
+        assert PINNED_RUN_PLAN_SHA256 == pinned["sha256"]
+        assert PINNED_CAMPAIGN_MODE == pinned["campaign_mode"]
     assert DEFAULT_PLAN_PIN == {
         "sha256": PINNED_RUN_PLAN_SHA256,
         "campaign_mode": PINNED_CAMPAIGN_MODE,
@@ -334,21 +340,57 @@ def test_oracle_tamper_between_appends_is_recaught(real_plan_copy, tmp_path):
 
 
 def test_pristine_pinned_plan_append_succeeds(real_plan_copy, tmp_path):
-    """Positive: the pristine pinned plan appends (registration + noop)."""
+    """Positive: the pristine pinned plan appends (registration + noop).
+
+    Stage-aware: at stage e0 (PENDING tokens) launch is refused by the
+    two-stage binding; after the sanctioned stage-g0 rebind (all five real
+    shas) a record carrying the plan line's own identity appends AND launches.
+    A record with a foreign identity is rejected either way.
+    """
     led = RunLedger(
         tmp_path / "r.jsonl", plan_path=real_plan_copy, plan_pin=DEFAULT_PLAN_PIN
     )
     led.init()
-    rec = make_record()
+    # record identity taken from the plan's own first run line (any stage)
+    plan_lines = [
+        json.loads(ln)
+        for ln in real_plan_copy.read_text(encoding="utf-8").splitlines()
+        if ln.strip()
+    ]
+    run_line = next(r for r in plan_lines if r.get("record_type") != "plan_header")
+    rec = make_record(
+        run_id=run_line["run_id"],
+        config_sha256=run_line["config_sha256"],
+        data_sha256=run_line["data_sha256"],
+        teacher_sha256=run_line["teacher_sha256"],
+        features_sha256=run_line["features_sha256"],
+        split_sha256=run_line["split_sha256"],
+    )
     assert led.append(rec).action == "created"
     assert led.append(rec).action == "noop"
     assert len(read_lines(led.path)) == 1
-    # launch is still refused -- but by the two-stage PENDING binding, NOT by
-    # the pin (the frozen plan legitimately carries PENDING_E1/E2 tokens)
-    with pytest.raises(PlanNotFrozenError) as excinfo:
+    all_real = all(
+        run_line[f].lower() not in ("pending_e1", "pending_e2")
+        and len(run_line[f]) == 64
+        for f in ("config_sha256", "data_sha256", "teacher_sha256",
+                  "features_sha256", "split_sha256")
+    )
+    if all_real:
+        # stage g0/launch: the bound identity may legitimately transition
         led.append(launch(rec))
-    assert "PLAN_NOT_FROZEN" in str(excinfo.value)
-    assert "PLAN_SHA_MISMATCH" not in str(excinfo.value)
+        assert json.loads(read_lines(led.path)[-1])["status"] == "running"
+    else:
+        # stage e0: launch refused by the two-stage PENDING binding, NOT by
+        # the pin (the frozen plan legitimately carries PENDING_E1/E2 tokens)
+        with pytest.raises(PlanNotFrozenError) as excinfo:
+            led.append(launch(rec))
+        assert "PLAN_NOT_FROZEN" in str(excinfo.value)
+        assert "PLAN_SHA_MISMATCH" not in str(excinfo.value)
+    # foreign identity (dummy shas -> different run_id) may register (the
+    # ledger is append-only) but can never LAUNCH against the bound plan
+    led.append(make_record())
+    with pytest.raises(PlanNotFrozenError):
+        led.append(launch(make_record()))
 
 
 def test_synthetic_pinned_plan_launch_succeeds(tmp_path):

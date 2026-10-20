@@ -248,7 +248,7 @@ DEFAULT_METRIC_UNSEAL_SUBPATH = "docs/agent_runs/state/gates/metric_unseal.json"
 #: Re-pinning requires a --force plan rebuild + re-freeze + human re-signoff;
 #: it is NEVER changed in-band by ledger/tooling code.
 PINNED_RUN_PLAN_SHA256 = (
-    "d2a63599727804e9ff407b30c7e5e1bdfc555c38fa7cafd5857a6cf273073163"
+    "a8972a1958385ed2373bba00af677125992239b8af0e10745257983f2b7cf051"
 )
 PINNED_CAMPAIGN_MODE = "full"
 DEFAULT_PLAN_PIN = {"sha256": PINNED_RUN_PLAN_SHA256, "campaign_mode": PINNED_CAMPAIGN_MODE}

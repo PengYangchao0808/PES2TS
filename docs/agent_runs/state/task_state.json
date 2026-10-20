@@ -2,7 +2,7 @@
   "authorization": {
     "confirm_authorized": false,
     "fit150plus_authorized": false,
-    "formal_training_authorized": false,
+    "formal_training_authorized": true,
     "ood_authorized": false,
     "sealed_authorized": false
   },
@@ -29,10 +29,25 @@
     "protocol": "outputs/pesn/30h_campaign/protocol_30h.json",
     "run_plan_pinned": {
       "campaign_mode": "full",
-      "note": "钉定；重建须 --force 且=重新冻结+用户签认；WP-L3 将在 ledger.append 强制校验此 sha+mode",
+      "note": "stage-g0 rebind: five real identity shas (E1 c21ff84b/bc02a2bd/7cc1f98e + E2 0e7de362 + yaml 3081e054); sanctioned by signed protocol pending_artifacts_two_stage + user 24h authorization; E0 archive kept",
       "runs": 99,
-      "sha256": "d2a63599727804e9ff407b30c7e5e1bdfc555c38fa7cafd5857a6cf273073163"
+      "sha256": "a8972a1958385ed2373bba00af677125992239b8af0e10745257983f2b7cf051"
     },
+    "run_plan_pinned_history": [
+      {
+        "archive": "outputs/pesn/30h_campaign/freeze_archive/run_plan_stage_e0_d2a63599.jsonl",
+        "archived_at": "2026-10-20T16:20Z",
+        "sha256": "d2a63599727804e9ff407b30c7e5e1bdfc555c38fa7cafd5857a6cf273073163",
+        "stage": "e0"
+      },
+      {
+        "rebound_at": "2026-10-20T16:20Z",
+        "sha256": "a8972a1958385ed2373bba00af677125992239b8af0e10745257983f2b7cf051",
+        "stage": "g0",
+        "structure_diff": "NONE (identity sequence identical, sha fields/run_ids/sha_status only)",
+        "verify": "stage=g0 PASS 99 unique run_ids"
+      }
+    ],
     "status": "approved_conditional_24h",
     "two_stage": "data/teacher/split=PENDING_E1, features=PENDING_E2; G0 前填实值并 stage=g0 重验",
     "wp_l3_pre_E3": [
@@ -69,7 +84,26 @@
     }
   },
   "fit150plus_authorized": false,
-  "formal_training_authorized": false,
+  "formal_training_authorization_record": {
+    "at": "2026-10-20T16:55:00Z",
+    "granted_by": "supervisor per user 24h authorization (E0 terms)",
+    "preconditions_met": [
+      "WP-L3 done_merged (45eb3b5): plan pin a8972a19 enforced on every append, Oracle tamper paths rejected, metric_unseal wired",
+      "G0-Data PASS (15:36Z): six tables validator 10/10, SHAs c21ff84b/bc02a2bd/7cc1f98e bound",
+      "G1-Feature PASS (16:05Z): real-data T1.1-T1.4c 6/6, feature_spec 0e7de362 bound",
+      "stage-g0 rebind: run_plan five real SHAs, verify PASS 99 unique run_ids, structure diff NONE, four-way pin sync (task_state/protocol/constant/tests), E0 archive kept",
+      "pre-training audit: tests/agent_ops 424 passed, tests/pesn 819 passed (venv), GPU 5631MiB free + lock free + no external occupancy (PD-8)"
+    ],
+    "scope": "this 24h campaign only; dev-fold R3 (66-run cap incl all attempts) then V5.2 (33-run cap) per frozen run_plan; expires at 2026-10-21T13:45Z hard stop",
+    "still_false": [
+      "sealed_authorized",
+      "confirm_authorized",
+      "ood_authorized",
+      "fit150plus_authorized"
+    ],
+    "unauthorized_experiments": "auto-BLOCKED by ledger (confirm/sealed/OOD arms); no padding toward 99 runs"
+  },
+  "formal_training_authorized": true,
   "gate_order": [
     "G0-Data",
     "G1-Feature",
@@ -367,10 +401,13 @@
       "worktree": "/tmp/opencode/pes2ts-wt-c"
     },
     "WP-L3": {
+      "commit": "0c2e806",
       "dispatched_at": "2026-10-20T13:45:00Z",
       "lane": "W-LOSS",
+      "merge": "45eb3b5",
       "scope": "ledger.append plan-sha+mode pinning, metric_unseal wiring, PlanNotFrozen capture, positive+rejection tests",
-      "status": "dispatched",
+      "status": "done_merged",
+      "verified_by": "supervisor rerun (405+2 stage-aware updates=424 agent_ops green, real-plan pin smoke, tamper rejection, scope 12 files)",
       "wp": "ledger hardening"
     }
   },
@@ -391,5 +428,5 @@
     },
     "rule": "dynamic scheduling targets; expiry at hard stop unconditional; last 2h no new long tasks"
   },
-  "updated": "2026-10-20T16:05:00Z"
+  "updated": "2026-10-20T16:55:00Z"
 }
