@@ -1,0 +1,3 @@
+curve_id,quality_status,quality_score,segment_quality,branch_quality,note
+c0,ok,1.0,,,synthetic fixture
+c1,ok,1.0,,,synthetic fixture

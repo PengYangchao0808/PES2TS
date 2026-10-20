@@ -1,0 +1,2 @@
+{"ts": "2026-10-20T00:00:00+00:00", "accessor": "pes2ts_core.g0.truth.truth_reader", "function": "load_irc_frames", "reaction_id": "RXN_SYNTH_0001"}
+{"ts": "2026-10-20T00:00:01+00:00", "accessor": "truth_reader", "function": "load_ts_geometry", "reaction_id": "RXN_SYNTH_0001"}

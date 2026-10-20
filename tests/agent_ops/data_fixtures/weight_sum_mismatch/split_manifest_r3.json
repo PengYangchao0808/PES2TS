@@ -1,0 +1,15 @@
+{
+  "version": "r3_split_manifest_v1",
+  "curve_folds": {
+    "c0": 0,
+    "c1": 1
+  },
+  "near_dup_groups": {
+    "g_c0": [
+      "c0"
+    ],
+    "g_c1": [
+      "c1"
+    ]
+  }
+}
