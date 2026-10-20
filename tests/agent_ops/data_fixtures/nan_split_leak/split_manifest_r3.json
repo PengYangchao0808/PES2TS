@@ -1,0 +1,12 @@
+{
+  "version": "r3_split_manifest_v1",
+  "folds": {
+    "0": [
+      "c0",
+      "c1"
+    ],
+    "1": [
+      "c0"
+    ]
+  }
+}
