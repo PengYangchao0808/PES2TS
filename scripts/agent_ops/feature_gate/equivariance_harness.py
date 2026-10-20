@@ -67,6 +67,8 @@ __all__ = [
     "DEFAULT_CAMPAIGN_YAML",
     "RECORD_ONLY_BANNER",
     "RELABEL_ABS_TOL",
+    "NONSPATIAL_TENSOR_KEYS",
+    "EDGE_ALIGNED_TENSOR_KEYS",
     "FORBIDDEN_FEATURE_PATTERNS",
     "FORWARD_INPUT_ALLOWLIST",
     "FORWARD_INPUT_ALLOWLIST_GROUPS",
@@ -83,6 +85,8 @@ __all__ = [
     "check_input_legality",
     "check_input_allowlist",
     "check_intent_off_mask",
+    "check_feature_relabel_identity",
+    "check_feature_reverse_change",
     "check_translation_invariance",
     "check_rotation_equivariance",
     "check_permutation_equivariance",
@@ -161,6 +165,21 @@ _LEGACY_PRESET_NAMES = ("30h_v1.1", "r3_v3")
 #: Kept as a module constant for callers, but the authoritative value lives in
 #: ``feature_contract.tolerances.relabel_invariance_max_abs`` (yaml, PD-2).
 RELABEL_ABS_TOL = 1e-6
+
+# --- v3 extensions (W-FEAT E2; additive, backward compatible) ---------------
+#: Non-spatial ``[*, 3]`` tensors whose axis-1 is a CHANNEL order, not a
+#: spatial component (v3 ``intent_role`` = [breaking, forming, spectator]).
+#: These must be excluded from the rotation/translation transforms — they are
+#: invariant scalars stored with a 3-channel layout.
+NONSPATIAL_TENSOR_KEYS: frozenset[str] = frozenset({"intent_role"})
+
+#: Edge-aligned tensors (row axis = edge count) excluded from the permutation
+#: node-gather: they stay aligned with the (unchanged) edge order, and their
+#: row count may coincide with the atom count in tiny graphs.
+EDGE_ALIGNED_TENSOR_KEYS: frozenset[str] = frozenset({
+    "edge_attr", "b_src", "b_tgt", "delta_b_intent", "abs_delta",
+    "is_changed", "r_ij", "pair_index",
+})
 
 
 class PresetRequiredError(ValueError):
@@ -590,9 +609,13 @@ INTENT_OFF_MASK_CLASSES: tuple[tuple[str, tuple[str, ...]], ...] = (
 
 #: Legal unordered chemical topology that intent-off must PRESERVE
 #: (yaml ``feature_contract.preserved_off_context``: 合法无向化学拓扑).
+#: v3 extension (W-FEAT E2): ``key_index``/``is_key``/``edge_attr`` added —
+#: the key set membership and the packed undirected edge slots (topology +
+#: unsigned bond context) are direction-free chemistry.
 PRESERVED_UNORDERED_CONTEXT_KEYS: tuple[str, ...] = (
     "pos", "z", "elements", "edge_index", "graph_index", "adjacency",
     "b_abs", "abs_delta", "is_changed", "degK", "deg_k",
+    "key_index", "is_key", "edge_attr",
 )
 
 
@@ -774,6 +797,7 @@ def _float3_tensors(batch: Mapping[str, Any]) -> list[str]:
         k for k, v in batch.items()
         if isinstance(v, torch.Tensor) and v.is_floating_point()
         and v.ndim >= 2 and v.shape[-1] == 3
+        and k not in NONSPATIAL_TENSOR_KEYS
     ]
 
 
@@ -965,6 +989,8 @@ def check_permutation_equivariance(
     for key, v in list(permuted.items()):
         if key == "key_index" or key == "edge_index":
             continue  # index tensors: remapped below, not gathered
+        if key in EDGE_ALIGNED_TENSOR_KEYS:
+            continue  # v3: row axis is edges, stays aligned with edge order
         if isinstance(v, torch.Tensor) and v.ndim >= 1 and v.shape[0] == n:
             permuted[key] = v[perm]
     if "edge_index" in permuted and isinstance(permuted["edge_index"], torch.Tensor):
@@ -1087,6 +1113,106 @@ def check_reverse_sensitivity(
         exact_negative_observed=exact_negative,
         exact_negative_required=False,
     )
+
+
+# ---------------------------------------------------------------------------
+# Feature-level intent checks (v3 extension, W-FEAT E2)
+# ---------------------------------------------------------------------------
+def _feature_equal(a: Any, b: Any) -> bool:
+    if isinstance(a, torch.Tensor) and isinstance(b, torch.Tensor):
+        return a.shape == b.shape and torch.equal(a, b)
+    if isinstance(a, np.ndarray) or isinstance(b, np.ndarray):
+        return bool(np.array_equal(np.asarray(a), np.asarray(b)))
+    if isinstance(a, (list, tuple)) and isinstance(b, (list, tuple)):
+        return tuple(a) == tuple(b)
+    try:
+        return bool(a == b)
+    except Exception:  # noqa: BLE001 - fall back to identity comparison
+        return a is b
+
+
+def check_feature_relabel_identity(
+    features_a: Mapping[str, Any],
+    features_b: Mapping[str, Any],
+    *,
+    preset: str | None = None,
+    strict: bool = True,
+) -> dict[str, Any]:
+    """T1.1 (feature level): endpoint DISPLAY-NAME swap ⇒ inputs bit-identical.
+
+    Only ``endpoint_names`` may differ; every other key must be exactly
+    equal (torch.equal / array_equal).  This is the feature-side half of
+    relabel invariance (ReactionIntent Contract v1 §3.2 operation A).
+    """
+    preset_obj, explicit = resolve_preset(preset, strict=strict)
+    keys_a, keys_b = set(features_a), set(features_b)
+    missing = sorted(keys_a ^ keys_b)
+    differing = sorted(
+        k for k in keys_a & keys_b
+        if k != "endpoint_names" and not _feature_equal(
+            features_a[k], features_b[k]))
+    names_swapped = (
+        "endpoint_names" in keys_a and "endpoint_names" in keys_b
+        and tuple(features_a["endpoint_names"])
+        != tuple(features_b["endpoint_names"]))
+    passed = not missing and not differing and names_swapped
+    return {
+        "check": "feature_relabel_identity",
+        "passed": bool(passed),
+        "bit_identical_inputs": not differing and not missing,
+        "differing_keys": differing,
+        "missing_keys": missing,
+        "endpoint_names_swapped": bool(names_swapped),
+        "tolerance": "exact (bitwise)",
+        **_preset_fields(preset_obj, explicit),
+    }
+
+
+#: Keys whose CHANGE a true Reverse must produce (PD-6 signed classes).
+_REVERSE_SIGNED_KEYS: tuple[str, ...] = (
+    "b_src", "b_tgt", "delta_b_intent", "intent_role",
+    "cv_target_delta", "signed_intent",
+)
+
+
+def check_feature_reverse_change(
+    intent_on: Mapping[str, Any],
+    intent_reversed: Mapping[str, Any],
+    *,
+    preset: str | None = None,
+    strict: bool = True,
+) -> dict[str, Any]:
+    """T1.2 (feature level): TRUE Reverse must change the signed features.
+
+    Hard requirement: every signed intent feature present differs (and the
+    unsigned/undirected context is preserved bit-identically).  Small-step
+    label tangents being exact negatives is NOT required (finite step).
+    """
+    preset_obj, explicit = resolve_preset(preset, strict=strict)
+    changed: dict[str, bool] = {}
+    missing: list[str] = []
+    for key in _REVERSE_SIGNED_KEYS:
+        if key not in intent_on:
+            missing.append(key)
+            continue
+        changed[key] = not _feature_equal(
+            intent_on[key], intent_reversed.get(key))
+    preserved_bad = sorted(
+        k for k in PRESERVED_UNORDERED_CONTEXT_KEYS
+        if k in intent_on and not _feature_equal(
+            intent_on[k], intent_reversed.get(k)))
+    all_signed_present = not missing
+    all_changed = all_signed_present and all(changed.values())
+    passed = all_changed and not preserved_bad
+    return {
+        "check": "feature_reverse_change",
+        "passed": bool(passed),
+        "signed_keys_changed": changed,
+        "signed_keys_missing": missing,
+        "preserved_violations": preserved_bad,
+        "exact_negative_required": False,
+        **_preset_fields(preset_obj, explicit),
+    }
 
 
 # ---------------------------------------------------------------------------
