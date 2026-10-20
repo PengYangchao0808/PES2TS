@@ -36,6 +36,15 @@ Design rules:
 * ``curve_quality`` is loaded only for presence (provenance-only columns
   must never become inputs, targets or split keys — 30h plan §3.1);
 * manifests are verified fail-closed when present (sha256 per file).
+
+E4 (V5.2) extension — read-compatible: the loader additionally exposes
+label-side accessors (:meth:`KeyAtomDatasetV3.frame_xyz`,
+:meth:`curve_ts_index`, :meth:`curve_endpoints`) and
+:meth:`KeyAtomDatasetV3.v52_labels`, which derive the frozen V5.2 q and
+TSStop labels from the SAME six-table teacher columns (mass-weighted arc
+segmentation A=−1/TS=0/B=+1 with reverse q=−q and zero-arc masking;
+three-way stop window 0.04/0.12 Å with Kabsch-aligned K-geometry RMSD).
+No column, invariant or filter of the R3 path changed.
 """
 
 from __future__ import annotations
@@ -45,7 +54,7 @@ import hashlib
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Iterable, Mapping, Sequence
+from typing import Any, Final, Iterable, Mapping, Sequence
 
 import numpy as np
 
@@ -55,6 +64,16 @@ from pes2ts_core.pesn.contracts.key_atom_v3 import (
     KeyAtomSampleV3,
     KeyAtomV3ContractError,
 )
+
+# --- E4 (V5.2) frozen label constants (campaign ``v52_training``) -----------
+#: Stop positive window: ``d_key_TS <= 0.04 Å`` (stop_label=1; 禁止偷扩窗).
+STOP_POSITIVE_WINDOW_ANGSTROM_V52: Final[float] = 0.04
+#: Stop negative window: ``d_key_TS >= 0.12 Å`` (stop_label=0; middle=Mask).
+STOP_NEGATIVE_WINDOW_ANGSTROM_V52: Final[float] = 0.12
+#: Zero-arc mask threshold (plan §5.2: mask instead of dividing by zero).
+ZERO_ARC_EPS_ANGSTROM_V52: Final[float] = 1.0e-8
+#: Label-table schema id (G3a report provenance).
+STOP_LABEL_SCHEMA_V52: Final[str] = "pes2ts_e4_labels_v1"
 
 #: Six tables + manifests (PD-1; plan §3.1: 共六张，不是五张).
 TABLE_FILENAMES: dict[str, str] = {
@@ -505,6 +524,55 @@ class KeyAtomDatasetV3:
     def folds(self) -> Mapping[str, int]:
         return dict(self._folds)
 
+    # -- V5.2 label-side accessors (E4; read-only views over loaded tables) --
+    def frame_xyz(self, curve_id: str, node_index: int) -> tuple:
+        """Full ``[N,3]`` current-frame geometry (public E4 accessor)."""
+        key = (str(curve_id), int(node_index))
+        if key not in self._frame_xyz:
+            raise KeyAtomDatasetV3Error(
+                "NODE_UNKNOWN", f"curve {curve_id} has no node {node_index}")
+        arr = self._frame_xyz[key]
+        return tuple(tuple(float(v) for v in row) for row in arr)
+
+    def curve_ts_index(self, curve_id: str) -> int:
+        """Trusted TS frame index of the curve (irc_curve.ts_index, PD-9)."""
+        curve = self._curves.get(str(curve_id))
+        if curve is None:
+            raise KeyAtomDatasetV3Error(
+                "CURVE_UNKNOWN", f"curve {curve_id} not in irc_curve")
+        return int(curve["ts_index"])
+
+    def curve_endpoints(self, curve_id: str) -> tuple[int, int]:
+        """``(endpoint_a_index, endpoint_b_index)`` of the canonical A→B path."""
+        curve = self._curves.get(str(curve_id))
+        if curve is None:
+            raise KeyAtomDatasetV3Error(
+                "CURVE_UNKNOWN", f"curve {curve_id} not in irc_curve")
+        a = int(curve.get("endpoint_a_index", 0) or 0)
+        b = int(curve.get("endpoint_b_index", "") or
+                (int(curve["n_nodes"]) - 1))
+        return a, b
+
+    def v52_labels(
+        self,
+        *,
+        stop_positive_window: float = STOP_POSITIVE_WINDOW_ANGSTROM_V52,
+        stop_negative_window: float = STOP_NEGATIVE_WINDOW_ANGSTROM_V52,
+        zero_arc_eps: float = ZERO_ARC_EPS_ANGSTROM_V52,
+    ) -> "V52LabelTable":
+        """E4: compute q / TSStop labels for every LOADED sample row.
+
+        Labels derive ONLY from the six-table teacher columns (irc_curve
+        ``ts_index``/endpoints, irc_node geometry + ``atomic_numbers``,
+        sample_view identity/weights) — no ground-truth reads.  See
+        :func:`build_v52_labels` for the frozen math.
+        """
+        return build_v52_labels(
+            self,
+            stop_positive_window=stop_positive_window,
+            stop_negative_window=stop_negative_window,
+            zero_arc_eps=zero_arc_eps)
+
     def records(self, indices: Iterable[int] | None = None) -> list[SampleRecordV3]:
         if indices is None:
             return list(self._samples)
@@ -557,6 +625,343 @@ class KeyAtomDatasetV3:
             "per-frame [N,3] coordinates (see handoff interface note)")
 
 
+# ---------------------------------------------------------------------------
+# E4 (V5.2) label machinery — q progress + TSStop three-way labels
+# (frozen window constants are defined at module top, next to D0)
+# ---------------------------------------------------------------------------
+
+#: Conventional atomic masses (amu; most-abundant-isotope values), Z = 1..118.
+#: Frozen E4 artifact — the mass UNIT cancels inside each curve's q
+#: normalization, only the relative mass WEIGHTS matter (plan §5.2 requires
+#: the mass set/units to be frozen; this table is that freeze).
+ATOMIC_MASS_TABLE_V52: Final[tuple[float, ...]] = (
+    1.008, 4.0026, 6.94, 9.0122, 10.81, 12.011, 14.007, 15.999, 18.998,
+    20.180, 22.990, 24.305, 26.982, 28.085, 30.974, 32.06, 35.45, 39.948,
+    39.098, 40.078, 44.956, 47.867, 50.942, 51.996, 54.938, 55.845, 58.933,
+    58.693, 63.546, 65.38, 69.723, 72.630, 74.922, 78.971, 79.904, 83.798,
+    85.468, 87.62, 88.906, 91.224, 92.906, 95.95, 98.0, 101.07, 102.91,
+    106.42, 107.87, 112.41, 114.82, 118.71, 121.76, 127.60, 126.90, 131.29,
+    132.91, 137.33, 138.91, 140.12, 140.91, 144.24, 145.0, 150.36, 151.96,
+    157.25, 158.93, 162.50, 164.93, 167.26, 168.93, 173.05, 174.97, 178.49,
+    180.95, 183.84, 186.21, 190.23, 192.22, 195.08, 196.97, 200.59, 204.38,
+    207.2, 208.98, 209.0, 210.0, 222.0, 223.0, 226.0, 227.0, 232.04, 231.04,
+    238.03, 237.0, 244.0, 243.0, 247.0, 247.0, 251.0, 252.0, 257.0, 258.0,
+    259.0, 266.0, 267.0, 268.0, 269.0, 270.0, 269.0, 278.0, 281.0, 282.0,
+    285.0, 286.0, 289.0, 290.0, 293.0, 294.0, 294.0,
+)
+
+
+def atomic_mass_v52(atomic_number: int) -> float:
+    """Frozen amu mass for ``Z`` (1..118); out-of-range is a typed refusal."""
+    z = int(atomic_number)
+    if not (1 <= z <= len(ATOMIC_MASS_TABLE_V52)):
+        raise KeyAtomDatasetV3Error(
+            "ATOMIC_MASS_RANGE", f"Z={z} outside 1..{len(ATOMIC_MASS_TABLE_V52)}")
+    return float(ATOMIC_MASS_TABLE_V52[z - 1])
+
+
+def mass_weighted_arc_lengths_v52(
+    frames: np.ndarray,
+    atomic_numbers: Sequence[int],
+) -> np.ndarray:
+    """Cumulative mass-weighted arc length ``s [N]`` along an IRC node order.
+
+    ``frames`` is ``[N_nodes, N_atoms, 3]`` in PATH order (already oriented
+    A→B).  Per-step increment (frozen E4 definition, plan §5.2 质量加权弧长):
+
+    ``ds_i = sqrt( Σ_a m_a·‖x_a^{(i)} − x_a^{(i−1)}‖² / Σ_a m_a )``
+
+    (mass-weighted RMS displacement; amu).  No additional rigid alignment
+    is applied between frames: the E1 six tables store every frame in ONE
+    verified reference frame (``irc_edge.same_ref_frame``, PD-9; the R3
+    teacher itself is built Kabsch-free in the native frame), so a Kabsch
+    step would be a no-op here.  Translation already cancels inside the
+    displacement difference.  ``s[0] = 0``.
+    """
+    arr = np.asarray(frames, dtype=np.float64)
+    if arr.ndim != 3 or arr.shape[2] != 3:
+        raise KeyAtomDatasetV3Error(
+            "ARC_FRAMES_SHAPE", f"frames must be [N,3], got {tuple(arr.shape)}")
+    z = np.asarray(tuple(int(v) for v in atomic_numbers), dtype=np.int64)
+    if int(z.shape[0]) != int(arr.shape[1]):
+        raise KeyAtomDatasetV3Error(
+            "ARC_ATOMS_MISMATCH",
+             f"{int(z.shape[0])} atomic numbers vs {int(arr.shape[1])} atoms")
+    masses = np.asarray([atomic_mass_v52(int(v)) for v in z], dtype=np.float64)
+    m_sum = float(masses.sum())
+    if not (m_sum > 0.0):
+        raise KeyAtomDatasetV3Error("ARC_MASS_ZERO", "total mass is zero")
+    if arr.shape[0] == 1:
+        return np.zeros(1, dtype=np.float64)
+    delta = np.diff(arr, axis=0)                       # [N-1, A, 3]
+    sq = (delta * delta).sum(axis=-1)                  # [N-1, A]
+    ds = np.sqrt((sq * masses[None, :]).sum(axis=1) / m_sum)
+    return np.concatenate(([0.0], np.cumsum(ds)))
+
+
+def progress_q_from_arcs_v52(
+    arc_s: np.ndarray,
+    ts_index: int,
+    *,
+    zero_arc_eps: float = ZERO_ARC_EPS_ANGSTROM_V52,
+) -> tuple[np.ndarray | None, str]:
+    """Frozen q math (plan §5.2): A=−1, TS=0, B=+1, zero-arc ⇒ masked.
+
+    ``arc_s`` is indexed by PATH position (A→B order); ``ts_index`` is the
+    path position of the TS frame.  Returns ``(q, "")`` or ``(None, reason)``
+    where reason ∈ {``zero_arc_a_ts``, ``zero_arc_ts_b``} — the caller MUST
+    mask (never divide by zero).
+    """
+    s = np.asarray(arc_s, dtype=np.float64).reshape(-1)
+    ts = int(ts_index)
+    if not (0 <= ts < int(s.shape[0])):
+        raise KeyAtomDatasetV3Error(
+            "Q_TS_INDEX", f"ts_index {ts} outside 0..{int(s.shape[0]) - 1}")
+    s_a, s_ts, s_b = float(s[0]), float(s[ts]), float(s[-1])
+    left, right = s_ts - s_a, s_b - s_ts
+    if left <= float(zero_arc_eps):
+        return None, "zero_arc_a_ts"
+    if right <= float(zero_arc_eps):
+        return None, "zero_arc_ts_b"
+    idx = np.arange(int(s.shape[0]), dtype=np.float64)
+    ts_f = float(ts)
+    q = np.where(
+        idx <= ts_f,
+        -(s_ts - s) / left,
+        (s - s_ts) / right)
+    return q.astype(np.float64), ""
+
+
+def kabsch_rmsd_v52(
+    mobile: np.ndarray,
+    target: np.ndarray,
+) -> float:
+    """RMSD after LEGAL rigid alignment (proper rotation, det=+1; no reflection).
+
+    ``d_key_TS`` building block (plan §5.3: 合法刚体对齐后当前 K 几何与 TS
+    的差距).  Centroids are removed, the optimal proper rotation comes from
+    the SVD of the covariance with the reflection-fix ``d ← sign(det(VUᵀ))``,
+    and the returned RMSD is ``sqrt(mean_a ‖R m_a − t_a‖²)`` over the K atoms.
+    """
+    m = np.asarray(mobile, dtype=np.float64).reshape(-1, 3)
+    t = np.asarray(target, dtype=np.float64).reshape(-1, 3)
+    if m.shape != t.shape or m.shape[0] == 0:
+        raise KeyAtomDatasetV3Error(
+            "KABSCH_SHAPE", f"mobile {m.shape} vs target {t.shape}")
+    mc = m - m.mean(axis=0)
+    tc = t - t.mean(axis=0)
+    if m.shape[0] == 1:
+        # single atom: alignment is translation-only by construction
+        diff = mc - tc
+        return float(np.sqrt((diff * diff).sum()))
+    cov = mc.T @ tc
+    u_mat, _s, vt = np.linalg.svd(cov)
+    d_sign = np.sign(np.linalg.det(u_mat @ vt))
+    if d_sign == 0.0:
+        d_sign = 1.0
+    correction = np.diag([1.0, 1.0, d_sign])
+    rot = u_mat @ correction @ vt
+    diff = mc @ rot - tc
+    return float(np.sqrt((diff * diff).sum(axis=1).mean()))
+
+
+def stop_label_from_distance_v52(
+    d_key_ts: float,
+    *,
+    positive_window: float = STOP_POSITIVE_WINDOW_ANGSTROM_V52,
+    negative_window: float = STOP_NEGATIVE_WINDOW_ANGSTROM_V52,
+) -> int:
+    """Frozen three-way stop label: +1 (near-TS), 0 (far), −1 (Mask).
+
+    ``d ≤ positive_window`` ⇒ 1; ``d ≥ negative_window`` ⇒ 0; otherwise the
+    middle region is MASKED (campaign ``v52_training.stop_labels``; windows
+    are inclusive at both edges; 禁止偷扩窗 — widening either window is a
+    contract violation, not a knob).
+    """
+    if not (float(positive_window) <= float(negative_window)):
+        raise KeyAtomDatasetV3Error(
+            "STOP_WINDOW_ORDER",
+            f"positive window {positive_window} > negative {negative_window}")
+    d = float(d_key_ts)
+    if d <= float(positive_window):
+        return 1
+    if d >= float(negative_window):
+        return 0
+    return -1
+
+
+@dataclass(frozen=True)
+class CurveV52Labels:
+    """Per-curve E4 label backbone (intent-independent geometry labels)."""
+
+    curve_id: str
+    ts_index: int
+    #: cumulative mass-weighted arc length in A→B PATH order [N]
+    arc_s: tuple[float, ...]
+    #: canonical q per node in A→B path order (None when zero-arc masked)
+    q_canonical: tuple[float, ...] | None
+    q_zero_arc_reason: str
+    #: path-order → node_index mapping (identity unless endpoints reversed)
+    node_order: tuple[int, ...]
+
+
+@dataclass(frozen=True)
+class V52SampleLabel:
+    """One sample row's E4 labels (intent-signed q; three-way stop)."""
+
+    sample_id: str
+    curve_id: str
+    node_index: int
+    intent_id: str
+    direction: str
+    fold: int | None
+    label_status: str
+    #: intent-signed progress label (A→B canonical q, negated for reverse)
+    q: float | None
+    #: True when q is usable (False ⇒ zero-arc / curve masked)
+    q_mask: bool
+    #: +1 near-TS / 0 far / −1 Mask (middle window)
+    stop: int
+    #: aligned K-geometry RMSD to TS (Å); provenance for the stop label
+    d_key_ts: float
+
+    @property
+    def stop_mask(self) -> bool:
+        """True when the row participates in the TSStop loss denominator."""
+        return self.stop in (0, 1)
+
+
+@dataclass(frozen=True)
+class V52LabelTable:
+    """E4 label table over a dataset load (keyed by ``sample_id``)."""
+
+    by_sample: Mapping[str, V52SampleLabel]
+    curves: Mapping[str, CurveV52Labels]
+
+    @property
+    def zero_arc_curves(self) -> tuple[str, ...]:
+        return tuple(sorted(
+            cid for cid, c in self.curves.items() if c.q_canonical is None))
+
+    def q_masked_sample_ids(self) -> tuple[str, ...]:
+        return tuple(sorted(
+            sid for sid, lab in self.by_sample.items() if not lab.q_mask))
+
+
+def build_v52_labels(
+    dataset: "KeyAtomDatasetV3",
+    *,
+    stop_positive_window: float = STOP_POSITIVE_WINDOW_ANGSTROM_V52,
+    stop_negative_window: float = STOP_NEGATIVE_WINDOW_ANGSTROM_V52,
+    zero_arc_eps: float = ZERO_ARC_EPS_ANGSTROM_V52,
+) -> V52LabelTable:
+    """E4 core: derive q + TSStop labels from the six-table teacher columns.
+
+    Provenance discipline: ONLY ``irc_curve`` (``ts_index``/endpoints),
+    ``irc_node`` (geometry + ``atomic_numbers``), ``sample_view`` (identity,
+    status, fold, weights) and ``reaction_intent`` (direction sign + K set)
+    are read — no ground-truth access anywhere in this path.
+
+    * **q**: mass-weighted arc-length segmentation
+      (:func:`mass_weighted_arc_lengths_v52` + :func:`progress_q_from_arcs_v52`)
+      normalized A=−1 / TS=0 / B=+1 on the canonical A→B path; the reverse
+      intent label is exactly ``−q`` (frozen yaml ``qlabel.reverse q=-q``);
+      zero-arc curves are MASKED (``q=None``), never divided by zero;
+    * **stop**: ``d_key_TS`` = Kabsch-aligned K-geometry RMSD to the TS
+      frame (per node, computed ONCE per curve — fwd/rev intents share the
+      K set); three-way window label with Mask in the middle;
+    * every loaded row gets labels (including non-``ok`` rows) so the G3a
+      coverage report can account for the FULL denominator; the training
+      layer applies its own ``label_status``/fold filters on top.
+    """
+    curves: dict[str, CurveV52Labels] = {}
+    # (curve_id, node_index) → d_key_ts cache (intent-independent)
+    d_key_cache: dict[tuple[str, int], float] = {}
+    labels: dict[str, V52SampleLabel] = {}
+
+    for rec in dataset.samples:
+        cid = rec.curve_id
+        curve_labels = curves.get(cid)
+        if curve_labels is None:
+            a_idx, b_idx = dataset.curve_endpoints(cid)
+            curve_row = dataset._curves[cid]
+            n_nodes = (int(curve_row["n_nodes"]) if curve_row.get("n_nodes")
+                       else max(key[1] for key in dataset._frame_xyz
+                                if key[0] == cid) + 1)
+            ascending = list(range(n_nodes))
+            node_order = (list(reversed(ascending))
+                          if a_idx > b_idx else ascending)
+            frames = np.stack([
+                np.asarray(dataset.frame_xyz(cid, node), dtype=np.float64)
+                for node in node_order])
+            atomic = rec.atomic_numbers
+            arc_s = mass_weighted_arc_lengths_v52(frames, atomic)
+            ts_node = dataset.curve_ts_index(cid)
+            # ts_node is a node_index; find its PATH position
+            try:
+                ts_pos = node_order.index(int(ts_node))
+            except ValueError as exc:
+                raise KeyAtomDatasetV3Error(
+                    "Q_TS_NODE", f"curve {cid}: ts_index {ts_node} is not a "
+                    "node of the curve") from exc
+            q_path, reason = progress_q_from_arcs_v52(
+                arc_s, ts_pos, zero_arc_eps=zero_arc_eps)
+            curve_labels = CurveV52Labels(
+                curve_id=cid,
+                ts_index=int(ts_node),
+                arc_s=tuple(float(v) for v in arc_s),
+                q_canonical=(tuple(float(v) for v in q_path)
+                             if q_path is not None else None),
+                q_zero_arc_reason=reason,
+                node_order=tuple(int(v) for v in node_order))
+            curves[cid] = curve_labels
+
+        # --- d_key_TS (cached per (curve, node); K = intent key set) --------
+        cache_key = (cid, int(rec.node_index))
+        d_key = d_key_cache.get(cache_key)
+        if d_key is None:
+            keys = np.asarray(
+                [int(k) for k in rec.intent.key_rows()], dtype=np.int64)
+            mobile = np.asarray(
+                dataset.frame_xyz(cid, rec.node_index), dtype=np.float64)[keys]
+            target = np.asarray(
+                dataset.frame_xyz(cid, curve_labels.ts_index),
+                dtype=np.float64)[keys]
+            d_key = kabsch_rmsd_v52(mobile, target)
+            d_key_cache[cache_key] = d_key
+
+        # --- canonical q for this node (path order; reverse ⇒ −q) ----------
+        q: float | None = None
+        q_valid = curve_labels.q_canonical is not None
+        if q_valid:
+            try:
+                pos = curve_labels.node_order.index(int(rec.node_index))
+            except ValueError as exc:
+                raise KeyAtomDatasetV3Error(
+                    "Q_NODE_ORDER", f"curve {cid}: node {rec.node_index} not "
+                    "in the curve's path order") from exc
+            q = float(curve_labels.q_canonical[pos])
+            if rec.intent.direction == "reverse":
+                q = -q
+        labels[rec.sample_id] = V52SampleLabel(
+            sample_id=rec.sample_id,
+            curve_id=cid,
+            node_index=int(rec.node_index),
+            intent_id=rec.intent.intent_id,
+            direction=rec.intent.direction,
+            fold=rec.fold,
+            label_status=rec.label_status,
+            q=q,
+            q_mask=q_valid,
+            stop=stop_label_from_distance_v52(
+                d_key,
+                positive_window=stop_positive_window,
+                negative_window=stop_negative_window),
+            d_key_ts=float(d_key))
+
+    return V52LabelTable(by_sample=labels, curves=curves)
+
+
 def build_feature_batches(
     dataset: KeyAtomDatasetV3,
     indices: Sequence[int],
@@ -582,14 +987,28 @@ def build_feature_batches(
 
 
 __all__ = [
+    "ATOMIC_MASS_TABLE_V52",
     "DATA_MANIFEST_FILENAME",
+    "CurveV52Labels",
     "KeyAtomDatasetV3",
     "KeyAtomDatasetV3Error",
     "LABEL_STATUSES",
     "REQUIRED_COLUMNS",
     "SPLIT_MANIFEST_FILENAME",
+    "STOP_LABEL_SCHEMA_V52",
+    "STOP_NEGATIVE_WINDOW_ANGSTROM_V52",
+    "STOP_POSITIVE_WINDOW_ANGSTROM_V52",
     "SampleRecordV3",
     "TABLE_FILENAMES",
+    "V52LabelTable",
+    "V52SampleLabel",
     "WEIGHT_SUM_TOL",
+    "ZERO_ARC_EPS_ANGSTROM_V52",
+    "atomic_mass_v52",
     "build_feature_batches",
+    "build_v52_labels",
+    "kabsch_rmsd_v52",
+    "mass_weighted_arc_lengths_v52",
+    "progress_q_from_arcs_v52",
+    "stop_label_from_distance_v52",
 ]
