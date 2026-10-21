@@ -37,6 +37,11 @@ logger = logging.getLogger(__name__)
 COORDINATES_NAME: Final[str] = "coordinates"
 #: Optional per-frame energy dataset name.
 EHG_NAME: Final[str] = "EHG"
+#: Alternate per-frame energy dataset name (the B3LYPD3_TZVP IRC archive
+#: stores per-frame energies under this name; ``EHG`` keeps lookup priority).
+ENERGIES_NAME: Final[str] = "energies"
+#: Per-reaction atomic-number dataset name (present in the IRC archive).
+ATOMIC_NUMBERS_NAME: Final[str] = "atomic_numbers"
 #: Case-insensitive substring identifying a force array.
 FORCES_KEY_SUBSTRING: Final[str] = "force"
 #: Number of dimensions of a trajectory dataset.
@@ -65,8 +70,9 @@ class IrcFrames:
 
     ``coordinates`` has shape ``(n_frames, n_atoms, 3)`` and ``ehg`` has shape
     ``(n_frames, 3)`` when the archive stores per-frame energies, else
-    ``None``.  Generated equality is disabled because of the numpy fields;
-    compare with :func:`numpy.array_equal`.
+    ``None``.  ``atomic_numbers`` is the per-atom Z tuple when the archive
+    stores it, else ``None``.  Generated equality is disabled because of the
+    numpy fields; compare with :func:`numpy.array_equal`.
     """
 
     reaction_id: str
@@ -75,6 +81,7 @@ class IrcFrames:
     has_forces: bool
     coordinates: NDArray[np.float64]
     ehg: NDArray[np.float64] | None
+    atomic_numbers: tuple[int, ...] | None = None
 
 
 def _normalized_or_error(key: str, container: str) -> str:
@@ -203,21 +210,32 @@ def read_irc_frames(reaction_id: str, group: h5py.Group) -> IrcFrames:
     """Read the full frame arrays of one IRC trajectory.
 
     Memory is bounded by a single reaction: ``n_frames × n_atoms × 3`` floats,
-    plus ``n_frames × 3`` energies when the archive stores them.
+    plus ``n_frames × 3`` energies when the archive stores them.  Per-frame
+    energies are looked up as ``EHG`` first, then under the alternate
+    ``energies`` name (the B3LYPD3_TZVP IRC archive uses the latter); the
+    per-atom ``atomic_numbers`` vector is read when present.
     """
     dataset = find_irc_coordinates(group, reaction_id=reaction_id)
     n_frames, n_atoms = _trajectory_shape(dataset, reaction_id)
     coordinates = np.asarray(dataset[()], dtype=np.float64)
     ehg_dataset: h5py.Dataset | None = None
-    for candidate in _one_level_datasets(group, EHG_NAME):
-        if candidate.ndim >= 1 and candidate.shape[0] == n_frames:
-            ehg_dataset = candidate
+    for name in (EHG_NAME, ENERGIES_NAME):
+        for candidate in _one_level_datasets(group, name):
+            if candidate.ndim >= 1 and candidate.shape[0] == n_frames:
+                ehg_dataset = candidate
+                break
+        if ehg_dataset is not None:
             break
     ehg = (
         np.asarray(ehg_dataset[()], dtype=np.float64)
         if ehg_dataset is not None
         else None
     )
+    z_dataset = group.get(ATOMIC_NUMBERS_NAME)
+    atomic_numbers: tuple[int, ...] | None = None
+    if isinstance(z_dataset, h5py.Dataset) and z_dataset.ndim == 1 \
+            and int(z_dataset.shape[0]) == n_atoms:
+        atomic_numbers = tuple(int(z) for z in np.asarray(z_dataset[()]))
     return IrcFrames(
         reaction_id=reaction_id,
         n_atoms=n_atoms,
@@ -225,6 +243,7 @@ def read_irc_frames(reaction_id: str, group: h5py.Group) -> IrcFrames:
         has_forces=reaction_has_forces(group),
         coordinates=coordinates,
         ehg=ehg,
+        atomic_numbers=atomic_numbers,
     )
 
 
@@ -245,8 +264,10 @@ def read_irc_frames_at(path: str | Path, reaction_id: str) -> IrcFrames | None:
 
 
 __all__ = [
+    "ATOMIC_NUMBERS_NAME",
     "COORDINATES_NAME",
     "EHG_NAME",
+    "ENERGIES_NAME",
     "FORCES_KEY_SUBSTRING",
     "FRAME_WIDTH",
     "TRAJECTORY_NDIM",

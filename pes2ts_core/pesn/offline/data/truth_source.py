@@ -169,6 +169,7 @@ def stream_scoped_irc_frames(
                 "has_forces": frames.has_forces,
                 "coordinates": frames.coordinates,
                 "EHG": frames.ehg,
+                "atomic_numbers": frames.atomic_numbers,
             }
 
 

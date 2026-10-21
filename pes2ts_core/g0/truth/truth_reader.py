@@ -135,6 +135,7 @@ def _frames_to_dict(frames: IrcFrames) -> dict[str, Any]:
         "has_forces": frames.has_forces,
         "coordinates": frames.coordinates,
         "EHG": frames.ehg,
+        "atomic_numbers": frames.atomic_numbers,
     }
 
 
