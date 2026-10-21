@@ -1,5 +1,13 @@
 # PES2TS 文档修订台账（协同性）
 
+## 2026-10-22 增量登记：V5.3-MP S1 2k 冒烟完成（S1 PASS）
+
+- 新增报告：[V5.3-MP S1 2k 冒烟报告 20261022](../reports/PES2TS_V53MP_S1_2k冒烟报告_20261022.md)（write-once）——三臂 ok、Move guard 全过、GPU 1,829s≤3,600s 上限；ordering/endpoint 处冒烟冻结段的随机水平（与 V5.2-R D1 负结果一致）；λ 探针 endpoint calibrated / q target_unreachable / rank scale_unreachable（上限运行并记录）。
+- 新增脚本：`r3_v53mp_orchestrate.py`（单 GPU 串行编排 + 锁等待 + 诚实失败记录）；`r3_v53mp_lambda_probe.py`（gradient-share λ 校准）。
+- 修复（诚实记录）：driver 按臂清零 λ（arm A 曾因此失败一次，S1 attempt cap 3→4 按消耗数上调并注明）；`_FeatureLRU` 对 terminal/masked 行零填充 `y_teacher`（修混合批次丢键）；eval 的 MOVE 指标只在 ok 行上评估；`s1_eval_max_samples` 接线。
+- 配置：`pes2ts_v53mp_20261021.yaml` 回填 λ 值 + verdicts；`s1_authorized`/`s2_authorized` 翻转（S0 全过 + S1 健康）；`joint_updates_scaling: density_preserving_per_tier`（2k/5k/20k = 1500/3750/15000 joint）。
+- docs gate `--strict` CLEAN。
+
 ## 2026-10-22 增量登记：V5.3-MP S0 数据建库与资格（S0 全部门通过）
 
 - 新增报告：[V5.3-MP S0 数据建库与资格报告 20261022](../reports/PES2TS_V53MP_S0_数据建库与资格报告_20261022.md)（write-once）——S0-A 元数据资格（142,221 合格 / 141,483 组）→ S0-B 授权提取建库（26,038 曲线 / 5,958,548 样本，经审计 truth bridge，逐反应记录）→ S0-C/E 标签（endpoint_label_spec_v1，有效正例覆盖 99.62%，TS/起点 0% 正例）→ S0-D 分片惰性加载（启动 695.8s / RSS 9.71GiB / 分片↔CSV 逐比特等价）→ S0-F 就绪 7/7 + 表校验 10/10。

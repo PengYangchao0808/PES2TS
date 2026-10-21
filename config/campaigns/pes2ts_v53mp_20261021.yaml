@@ -16,8 +16,8 @@ governance:
   docs_gate: python scripts/agent_ops/docs_consistency.py --strict   # 每阶段前强制
   authorization:
     s0_authorized: true      # 计划 §12.1/§12.2：S0-A 元数据资格 + S0-B 经授权提取（逐次记录）
-    s1_authorized: false     # 计划 §12.3：S0 总门（含 S0-F 7/7）证据齐备后另行翻转
-    s2_authorized: false     # 计划 §12.4：S1 健康检查通过后逐阶段授权
+    s1_authorized: true      # 2026-10-22：S0 全部门通过（S0 报告）+ S0-F 7/7 + λ 探针回填；用户授权整个 V5.3 阶段
+    s2_authorized: true      # 2026-10-22：S1 健康检查通过（三臂 ok、guard 不破、GPU 1829s<3600s cap、无 NaN）——用户授权整个 V5.3 阶段
     s3_authorized: false     # 计划 §12.4：S2 通过 + S1 实测预算冻结后授权
     sealed_authorized: false
     confirm_authorized: false
@@ -95,7 +95,10 @@ training_contract:
     method: encoder_gradient_share_probe
     target_share_pct: [2.0, 10.0]         # λ 按 encoder 梯度占比 2–10% 校准
     grid_search: forbidden                # 不做网格
-    values: {lambda_rank: null, lambda_q: null, lambda_endpoint: null}
+    values: {lambda_rank: 0.5, lambda_q: 0.5, lambda_endpoint: 0.012385049119773344}
+    verdicts: {lambda_rank: scale_unreachable, lambda_q: target_unreachable, lambda_endpoint: calibrated}
+    probe_evidence: outputs/pesn/v53mp/v53mp_lambda_calibration.json   # 2026-10-21T22:00Z, 20 batches @ 2k inner-train, R3-winner init
+    verdict_note: "endpoint 校准达成 2.0% share；q/rank 在 λ=0.5 上限处分别达 1.4%/0.48%（scale 有限，rank 为弱项）——按探针记录在上限运行，诚实记录 verdict；若 S1 显示 rank 项实质无学习，将在报告中注明"
     fill_rule: 探针结果回填本文件 → config_sha256 变更 → plan-init --force 重建 plan；null 时 B/C 臂拒绝启动
   sampling: curve-balanced 8×4 stratified（start / pre-TS / post-TS / endpoint）；固定 seed；记录有效 batch
   selection: inner-val only（单折/单 seed 不晋级；confirm 隔离）

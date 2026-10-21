@@ -152,6 +152,8 @@ R/P与H → 化学控制模板 → ReactiveState → Classic/残差候选
 
 ## 10. 当前进度指针
 
+**2026-10-22 V5.3-MP S1 完成 / S2 进行中**：[S1 冒烟报告](docs/reports/PES2TS_V53MP_S1_2k冒烟报告_20261022.md)（三臂 ok、Move guard 全过、GPU 1,829s≤上限）+ [S0 报告](docs/reports/PES2TS_V53MP_S0_数据建库与资格报告_20261022.md)（全部门通过：20k 冻结池 + dev 589 + confirm 2k 封存）。λ 探针 verdicts：endpoint calibrated / q target_unreachable / rank scale_unreachable（上限运行并记录）。当前 S2（5k，三臂×三 seed，density-preserving joint 3,750 更新）在跑；S3（20k，joint 15,000 更新）待 S2 通过后授权。任务合同 [MoveProcessContract v1](docs/contracts/PES2TS_MoveProcessContract_v1.md)；文档门 `--strict` 训练前强制。
+
 **2026-10-22 V5.3-MP S0 完成（全部门通过，S1 待 λ 探针 + 授权）**：[S0 数据建库与资格报告](docs/reports/PES2TS_V53MP_S0_数据建库与资格报告_20261022.md)——20,000 合格反应冻结池（2k⊂5k⊂20k 嵌套）+ dev 589 + confirm 2,000（仅列名封存）；S0-B 经审计 truth bridge 建库 26,038 曲线/5.96M 样本；endpoint_label_spec_v1 硬门全过（TS/起点 0% 正例，覆盖 99.62%）；S0-F 就绪 7/7 + 表校验 10/10。当前任务合同 [MoveProcessContract v1](docs/contracts/PES2TS_MoveProcessContract_v1.md)；实施层全部落地（heads/loss/trainer/driver/loader/labels/export + λ 探针）。S1 2k 冒烟：λ gradient-share 探针回填 config → `s1_authorized` 翻转 → plan-init → 3 臂 × seed17。GPU 在 S0 通过前保持 0；本轮 S0 完成后方启动 S1。
 
 **2026-10-21 V5.3-MP MOVE–PROCESS（ADR-0031，当前）**：V5.2 / V5.2-R 已关闭（D2-G STOP，T1 不授权，负结果归档）。当前唯一任务合同为 [MoveProcessContract v1](docs/contracts/PES2TS_MoveProcessContract_v1.md)：一个共享 EGNN，两个头——MOVE（关键原子位移，跨越 TS）+ PROCESS（有向进度 q、端点完成置信度 p_end、ordering）；No-Move = p_end ≥ τ_end 且目标化学状态一致；q 仅辅助/诊断，TS 永远继续 MOVE。输入边界不变（当前单帧 + 合法有向拓扑；禁止参考端点 XYZ/历史/真值）。执行计划 [V5.3-MP](docs/plans/PES2TS_V5.3-MP_大规模MOVE-PROCESS联合训练计划_v1_20261021.md)：S0 数据资格/建库（CPU）→ S1 2k 冒烟 → S2 5k → S3 20k 正式。实测：当前六表仅 50 曲线/12,034 行；~200k 反应库尚未转 V5 六表，S0 是真实建库而非配置开关。S0 通过前 GPU=0；S1 需单独授权。文档门 `python scripts/agent_ops/docs_consistency.py --strict` 训练前强制。
