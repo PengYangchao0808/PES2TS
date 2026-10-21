@@ -21,6 +21,8 @@ from pes2ts_core.pesn.contracts.key_atom_v3 import (  # noqa: E402
     FORWARD_VIEW_KEYS_V3,
     SUPERVISION_KEYS_V3,
     KeyAtomSampleV3,
+    KeyAtomV3ContractError,
+    check_forward_view_keys_v3,
     forward_view_v3,
 )
 from scripts.agent_ops.feature_gate.equivariance_harness import (  # noqa: E402
@@ -137,3 +139,46 @@ def test_blacklist_hits_every_forbidden_class() -> None:
         report = check_input_legality({key: np.zeros(1)}, preset=PRESET)
         assert report["passed"] is False, cls
         assert key in report["violations"], cls
+
+
+# ---------------------------------------------------------------------------
+# V5.2-R D0.1 — explicit forward-view negative tests for the Move/terminal/
+# stop_status keys.  These three keys carry the R3 Move teacher / Stop-head
+# semantics and MUST NEVER appear in a model forward batch (contract §7
+# ``stop_status``/``move_status`` are supervision-side; ``terminal`` is a
+# Move eligibility that leaks the Stop answer if fed as an input).  The
+# structural refusal is ``check_forward_view_keys_v3`` → FORWARD_VIEW_LEAK
+# (these keys are absent from ``FORWARD_VIEW_KEYS_V3``); the harness
+# blacklist/whitelist provide the second, independent gate.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("leak_key", (
+    "move_status", "terminal", "stop_status"))
+def test_status_keys_fail_forward_view(leak_key: str) -> None:
+    """``move_status``/``terminal``/``stop_status`` are NEVER forward inputs."""
+    batch = dict(make_v3_gate_batch(n_graphs=1))
+    batch[leak_key] = np.zeros(1)
+    # structural contract gate: the key is not in FORWARD_VIEW_KEYS_V3, so
+    # check_forward_view_keys_v3 refuses with the typed FORWARD_VIEW_LEAK.
+    with pytest.raises(KeyAtomV3ContractError) as exc:
+        check_forward_view_keys_v3(batch)
+    assert exc.value.code == "FORWARD_VIEW_LEAK"
+    assert leak_key not in FORWARD_VIEW_KEYS_V3
+    # harness allowlist: every one of the three keys is outside the frozen
+    # forward-input allowlist (exact-key membership).
+    allow = check_input_allowlist(batch, preset=PRESET)
+    assert allow["passed"] is False
+    assert leak_key in allow["violations"]
+    # harness blacklist: substring patterns catch ``terminal`` (near_ts class)
+    # directly; ``move_status``/``stop_status`` are not substring-matched by
+    # the frozen pattern list, so the blacklist alone is NOT the gate for
+    # them — pin that behaviour explicitly so a future pattern extension is
+    # a deliberate, reviewed change.
+    report = check_input_legality(batch, preset=PRESET)
+    if leak_key == "terminal":
+        assert report["passed"] is False
+        assert leak_key in report["violations"]
+    else:
+        # the allowlist + FORWARD_VIEW_LEAK above are the effective gates
+        assert allow["passed"] is False
