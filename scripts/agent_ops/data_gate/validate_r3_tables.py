@@ -1208,6 +1208,12 @@ def _test_t0_3b(tables: _Tables, report_path: Path) -> Dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 def _split_manifest_path(tables: _Tables) -> Tuple[Optional[Path], Optional[str]]:
+    override = getattr(tables, "split_manifest_override", None)
+    if override is not None:
+        path = Path(override)
+        if path.is_file():
+            return path, f"explicit --split-manifest override: {path}"
+        return None, f"explicit --split-manifest missing: {path}"
     primary = tables.dir / schema.SPLIT_MANIFEST_FILENAME
     if primary.is_file():
         return primary, None
@@ -1574,11 +1580,13 @@ def run_validation(
     report_path: Path,
     only_tests: Optional[Sequence[str]] = None,
     truth_log: Optional[Path] = None,
+    split_manifest: Optional[Path] = None,
 ) -> Dict[str, Any]:
     """Run all (or the selected) gate tests, write the JSON report, return it."""
     tables_dir = Path(tables_dir)
     report_path = Path(report_path)
     tables = _Tables(tables_dir)
+    tables.split_manifest_override = split_manifest
     only = set(only_tests) if only_tests else None
 
     tests: List[Dict[str, Any]] = []
@@ -1651,10 +1659,15 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                              "the log is searched at <tables-dir>/"
                              f"{schema.TRUTH_LOG_TABLES_DIR_NAME} then "
                              f"{schema.TRUTH_LOG_DEFAULT_SUBPATH}.")
+    parser.add_argument("--split-manifest", default=None,
+                        help="explicit split manifest path for T0.4a (overrides "
+                             "the <tables-dir>/split_manifest_r3.json then "
+                             "split_manifest.json lookup)")
     args = parser.parse_args(argv)
 
     report = run_validation(args.tables_dir, args.report, args.tests,
-                            truth_log=args.truth_log)
+                            truth_log=args.truth_log,
+                            split_manifest=args.split_manifest)
     s = report["summary"]
     print(
         f"[r3-data-gate] {report['exit_code']}: "
