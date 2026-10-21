@@ -18,6 +18,7 @@ from pathlib import Path
 import pytest
 
 pytest.importorskip("numpy")
+pytest.importorskip("torch")  # base tier runs without torch; pesn tier runs this module
 
 from scripts.agent_ops.feature_gate.e4_label_gate import (  # noqa: E402
     DEV_FOLDS,
