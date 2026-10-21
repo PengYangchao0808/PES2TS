@@ -317,12 +317,17 @@ campaigns:
       - pes2ts_core/pesn/offline/data/key_atom_endpoint_labels_v1.py
       - scripts/campaigns/r3_v53mp_run.py
       - scripts/agent_ops/data_gate/r3_build_tables.py
+      - scripts/agent_ops/data_gate/r3_v53mp_s0a_qualify.py
+      - scripts/agent_ops/data_gate/r3_v53mp_freeze_cohort.py
+      - scripts/agent_ops/data_gate/r3_v53mp_build_tables_h5.py
+      - scripts/agent_ops/data_gate/r3_v53mp_finalize.py
+      - scripts/campaigns/r3_v53mp_lambda_probe.py
       - pes2ts_core/pesn/offline/publishing/export.py
     config: config/campaigns/pes2ts_v53mp_20261021.yaml
     data_manifest: data/manifests/v5/split_manifest.json
     gates: [V53MP-S0-data, V53MP-S1-smoke, V53MP-S2-scale, V53MP-S3-formal, V53MP-S3-closed-loop]
     evidence: docs/plans/PES2TS_V5.3-MP_大规模MOVE-PROCESS联合训练计划_v1_20261021.md
-    gate_note: "ADR-0031 / MoveProcessContract v1; one shared StarEGNNV3 (hidden48/3 layers, 55,441) + MOVE + PROCESS (q/endpoint/ordering); No-Move = p_end >= tau_end AND chemical state consistent; TS always MOVE; q auxiliary only; input single-frame + legal directed topology, no reference endpoint XYZ/history/truth; S0 builds >=20k qualified independent reactions from the ~200k IRC inventory (dedup canonical groups; current six-table = 50 curves/12,034 rows); S0-A metadata qualification reads no raw truth, S0-B authorized extraction logs every access (hard gate = no unauthorized access, not empty log); S0-D sharded lazy loader required (current KeyAtomDatasetV3 is not approved for 20k); endpoint_label_spec_v1 must pass hard-negative/coverage checks; S0-F implementation-readiness 7/7 before S1; arms A Move-only / B Move+Progress / C Move+PROCESS; S2->S3 not blocked by statistical non-significance; reference-normalized vs autonomous rollout reported separately; GPU 0 until S0 PASS and S1 explicit authorization"
+    gate_note: "ADR-0031 / MoveProcessContract v1; one shared StarEGNNV3 (hidden48/3 layers, 55,441) + MOVE + PROCESS (q/endpoint/ordering); No-Move = p_end >= tau_end AND chemical state consistent; TS always MOVE; q auxiliary only; input single-frame + legal directed topology, no reference endpoint XYZ/history/truth; S0 builds >=20k qualified independent reactions from the ~200k IRC inventory (dedup canonical groups; current six-table = 50 curves/12,034 rows); S0-A metadata qualification reads no raw truth, S0-B authorized extraction logs every access (hard gate = no unauthorized access, not empty log); S0-D sharded lazy loader required (current KeyAtomDatasetV3 is not approved for 20k); endpoint_label_spec_v1 must pass hard-negative/coverage checks; S0-F implementation-readiness 7/7 before S1; arms A Move-only / B Move+Progress / C Move+PROCESS; S2->S3 not blocked by statistical non-significance; reference-normalized vs autonomous rollout reported separately; GPU 0 until S0 PASS and S1 explicit authorization; S0-F readiness items implemented 2026-10-21: config/campaigns/pes2ts_v53mp_20261021.yaml, key_atom_loss_v53mp_v3.py, key_atom_v53mp_train_v3.py, scripts/campaigns/r3_v53mp_run.py, sharded loader (ShardedKeyAtomDatasetV3) in key_atom_dataset_v3.py, endpoint_label_spec_v1 in key_atom_endpoint_labels_v1.py, pes2ts_move_process_bundle_v1 in export.py; gate-check subcommand verifies 7/7"
     comparison_only:
       - pes2ts_core/pesn/models/dual_egnn.py
       - pes2ts_core/pesn/models/dual_ts_policy.py
