@@ -1,6 +1,8 @@
 # PES2TS / PES-N V5–V7 三阶段研究与架构修订方案 v2.0
 
-> 状态：**Proposed v2.0**（研究范式与架构修订；不修改业务代码、不启动训练/QC、不解除任何封存）
+> **Superseded（2026-10-20）**：本文件的 V5/V6/V7 语义已被 [V5–V7 v3.0](PES2TS_V5-V7_反应意图条件化与低维生长方案_v3.0_20261020.md) 取代；方向语义以 [ReactionIntent Contract v1](../contracts/PES2TS_ReactionIntent_Contract_v1.md) 为准。保留为历史设计，不再作为训练依据。
+>
+> 状态：**Proposed v2.0 / Superseded by v3.0**（研究范式与架构修订；不修改业务代码、不启动训练/QC、不解除任何封存）
 > 日期：2026-10-20
 > 层级：V5 = G3.P.0–.3；V6 = G3.2 + G2.T（xTB 探测与验证）；V7 = G4.0/G4.1；G4.2 发布门不变
 > 取代关系：**取代** [V5–V7 架构计划 v1.2](PES2TS_PES-N_V5-V7架构调整与实施计划_v1.2_20261018.md) 中 V5/V6/V7 的分工与 V6 progress-decoder 路线；**不覆盖** V5.1a、V5.1a-R1 的冻结证据与历史报告。V5.1b 继续关闭。

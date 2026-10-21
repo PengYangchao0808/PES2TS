@@ -6,6 +6,11 @@
     "ood_authorized": false,
     "sealed_authorized": false
   },
+  "campaign_closure": {
+    "at": "2026-10-20T21:30:00Z",
+    "training_authorization_revoked": true,
+    "window_nominal_end": "2026-10-21T13:45:00Z"
+  },
   "campaign_id": "PES2TS_30H_R3_V52_V53",
   "code_commit_at_freeze": "HEAD at E0 commit (见 git log 'E0 freeze')",
   "config_sha256": "3081e05479007eaf6b5630a9f893c2977578e9861940f355aeb13535568e4ba4",
@@ -16,11 +21,13 @@
         "R3": 66,
         "V5.2": 33
       },
+      "e0_sha256_full": "d2a63599727804e9ff407b30c7e5e1bdfc555c38fa7cafd5857a6cf273073163",
       "path": "outputs/pesn/30h_campaign/run_plan.jsonl",
       "pd3_note": "extra-3 beyond 63 = F-bidir per 30h §4.2; matched forward-only control = F2-forward fold0×3 inside F-main (reuse, not new runs)",
+      "rebound_at": "2026-10-20T16:20Z (stage-g0 two-stage binding, sanctioned)",
       "runs": 99,
       "sha256_16": "d2a63599727804e9",
-      "sha256_full": "d2a63599727804e9ff407b30c7e5e1bdfc555c38fa7cafd5857a6cf273073163",
+      "sha256_full": "a8972a1958385ed2373bba00af677125992239b8af0e10745257983f2b7cf051",
       "two_stage_binding": {
         "pin_rule": "run_plan sha256+campaign_mode 已钉定于本文件与 task_state.e0_freeze；任何重建须 --force 且视为重新冻结（新版本号+用户签认）",
         "stage_e0": "config_sha256=real; data/teacher/split=PENDING_E1; features=PENDING_E2",
@@ -51,6 +58,7 @@
   },
   "frozen_at": "2026-10-20",
   "frozen_by": "supervisor (orchestrator), per user PD-1..9 rulings 2026-10-20",
+  "g0_bound_at": "2026-10-20T15:35:00Z",
   "gates_initial_state": {
     "all_at_freeze": "not_run",
     "order": [
@@ -100,14 +108,14 @@
   ],
   "normative_config": "config/campaigns/pes2ts_30h_20261020.yaml",
   "pending_artifacts_two_stage": {
-    "data_manifest.json": "PENDING_E1 (G0 前以实值 sha 写入并重验 run_plan stage=g0)",
-    "dataset_sha256": "PENDING_E1",
-    "feature_spec.json": "PENDING_E2",
-    "feature_spec_sha256": "PENDING_E2",
-    "split_manifest_r3.json": "PENDING_E1",
-    "split_sha256": "PENDING_E1",
-    "teacher_manifest.json": "PENDING_E1",
-    "teacher_sha256": "PENDING_E1"
+    "data_manifest.json": "c21ff84b3790282b4c60764e6a356b8cb3c46e5f3b76f2bf785eeb8e70a56cbc (BOUND at G0 2026-10-20T15:35Z) (BOUND at G0)",
+    "dataset_sha256": "4635c330e94f59ad80f8da51c996923e1e1f9d236b5a8d8def293bd4af2dfd84 (BOUND at G0, content digest inside data_manifest) (BOUND at G0)",
+    "feature_spec.json": "0e7de362458e2b0f718de777e5091de8df65f213e0c0787760742c0a26f74869 (BOUND at G1 2026-10-20T16:05Z)",
+    "feature_spec_sha256": "0e7de362458e2b0f718de777e5091de8df65f213e0c0787760742c0a26f74869 (BOUND at G1 2026-10-20T16:05Z)",
+    "split_manifest_r3.json": "7cc1f98e5d28077ae202eb8bf04554c53647f9c9467f0877c34365850b055879 (BOUND at G0) (BOUND at G0)",
+    "split_sha256": "7cc1f98e5d28077ae202eb8bf04554c53647f9c9467f0877c34365850b055879 (BOUND at G0) (BOUND at G0)",
+    "teacher_manifest.json": "bc02a2bd6f6496dff32d04533ca233a1c8175779410295e2b136d17ee89ce26a (BOUND at G0) (BOUND at G0)",
+    "teacher_sha256": "bc02a2bd6f6496dff32d04533ca233a1c8175779410295e2b136d17ee89ce26a (BOUND at G0) (BOUND at G0)"
   },
   "protocol_version": "1.0.0",
   "reviews": {
@@ -116,6 +124,20 @@
     "ORA-3": "LAUNCH BLOCKERS: NONE (2026-10-20, master b1907c6)"
   },
   "schema": "pes2ts_30h_protocol_v1",
+  "stage_g0_rebind": {
+    "at": "2026-10-20T16:20Z",
+    "prev_e0_sha256": "d2a63599727804e9ff407b30c7e5e1bdfc555c38fa7cafd5857a6cf273073163",
+    "run_plan_sha256": "a8972a1958385ed2373bba00af677125992239b8af0e10745257983f2b7cf051",
+    "shas": {
+      "config": "3081e05479007eaf",
+      "data": "c21ff84b3790282b",
+      "features": "0e7de362458e2b0f",
+      "split": "7cc1f98e5d28077a",
+      "teacher": "bc02a2bd6f6496df"
+    },
+    "structure_diff": "NONE",
+    "verify": "stage=g0 PASS"
+  },
   "test_record": {
     "agent_ops": "349 passed (merged all lanes)",
     "fail_closed_probes": "launch-stage verify 拒 PENDING(396 problems); PLAN_NOT_FROZEN; RUN_ID_MISMATCH; UNSEAL_OUTSIDE_BATCH/BATCH_MISMATCH; AUTHORIZATION_REQUIRED; GPU_PRECHECK_REFUSED; SEALED_ROOT_REFUSED",

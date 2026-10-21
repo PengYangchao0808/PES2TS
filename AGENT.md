@@ -152,7 +152,7 @@ R/P与H → 化学控制模板 → ReactiveState → Classic/残差候选
 
 ## 10. 当前进度指针
 
-**2026-10-20 V5.1a/R1 closed + V5–V7 v2.0 Proposed**：V5.1a 五折门被拒，V5.1a-R1 无候选准入；**V5.1b 继续关闭**。当前活跃提案为 [V5–V7 三阶段修订 v2.0](docs/plans/PES2TS_V5-V7_三阶段研究与架构修订方案_v2.0_20261020.md)：V5=Geometry Policy（关键原子 Move/No-Move）、V6=xTB 物理修正 MLP/CNN、V7=cost-aware RL；立即执行 [V5.1-R2](docs/plans/PES2TS_V5.1-R2_损失尺度与数据完整性修复方案_v1_20261020.md) + S1。新合同见 [GeometryPolicyContract v1](docs/contracts/PES2TS_GeometryPolicyContract_v1.md)、[ADR-0028](docs/design/decisions/ADR-0028-关键原子几何策略合同与V5-V7任务拆分.md)、[ADR-0029](docs/design/decisions/ADR-0029-V5.2+双门评估与封存边界.md)。本轮未实现脚本、未启动训练/QC、未解除封存。
+**2026-10-20 V5.1-R3 Reaction-Intent revision**：V5.1a 五折门被拒，V5.1a-R1 无候选准入；**V5.1b 继续关闭**。当前活跃合同为 [ReactionIntent Contract v1](docs/contracts/PES2TS_ReactionIntent_Contract_v1.md)：`π(X_t,G_rxn) → (ΔX_K, q̂, m̂)`，`G_rxn` 是有方向反应意图，不是 branch；Relabel invariant、Reverse sensitive；不添加单独 direction token。当前阶段计划为 [V5–V7 v3.0](docs/plans/PES2TS_V5-V7_反应意图条件化与低维生长方案_v3.0_20261020.md)：V5=Reaction-Conditioned Geometric Policy、V6=Physics-Corrected Reaction Growth、V7=Cost-Aware Autonomous PES Exploration。立即执行 [V5.1-R3 v3](docs/plans/PES2TS_V5.1-R3_反应意图条件化与端点标签不变重训方案_v3_20261020.md)；v2.0/R2 仅为历史。产品设计见 [单端点 IRC 控制器 v3](docs/plans/PES2TS_单端点IRC生成控制器_产品设计_v3_20261020.md)。本轮未实现脚本、未启动训练/QC、未解除封存。
 
 **以下为旧版本证据及历史指针（2026-10-17 及更早）**：
 

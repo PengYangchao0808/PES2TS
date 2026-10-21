@@ -3,8 +3,8 @@
 # table in docs/design/PES2TS_G_V_MAPPING_v1_20261018.md is rendered from it.
 schema: pes2ts_gv_map_v1
 map_version: "2026-10-18.1"
-plan_revision: "2026-10-20.1"
-plan_revision_note: "V5–V7 v2.0 architecture revision: V5.1-R2/V5.2–V5.4 proposed; old V6.0–V6.2 and V7-A/B/C archived; new V6/V7 campaigns register only after V5.2 contract freeze."
+plan_revision: "2026-10-20.2"
+plan_revision_note: "V5–V7 v3.0 reaction-intent revision: V5.1-R3 active; V5.1-R2/v2.0 superseded; V5.2–V5.4 reinterpreted under ReactionIntent Contract v1; old V6.0–V6.2 and V7-A/B/C archived; new V6/V7 campaigns register only after V5.2 contract freeze."
 
 stages:
   G0:
@@ -201,8 +201,8 @@ campaigns:
       - pes2ts_core/pesn/models/dual_egnn_painn.py
       - pes2ts_core/pesn/models/dual_ts_policy.py
   V5.1-R2:
-    title: V5.1-R2 loss scale and data integrity repair (old task; no formal OOF)
-    status: proposed
+    title: V5.1-R2 loss scale and data integrity repair (historical; superseded by V5.1-R3)
+    status: archived
     primary_g: G3.P.2
     supporting_g: [G3.P.0, G3.P.1, G3.P.3, G0, G1]
     data_dependencies: [G0, G1]
@@ -214,13 +214,33 @@ campaigns:
     data_manifest: data/manifests/v5/split_manifest.json
     gates: [V5-G1, V5.1-R2-loss, V5.1-R2-data]
     evidence: docs/plans/PES2TS_V5.1-R2_损失尺度与数据完整性修复方案_v1_20261020.md
-    gate_note: loss scale + S1 data quality only; no new architecture, no formal OOF, no sealed; V5.1b stays closed
+    gate_note: historical; v2.0 "features unchanged" assumption superseded by V5.1-R3 reaction-intent revision; strong/dead formulas and S1 audit inherited
     comparison_only:
       - pes2ts_core/pesn/models/dual_egnn.py
       - pes2ts_core/pesn/models/dual_egnn_painn.py
       - pes2ts_core/pesn/models/dual_ts_policy.py
+  V5.1-R3:
+    title: V5.1-R3 intent-directed full-curve step baseline (forward/reverse intents; no branch)
+    status: proposed
+    primary_g: G3.P.2
+    supporting_g: [G3.P.0, G3.P.1, G3.P.3, G0, G1]
+    data_dependencies: [G0, G1]
+    code_scope:
+      - pes2ts_core/pesn/contracts/reaction_intent.py
+      - pes2ts_core/pesn/features/key_atom_graph_v3.py
+      - pes2ts_core/pesn/models/key_atom_egnn_v3.py
+      - pes2ts_core/pesn/offline/training/key_atom_bc_v3.py
+      - scripts/campaigns/run_v5_1_r3.py
+    config: config/campaigns/v5_1_r3.yaml
+    data_manifest: data/manifests/v5/split_manifest.json
+    gates: [V5-G1, V5.1-R3-relabel, V5.1-R3-reverse, V5.1-R3-loss]
+    evidence: docs/plans/PES2TS_V5.1-R3_反应意图条件化与端点标签不变重训方案_v3_20261020.md
+    gate_note: intent_directed_irc_step; full curve; forward/reverse intents share curve/fold; signed ΔB_intent allowed; branch removed; no Stop/Progress (V5.2+); no formal OOF, no sealed; V5.1b stays closed
+    comparison_only:
+      - pes2ts_core/pesn/models/dual_egnn.py
+      - pes2ts_core/pesn/models/dual_ts_policy.py
   V5.2:
-    title: V5.2 key-atom action contract, S1 audit, multi-scale IRC teacher
+    title: V5.2 reaction intent + CV/Jacobian + progress/stop heads (known-B)
     status: proposed
     primary_g: G3.P.1
     supporting_g: [G3.P.0, G3.P.3, G0, G1]
@@ -235,14 +255,14 @@ campaigns:
       - scripts/campaigns/run_v5_2_contract.py
     config: config/campaigns/v5_2_key_atom_contract.yaml
     data_manifest: data/manifests/v5/split_manifest.json
-    gates: [V5.2-contract, V5.2-labels, V5.2-identifiability]
-    evidence: docs/plans/PES2TS_V5-V7_三阶段研究与架构修订方案_v2.0_20261020.md
-    gate_note: redefined by v2.0; old V5.2 formal OOF/sealed sequence is NOT active; contract/labels/gauge only
+    gates: [V5.2-contract, V5.2-labels, V5.2-progress, V5.2-stop, V5.2-move-nonregression]
+    evidence: docs/plans/PES2TS_30h_R3_V52_V53_分层训练与验收计划_v1.1_20261020.md
+    gate_note: ReactionIntent Contract v1; known-B; q/stop heads with Mask; First-stop error; Move non-regression; two-stage 400/1500; no full rollout, no sealed
     comparison_only:
       - pes2ts_core/pesn/models/dual_egnn.py
       - pes2ts_core/pesn/models/dual_ts_policy.py
   V5.3:
-    title: V5.3 pure-geometry EGNN Move/Stop baseline
+    title: V5.3 known-B single-endpoint PREDICT-ACTION growth (A->TS->B)
     status: proposed
     primary_g: G3.P.2
     supporting_g: [G3.P.1, G3.P.3, G0, G1]
@@ -255,14 +275,14 @@ campaigns:
       - scripts/campaigns/run_v5_3_geometry.py
     config: config/campaigns/v5_3_geometry.yaml
     data_manifest: data/manifests/v5/split_manifest.json
-    gates: [V5-G1, V5.3-move, V5.3-stop, V5.3-generalization]
-    evidence: docs/plans/PES2TS_V5-V7_三阶段研究与架构修订方案_v2.0_20261020.md
-    gate_note: supervision gate only; no formal OOF, no sealed; PaiNN is comparison-only
+    gates: [V5-G1, V5.3-rollout, V5.3-relax, V5.3-classic-comparison, V5.3-cost]
+    evidence: docs/plans/PES2TS_30h_R3_V52_V53_分层训练与验收计划_v1.1_20261020.md
+    gate_note: known-B PREDICT-ACTION-RELAX; 5/10/20 no-physics rollout; constrained RELAX; Classic/R3/V5.2 same budget; verified TS separate; no Unknown-B, no sealed
     comparison_only:
       - pes2ts_core/pesn/models/dual_egnn.py
       - pes2ts_core/pesn/models/dual_ts_policy.py
   V5.4:
-    title: V5.4 path-consistency, controlled rollout and stop localization
+    title: V5.4 from-any-point growth + relabel/reverse consistency (known-B)
     status: proposed
     primary_g: G3.P.2
     supporting_g: [G3.P.1, G3.P.3, G0, G1]
@@ -274,8 +294,8 @@ campaigns:
     config: config/campaigns/v5_4_rollout.yaml
     data_manifest: data/manifests/v5/split_manifest.json
     gates: [V5-G1, V5.4-field, V5.4-rollout, V5.4-stop]
-    evidence: docs/plans/PES2TS_V5-V7_三阶段研究与架构修订方案_v2.0_20261020.md
-    gate_note: development evidence only; formal OOF requires a separate preregistered approval
+    evidence: docs/plans/PES2TS_V5-V7_反应意图条件化与低维生长方案_v3.0_20261020.md
+    gate_note: from-any-point/reverse consistency; known-B; development evidence only; formal OOF requires separate preregistered approval
     comparison_only:
       - pes2ts_core/pesn/models/dual_egnn.py
       - pes2ts_core/pesn/models/dual_ts_policy.py

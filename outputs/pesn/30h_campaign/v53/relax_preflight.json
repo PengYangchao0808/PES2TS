@@ -1,23 +1,17 @@
 {
-  "schema": "pes2ts_v53_relax_preflight_v1",
   "acp": {
     "available": true,
     "checks": {
-      "acp_root": "/mnt/e/Calculations/Common_Script/Auto_Calc_Platform/ACP_V1_20260811",
       "acp_cli_py": "/mnt/e/Calculations/Common_Script/Auto_Calc_Platform/ACP_V1_20260811/src/acp/cli.py",
+      "acp_config": "/mnt/e/Calculations/Common_Script/Auto_Calc_Platform/ACP_V1_20260811/config/defaults.yaml",
       "acp_python": "/root/miniforge3/envs/rph4/bin/python",
-      "acp_config": "/mnt/e/Calculations/Common_Script/Auto_Calc_Platform/ACP_V1_20260811/config/defaults.yaml"
+      "acp_root": "/mnt/e/Calculations/Common_Script/Auto_Calc_Platform/ACP_V1_20260811"
     }
   },
-  "xtb": {
-    "xtb_binary": null,
-    "available": false
-  },
-  "executor_runnable": false,
+  "authorization": "preflight/dry-run only; real constrained-relax execution requires GPU/queue clearance + supervisor approval (30h plan §6.2); this task never executes physics",
+  "dry_run_error": null,
   "dry_run_request": {
     "curve_id": "RXN_0000000238",
-    "node_index": 0,
-    "intent_id": "RXN_0000000238_fwd",
     "driver": {
       "atoms": [
         3,
@@ -27,14 +21,26 @@
       "delta_xi": 1.0,
       "target_angstrom": 1.5546362387273736
     },
-    "request_sha256": "eb5169ed84d5d0478ad2506942ab8bb2463ce8d1b9d95d419c68dd571fdf912d",
-    "request_schema": "pes2ts_xtb_constrained_opt_request_v1",
+    "intent_id": "RXN_0000000238_fwd",
+    "node_index": 0,
     "request_built": true,
-    "request_executed": false
+    "request_executed": false,
+    "request_schema": "pes2ts_xtb_constrained_opt_request_v1",
+    "request_sha256": "eb5169ed84d5d0478ad2506942ab8bb2463ce8d1b9d95d419c68dd571fdf912d"
   },
-  "dry_run_error": null,
-  "physics_missing": "physics_not_run",
+  "executor_runnable": false,
   "physics_executed": false,
-  "authorization": "preflight/dry-run only; real constrained-relax execution requires GPU/queue clearance + supervisor approval (30h plan §6.2); this task never executes physics",
-  "verdict": "wiring_present_xtb_missing"
+  "physics_missing": "physics_not_run",
+  "schema": "pes2ts_v53_relax_preflight_v1",
+  "supervisor_correction": {
+    "at": "2026-10-20T20:05:00Z",
+    "finding": "xtb IS available: /opt/software/xtb/bin/xtb (banner verified, and directory already on PATH); lane probe missed /opt/software prefix",
+    "note": "lane's original honest verdict preserved under this correction; real constrained-relax execution still requires explicit supervisor clearance at V5.3 execution time (queue + budget)",
+    "revised_verdict": "wiring_present_xtb_available; executor_runnable=pending_supervisor_clearance_and_G4_stage; physics_executed=false (unchanged)"
+  },
+  "verdict": "wiring_present_xtb_missing",
+  "xtb": {
+    "available": false,
+    "xtb_binary": null
+  }
 }

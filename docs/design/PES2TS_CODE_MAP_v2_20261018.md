@@ -2,8 +2,8 @@
 
 > 状态：参考（非规范）；规范以[开发宪法](../PES2TS_开发宪法_v1.md)和[阶段定义](../plans/PES2TS_阶段定义_G0-G3.md)为准
 > 日期：2026-10-18（原文）；架构修订：2026-10-20
-> 上游依赖：[ADR-0025](decisions/ADR-0025-G-V双轴映射与战役注册.md)、[G–V 映射](PES2TS_G_V_MAPPING_v1_20261018.md)、[V5–V7 v2.0](../plans/PES2TS_V5-V7_三阶段研究与架构修订方案_v2.0_20261020.md)
-> 当前版本：v2.1 / 2026-10-20（V5/V6/V7 按 v2.0 修订；旧 v2.0 保留为历史）
+> 上游依赖：[ADR-0025](decisions/ADR-0025-G-V双轴映射与战役注册.md)、[G–V 映射](PES2TS_G_V_MAPPING_v1_20261018.md)、[V5–V7 v3.0](../plans/PES2TS_V5-V7_反应意图条件化与低维生长方案_v3.0_20261020.md)、[ReactionIntent Contract v1](../contracts/PES2TS_ReactionIntent_Contract_v1.md)
+> 当前版本：v2.2 / 2026-10-20（V5/V6/V7 按 v3.0 reaction-intent 修订；v2.0 保留为历史）
 
 ## 1. 两条轴
 
@@ -45,33 +45,34 @@ pes2ts_core/pesn/offline/evaluation/dual_ts_protocols.py
 
 规则：不删除、不改语义；只允许状态头/注释与共享 bug 修复（单独 PR + V4 回归）。V4.7 负结果（MSE/零动作 1.132、0/8 组、cos 0.180、near-TS 0.248）保留。
 
-### V5.1-R2 / V5.2–V5.4（proposed，G3.P）
+### V5.1-R3 / V5.2–V5.4（proposed，G3.P；reaction-intent v3.0）
 
-**V5.1-R2（旧任务机制修复；不新增网络）**
+**V5.1-R3（局部步进基线；无 branch；signed intent）**
 
 ```text
-pes2ts_core/pesn/offline/training/key_atom_bc.py      # 无量纲 strong/dead loss + gradient ratio 记录
+pes2ts_core/pesn/contracts/reaction_intent.py          # planned: G_rxn / signed graph edit / CV spec
+pes2ts_core/pesn/features/key_atom_spec_v3.py          # planned
+pes2ts_core/pesn/features/key_atom_graph_v3.py         # planned: intent-conditioned features
+pes2ts_core/pesn/models/key_atom_egnn_v3.py            # planned: fixed F3 superset + masks
+pes2ts_core/pesn/offline/training/key_atom_bc_v3.py    # planned: strong/dead + sample weights
 pes2ts_core/pesn/offline/evaluation/key_atom_protocols.py
-scripts/campaigns/run_v5_1_r2.py                       # planned
-config/campaigns/v5_1_r2.yaml                          # planned
+scripts/campaigns/run_v5_1_r3.py                       # planned
+config/campaigns/v5_1_r3.yaml                          # planned
 ```
 
-**V5.2–V5.4（新 Key-Atom-only 合同；从 V5.2 起另建）**
+**V5.2–V5.4（reaction intent + CV/Jacobian + progress/stop + growth）**
 
 ```text
-pes2ts_core/pesn/contracts/key_atom.py                 # 旧合同保留；新字段/新 schema 另版本
-pes2ts_core/pesn/contracts/geometry_policy.py          # planned: GeometryPolicyContract v1
-pes2ts_core/pesn/features/key_atom_spec.py
-pes2ts_core/pesn/features/key_atom_graph.py
+pes2ts_core/pesn/contracts/reaction_intent.py          # G_rxn, CV, progress/stop semantics
+pes2ts_core/pesn/features/reaction_coords.py           # planned: CV / Jacobian lift
+pes2ts_core/pesn/models/key_atom_egnn_v3.py            # progress/stop heads (V5.2)
 pes2ts_core/pesn/offline/data/key_atom_teacher.py      # T0/T1/T2 + stop labels
-pes2ts_core/pesn/offline/data/key_atom_dataset.py
-pes2ts_core/pesn/models/key_atom_egnn.py               # MoveHead + StopHead
-pes2ts_core/pesn/models/key_atom_painn.py              # comparison only
-pes2ts_core/pesn/offline/training/key_atom_bc.py
+pes2ts_core/pesn/offline/data/key_atom_dataset_v3.py
+pes2ts_core/pesn/offline/training/key_atom_bc_v3.py
 pes2ts_core/pesn/offline/evaluation/key_atom_protocols.py
-scripts/campaigns/run_v5_2_contract.py                  # planned
-scripts/campaigns/run_v5_3_geometry.py                  # planned
-scripts/campaigns/run_v5_4_rollout.py                   # planned
+scripts/campaigns/run_v5_2_progress_stop.py             # planned
+scripts/campaigns/run_v5_3_growth.py                    # planned
+scripts/campaigns/run_v5_4_any_point.py                 # planned
 ```
 
 ### V6（proposed，G3.2 + G2.T）
@@ -133,8 +134,8 @@ scripts/campaigns/run_v7_3_online_rl.py                 # planned
 
 - `bin/pes2ts` → `pes2ts_core/cli.py`：G0/G1/G2/G2.T/ACP 命令。
 - `python -m pes2ts_core.pesn` → PES-N 离线 CLI（inventory/split/build-teacher/train/evaluate/export/predict）。
-- V5.1-R2 新战役入口：`scripts/campaigns/run_v5_1_r2.py`（planned）。
-- V5.2–V5.4 新战役入口：`scripts/campaigns/run_v5_2_contract.py`、`run_v5_3_geometry.py`、`run_v5_4_rollout.py`（planned）。
+- V5.1-R3 新战役入口：`scripts/campaigns/run_v5_1_r3.py`（planned）。
+- V5.2–V5.4 新战役入口：`scripts/campaigns/run_v5_2_progress_stop.py`、`run_v5_3_growth.py`、`run_v5_4_any_point.py`（planned）。
 - V6/V7 新战役入口：`scripts/campaigns/run_v6_1_mlp.py`、`run_v6_2_cnn.py`、`run_v6_3_verify.py`、`run_v7_1_env.py`、`run_v7_2_offline_rl.py`、`run_v7_3_online_rl.py`（planned）。
 
 ## 7. 已知债务（不在本次清理中重构）

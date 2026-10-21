@@ -2,7 +2,7 @@
 
 > 状态：权威（机器可读源：`config/registry/g_v_map.yaml`）
 > 映射版本：`2026-10-18.1`
-> 计划修订：`2026-10-20.1`
+> 计划修订：`2026-10-20.2`
 > 生成命令：`python scripts/render_gv_map.py --write`
 > 校验命令：`python scripts/render_gv_map.py --check`
 
@@ -27,6 +27,7 @@
 | V5.0 | S | S |  | S | S | P |  |  |  |  |  |  |  |
 | V5.1 | S | S |  |  |  |  | P |  |  |  |  |  |  |
 | V5.1-R2 | S | S |  |  | S | S | P | S |  |  |  |  |  |
+| V5.1-R3 | S | S |  |  | S | S | P | S |  |  |  |  |  |
 | V5.2 | S | S |  |  | S | P |  | S |  |  |  |  |  |
 | V5.3 | S | S |  |  |  | S | P | S |  |  |  |  |  |
 | V5.4 | S | S |  |  |  | S | P | S |  |  |  |  |  |
@@ -51,9 +52,10 @@
 | V4.7 | executed | G3.P.3 | G3.P.2, G0, G1 | `config/pesn/dual_ts_observations_16x1_v1.yaml` | `data/manifests/split_manifest.json` | V4.7-MSE-zero, V4.7-groups, V4.7-cos, V4.7-nearTS-cos |
 | V5.0 | proposed | G3.P.1 | G0, G1, G3.P.0, G2.T | `config/campaigns/v5_0_data_math.yaml` | `data/manifests/v5/split_manifest.json` | V5-G1, M0.5-oracle |
 | V5.1 | archived | G3.P.2 | G0, G1 | `config/campaigns/v5_1_architecture.yaml` | `data/manifests/v5/split_manifest.json` | V5-G1, V5-G2, V5-G3, V5-G4 |
-| V5.1-R2 | proposed | G3.P.2 | G3.P.0, G3.P.1, G3.P.3, G0, G1 | `config/campaigns/v5_1_r2.yaml` | `data/manifests/v5/split_manifest.json` | V5-G1, V5.1-R2-loss, V5.1-R2-data |
-| V5.2 | proposed | G3.P.1 | G3.P.0, G3.P.3, G0, G1 | `config/campaigns/v5_2_key_atom_contract.yaml` | `data/manifests/v5/split_manifest.json` | V5.2-contract, V5.2-labels, V5.2-identifiability |
-| V5.3 | proposed | G3.P.2 | G3.P.1, G3.P.3, G0, G1 | `config/campaigns/v5_3_geometry.yaml` | `data/manifests/v5/split_manifest.json` | V5-G1, V5.3-move, V5.3-stop, V5.3-generalization |
+| V5.1-R2 | archived | G3.P.2 | G3.P.0, G3.P.1, G3.P.3, G0, G1 | `config/campaigns/v5_1_r2.yaml` | `data/manifests/v5/split_manifest.json` | V5-G1, V5.1-R2-loss, V5.1-R2-data |
+| V5.1-R3 | proposed | G3.P.2 | G3.P.0, G3.P.1, G3.P.3, G0, G1 | `config/campaigns/v5_1_r3.yaml` | `data/manifests/v5/split_manifest.json` | V5-G1, V5.1-R3-relabel, V5.1-R3-reverse, V5.1-R3-loss |
+| V5.2 | proposed | G3.P.1 | G3.P.0, G3.P.3, G0, G1 | `config/campaigns/v5_2_key_atom_contract.yaml` | `data/manifests/v5/split_manifest.json` | V5.2-contract, V5.2-labels, V5.2-progress, V5.2-stop, V5.2-move-nonregression |
+| V5.3 | proposed | G3.P.2 | G3.P.1, G3.P.3, G0, G1 | `config/campaigns/v5_3_geometry.yaml` | `data/manifests/v5/split_manifest.json` | V5-G1, V5.3-rollout, V5.3-relax, V5.3-classic-comparison, V5.3-cost |
 | V5.4 | proposed | G3.P.2 | G3.P.1, G3.P.3, G0, G1 | `config/campaigns/v5_4_rollout.yaml` | `data/manifests/v5/split_manifest.json` | V5-G1, V5.4-field, V5.4-rollout, V5.4-stop |
 | V5_SPRINT | executed | G3.P.0 | G3.P.1, G3.P.2, G3.P.3, G0, G1 | `config/campaigns/v5_sprint.yaml` | `data/manifests/v5/split_manifest.json` | V5-G1, V5-G2, V5-G3, V5-G4 |
 | V5_1A_SPRINT | executed | G3.P.2 | G3.P.0, G3.P.1, G3.P.3, G0, G1 | `config/campaigns/v5_1_sprint.yaml` | `data/manifests/v5/split_manifest.json` | V5-G1, V5-G2, V5-G3, V5-G4 |
