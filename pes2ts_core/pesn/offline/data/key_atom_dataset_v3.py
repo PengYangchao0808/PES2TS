@@ -1005,6 +1005,15 @@ SHARD_INDEX_FILENAME: Final[str] = "shard_index_v53mp.json"
 #: Schema id of the shard index document.
 SHARD_INDEX_VERSION: Final[str] = "v53mp_shard_index_v1"
 
+#: Light-index cache files (V5.3-MP training-loop accelerator): the light
+#: init scan (irc_node + sample_view) is a pure function of the frozen
+#: tables; the cache is bound to the data-manifest + split-manifest shas and
+#: never served when either drifts (fail-closed; see
+#: :class:`ShardedKeyAtomDatasetV3` ``light_cache``).
+LIGHT_CACHE_PKL: Final[str] = ".light_index_v53mp.pkl"
+LIGHT_CACHE_JSON: Final[str] = ".light_index_v53mp.json"
+LIGHT_CACHE_SCHEMA: Final[str] = "v53mp_light_index_v1"
+
 
 @dataclass(frozen=True)
 class SampleRecordV3Lite:
@@ -1079,6 +1088,7 @@ class ShardedKeyAtomDatasetV3:
         split_manifest: str | Path | None = None,
         fold: int | None = None,
         directions: Iterable[str] = ("forward", "reverse"),
+        light_cache: bool = False,
     ) -> None:
         self.tables_dir = Path(tables_dir)
         self.d0 = float(d0)
@@ -1087,6 +1097,8 @@ class ShardedKeyAtomDatasetV3:
         self.directions = frozenset(directions)
         self.cache_curves = int(cache_curves)
         self.verify_manifest = bool(verify_manifest)
+        self.light_cache = bool(light_cache)
+        self._split_manifest_input = split_manifest
         _require(self.tables_dir.is_dir(), "TABLES_DIR",
                  f"{self.tables_dir} is not a directory")
         _require(self.cache_curves >= 1, "CACHE_CURVES",
@@ -1132,46 +1144,60 @@ class ShardedKeyAtomDatasetV3:
         self._check_header_only("irc_edge")
         self._check_header_only("curve_quality")
 
-        # --- light scan of irc_node: node sets, atomic numbers, energies -----
-        # Geometry payloads are read past, never parsed or retained here.
-        self._node_index: dict[str, set[int]] = {}
-        self._curve_atomic: dict[str, tuple[int, ...]] = {}
-        self._curve_energy: dict[str, dict[int, float]] = {}
-        self._scan_irc_node_light()
-
-        # --- folds -----------------------------------------------------------
+        # --- folds + shard fast-path (cheap; loaded before the cacheable
+        # --- section so the cache key can bind them) --------------------------
         self._folds = _load_folds_at(self.tables_dir, split_manifest, fold)
 
-        # --- optional shard fast-path index ----------------------------------
         self._shard_curve_path: dict[str, str] = {}
         self._shard_sha: dict[str, str] = {}
         self._shard_verified: set[str] = set()
         self._load_shard_index()
 
-        # --- light sample index (no geometry) + invariants --------------------
-        self._samples: list[SampleRecordV3Lite] = []
-        weight_totals: dict[str, float] = {}
-        path = self.tables_dir / TABLE_FILENAMES["sample_view"]
-        with path.open("r", encoding="utf-8", newline="") as fh:
-            reader = csv.DictReader(fh)
-            _require_columns_in("sample_view", reader.fieldnames)
-            for row in reader:
-                # ORA-2 #3 / T0.1a invariant is defined over the FULL
-                # (curve_id, d0) group — accumulated BEFORE any filtering.
-                try:
-                    if abs(float(row["d0"]) - self.d0) <= 1e-12:
-                        cid = str(row["curve_id"])
-                        weight_totals[cid] = (
-                            weight_totals.get(cid, 0.0)
-                            + float(row["curve_weight"]))
-                except (KeyError, ValueError) as exc:
-                    raise KeyAtomDatasetV3Error(
-                        "SAMPLE_WEIGHT_PARSE", f"{row.get('sample_id')}: {exc}"
-                    ) from exc
-                rec = self._parse_sample_lite(row, self._folds)
-                if rec is None:
-                    continue
-                self._samples.append(rec)
+        # --- light state: irc_node scan + sample index (optionally cached) ---
+        # ``light_cache=True`` (V5.3-MP training loop): the light init scan is
+        # a pure function of the frozen tables; the cache is bound to the
+        # data-manifest + split-manifest content shas and never served when
+        # either drifts (fail-closed).  The invariant checks below re-run
+        # over the cached state as well (never skipped).
+        state = self._try_load_light_cache() if self.light_cache else None
+        if state is not None:
+            (self._node_index, self._curve_atomic, self._curve_energy,
+             self._samples, weight_totals) = state
+        else:
+            # --- light scan of irc_node: node sets, atomic numbers, energies -
+            # Geometry payloads are read past, never parsed or retained here.
+            self._node_index: dict[str, set[int]] = {}
+            self._curve_atomic: dict[str, tuple[int, ...]] = {}
+            self._curve_energy: dict[str, dict[int, float]] = {}
+            self._scan_irc_node_light()
+
+            # --- light sample index (no geometry) ----------------------------
+            self._samples: list[SampleRecordV3Lite] = []
+            weight_totals: dict[str, float] = {}
+            path = self.tables_dir / TABLE_FILENAMES["sample_view"]
+            with path.open("r", encoding="utf-8", newline="") as fh:
+                reader = csv.DictReader(fh)
+                _require_columns_in("sample_view", reader.fieldnames)
+                for row in reader:
+                    # ORA-2 #3 / T0.1a invariant is defined over the FULL
+                    # (curve_id, d0) group — accumulated BEFORE any filtering.
+                    try:
+                        if abs(float(row["d0"]) - self.d0) <= 1e-12:
+                            cid = str(row["curve_id"])
+                            weight_totals[cid] = (
+                                weight_totals.get(cid, 0.0)
+                                + float(row["curve_weight"]))
+                    except (KeyError, ValueError) as exc:
+                        raise KeyAtomDatasetV3Error(
+                            "SAMPLE_WEIGHT_PARSE",
+                            f"{row.get('sample_id')}: {exc}",
+                        ) from exc
+                    rec = self._parse_sample_lite(row, self._folds)
+                    if rec is None:
+                        continue
+                    self._samples.append(rec)
+            if self.light_cache:
+                self._write_light_cache(weight_totals)
         _require(len(self._samples) > 0, "NO_SAMPLES",
                  "no sample_view rows survive the dataset filters "
                  f"(d0={self.d0}, statuses={sorted(self.label_statuses)}, "
@@ -1202,6 +1228,67 @@ class ShardedKeyAtomDatasetV3:
         with path.open("r", encoding="utf-8", newline="") as fh:
             reader = csv.DictReader(fh)
             _require_columns_in(table, reader.fieldnames)
+
+    # -- light-index cache (V5.3-MP training-loop accelerator) ---------------
+    def _light_cache_binding(self) -> dict:
+        """Content identity the cache is bound to (fail-closed on drift)."""
+        split_input = self._split_manifest_input
+        split_path = (Path(split_input) if split_input is not None
+                      else self.tables_dir / "split_manifest_v53mp.json")
+        return {
+            "schema": LIGHT_CACHE_SCHEMA,
+            "data_manifest_sha256": self.manifest_sha256,
+            "split_manifest_sha256": (_sha256(split_path)
+                                      if split_path.is_file() else ""),
+            "d0": float(self.d0),
+            "label_statuses": sorted(self.label_statuses),
+            "directions": sorted(self.directions),
+            "fold": self.fold,
+        }
+
+    def _try_load_light_cache(self):
+        """Load the cached light state iff the binding matches exactly."""
+        json_path = self.tables_dir / LIGHT_CACHE_JSON
+        pkl_path = self.tables_dir / LIGHT_CACHE_PKL
+        if not json_path.is_file() or not pkl_path.is_file():
+            return None
+        try:
+            doc = json.loads(json_path.read_text(encoding="utf-8"))
+            if doc.get("binding") != self._light_cache_binding():
+                return None
+            import pickle
+            with pkl_path.open("rb") as fh:
+                state = pickle.load(fh)
+        except Exception:  # noqa: BLE001 - any cache error falls back to CSV
+            return None
+        keys = ("node_index", "curve_atomic", "curve_energy", "samples",
+                "weight_totals")
+        if not isinstance(state, dict) or any(k not in state for k in keys):
+            return None
+        return (state["node_index"], state["curve_atomic"],
+                state["curve_energy"], state["samples"],
+                state["weight_totals"])
+
+    def _write_light_cache(self, weight_totals: Mapping[str, float]) -> None:
+        """Persist the light state + binding (best-effort; never fatal)."""
+        import pickle
+        state = {
+            "node_index": self._node_index,
+            "curve_atomic": self._curve_atomic,
+            "curve_energy": self._curve_energy,
+            "samples": self._samples,
+            "weight_totals": dict(weight_totals),
+        }
+        doc = {"binding": self._light_cache_binding(),
+               "n_samples": len(self._samples)}
+        try:
+            with (self.tables_dir / LIGHT_CACHE_PKL).open("wb") as fh:
+                pickle.dump(state, fh, protocol=4)
+            (self.tables_dir / LIGHT_CACHE_JSON).write_text(
+                json.dumps(doc, indent=1, sort_keys=True) + "\n",
+                encoding="utf-8")
+        except OSError:
+            pass  # read-only tables dirs degrade to the CSV path
 
     def _scan_irc_node_light(self) -> None:
         """One streaming pass over ``irc_node.csv`` keeping only light state.

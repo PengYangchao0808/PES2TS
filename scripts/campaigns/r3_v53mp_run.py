@@ -913,6 +913,7 @@ def cmd_run(args: argparse.Namespace) -> int:
                 args.tables_dir,
                 split_manifest=str(split_path),
                 label_statuses=LABEL_STATUSES,   # ok/masked/terminal/conflict
+                light_cache=True,   # V5.3-MP: manifest-bound light-index cache
             )
             samples = dataset.samples
             # Label cache (V5.3-MP): the v52 + endpoint label tables are pure
@@ -973,6 +974,11 @@ def cmd_run(args: argparse.Namespace) -> int:
                 grad_clip=float(schedule.get("grad_clip", 1.0)),
                 smoke_updates=(
                     int(line["smoke_updates"]) if tier == "2k" and line.get("smoke_updates")
+                    else None
+                ),
+                eval_max_samples=(
+                    int(schedule.get("s1_eval_max_samples"))
+                    if tier == "2k" and schedule.get("s1_eval_max_samples")
                     else None
                 ),
                 device=args.device,

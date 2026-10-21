@@ -73,30 +73,51 @@ def _zero(model) -> None:
 
 def _term_grads(model, loss_kwargs, terms: Tuple[str, ...],
                 ) -> Dict[str, Tuple[float, float]]:
-    """(encoder, head) grad norms per term by gradient linearity."""
+    """(encoder, head) grad norms per term by gradient linearity.
+
+    ``∇L_term = ∇total(λ_term=1) − ∇total(0)`` computed ELEMENTWISE on the
+    per-parameter grads (the frozen loss is never reimplemented; norms of
+    differences, never differences of norms).
+    """
     from pes2ts_core.pesn.models.key_atom_loss_v53mp_v3 import (
         key_atom_loss_v53mp,
     )
+    import torch
 
-    def total_with(**lams):
+    def grads_with(**lams):
         _zero(model)
         out = key_atom_loss_v53mp(**loss_kwargs, **lams)
         out["loss"].backward()
-        return _grad_norms(model)
+        return {name: (param.grad.detach().clone() if param.grad is not None
+                       else None)
+                for name, param in model.named_parameters()}
 
-    base = total_with(lambda_rank=0.0, lambda_q=0.0, lambda_endpoint=0.0)
+    base = grads_with(lambda_rank=0.0, lambda_q=0.0, lambda_endpoint=0.0)
+
+    def norm_of(grads, prefixes):
+        total = 0.0
+        for name, g in grads.items():
+            if g is None:
+                continue
+            if any(name.startswith(p) for p in prefixes):
+                total += float(g.pow(2).sum().cpu())
+        return total ** 0.5
+
+    base_enc = norm_of(base, ("backbone.",))
+    base_head = norm_of(base, HEAD_PREFIXES)
     per_term: Dict[str, Tuple[float, float]] = {}
     for term in terms:
         lam = {t: 0.0 for t in ("lambda_rank", "lambda_q", "lambda_endpoint")}
         lam[term] = 1.0
-        full = total_with(**lam)
-        # elementwise difference of norms is an approximation of the term
-        # gradient norm (norms do not compose); the v52 probe documented the
-        # same convention — recompute elementwise for the encoder group only
-        # when a term reports a negative norm delta (never: keep simple).
-        per_term[term] = (
-            abs(full[0] - base[0]), abs(full[1] - base[1]))
-    per_term["__move__"] = base
+        full = grads_with(**lam)
+        diff = {name: (full[name] - base[name]
+                       if (full[name] is not None and base[name] is not None)
+                       else full[name] if full[name] is not None
+                       else None)
+                for name in full}
+        per_term[term] = (norm_of(diff, ("backbone.",)),
+                          norm_of(diff, HEAD_PREFIXES))
+    per_term["__move__"] = (base_enc, base_head)
     return per_term
 
 
@@ -131,9 +152,21 @@ def run_probe(tables_dir: str, split_path: str, device: str,
 
     dataset = ShardedKeyAtomDatasetV3(
         tables_dir, label_statuses=LABEL_STATUSES,
-        split_manifest=split_path)
-    labels = dataset.v52_labels()
-    endpoint_labels = build_endpoint_labels_spec_v1(dataset, labels)
+        split_manifest=split_path, light_cache=True)
+    # labels are pure functions of the frozen tables: use the S0-finalize
+    # cache (bound to the data-manifest sha); never silently recompute at
+    # 20k scale
+    from pes2ts_core.pesn.offline.data.key_atom_label_cache_v53mp import (
+        LabelCacheError,
+        load_label_cache,
+    )
+    try:
+        labels, endpoint_labels = load_label_cache(
+            tables_dir,
+            dataset_manifest_sha256=dataset.manifest_sha256)
+    except LabelCacheError:
+        labels = dataset.v52_labels()
+        endpoint_labels = build_endpoint_labels_spec_v1(dataset, labels)
     split_doc = json.loads(Path(split_path).read_text(encoding="utf-8"))
     pool_2k = [str(c) for c in split_doc["subsets"]["pool"]["2k"]]
     samples = dataset.samples

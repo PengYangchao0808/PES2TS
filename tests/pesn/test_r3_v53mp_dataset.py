@@ -345,3 +345,41 @@ def test_light_record_exposes_supervision_fields(tables_dir: Path) -> None:
     assert sample.frame_weight == rec.label_weight
     assert lazy.curve_ts_index(rec.curve_id) == TS_INDEX
     assert lazy.curve_endpoints(rec.curve_id) == (0, N_FRAMES - 1)
+
+
+def test_light_cache_equivalence_and_drift(tables_dir: Path) -> None:
+    """light_cache: cached load == fresh load exactly; drift is refused."""
+    fresh = ShardedKeyAtomDatasetV3(
+        tables_dir, label_statuses=ALL_STATUSES, verify_manifest=False)
+    # first cached load writes the cache
+    cached = ShardedKeyAtomDatasetV3(
+        tables_dir, label_statuses=ALL_STATUSES, verify_manifest=False,
+        light_cache=True)
+    assert (tables_dir / ".light_index_v53mp.pkl").is_file()
+    # second cached load reads the cache — identical light state
+    cached2 = ShardedKeyAtomDatasetV3(
+        tables_dir, label_statuses=ALL_STATUSES, verify_manifest=False,
+        light_cache=True)
+    assert [s.sample_id for s in cached2.samples] == \
+        [s.sample_id for s in fresh.samples]
+    assert cached2._node_index.keys() == fresh._node_index.keys()
+    for cid in fresh._node_index:
+        assert cached2._node_index[cid] == fresh._node_index[cid]
+        assert cached2._curve_atomic.get(cid) == fresh._curve_atomic.get(cid)
+    # frame access still works (shard path or CSV fallback)
+    cid = sorted(fresh._node_index)[0]
+    node = sorted(fresh._node_index[cid])[0]
+    assert cached2.frame_xyz(cid, node) == fresh.frame_xyz(cid, node)
+    # drift: a different label-status filter must NOT be served from the
+    # full-status cache (binding mismatch -> fresh parse, smaller sample set)
+    ok_only = ShardedKeyAtomDatasetV3(
+        tables_dir, label_statuses=("ok",), verify_manifest=False,
+        light_cache=True)
+    assert [s.sample_id for s in ok_only.samples] == [
+        s.sample_id for s in fresh.samples if s.label_status == "ok"]
+    # the ok-only load rewrote the cache under its own binding (not served
+    # from the full-status one); the sidecar records the new binding
+    doc = json.loads((tables_dir / ".light_index_v53mp.json")
+                     .read_text(encoding="utf-8"))
+    assert doc["binding"]["label_statuses"] == ["ok"]
+    assert doc["binding"]["label_statuses"] != sorted(ALL_STATUSES)

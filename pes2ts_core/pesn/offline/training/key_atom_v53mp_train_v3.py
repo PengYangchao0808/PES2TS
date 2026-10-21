@@ -177,6 +177,10 @@ class V53MPTrainerConfig:
     smoke_updates: Optional[int] = None   # dev-stability smoke ONLY
     device: str = "cpu"
     feature_cache_capacity: int = 8192    # LRU samples; on-demand features
+    #: dev-eval cap (seeded subsample of the frozen dev positions; None =
+    #: full dev).  Only the S1 smoke tier uses it (≤1 GPU-h budget);
+    #: S2/S3 evaluate the FULL frozen dev set (comparability).
+    eval_max_samples: Optional[int] = None
 
     def __post_init__(self) -> None:
         if self.arm not in ("A", "B", "C"):
@@ -1489,9 +1493,19 @@ def train_run_v53mp(
         r3_model.load_state_dict(payload["model"], strict=True)
         r3_model.to(device)
 
+    # dev-eval cap (S1 smoke only): seeded subsample of the frozen dev
+    # positions; S2/S3 keep the full dev set (comparability across tiers).
+    dev_pos_eval = list(dev_pos)
+    if config.eval_max_samples is not None and \
+            len(dev_pos_eval) > int(config.eval_max_samples):
+        _rng_eval = np.random.RandomState(config.seed ^ 0xE5A1)
+        dev_pos_eval = sorted(_rng_eval.choice(
+            dev_pos_eval, size=int(config.eval_max_samples),
+            replace=False).tolist())
+
     metrics = evaluate_v53mp(
         model, r3_model, dataset, labels_v52, endpoint_labels,
-        _CacheView(lru), dev_pos, config,
+        _CacheView(lru), dev_pos_eval, config,
         train_q_mean=train_q_mean, tau_end=tau_block.get("tau_end"))
     metrics.update({
         "arm": config.arm,
@@ -1530,6 +1544,10 @@ def train_run_v53mp(
         "last_train_loss": last_loss,
         "n_train_samples": len(train_pos),
         "n_inner_val_samples": len(inner_val_pos),
+        "n_dev_samples_total": len(dev_pos),
+        "n_dev_samples_evaluated": len(dev_pos_eval),
+        "eval_max_samples": (None if config.eval_max_samples is None
+                             else int(config.eval_max_samples)),
         "n_pool_curves": len(pool_curves),
         "train_curves": sorted(train_curves),
         "inner_val_curves": sorted(val_curves),

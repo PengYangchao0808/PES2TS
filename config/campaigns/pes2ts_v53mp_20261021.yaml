@@ -84,6 +84,7 @@ training_contract:
     grad_clip: 1.0
     precision: fp32
   smoke_updates: 100                      # CANDIDATE — S1 2k 冒烟步数（≤1 GPU-h 资源上限内）
+  s1_eval_max_samples: 8000               # S1 冒烟 dev 评估上限（种子化子采样；S2/S3 用完整 dev 集保证跨 tier 可比）
   move_guard:
     limit_pct: 2.0                        # 相对 R3 F2-bidir winner zero-shot 退化 ≤2%（硬门）
     on_breach: scientific_failure         # 保留 run、保留记录，不删除不改写不标 invalid
