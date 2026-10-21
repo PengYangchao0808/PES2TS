@@ -271,7 +271,7 @@ G3.P 的入口是来源、图/原子映射、坐标与标签语义、冻结分�
 
 > **v2.9 注记（2026-10-21，ADR-0031）**：V5.3-MP 的 Move/Process 任务语义以 [MoveProcessContract v1](contracts/PES2TS_MoveProcessContract_v1.md) 为唯一真相；本节的 V5.2+ 注记（ADR-0030 / Endpoint Stop 单一 d_end）自本版起仅保留为历史。D2-G 对旧 T1 的负结论继续有效，V5.3-MP 是独立预注册战役，不得靠重命名绕开原门控。本节其余隔离/审计/R1 边界条款继续有效。
 >
-> **v2.8 注记（2026-10-21，ADR-0030）**：本节的"完整 A→TS 与 B→TS、不跨 TS 串接"自宪法 v2.8 起仅保留为 **V5.1a/V4 历史教师隔离语义**；V5.2+ 的策略任务为 Full-Path Navigation（完整 canonical IRC、Move 跨越 TS、No-Move=目标端点到达），见 [ADR-0030](../design/decisions/ADR-0030-V5.2全路径导航与端点停止.md) 与 [FullPathNavigationContract v1](contracts/PES2TS_FullPathNavigationContract_v1.md)。本节其余隔离/审计/R1 边界条款继续有效。
+> **v2.8 注记（2026-10-21，ADR-0030）**：本节的"完整 A→TS 与 B→TS、不跨 TS 串接"自宪法 v2.8 起仅保留为 **V5.1a/V4 历史教师隔离语义**；V5.2+ 的策略任务为 Full-Path Navigation（完整 canonical IRC、Move 跨越 TS、No-Move=目标端点到达），见 [ADR-0030](design/decisions/ADR-0030-V5.2全路径导航与端点停止.md) 与 [FullPathNavigationContract v1](contracts/PES2TS_FullPathNavigationContract_v1.md)。本节其余隔离/审计/R1 边界条款继续有效。
 
 本节是§5.1–§5.2、§6.5、§7.3在本研究版本的明确适用登记。采用无序完整端点图对、映射、电子态与任务约束；A/B仅身份编号，交换不得改变反应组/分裂或同一物理状态的预测。当前结构与真实E/g决定运动策略，不能永久指定全局成断键正逆方向。
 

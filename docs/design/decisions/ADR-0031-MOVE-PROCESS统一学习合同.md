@@ -3,7 +3,7 @@
 > 状态：**Accepted**（2026-10-21 用户裁定：V5.2 关闭，正式进入 V5.3-MP 大规模联合训练）
 > 日期：2026-10-21
 > 层级：G3.P.1–G3.P.3（V5.3-MP）；取代 [FullPathNavigationContract v1](../../contracts/PES2TS_FullPathNavigationContract_v1.md) 的任务语义
-> 上游证据：[V5.2 任务纠偏审计](../reports/PES2TS_V52_任务纠偏审计_20261021.md)、[V5.2-R 输入充分性决策记录](../reports/PES2TS_V52R_输入充分性决策记录_20261021.md)
+> 上游证据：[V5.2 任务纠偏审计](../../reports/PES2TS_V52_任务纠偏审计_20261021.md)、[V5.2-R 输入充分性决策记录](../../reports/PES2TS_V52R_输入充分性决策记录_20261021.md)
 > 下游消费者：V5.3-MP（S0–S4）、V6/V7、全部开发文档与代码命名
 > 唯一任务合同：[PES2TS_MoveProcessContract_v1](../../contracts/PES2TS_MoveProcessContract_v1.md)
 

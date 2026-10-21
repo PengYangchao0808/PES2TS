@@ -1,10 +1,10 @@
 # PES2TS MoveProcessContract v1（规范 / 设计冻结）
 
 > 状态：**Active-Normative**（2026-10-21 起为 V5.3-MP 的唯一 Move/Process/Stop 任务合同）
-> 决策记录：[ADR-0031](design/decisions/ADR-0031-MOVE-PROCESS统一学习合同.md)
-> 上游依赖：[开发宪法](PES2TS_开发宪法_v1.md)（v2.9 增量）、[ReactionIntent Contract v2](PES2TS_ReactionIntent_Contract_v2.md)、[GeometryPolicyContract v2](PES2TS_GeometryPolicyContract_v2.md)
+> 决策记录：[ADR-0031](../design/decisions/ADR-0031-MOVE-PROCESS统一学习合同.md)
+> 上游依赖：[开发宪法](../PES2TS_开发宪法_v1.md)（v2.9 增量）、[ReactionIntent Contract v2](PES2TS_ReactionIntent_Contract_v2.md)、[GeometryPolicyContract v2](PES2TS_GeometryPolicyContract_v2.md)
 > 取代：[FullPathNavigationContract v1](PES2TS_FullPathNavigationContract_v1.md) 的任务语义（该文件保留只读，作为 ADR-0030 历史证据）
-> 证据：[V5.2 任务纠偏审计](reports/PES2TS_V52_任务纠偏审计_20261021.md)、[V5.2-R 输入充分性决策记录](reports/PES2TS_V52R_输入充分性决策记录_20261021.md)
+> 证据：[V5.2 任务纠偏审计](../reports/PES2TS_V52_任务纠偏审计_20261021.md)、[V5.2-R 输入充分性决策记录](../reports/PES2TS_V52R_输入充分性决策记录_20261021.md)
 
 **单一真相规则**：本文件 + 宪法 v2.9 增量 + ADR-0031 是 MOVE/PROCESS/No-Move/TS 语义的唯一规范来源。其他文档只能引用本文，不得重新定义；代码命名、标签 schema、评估指标必须与本文一致。任何变更必须走“新 ADR + 新合同版本 + `scripts/agent_ops/docs_consistency.py --strict` 通过”。
 
