@@ -261,25 +261,35 @@ def _build_parser() -> argparse.ArgumentParser:
     set_cmd.add_argument("--start", required=True, help="campaign start UTC (ISO-8601)")
     set_cmd.add_argument("--hard-stop", required=True, help="hard stop UTC (ISO-8601)")
 
-    sub.add_parser("check", help="report blocked phases + remaining hours")
+    sub.add_parser("check", help="report blocked phases + remaining hours").add_argument(
+        "--now",
+        default=None,
+        help="override current time (ISO-8601; for deterministic tests)",
+    )
 
     guard = sub.add_parser("guard-dispatch", help="refuse dispatch if remaining < eta")
     guard.add_argument("--eta-h", type=float, required=True)
+    guard.add_argument(
+        "--now",
+        default=None,
+        help="override current time (ISO-8601; for deterministic tests)",
+    )
     return parser
 
 
 def main(argv: Optional[List[str]] = None) -> int:
     args = _build_parser().parse_args(argv)
+    now = _parse_instant(args.now, "--now") if getattr(args, "now", None) else None
     try:
         if args.cmd == "set":
             control = set_campaign_window(args.start, args.hard_stop, args.state)
             print(json.dumps(control, sort_keys=True))
             return 0
         if args.cmd == "check":
-            print(json.dumps(check(args.state), sort_keys=True))
+            print(json.dumps(check(args.state, now=now), sort_keys=True))
             return 0
         if args.cmd == "guard-dispatch":
-            print(json.dumps(guard_dispatch(args.eta_h, args.state), sort_keys=True))
+            print(json.dumps(guard_dispatch(args.eta_h, args.state, now=now), sort_keys=True))
             return 0
         return 2
     except DispatchRefused as exc:

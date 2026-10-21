@@ -7,6 +7,8 @@ data/*
 data/manifests/*
 !data/manifests/*.json
 !data/manifests/*.csv
+!data/manifests/v5/
+!data/manifests/v5/*.json
 !data/interim/
 data/interim/*
 !data/interim/g2_needs_review.json

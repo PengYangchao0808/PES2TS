@@ -273,15 +273,15 @@ def test_cli_roundtrip(state_path):
     proc = _cli(state_path, "set", "--start", START, "--hard-stop", HARD_STOP)
     assert proc.returncode == 0, proc.stderr
 
-    proc = _cli(state_path, "check")
+    proc = _cli(state_path, "check", "--now", NOW.isoformat())
     assert proc.returncode == 0, proc.stderr
     payload = json.loads(proc.stdout)
     assert payload["blocked_phases"] == ["E1"]
 
-    proc = _cli(state_path, "guard-dispatch", "--eta-h", "5")
+    proc = _cli(state_path, "guard-dispatch", "--eta-h", "5", "--now", NOW.isoformat())
     assert proc.returncode == 0, proc.stderr
 
-    proc = _cli(state_path, "guard-dispatch", "--eta-h", "28")
+    proc = _cli(state_path, "guard-dispatch", "--eta-h", "28", "--now", NOW.isoformat())
     assert proc.returncode == 1  # refused -> explicit refusal exit code
     assert "DISPATCH_REFUSED" in proc.stderr
 
