@@ -4,7 +4,7 @@
 
 - **[ADR-0031 MOVE–PROCESS 统一学习合同](design/decisions/ADR-0031-MOVE-PROCESS统一学习合同.md)**（**Accepted**）：一个共享 EGNN，两个头——MOVE（关键原子位移，跨越 TS）+ PROCESS（有向进度 q、端点完成置信度 p_end、ordering）；No-Move = p_end ≥ τ_end 且目标化学状态一致；q 仅辅助/诊断；TS 永远继续 MOVE。取代 FullPathNavigationContract v1 的任务语义。
 - **[MoveProcessContract v1](contracts/PES2TS_MoveProcessContract_v1.md)**（**Active-Normative**）：MOVE/PROCESS/No-Move/TS 的唯一任务合同；输入仍为当前单帧 + 合法有向拓扑，禁止参考端点 XYZ/历史/真值；旧单构象 `d_end` 与 P5 basin 降级为诊断量。
-- **[V5.3-MP 大规模 MOVE–PROCESS 联合训练计划 v1](plans/PES2TS_V5.3-MP_大规模MOVE-PROCESS联合训练计划_v1_20261021.md)**（**Proposed**）：S0 数据资格/建库（CPU）→ S1 2k 冒烟 → S2 5k → S3 20k 正式 → S4 条件扩量；三臂 A=Move-only / B=Move+Progress / C=Move+PROCESS；当前 GPU=0，S0 通过且 S1 单独授权后才开训。
+- **[V5.3-MP 大规模 MOVE–PROCESS 联合训练计划 v1.1](plans/PES2TS_V5.3-MP_大规模MOVE-PROCESS联合训练计划_v1_20261021.md)**（**Proposed v1.1**）：S0 20k 数据资格/建库（S0-A 元数据不读原始真值；S0-B 授权提取逐次记录；S0-D 分片惰性加载；S0-F 实施就绪 7/7）→ S1 2k 冒烟 → S2 5k → S3 20k 正式 → S4 条件扩量；三臂 A=Move-only / B=Move+Progress / C=Move+PROCESS；当前 GPU=0，S0+就绪门通过且 S1 单独授权后才开训。
 - **[V5.3-MP 文档同步清单 v1](plans/PES2TS_V5.3-MP_文档同步清单_v1_20261021.md)**：P0–P6 同步项与 docs gate 判据。
 - **命名**：`V5.3-ENG` = 已执行的 30h rollout/relax 工程闭环（历史）；`V5.3-MP` = 本战役。
 

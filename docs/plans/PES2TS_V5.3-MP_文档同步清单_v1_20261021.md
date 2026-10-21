@@ -109,7 +109,20 @@
 
 ---
 
-## 8. 变更记录
+## 8. v1.1 增补（2026-10-21 用户评审后）
+
+| # | 文件 | 操作 | 状态 |
+|---|---|---|---|
+| 8.1 | `PES2TS_V5.3-MP_大规模MOVE-PROCESS联合训练计划_v1_20261021.md` | 升 v1.1：S0-A/B 真值访问、20k 目标、分片惰性加载、Endpoint 标签算法、三臂评估、S2→S3 放宽、闭环双预算、实施就绪门 | ✅ |
+| 8.2 | `PES2TS_MoveProcessContract_v1.md` | 增补 §10.1：合法真值访问、训练/部署资格分离、`endpoint_label_spec_v1`、双预算、规模主变量 | ✅ |
+| 8.3 | `config/registry/g_v_map.yaml` | V5.3-MP gate_note 增补 S0-A/B、20k、readiness、分片加载、Endpoint spec | ✅ |
+| 8.4 | `README.md` / `docs/README.md` / 台账 | 计划版本引用更新为 v1.1；S0 目标表述为 20k | ⬜ |
+| 8.5 | 实施文件 | `key_atom_loss_v53mp_v3.py`、`key_atom_v53mp_train_v3.py`、`r3_v53mp_run.py`、`pes2ts_v53mp_20261021.yaml`、分片加载器、Endpoint 标签生成器、bundle 导出 | ❌ 未实现（S0-F 7/7 前不得 S1） |
+
+- **实施就绪门**：S0-F 的 7 项必须实际存在并通过测试；docs gate 通过不等于代码就绪。
+- **真值访问门**：S0-A 允许空日志；S0-B 合法访问必须逐次记录，硬门是无未授权访问。
+
+## 9. 变更记录
 
 | 版本 | 日期 | 内容 |
 |---|---|---|

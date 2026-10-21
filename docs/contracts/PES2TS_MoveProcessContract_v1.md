@@ -168,6 +168,14 @@ L_{\rm Process}=\lambda_rL_{\rm ranking}+\lambda_qL_{\rm progress}+\lambda_eL_{\
 - endpoint completion 是**待验证学习目标**；D2-G 的负结果对旧 T1 继续有效；
 - 任何“找到过渡态/验证 IRC”的主张必须走 OptTS + 单虚频 + 双向 IRC + 端点身份确认。
 
+## 10.1 v1.1 增补（2026-10-21，用户评审后）
+
+- **合法真值访问**：S0-B 允许通过现有 truth accessor / truth_guard 读取授权范围内的原始 IRC；每次访问必须记录 source、purpose、reaction group、帧数、SHA256、approver、timestamp。**硬门是“无未授权访问”，不是“日志为空”**；禁止绕过 guard 或直接读取 `ground_truth` 原始文件。
+- **训练资格 ≠ 部署资格**：PROCESS 可以在高置信 endpoint 监督下训练；No-Move 的在线控制权只在独立校准、误停率与闭环验证通过后启用。Endpoint 指标失败时保留完整训练结果，不删除第二个头、不改写失败记录。
+- **Endpoint 标签算法**：具体正/负/Mask 规则、端点邻域、构象处理、terminal 行处理与覆盖率报告由 `endpoint_label_spec_v1` 冻结（见 V5.3-MP 计划 §4.3）；本合同的 §5.3 只给原则，不替代可执行 spec。
+- **闭环预算**：Reference-normalized rollout（用参考 IRC 长度）仅作离线诊断；Autonomous rollout（固定预算或仅用当前合法信息）才用于正式自主导航评价，两者分开报告。
+- **规模主变量**：首轮规模曲线只改变训练反应数；架构、教师、损失、优化器、评估集保持冻结。
+
 ## 11. 版本与取代
 
 | 版本 | 日期 | 内容 |
