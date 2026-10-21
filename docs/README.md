@@ -1,6 +1,10 @@
 # PES2TS 文档索引
 
-## 2026-10-21 V5.3-MP MOVE–PROCESS 统一学习（当前）
+## 2026-10-22 V5.3-MP S0 数据建库完成（当前）
+
+- **[V5.3-MP S0 数据建库与资格报告 20261022](reports/PES2TS_V53MP_S0_数据建库与资格报告_20261022.md)**（**S0 PASS，全部门通过**）：20,000 条合格独立反应冻结池（2k ⊂ 5k ⊂ 20k 嵌套）+ dev 589 + confirm 2,000（仅列名封存）；S0-A 资格 142,221/141,483；S0-B 经审计提取 26,038 曲线 / 5,958,548 样本；endpoint_label_spec_v1 有效正例覆盖 99.62%、TS/起点 0% 正例；S0-D 分片惰性加载过资源门；S0-F 就绪 7/7 + 表校验 10/10。S1 待 λ 探针 + 单独授权。
+
+## 2026-10-21 V5.3-MP MOVE–PROCESS 统一学习
 
 - **[ADR-0031 MOVE–PROCESS 统一学习合同](design/decisions/ADR-0031-MOVE-PROCESS统一学习合同.md)**（**Accepted**）：一个共享 EGNN，两个头——MOVE（关键原子位移，跨越 TS）+ PROCESS（有向进度 q、端点完成置信度 p_end、ordering）；No-Move = p_end ≥ τ_end 且目标化学状态一致；q 仅辅助/诊断；TS 永远继续 MOVE。取代 FullPathNavigationContract v1 的任务语义。
 - **[MoveProcessContract v1](contracts/PES2TS_MoveProcessContract_v1.md)**（**Active-Normative**）：MOVE/PROCESS/No-Move/TS 的唯一任务合同；输入仍为当前单帧 + 合法有向拓扑，禁止参考端点 XYZ/历史/真值；旧单构象 `d_end` 与 P5 basin 降级为诊断量。

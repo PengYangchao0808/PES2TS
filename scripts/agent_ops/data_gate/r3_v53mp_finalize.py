@@ -277,10 +277,11 @@ def label_report(data_dir: Path) -> dict:
                      dataset_manifest_sha256=dataset.manifest_sha256)
     report["wall_clock_s"] = round(time.time() - t0, 1)
     report["hard_gates"] = {
-        "ts_rows_zero_positive": report.get("n_ts_negative", 0) ==
-            report.get("n_ts_window_rows", -1) and not any(
-                lab.endpoint_label == 1
-                for lab in table.by_sample.values() if lab.ts_row),
+        # plan §4.5: TS 帧及 TS 邻域 0% 正例（degenerate/conflict 的 TS 行
+        # 按 spec 为 Mask — 正例为 0 才是硬门，Mask 不计违规）
+        "ts_rows_zero_positive": not any(
+            lab.endpoint_label == 1
+            for lab in table.by_sample.values() if lab.ts_row),
         "start_rows_zero_positive": not any(
             lab.endpoint_label == 1
             for lab in table.by_sample.values() if lab.start_row),
@@ -302,6 +303,7 @@ def loader_resource_report(data_dir: Path) -> dict:
     import resource
     from pes2ts_core.pesn.offline.data.key_atom_dataset_v3 import (
         LABEL_STATUSES,
+        KeyAtomDatasetV3,
         ShardedKeyAtomDatasetV3,
     )
     t0 = time.time()

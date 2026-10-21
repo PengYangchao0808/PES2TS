@@ -1,5 +1,14 @@
 # PES2TS 文档修订台账（协同性）
 
+## 2026-10-22 增量登记：V5.3-MP S0 数据建库与资格（S0 全部门通过）
+
+- 新增报告：[V5.3-MP S0 数据建库与资格报告 20261022](../reports/PES2TS_V53MP_S0_数据建库与资格报告_20261022.md)（write-once）——S0-A 元数据资格（142,221 合格 / 141,483 组）→ S0-B 授权提取建库（26,038 曲线 / 5,958,548 样本，经审计 truth bridge，逐反应记录）→ S0-C/E 标签（endpoint_label_spec_v1，有效正例覆盖 99.62%，TS/起点 0% 正例）→ S0-D 分片惰性加载（启动 695.8s / RSS 9.71GiB / 分片↔CSV 逐比特等价）→ S0-F 就绪 7/7 + 表校验 10/10。
+- 20k 冻结池：`split_manifest_v53mp.json`（pool 20,000 嵌套 2k/5k/20k + dev 589 + confirm 2,000 仅列名封存）；cohort `v53mp_cohort_v1.json`。
+- 新代码（本轮提交）：`r3_v53mp_s0a_qualify.py` / `r3_v53mp_freeze_cohort.py` / `r3_v53mp_build_tables_h5.py` / `r3_v53mp_finalize.py`；`irc_reader` 增 `energies`/`atomic_numbers` 别名读取；`validate_r3_tables.py` 增 `--split-manifest`；`key_atom_label_cache_v53mp.py` 标签缓存（绑定 data manifest sha）。
+- 已知缺陷修复：`EndpointLabelTableV1.report()` 由 O(曲线×行) 改为单遍 O(行)（20k 规模下原形为病态二次）；`build_endpoint_labels_spec_v1` 加逐节点/逐 intent 缓存。
+- 注册更新：`config/registry/g_v_map.yaml` 中 V5.3-MP `code_scope` 增补 S0 数据链四个脚本 + λ 探针；`status` 保持 `proposed`（S1 未授权）；S1 前置：λ gradient-share 探针回填 config → 翻转 `s1_authorized` → plan-init。
+- docs gate `--strict` CLEAN；本轮含真实数据建库与真值访问（经审计），未启动 GPU 训练。
+
 ## 2026-10-21 增量登记：ADR-0031 MOVE–PROCESS 统一学习（V5.3-MP）
 
 - 新增规范件：[ADR-0031 MOVE–PROCESS 统一学习合同](../design/decisions/ADR-0031-MOVE-PROCESS统一学习合同.md)（**Accepted**）、[MoveProcessContract v1](../contracts/PES2TS_MoveProcessContract_v1.md)（**Active-Normative**，MOVE/PROCESS/No-Move/TS 唯一任务合同）、[V5.3-MP 大规模联合训练计划 v1](PES2TS_V5.3-MP_大规模MOVE-PROCESS联合训练计划_v1_20261021.md)、[V5.3-MP 文档同步清单 v1](PES2TS_V5.3-MP_文档同步清单_v1_20261021.md)。
