@@ -152,6 +152,8 @@ R/P与H → 化学控制模板 → ReactiveState → Classic/残差候选
 
 ## 10. 当前进度指针
 
+**2026-10-21 V5.2-R Full-Path Navigation 任务纠偏（ADR-0030）**：审计确认 V5.2 的 Stop 标签是 TS 邻域且终点行被 terminal 排除（见 docs/reports/PES2TS_V52_任务纠偏审计_20261021.md）。当前唯一任务合同为 [FullPathNavigationContract v1](docs/contracts/PES2TS_FullPathNavigationContract_v1.md)：Move 保留 R3 Full-Traversal 并跨越 TS；No-Move=目标端点到达（d_end 0.10/0.30 Å 候选）；TS 是途经点不触发停止；q=分段归一化辅助量+全路径 directed ordering。执行计划 [V5.2-R v1](docs/plans/PES2TS_V52R_全路径导航与端点停止修复方案_v1_20261021.md)；ReactionIntent/GeometryPolicy 合同升 v2；文档门 `python scripts/agent_ops/docs_consistency.py --strict` 训练前强制。旧 V5.2 负结果仅对旧任务成立。
+
 **2026-10-20 V5.1-R3 Reaction-Intent revision**：V5.1a 五折门被拒，V5.1a-R1 无候选准入；**V5.1b 继续关闭**。当前活跃合同为 [ReactionIntent Contract v1](docs/contracts/PES2TS_ReactionIntent_Contract_v1.md)：`π(X_t,G_rxn) → (ΔX_K, q̂, m̂)`，`G_rxn` 是有方向反应意图，不是 branch；Relabel invariant、Reverse sensitive；不添加单独 direction token。当前阶段计划为 [V5–V7 v3.0](docs/plans/PES2TS_V5-V7_反应意图条件化与低维生长方案_v3.0_20261020.md)：V5=Reaction-Conditioned Geometric Policy、V6=Physics-Corrected Reaction Growth、V7=Cost-Aware Autonomous PES Exploration。立即执行 [V5.1-R3 v3](docs/plans/PES2TS_V5.1-R3_反应意图条件化与端点标签不变重训方案_v3_20261020.md)；v2.0/R2 仅为历史。产品设计见 [单端点 IRC 控制器 v3](docs/plans/PES2TS_单端点IRC生成控制器_产品设计_v3_20261020.md)。本轮未实现脚本、未启动训练/QC、未解除封存。
 
 **以下为旧版本证据及历史指针（2026-10-17 及更早）**：

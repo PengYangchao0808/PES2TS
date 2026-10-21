@@ -1,0 +1,89 @@
+# PES2TS V5.2-R 战役协议（Phase 0 草案 — D0 前不得启动训练）
+# 依据: ADR-0030 + docs/contracts/PES2TS_FullPathNavigationContract_v1.md
+#       + docs/plans/PES2TS_V52R_全路径导航与端点停止修复方案_v1_20261021.md
+# 状态: DRAFT — D0 冻结后任何字段不得变更；变更=重新冻结+新版本号
+# 基线: git tag v52r-base（本地快照 commit；run records 必须回填 code_commit SHA）
+schema: pes2ts_v52r_campaign_v1
+campaign_id: PES2TS_V52R_FULLPATH_ENDPOINT_STOP
+version: 0.1.0-draft
+governance:
+  constitution: docs/PES2TS_开发宪法_v1.md   # v2.8 增量（ADR-0030）
+  contracts:
+    - docs/contracts/PES2TS_FullPathNavigationContract_v1.md   # 唯一任务合同
+    - docs/contracts/PES2TS_ReactionIntent_Contract_v2.md     # q/Stop 条款 v2
+    - docs/contracts/PES2TS_GeometryPolicyContract_v2.md      # No-Move 条款 v2
+  adrs: [ADR-0030]   # 条款级取代 ADR-0021/0028/0029 的相关语义
+  docs_gate: python scripts/agent_ops/docs_consistency.py --strict   # 训练前强制
+  authorization:
+    formal_training_authorized: false   # D0+D1 通过并冻结后另行申请
+    sealed_authorized: false
+    confirm_authorized: false
+    ood_authorized: false
+    fit150plus_authorized: false
+  provenance_required:   # 每个 run record 必填，缺一拒发
+    [code_commit, data_manifest_sha256, teacher_manifest_sha256,
+     split_sha256, label_schema, label_spec_sha256, config_sha256]
+
+data_contract:
+  tables_dir: outputs/pesn/30h_campaign/data     # 沿用 R3 六表（dataset_sha256 4635c330…）
+  move_teacher: intent_directed_first_contact_v1  # 不变：完整曲线、两 intent、跨 TS
+  move_row_filter: move_status == ok              # 禁止 approach-side / TS 裁剪
+  label_schema: pes2ts_fullpath_nav_labels_v1
+  endpoint_stop:
+    d_end: Kabsch proper-rotation RMSD over intent K atoms to target endpoint
+    target_endpoint: {forward: B_P, reverse: A_R}
+    positive_window_angstrom: 0.10     # CANDIDATE — D1 敏感性后、T1 前冻结
+    negative_window_angstrom: 0.30     # CANDIDATE — 同上
+    sensitivity_grid: [0.08, 0.10, 0.12, 0.15]
+    window_selection_rule: endpoint recall @ precision>=0.8 且起点/TS 误正例<=2%（禁止按 AUPRC 挑窗）
+    eligibility_independent_of_move: true   # terminal/no_future_contact 行必须进入 Stop
+    ts_default_negative: true
+    degenerate_ts_flag: [RXN_0000001174, RXN_0000001675]   # TS d_end<=0.10，含/排双口径报告
+  progress_q:
+    definition: 分段归一化 A=-1/TS=0/B=+1；reverse q=-q；零弧段 mask（沿用 progress_q_from_arcs_v52）
+    role: auxiliary + directed pairwise ordering（跨 TS 构对允许）
+    never_stop_criterion: true            # q=0 / q 阈值禁止触发 Stop
+  legacy_ablation_only: ts_stop_legacy    # 旧 d_key_TS 0.04/0.12 标签仅作 ablation
+
+split_contract:
+  unit: near-duplicate connected component（同 curve 全部帧/两 intent/构对同折）
+  dev_folds: [0, 1, 2]        # 仅用 dev；28 条 ok 曲线
+  sealed_folds: [3, 4]        # 继续封存
+  seeds: [17, 29, 43]
+  statistics: cluster bootstrap by curve（1000 次，95% CI）
+
+training_contract:
+  backbone_init: R3 winner F2-bidir checkpoint（逐比特，fold+seed 匹配）
+  architecture_changes_before_D1: forbidden   # D1 仅选 head 输入 z vs key-pooled h
+  heads: {progress: ProgressHeadV3(tanh), stop: EndpointStopHead(logit)}
+  legacy_heads: TSStopHeadV3 仅旧 checkpoint 加载（LEGACY_TS_STOP）
+  loss: L_move + lambda_end*L_end + lambda_ord*L_ord + lambda_q*L_q
+  lambda_q_default: 0.0
+  lambda_calibration: encoder 梯度占比 2–10%（探针，非网格）
+  schedule: staged（冻结编码器 head warmup → Endpoint/Ordering 独立 → 联合加 Move → 可选 q）
+  masks: {move_mask, end_mask, q_mask}   # terminal 行进 Endpoint/Ordering、不进 Move
+  gradient_monitoring: [move/endpoint/ordering 梯度范数与两两余弦]
+  move_guard: RMSE/zero 相对 R3 Full-Traversal 基线退化 <=2%（硬门；破防 run 一律 invalid）
+
+evaluation_contract:
+  endpoint_head: [AUROC, AUPRC(含 prevalence 基线), 起点误停止率, TS 误停止率(双口径), endpoint recall@precision>=0.8]
+  ordering: [全路径 pairwise accuracy(>0.65), 跨 TS accuracy(>0.6), 逐曲线分布]
+  move: [RMSE/zero, sign, dead（相对 R3 <=2%）]
+  rollout:
+    budget: B = max(40, ceil(1.5 * L_key / 0.08))    # 20 步预算仅历史对照
+    metrics: [TS 跨越完成率, 目标端点到达率, 首次 Stop 的 d_end(中位<=0.10 A), 起点误停, 碰撞/非法几何, budget_limited 比例]
+    modes: [free, physics_relaxed]   # 分开报告，不得合并成功率
+    claims: TS_candidate / endpoint_reached（禁止 verified TS）
+
+gates:
+  - id: V5.2R-P0-DOCS
+    test: docs_consistency --strict 通过 + 本配置冻结
+  - id: V5.2R-D0-LABELS
+    test: 终点正例进入 Stop 表；起点误正例=0；TS 误正例仅 2 flag；provenance 七项齐全
+  - id: V5.2R-D1-ENDPOINT-HEAD
+    test: 冻结 R3 编码器；AUPRC CI>prevalence；起点/TS 误停低；ordering 达标
+  - id: V5.2R-T1-JOINT
+    test: Move guard <=2%；Endpoint 不明显低于 D1；TS 不误停
+  - id: V5.2R-ROLLOUT
+    test: 长度感知预算下 TS 跨越/端点到达/Stop 位置达标
+  rule: 前一阶段不过即停，不跳阶段；不用 sealed folds 做任何选择

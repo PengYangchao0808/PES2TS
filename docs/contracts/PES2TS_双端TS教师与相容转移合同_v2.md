@@ -1,5 +1,7 @@
 # PES2TS 双端 TS 教师与相容转移合同 v2（设计草案）
 
+> **HISTORICAL / LEGACY（2026-10-21）**：「branch 不跨 TS 串接」的双分支教师语义不适用于 V5.2+。V5.2-R 使用完整 canonical IRC 与 Endpoint Stop，见 [ADR-0030](../design/decisions/ADR-0030-V5.2全路径导航与端点停止.md) 与 [FullPathNavigationContract v1](PES2TS_FullPathNavigationContract_v1.md)。本文件保留为 V5.1a/V4 历史证据。
+
 > 状态：设计登记；未发布可执行schema/validator；实现资格待WP0–WP6
 > 层级：G0/G1增量接口、G3.P教师、G4.0研究转移
 > 取代关系：新任务另版本；不覆盖旧teacher/direct/control v1/v2产物

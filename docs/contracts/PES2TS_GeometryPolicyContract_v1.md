@@ -1,5 +1,7 @@
 # PES2TS GeometryPolicyContract v1（设计冻结草案）
 
+> **SUPERSEDED（2026-10-21）**：§4.2（No-Move 语义）与 §5.2（停止标签）已由 [GeometryPolicyContract v2](PES2TS_GeometryPolicyContract_v2.md) 与 [ADR-0030](../design/decisions/ADR-0030-V5.2全路径导航与端点停止.md) 取代（No-Move = 目标端点到达判断（Endpoint Stop）；停止标签改为 d_end 端点窗口 0.10/0.30 Å）。其余条款仍有效。本文件保留为历史。
+
 > 状态：**Proposed / design freeze**（研究合同冻结；可执行 schema/validator 在 V5.2 实现前另行签认）
 > 日期：2026-10-20
 > 层级：V5 Geometry Policy（G3.P.0–.3）；V6/V7 继承同一状态/动作语义

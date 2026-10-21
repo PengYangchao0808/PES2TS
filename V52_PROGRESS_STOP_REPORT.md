@@ -1,5 +1,7 @@
 # V5.2 Progress/Stop 报告 — PES2TS_30H_R3_V52_V53
 
+> **POST-HOC 纠偏（2026-10-21，ADR-0030）**：本报告的 Stop 结果只对旧 TS 邻域任务有效——终点样本被 terminal 状态排除、从未进入 Stop 训练；「q 不可学习」结论因双侧池化与 48 曲线探针（疑触 sealed folds）降级为 exploratory。V5.2-R 以 [FullPathNavigationContract v1](docs/contracts/PES2TS_FullPathNavigationContract_v1.md) 为准，证据见 [任务纠偏审计](docs/reports/PES2TS_V52_任务纠偏审计_20261021.md)。正文证据不改写。
+
 > 生成：2026-10-20T21:25Z · 编制：supervisor · G3-V52Supervision = **FAIL（E-NO-GAIN，诚实科学结论）**
 > 证据：`outputs/pesn/30h_campaign/v52_runs/g3_evidence_pack.json` + 9 个有效 run 的 metrics.json（已抽查复核）
 

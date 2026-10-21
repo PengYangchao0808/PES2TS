@@ -3,8 +3,8 @@
 # table in docs/design/PES2TS_G_V_MAPPING_v1_20261018.md is rendered from it.
 schema: pes2ts_gv_map_v1
 map_version: "2026-10-18.1"
-plan_revision: "2026-10-20.2"
-plan_revision_note: "V5–V7 v3.0 reaction-intent revision: V5.1-R3 active; V5.1-R2/v2.0 superseded; V5.2–V5.4 reinterpreted under ReactionIntent Contract v1; old V6.0–V6.2 and V7-A/B/C archived; new V6/V7 campaigns register only after V5.2 contract freeze."
+plan_revision: "2026-10-21.1"
+plan_revision_note: "V5–V7 v3.0 reaction-intent revision: V5.1-R3 active; V5.1-R2/v2.0 superseded; V5.2–V5.4 reinterpreted under ReactionIntent Contract v1; old V6.0–V6.2 and V7-A/B/C archived; new V6/V7 campaigns register only after V5.2 contract freeze. 2026-10-21 ADR-0030: V5.2-R full-path navigation + endpoint stop active; V5.2 executed under legacy TS-stop task (negative, frozen); V5.3+ gate notes updated to endpoint stop / length-aware rollout budget."
 
 stages:
   G0:
@@ -240,24 +240,47 @@ campaigns:
       - pes2ts_core/pesn/models/dual_egnn.py
       - pes2ts_core/pesn/models/dual_ts_policy.py
   V5.2:
-    title: V5.2 reaction intent + CV/Jacobian + progress/stop heads (known-B)
-    status: proposed
+    title: V5.2 reaction intent + CV/Jacobian + progress/stop heads (known-B) (legacy TS-stop task; negative, frozen)
+    status: executed
     primary_g: G3.P.1
     supporting_g: [G3.P.0, G3.P.3, G0, G1]
     data_dependencies: [G0, G1]
     code_scope:
-      - pes2ts_core/pesn/contracts/geometry_policy.py
       - pes2ts_core/pesn/contracts/key_atom.py
       - pes2ts_core/pesn/features/key_atom_spec.py
       - pes2ts_core/pesn/features/key_atom_graph.py
       - pes2ts_core/pesn/offline/data/key_atom_teacher.py
       - pes2ts_core/pesn/offline/data/key_atom_dataset.py
-      - scripts/campaigns/run_v5_2_contract.py
-    config: config/campaigns/v5_2_key_atom_contract.yaml
+      - pes2ts_core/pesn/offline/data/key_atom_dataset_v3.py
+      - pes2ts_core/pesn/models/key_atom_heads_v3.py
+      - pes2ts_core/pesn/models/key_atom_loss_v52_v3.py
+      - pes2ts_core/pesn/offline/training/key_atom_v52_train_v3.py
+      - scripts/campaigns/r3_v52_run.py
+    config: config/campaigns/pes2ts_30h_20261020.yaml
     data_manifest: data/manifests/v5/split_manifest.json
     gates: [V5.2-contract, V5.2-labels, V5.2-progress, V5.2-stop, V5.2-move-nonregression]
     evidence: docs/plans/PES2TS_30h_R3_V52_V53_分层训练与验收计划_v1.1_20261020.md
-    gate_note: ReactionIntent Contract v1; known-B; q/stop heads with Mask; First-stop error; Move non-regression; two-stage 400/1500; no full rollout, no sealed
+    gate_note: executed under legacy TS-neighborhood stop labels — task-definition error per ADR-0030; results valid negative evidence for old task only; superseded by V5.2-R; evidence retained
+    comparison_only:
+      - pes2ts_core/pesn/models/dual_egnn.py
+      - pes2ts_core/pesn/models/dual_ts_policy.py
+  V5.2-R:
+    title: V5.2-R full-path navigation + endpoint stop + directed ordering
+    status: proposed
+    primary_g: G3.P.1
+    supporting_g: [G3.P.0, G3.P.3, G0, G1]
+    data_dependencies: [G0, G1]
+    code_scope:
+      - pes2ts_core/pesn/offline/data/key_atom_dataset_v3.py
+      - pes2ts_core/pesn/offline/data/key_atom_endpoint_labels_v1.py
+      - pes2ts_core/pesn/models/key_atom_heads_v52r.py
+      - pes2ts_core/pesn/models/key_atom_loss_v52r_v3.py
+      - scripts/campaigns/r3_v52r_run.py
+    config: config/campaigns/pes2ts_v52r_20261021.yaml
+    data_manifest: data/manifests/v5/split_manifest.json
+    gates: [V5.2R-D0-labels, V5.2R-D1-endpoint-head, V5.2R-T1-joint, V5.2R-rollout]
+    evidence: docs/plans/PES2TS_V52R_全路径导航与端点停止修复方案_v1_20261021.md
+    gate_note: ADR-0030/FullPathNavigationContract v1; full-traversal Move (crosses TS); endpoint stop d_end 0.10/0.30 candidate frozen pre-T1; directed q ordering; Move guard <=2% hard; dev folds 0-2 only; docs_consistency gate mandatory; rollout budget B=max(40,ceil(1.5*L_key/0.08))
     comparison_only:
       - pes2ts_core/pesn/models/dual_egnn.py
       - pes2ts_core/pesn/models/dual_ts_policy.py
@@ -277,7 +300,7 @@ campaigns:
     data_manifest: data/manifests/v5/split_manifest.json
     gates: [V5-G1, V5.3-rollout, V5.3-relax, V5.3-classic-comparison, V5.3-cost]
     evidence: docs/plans/PES2TS_30h_R3_V52_V53_分层训练与验收计划_v1.1_20261020.md
-    gate_note: known-B PREDICT-ACTION-RELAX; 5/10/20 no-physics rollout; constrained RELAX; Classic/R3/V5.2 same budget; verified TS separate; no Unknown-B, no sealed
+    gate_note: "known-B PREDICT-ACTION-RELAX; 5/10/20 no-physics rollout; constrained RELAX; Classic/R3/V5.2 same budget; verified TS separate; no Unknown-B, no sealed; per ADR-0030: full-path endpoint-stop semantics; rollout budget must be length-aware (B=max(40,ceil(1.5*L_key/0.08))), 20-step budget is historical only"
     comparison_only:
       - pes2ts_core/pesn/models/dual_egnn.py
       - pes2ts_core/pesn/models/dual_ts_policy.py

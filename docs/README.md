@@ -1,13 +1,21 @@
 # PES2TS 文档索引
 
+## 2026-10-21 V5.2-R 全路径导航与端点停止（当前）
+
+- **[ADR-0030 V5.2 全路径导航与端点停止](design/decisions/ADR-0030-V5.2全路径导航与端点停止.md)**（**Accepted**）：Stop 旧定义为 TS 邻域属任务定义错误；改为 Full-Path Navigation + Endpoint Stop；条款级取代 ADR-0021/0028/0029 相关语义。
+- **[FullPathNavigationContract v1](contracts/PES2TS_FullPathNavigationContract_v1.md)**（**Active-Normative**）：Move/Stop/TS/q 语义唯一来源；d_end 0.10/0.30 Å 候选窗口；pes2ts_fullpath_nav_labels_v1；docs gate。
+- **[V5.2-R 全路径导航与端点停止修复方案 v1](plans/PES2TS_V52R_全路径导航与端点停止修复方案_v1_20261021.md)**（**Active-Proposed**）：D0 标签/版本审计 → D1 冻结编码器 Endpoint Head + directed ordering → T1 联合 → R 全路径 rollout（长度感知预算）。
+- **[V5.2 任务纠偏审计 20261021](reports/PES2TS_V52_任务纠偏审计_20261021.md)**：终点样本被 terminal 排除、旧 Stop 正例全在 TS 附近、20 步预算不足、provenance 缺口等实测证据。
+- 合同修订：[ReactionIntent Contract v2](contracts/PES2TS_ReactionIntent_Contract_v2.md)、[GeometryPolicyContract v2](contracts/PES2TS_GeometryPolicyContract_v2.md)（取代 v1 的 Stop/q 条款）。
+
 ## 2026-10-20 V5–V7 v3.0 反应意图条件化（当前）
 
-- **[ReactionIntent Contract v1](contracts/PES2TS_ReactionIntent_Contract_v1.md)**（Proposed，规范合同）：`π(X_t,G_rxn) → (ΔX_K, q̂, m̂)`；`G_rxn` 是有方向反应意图，不是 branch；定义 signed graph edit、CV/Jacobian lifting、Relabel invariant / Reverse sensitive、输入合法性。
-- **[V5–V7 反应意图条件化与低维生长方案 v3.0](plans/PES2TS_V5-V7_反应意图条件化与低维生长方案_v3.0_20261020.md)**（Proposed，当前阶段计划）：V5 = Reaction-Conditioned Geometric Policy；V6 = Physics-Corrected Reaction Growth；V7 = Cost-Aware Autonomous PES Exploration。**取代 v2.0 的 Geometry Policy / Physics-Corrected Policy / Cost-aware RL 语义。**
+- **[ReactionIntent Contract v1](contracts/PES2TS_ReactionIntent_Contract_v1.md)**（Proposed；**§4 Stop/q 条款已由 [ReactionIntent Contract v2](contracts/PES2TS_ReactionIntent_Contract_v2.md) 取代（ADR-0030）**）：`π(X_t,G_rxn) → (ΔX_K, q̂, m̂)`；`G_rxn` 是有方向反应意图，不是 branch；定义 signed graph edit、CV/Jacobian lifting、Relabel invariant / Reverse sensitive、输入合法性。
+- **[V5–V7 反应意图条件化与低维生长方案 v3.0](plans/PES2TS_V5-V7_反应意图条件化与低维生长方案_v3.0_20261020.md)**（Proposed，当前阶段计划；**内容 v3.2（2026-10-21 任务纠偏修订）**）：V5 = Reaction-Conditioned Geometric Policy；V6 = Physics-Corrected Reaction Growth；V7 = Cost-Aware Autonomous PES Exploration。**取代 v2.0 的 Geometry Policy / Physics-Corrected Policy / Cost-aware RL 语义。**
 - **[V5.1-R3 反应意图条件化与端点标签不变重训方案 v3.1](plans/PES2TS_V5.1-R3_反应意图条件化与端点标签不变重训方案_v3_20261020.md)**（Proposed，当前 R3）：`intent_directed_irc_step`；一条完整 IRC、两种有向 intent、first-contact 单步；保留合法 signed `ΔB_intent`；删除 branch；Relabel invariant、Reverse sensitive；不做 CV/Jacobian/Progress/Stop（留给 V5.2）。
 - **[V5.1-R3 数据库+特征+损失三位一体修复方案 v1](plans/PES2TS_V5.1-R3_数据库特征损失三位一体修复方案_v1_20261020.md)**（Proposed，执行细化）：五张数据表、Reaction Intent 特征、B0-F + strong/dead、梯度纪律、66-run 矩阵与验收门。
 - **[单端点 IRC 生成控制器产品设计 v3](plans/PES2TS_单端点IRC生成控制器_产品设计_v3_20261020.md)**（Proposed，产品设计）：曲线中心、无 branch；PREDICT → ACTION → RELAX → UPDATE；Known-B / TS-only / Unknown-B 三模式；TS 在 full-curve 中是途经点。
-- **[30h R3 → V5.2 → V5.3 分层训练与验收计划 v1.1](plans/PES2TS_30h_R3_V52_V53_分层训练与验收计划_v1.1_20261020.md)**（Proposed，战役执行）：R3 66 runs + V5.2 33 runs；Stop 三态标签、First-stop error、两段训练、V5.3 rollout、G0–G4 门、DAG 与测试清单。
+- **[30h R3 → V5.2 → V5.3 分层训练与验收计划 v1.1](plans/PES2TS_30h_R3_V52_V53_分层训练与验收计划_v1.1_20261020.md)**（**Executed-Frozen / Stop 语义已被 ADR-0030 取代**）：R3 66 runs + V5.2 33 runs；R3 语义仍有效，TSStop/三态 Stop 章节（§5.3/§5.6/T3.2）仅历史；First-stop error、两段训练、V5.3 rollout、G0–G4 门、DAG 与测试清单。
 - **关键语义**：端点重命名（Relabel）输出不变；真实反应反转（Reverse）输出可改变；不添加单独 direction token；方向由反应意图规定。V5.1b、sealed、Confirm/OOD、Fit150+ 继续关闭。
 
 ### 历史：V5–V7 v2.0 与 V5.1-R2（Superseded / Historical）
@@ -24,6 +32,7 @@
 - 权威入口：[G–V 映射表](design/PES2TS_G_V_MAPPING_v1_20261018.md)、[ADR-0025](design/decisions/ADR-0025-G-V双轴映射与战役注册.md)、[代码地图 v2](design/PES2TS_CODE_MAP_v2_20261018.md)。
 - 机器可读源：`config/registry/g_v_map.yaml`；生成/校验：`python scripts/render_gv_map.py --write|--check`。
 - 2026-10-20 内容修订：`plan_revision: 2026-10-20.2`；`map_version: 2026-10-18.1` 保持不变（schema 未变）。V5.1-R3 为当前 R3；V5.1-R2/v2.0 归档；V5.2–V5.4 按 ReactionIntent Contract v1 重新解释；旧 V6.0–V6.2/V7-A/B/C 归档。
+- 2026-10-21 任务纠偏：`plan_revision: 2026-10-21.1`（`map_version` 仍为 2026-10-18.1）——ADR-0030 全路径导航与端点停止生效；`V5.2` → `executed`（旧 TS-stop 任务负结果、冻结证据），新增 `V5.2-R` proposed（FullPathNavigationContract v1）；V5.3+ gate_note 更新为端点停止与长度感知 rollout 预算。
 - 状态图例：`Canonical`（规范根）/ `Active-Proposed`（当前提案）/ `Executed-Frozen`（已执行、冻结证据）/ `Superseded`（被取代）/ `Evidence-Historical`（历史报告）。
 
 ## 2026-10-18 V5–V7 终审与第一阶段冲刺提案（历史）
@@ -48,7 +57,7 @@
 > 以下 v4 排期为 2026-10-15 的历史入口；当前活跃提案是上方 V5–V7 v3.0 与 V5.1-R3。V4.2–V4.7 已执行并判定负结果，保留为冻结证据。
 
 - [双端训练与项目进度统一方案v4](plans/PES2TS_双端拓扑条件训练与项目进度统一方案_v4_20261015.md)：唯一当前训练排期入口；B节证据基线，C节阶段进度，D节WP0–WP7，E节冲突裁决，F节预算，G节验收，I节用户完整规格。
-- [ADR-0021](design/decisions/ADR-0021-无序双端拓扑与完整双侧TS教师主线.md)：用户确认的无序双端/完整双侧TS主线，取代旧有向任务近期安排。
+- [ADR-0021](design/decisions/ADR-0021-无序双端拓扑与完整双侧TS教师主线.md)：用户确认的无序双端/完整双侧TS主线，取代旧有向任务近期安排。**Superseded for V5.2+ by ADR-0030**（V5.2+ 语义以 [ADR-0030](design/decisions/ADR-0030-V5.2全路径导航与端点停止.md) 条款级取代为准）。
 - [ADR-0022](design/decisions/ADR-0022-v4.1因果输入合同与特征v3.md)：v4.1 WP1 因果输入合同——教师标签派生的 5/6 通道移出网络输入，特征升级 `pesn_dual_ts_features_v3`（观测-only 5 通道）。
 - [ADR-0026](design/decisions/ADR-0026-V5冲刺key-atom位移合同与OOF语义.md)：V5 冲刺（V5.0–V5.2 第一阶段）key-atom 位移合同——任务/帧合同/三跨度教师/冲突审计/5-fold split/特征 36-29-19/M2 Star EGNN/损失与 OOF 语义；配套战役 `V5_SPRINT` 与 `config/campaigns/v5_sprint.yaml`。
 - [双端教师与相容转移合同v2草案](contracts/PES2TS_双端TS教师与相容转移合同_v2.md)：新任务接口设计登记，尚未发布validator/schema。
@@ -144,12 +153,12 @@ WSL专项/训练链路：实施计划v3.4 §11.9–11.11。GPU环境与P0/P1已�
 
 | 文档 | 状态 | 内容 |
 | --- | --- | --- |
-| [V5–V7 反应意图条件化与低维生长方案 v3.0](plans/PES2TS_V5-V7_反应意图条件化与低维生长方案_v3.0_20261020.md) | **Active-Proposed** | V5 Reaction-Conditioned Geometric Policy / V6 Physics-Corrected Reaction Growth / V7 Cost-Aware Autonomous PES Exploration；取代 v2.0 |
-| [ReactionIntent Contract v1](contracts/PES2TS_ReactionIntent_Contract_v1.md) | **Active-Proposed（规范合同）** | `G_rxn`、signed graph edit、CV/Jacobian、Relabel/Reverse、输入合法性 |
+| [V5–V7 反应意图条件化与低维生长方案 v3.0](plans/PES2TS_V5-V7_反应意图条件化与低维生长方案_v3.0_20261020.md) | **Active-Proposed** | V5 Reaction-Conditioned Geometric Policy / V6 Physics-Corrected Reaction Growth / V7 Cost-Aware Autonomous PES Exploration；取代 v2.0；**内容 v3.2（2026-10-21 任务纠偏修订）** |
+| [ReactionIntent Contract v1](contracts/PES2TS_ReactionIntent_Contract_v1.md) | **Superseded（§4 Stop/q 条款由 [v2](contracts/PES2TS_ReactionIntent_Contract_v2.md) 取代；ADR-0030）** | `G_rxn`、signed graph edit、CV/Jacobian、Relabel/Reverse、输入合法性 |
 | [V5.1-R3 反应意图条件化与端点标签不变重训方案 v3](plans/PES2TS_V5.1-R3_反应意图条件化与端点标签不变重训方案_v3_20261020.md) | **Active-Proposed** | 无 branch、signed intent、B0-F 重训、strong/dead 重校准；不做 CV/Progress/Stop |
 | [V5.1-R3 数据库+特征+损失三位一体修复方案 v1](plans/PES2TS_V5.1-R3_数据库特征损失三位一体修复方案_v1_20261020.md) | **Active-Proposed（执行细化）** | 五表数据合同、Reaction Intent 特征、B0-F/strong/dead、梯度与验收门；66-run |
 | [单端点 IRC 生成控制器产品设计 v3](plans/PES2TS_单端点IRC生成控制器_产品设计_v3_20261020.md) | **Active-Proposed** | 曲线中心、PREDICT-ACTION-RELAX、Known-B/TS-only/Unknown-B |
-| [30h R3 → V5.2 → V5.3 分层训练与验收计划 v1.1](plans/PES2TS_30h_R3_V52_V53_分层训练与验收计划_v1.1_20261020.md) | **Active-Proposed（战役执行）** | R3 66 + V5.2 33；Stop 三态/First-stop、两段训练、V5.3 rollout、G0–G4、DAG/测试清单 |
+| [30h R3 → V5.2 → V5.3 分层训练与验收计划 v1.1](plans/PES2TS_30h_R3_V52_V53_分层训练与验收计划_v1.1_20261020.md) | **Executed-Frozen / Stop 语义已被 ADR-0030 取代** | R3 66 + V5.2 33；R3 语义仍有效，TSStop 章节仅历史；First-stop/两段训练、V5.3 rollout、G0–G4、DAG/测试清单 |
 | [V5–V7 三阶段研究与架构修订方案 v2.0](plans/PES2TS_V5-V7_三阶段研究与架构修订方案_v2.0_20261020.md) | **Superseded by v3.0** | 历史：V5 Geometry Policy / V6 xTB / V7 cost-aware RL |
 | [V5.1-R2 损失尺度与数据完整性修复方案](plans/PES2TS_V5.1-R2_损失尺度与数据完整性修复方案_v1_20261020.md) | **Superseded by R3** | 历史：无量纲 strong/dead、S1 审计；特征不变假设已废弃 |
 | [统一残差决策与G2有限回退实施方案](plans/PES2TS_统一残差决策与G2有限回退实施方案_v1_20261007.md) | **已实施（fixture_passed）；待真实运行** | 六包交付顺序、统一网络/MDP、真实宏步和AB4有限救援，先RL后扩量（§10 实施记录） |
@@ -188,10 +197,11 @@ WSL专项/训练链路：实施计划v3.4 §11.9–11.11。GPU环境与P0/P1已�
 
 | 文档 | 内容 |
 | --- | --- |
-| [GeometryPolicyContract v1](contracts/PES2TS_GeometryPolicyContract_v1.md) | **Proposed / design freeze**：`π(X_t,G) → (ΔX_K,m)`、K 定义、No-Move 曲线停止语义、在线禁止项与验证点 |
+| [ADR-0030](design/decisions/ADR-0030-V5.2全路径导航与端点停止.md) | **Accepted（2026-10-21）**：V5.2 TS 邻域 Stop 属任务定义错误；Full-Path Navigation（R→TS→P / P→TS→R）+ Endpoint Stop（d_end 0.10/0.30 Å）+ directed q ordering；条款级取代 ADR-0021/0028/0029 相关语义；唯一任务合同见 [FullPathNavigationContract v1](contracts/PES2TS_FullPathNavigationContract_v1.md) |
+| [GeometryPolicyContract v1](contracts/PES2TS_GeometryPolicyContract_v1.md) | **Superseded（§4.2/§5.2，由 [GeometryPolicyContract v2](contracts/PES2TS_GeometryPolicyContract_v2.md) 取代；ADR-0030）**：`π(X_t,G) → (ΔX_K,m)`、K 定义、No-Move 曲线停止语义、在线禁止项与验证点 |
 | [ADR-0027](design/decisions/ADR-0027-V5.1参考架fallback与双分母评估.md) | **Proposed**：gauge fallback 研究门；不实现新 fallback；主分母不变 |
-| [ADR-0028](design/decisions/ADR-0028-关键原子几何策略合同与V5-V7任务拆分.md) | **Historical-Proposed**：数据边界/旧证据冻结仍有效；branch/旧 V5.2 语义由 ReactionIntent Contract v1 取代 |
-| [ADR-0029](design/decisions/ADR-0029-V5.2+双门评估与封存边界.md) | **Proposed**：监督门 + 物理搜索门；G5.2–G5.4 保留 |
+| [ADR-0028](design/decisions/ADR-0028-关键原子几何策略合同与V5-V7任务拆分.md) | **Historical-Proposed**：数据边界/旧证据冻结仍有效；branch/旧 V5.2 语义由 ReactionIntent Contract v1 取代；**Partially superseded by ADR-0030**（§2.1 No-Move=端点停止，不称 OptTS 候选） |
+| [ADR-0029](design/decisions/ADR-0029-V5.2+双门评估与封存边界.md) | **Proposed**：监督门 + 物理搜索门；G5.2–G5.4 保留；**Partially superseded by ADR-0030**（§2.2 Stop 指标改为端点到达/位置/起点与 TS 误停） |
 | [预测器产品与G3代码模块划分 v1](design/PES2TS_预测器产品与G3代码模块划分_v1_20261007.md) | **当前实施范围**：源码对照、产品/文件责任、B0–B7、运行接口、离线训练、配置/依赖及测试/包导出；待实现 |
 | [ADR-0014](design/decisions/ADR-0014-预测器产品归属与G3代码范围.md) | **Accepted（规划）**：部分取代ADR-0013目录建议，所有新增业务代码在预测器，在线/离线隔离 |
 | [ADR-0013-G3并行IRC预训练与模型版本体系.md](design/decisions/ADR-0013-G3并行IRC预训练与模型版本体系.md) | **Accepted（规划）**：G3.P、G3-P1、首代研究模型/合同版本，真实决策与物理门保留 |
@@ -220,6 +230,9 @@ WSL专项/训练链路：实施计划v3.4 §11.9–11.11。GPU环境与P0/P1已�
 
 | 文档 | 内容 |
 | --- | --- |
+| [PES2TS_FullPathNavigationContract_v1.md](contracts/PES2TS_FullPathNavigationContract_v1.md) | **Active-Normative（唯一 Move/Stop/TS/q 任务合同，ADR-0030）**：Full-Path Navigation R→TS→P / P→TS→R；Move=R3 Full-Traversal 跨 TS；Endpoint Stop（d_end 0.10/0.30 Å）；`pes2ts_fullpath_nav_labels_v1`；docs gate |
+| [PES2TS_ReactionIntent_Contract_v2.md](contracts/PES2TS_ReactionIntent_Contract_v2.md) | **Active（取代 v1 §4 Stop/q 条款；ADR-0030）**：q 分段归一化 −1/0/+1；Stop 仅目标端点；其余 G_rxn/Relabel/Reverse 语义延续 v1 |
+| [PES2TS_GeometryPolicyContract_v2.md](contracts/PES2TS_GeometryPolicyContract_v2.md) | **Active（取代 v1 §4.2/§5.2；ADR-0030）**：No-Move = Endpoint Stop（非 TS 邻域/OptTS 候选）；三态端点标签与必守规则 |
 | [PES2TS_PESN_IRC教师数据与模型包合同_v1.md](contracts/PES2TS_PESN_IRC教师数据与模型包合同_v1.md) | **登记草案内容v1.1**：TeacherState/Label/Split/FeatureSpec/Run/Bundle及PESNInput/TeacherPrediction，哈希、隔离与逐头能力；正式schema未发布 |
 | [PES2TS_contracts_v1.md](contracts/PES2TS_contracts_v1.md) | 七类核心对象 + 附属对象的字段字典 |
 | [PES2TS_ACP字段映射_v1.md](contracts/PES2TS_ACP字段映射_v1.md) | PES2TS 合同 ↔ ACP v2 字段映射 |

@@ -1,5 +1,7 @@
 # PES2TS Reaction-Intent Contract v1
 
+> **SUPERSEDED（2026-10-21）**：§4（q 与 Stop 语义）与 §6.2 q 公式已由 [ReactionIntent Contract v2](PES2TS_ReactionIntent_Contract_v2.md) 与 [ADR-0030](../design/decisions/ADR-0030-V5.2全路径导航与端点停止.md) 取代（q 改为分段归一化 A=−1/TS=0/B=+1；Stop 改为目标端点到达）。其余 intent/relabel/reverse 语义仍有效。本文件保留为历史。
+
 > 状态：**Proposed v1**（语义合同；先于 V5.1-R3 训练冻结）
 > 日期：2026-10-20
 > 作用：统一 `G_rxn`、reaction intent、endpoint-label invariance、reaction reversal、progress、stop、CV/Jacobian lifting 的定义

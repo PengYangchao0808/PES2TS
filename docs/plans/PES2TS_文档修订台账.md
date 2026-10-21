@@ -1,5 +1,19 @@
 # PES2TS 文档修订台账（协同性）
 
+## 2026-10-21 增量登记：ADR-0030 全路径导航与端点停止（V5.2-R）
+
+- 新增规范件：[ADR-0030 V5.2 全路径导航与端点停止](../design/decisions/ADR-0030-V5.2全路径导航与端点停止.md)（**Accepted**）、[FullPathNavigationContract v1](../contracts/PES2TS_FullPathNavigationContract_v1.md)（**Active-Normative**，Move/Stop/TS/q 唯一任务合同）、[V5.2-R 全路径导航与端点停止修复方案 v1](PES2TS_V52R_全路径导航与端点停止修复方案_v1_20261021.md)、[V5.2 任务纠偏审计 20261021](../reports/PES2TS_V52_任务纠偏审计_20261021.md)（证据基础）。
+- 合同升级：[ReactionIntent Contract v2](../contracts/PES2TS_ReactionIntent_Contract_v2.md)、[GeometryPolicyContract v2](../contracts/PES2TS_GeometryPolicyContract_v2.md)，条款级取代 v1 的 Stop/q 条款（v1 §4、§4.2/§5.2）。
+- ADR-0021/0028/0029 加条款级取代横幅（Superseded / Partially superseded by ADR-0030）；[双端 TS 教师合同 v2](../contracts/PES2TS_双端TS教师与相容转移合同_v2.md) 标 **HISTORICAL**（branch 不跨 TS 语义不适用于 V5.2-R）。
+- [30h R3→V5.2→V5.3 计划 v1.1](PES2TS_30h_R3_V52_V53_分层训练与验收计划_v1.1_20261020.md) 标 **Executed-Frozen**（Stop 语义被 ADR-0030 取代，TSStop 章节仅历史，R3 语义仍有效）；[V5–V7 v3.0](PES2TS_V5-V7_反应意图条件化与低维生长方案_v3.0_20261020.md) 内容升 **v3.2（2026-10-21 任务纠偏修订）**。
+- 根目录 5 份战役报告加 **POST-HOC 纠偏横幅**（证据不改写，仅加指针）。
+- 宪法升 **v2.8**（2026-10-21 增量）：登记 ADR-0030/FullPathNavigationContract v1 为任务语义单一真相；§6.7"完整 A→TS 与 B→TS、不跨 TS"降为 V5.1a/V4 历史教师隔离语义。
+- 历史方案补横幅：V5.0–V5.2 冲刺方案、V5.1-R2 方案、PES-N V5–V7 v1.2；[单端点 IRC 生成控制器 v3](PES2TS_单端点IRC生成控制器_产品设计_v3_20261020.md) 加任务语义修订注记（TS-only Growth/q≈0 停止不再是 V5 策略语义）。
+- 索引同步：根 README（2026-10-21 task correction 段）、docs 索引（新 2026-10-21 顶节 + 合同/ADR/计划行状态）、AGENT §10 进度指针、[代码地图](../design/PES2TS_CODE_MAP_v2_20261018.md)（v2.1 注记 + v52r planned 模块）。
+- 注册更新：`config/registry/g_v_map.yaml` 中 `V5.2` → `executed`（旧 TS-stop 任务负结果、冻结证据、evidence 保留），新增 `V5.2-R` proposed（gates：V5.2R-D0-labels / D1-endpoint-head / T1-joint / rollout），`V5.3` gate_note 补端点停止与长度感知预算 `B=max(40,ceil(1.5*L_key/0.08))`；`plan_revision: 2026-10-21.1`；G–V 映射文档由 `scripts/render_gv_map.py --write` 重新生成。
+- 新增文档一致性门 `scripts/agent_ops/docs_consistency.py`（`--strict`，训练前强制）+ 测试。
+- 本轮仅文档/注册/工具修订；未改业务训练代码、未启动训练/QC、未触 sealed（folds 3/4 继续封存）。
+
 ## 2026-10-20 增量登记：V5–V7 v2.0 架构修订与 V5.1-R2
 
 - 新增 [V5–V7 三阶段研究与架构修订方案 v2.0](../plans/PES2TS_V5-V7_三阶段研究与架构修订方案_v2.0_20261020.md)：V5=Geometry Policy（仅关键原子位移 + 曲线停止位置）、V6=xTB 物理响应 + MLP/CNN 修正、V7=cost-aware RL。**取代** [v1.2](../plans/PES2TS_PES-N_V5-V7架构调整与实施计划_v1.2_20261018.md) 的 V6 progress-decoder 路线；v1.2 保留为历史设计。
@@ -53,7 +67,7 @@
 > 取代关系：本文持续登记；2026-10-05 当前学习主线按 ADR-0010 更新，旧日期记录保留
 > 上游依赖：[开发宪法](../PES2TS_开发宪法_v1.md)、[阶段定义](PES2TS_阶段定义_G0-G3.md)
 > 下游消费者：文档索引、执行投影、各阶段开发与审计
-> 当前版本：v3.18 @ 2026-10-20（V5–V7 v2.0 架构修订；V5.1-R2 + S1 立项；GeometryPolicyContract v1；ADR-0027/0028/0029；V5.1b 继续关闭）
+> 当前版本：v3.19 @ 2026-10-21（ADR-0030 全路径导航与端点停止（V5.2-R）；FullPathNavigationContract v1；V5.2-R 方案 v1；任务纠偏审计；ReactionIntent/GeometryPolicy v2；30h 计划 Executed-Frozen）
 
 ---
 

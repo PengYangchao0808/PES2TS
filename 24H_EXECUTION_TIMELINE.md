@@ -1,5 +1,7 @@
 # PES2TS-30H 24h 执行时间线（living document — supervisor 维护）
 
+> **POST-HOC 注记（2026-10-21）**：本文时间线中 V5.2 的 Stop 语义为旧 TS 邻域版本，已被 [ADR-0030](docs/design/decisions/ADR-0030-V5.2全路径导航与端点停止.md) 取代；时间线事件本身不改写。
+
 - 战役: PES2TS_30H_R3_V52_V53 · protocol v1.0.0（E0 条件签认）
 - 授权窗口: 2026-10-20T13:45Z → 2026-10-21T13:45Z（24h，用户显式授权）
 - 授权状态: formal_training_authorized=false（前置: WP-L3 + G0 + E2/G1 + 实值 SHA 绑定 + 训练前审计）；sealed/confirm/ood/fit150plus 恒 false

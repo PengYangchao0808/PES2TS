@@ -1,8 +1,10 @@
 # PES2TS / PES-N V5–V7 反应意图条件化与低维生长方案 v3.0
 
+> **v3.2 任务纠偏修订（2026-10-21）**：V5.2 的 Move/Stop/q 语义按 [ADR-0030](../design/decisions/ADR-0030-V5.2全路径导航与端点停止.md) 与 [FullPathNavigationContract v1](../contracts/PES2TS_FullPathNavigationContract_v1.md) 修订——Full-Path Navigation（R→TS→P / P→TS→R）；Move 保留完整曲线教师并跨越 TS；No-Move=目标端点到达（Endpoint Stop，d_end 0.10/0.30 Å）；TS 是途经点不触发停止；q 为分段归一化辅助量 + 全路径 directed ordering。
+>
 > **v3.1 监督修订（2026-10-20）**：V5.1-R3 固定为 `intent_directed_irc_step`：一条完整 IRC、两种有向 intent、沿完整曲线 first-contact 单步监督；TS 不是 R3 停止目标。Stop/Progress 仍在 V5.2。
 >
-> 状态：**Proposed v3.1**（取代 v2.0；不启动训练/QC）
+> 状态：**Proposed v3.2**（取代 v2.0；不启动训练/QC）
 > 日期：2026-10-20
 > 核心合同：[ReactionIntent Contract v1](../contracts/PES2TS_ReactionIntent_Contract_v1.md)
 > 关系：V5.1-R3 是 V5 的局部步进基线；V5.2 起引入 Progress/Stop；V5.3 起进入单端生长；V6 物理修正；V7 自主探索
@@ -25,7 +27,7 @@ PES2TS 的统一形式：
 - \(G_{\rm rxn}\)：有方向的反应意图，不是无序端点集合，也不是 branch；
 - \(\Delta X_{K,t}\)：关键原子下一步位移；
 - \(\hat q_t\)：当前 IRC 进度（TS=0，有符号）；
-- \(\hat m_t\)：是否停止并进入 TS/端点验证。
+- \(\hat m_t\)：是否停止（目标端点到达）并进入后续独立验证。
 
 三阶段重新定义：
 
@@ -52,7 +54,7 @@ PES2TS 的统一形式：
 | 端点 | 双端/无序 | **Reaction Intent + endpoint-label invariance** |
 | 动作 | 直接位移 | **低维 CV 推进 + Jacobian 提升 + ML 修正** |
 | Progress | 未定义 | **有符号 q，TS=0** |
-| Stop | No-Move | **TS/端点停止，full-curve 中 TS 是途经点** |
+| Stop | No-Move | **Endpoint Stop（目标端点到达）；full-curve 中 TS 是途经点，不触发停止** |
 | V5 | Geometry Policy | **Reaction-Conditioned Geometric Policy** |
 | V6 | Physics-Corrected Policy | **Physics-Corrected Reaction Growth** |
 | V7 | Cost-aware RL | **Cost-Aware Autonomous PES Exploration** |
@@ -191,14 +193,14 @@ Gate：
 - 加入 Reaction Intent Encoder；
 - 加入 Classical CV / Direct EGNN / Hybrid 三臂；
 - 加入 Progress Head（q）；
-- 加入 Stop Head（m）；
+- 加入 EndpointStopHead（m，目标端点到达判断；TS 不触发）；
 - Known-B，不做 full rollout。
 
 Gate：
 
 - q MAE / monotonicity / TS sign accuracy；
 - stop precision/recall；
-- TS candidate rate；
+- 起点误停止率 / TS 附近误停止率 / TS 跨越完成率 / 目标端点到达率 / 首次 Stop 的 d_end；
 - Hybrid vs Direct vs Classical 的受控对照；
 - 仍不打开 sealed/OOD。
 
@@ -355,7 +357,7 @@ L_{\rm step}
 \]
 
 - `L_step`：Huber + cosine；
-- `L_q`：progress Huber + monotonicity + TS sign；
+- `L_q`：progress Huber（可选辅助）+ 全路径 directed ordering（跨 TS）；
 - `L_m`：BCE；
 - `L_path`：endpoint/TS/barrier/cost（V5.3+）。
 
@@ -449,7 +451,7 @@ V7.1–V7.3: 环境/离线/在线，严格成本
 | branch | 删除 |
 | endpoint-symmetric | endpoint-label-invariant |
 | direction token | 删除；方向由 intent 规定 |
-| Move/No-Move | Stop Head + TS/endpoint verification |
+| Move/No-Move | EndpointStopHead + 独立 TS/端点验证 |
 
 ---
 

@@ -1,6 +1,7 @@
 # PES2TS / PES-N V5–V7 架构调整与实施计划
 
 > **SUPERSEDED（2026-10-20）**：本 v1.2 的 V5/V6/V7 分工与 V6 progress-decoder 路线已被 [V5–V7 三阶段研究与架构修订方案 v2.0](PES2TS_V5-V7_三阶段研究与架构修订方案_v2.0_20261020.md) 取代。保留为历史设计，不得据此启动 V6.0–V6.2 / V7-A/B/C。关键变化：V5 增加 Move/No-Move 曲线停止；V6 改为 xTB 物理响应 + MLP/CNN 残差修正；V7 改为 cost-aware RL；V5.1-R2 + S1 先行；V5.1b、sealed、Fit150+ 继续关闭。
+> 2026-10-21：其 Move/No-Move 曲线停止语义亦由 [ADR-0030](../design/decisions/ADR-0030-V5.2全路径导航与端点停止.md) 的 Endpoint Stop 取代。
 >
 > 状态：Proposed v1.2（历史；规划与合同草案；不修改业务代码、不启动训练/QC/扩量）
 > 日期：2026-10-18

@@ -1,5 +1,7 @@
 # PES2TS：30 小时 R3 → V5.2 → V5.3 分层训练与验证战役 v1.1
 
+> **EXECUTED-FROZEN / Stop 语义已取代（2026-10-21）**：本计划的 §5.3/§5.6/T3.2 把 Stop 定义为 TS 邻域（d_key_TS 0.04/0.12 Å）——该定义已由 [ADR-0030](../design/decisions/ADR-0030-V5.2全路径导航与端点停止.md) 取代为 Endpoint Stop（目标端点到达）。本文件保留为已执行战役的历史依据，V5.2-R 不得复用其 Stop 定义；R3 Move 语义仍有效。当前执行计划见 [V5.2-R v1](PES2TS_V52R_全路径导航与端点停止修复方案_v1_20261021.md)。
+
 > 日期：2026-10-20 · 状态：**待冻结的执行计划**，非已运行结果  
 > 适用前提：**一条 canonical IRC、正反两种 Reaction Intent、整条曲线有向单帧监督**；R3 新标签与 R1 旧实验不直接可比。  
 > 版本关系：R3 是 `intent_directed_irc_step` 位移基线；V5.2 完成 Progress/Stop；V5.3 是有约束 rollout 的技术试运行。不得从本战役自动升级 V5.1b、正式 OOF、sealed/Confirm/OOD 或 Fit150+。  

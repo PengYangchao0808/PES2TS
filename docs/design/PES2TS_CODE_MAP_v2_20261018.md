@@ -4,6 +4,7 @@
 > 日期：2026-10-18（原文）；架构修订：2026-10-20
 > 上游依赖：[ADR-0025](decisions/ADR-0025-G-V双轴映射与战役注册.md)、[G–V 映射](PES2TS_G_V_MAPPING_v1_20261018.md)、[V5–V7 v3.0](../plans/PES2TS_V5-V7_反应意图条件化与低维生长方案_v3.0_20261020.md)、[ReactionIntent Contract v1](../contracts/PES2TS_ReactionIntent_Contract_v1.md)
 > 当前版本：v2.2 / 2026-10-20（V5/V6/V7 按 v3.0 reaction-intent 修订；v2.0 保留为历史）
+> 2026-10-21 v2.1：V5.2+ 任务语义按 ADR-0030/FullPathNavigationContract v1 —— Move 全路径、Endpoint Stop；新增/规划的 v52r 模块见下
 
 ## 1. 两条轴
 
@@ -74,6 +75,20 @@ scripts/campaigns/run_v5_2_progress_stop.py             # planned
 scripts/campaigns/run_v5_3_growth.py                    # planned
 scripts/campaigns/run_v5_4_any_point.py                 # planned
 ```
+
+**V5.2-R（planned，G3.P；ADR-0030 全路径导航与端点停止）**
+
+```text
+pes2ts_core/pesn/offline/data/key_atom_dataset_v3.py    # existing (endpoint labels feed from here)
+pes2ts_core/pesn/offline/data/key_atom_endpoint_labels_v1.py  # planned: d_end 0.10/0.30 endpoint stop labels
+pes2ts_core/pesn/models/key_atom_heads_v52r.py          # planned: EndpointStopHead (+ ProgressHeadV3 kept)
+pes2ts_core/pesn/models/key_atom_loss_v52r_v3.py        # planned: L_move + λ_end·L_end + λ_ord·L_ord + λ_q·L_q
+scripts/campaigns/r3_v52r_run.py                        # planned: D0/D1/T1/R entry
+scripts/agent_ops/docs_consistency.py                   # docs gate: python scripts/agent_ops/docs_consistency.py --strict
+```
+
+- 遗留符号 `TSStopHeadV3` / `ts_stop_loss_v52` / `stop_label_from_distance_v52` = **LEGACY_TS_STOP**（仅旧 checkpoint 加载/ablation，不用于新训练）；落点 `models/key_atom_heads_v3.py`、`models/key_atom_loss_v52_v3.py`、`offline/data/key_atom_dataset_v3.py`。
+- `pes2ts_core/pesn/offline/data/key_atom_teacher.py` docstring 中 "TS-terminal" 为**遗留措辞**（R3 builder 实际传入完整曲线），见 [任务纠偏审计](../reports/PES2TS_V52_任务纠偏审计_20261021.md) §2。
 
 ### V6（proposed，G3.2 + G2.T）
 

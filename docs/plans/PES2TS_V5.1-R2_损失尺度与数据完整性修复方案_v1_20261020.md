@@ -1,6 +1,7 @@
 # PES2TS / PES-N V5.1-R2：损失尺度与数据完整性修复方案 v1
 
 > 状态：**Proposed v1**（可执行研究方案；先于任何 R2 训练冻结；不启动正式 OOF/封存/扩量）
+> 2026-10-21：本文件为历史方案；V5.2+ 任务语义（全路径导航 + 端点停止）见 [ADR-0030](../design/decisions/ADR-0030-V5.2全路径导航与端点停止.md)。
 > 日期：2026-10-20
 > 层级：G3.P.2（训练/损失/评测），支持 G3.P.0/.1/.3、G0/G1；V5.1-R2 是旧 V5.1 任务的**最后一轮机制修复**，不是新架构
 > 上游证据：[V5.1a-R1 最终报告](../../outputs/pesn/v5_1_r1/final_report.md)、[R1 协议](../../outputs/pesn/v5_1_r1/protocol_r1.json)、[校准报告](../../outputs/pesn/v5_1_r1/calibration/calibration_report.md)、[Pair 归因](../../outputs/pesn/v5_1_r1/pair_errors/pair_error_report.md)
