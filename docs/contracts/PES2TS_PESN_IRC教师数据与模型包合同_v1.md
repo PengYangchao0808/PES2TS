@@ -1,6 +1,8 @@
 # PES-N IRC 教师数据与模型包合同 v1.1（草案内容版本）
 
-> **2026-10-21 V5.2-R 增补（ADR-0030）**：V5.2+ 的任务语义以 [PES2TS_FullPathNavigationContract_v1](PES2TS_FullPathNavigationContract_v1.md) 为准——完整 canonical IRC 教师（非 endpoint→TS branch）、Move/Stop eligibility 分离（terminal=no_future_contact 行进入 Endpoint Stop 数据）、Stop 为目标端点到达（d_end 0.10/0.30 Å）。本合同的旧 TS 教师字段仅作历史草案保留。
+> **2026-10-21 V5.3-MP 增补（ADR-0031）**：V5.3-MP 的任务语义以 [MoveProcessContract v1](PES2TS_MoveProcessContract_v1.md) 为准——一个共享 EGNN，MOVE + PROCESS 两头；MOVE 使用完整 canonical IRC 教师并跨 TS；PROCESS 使用 q/ordering/endpoint completion，Move 与 PROCESS eligibility 独立；No-Move 由 p_end 与化学一致性决定，q 不单独触发停止。本合同的旧 V5.2-R 增补（ADR-0030 / FullPathNavigationContract v1）仅作历史保留。
+>
+> **2026-10-21 V5.2-R 增补（ADR-0030，历史）**：V5.2+ 的任务语义以 [PES2TS_FullPathNavigationContract_v1](PES2TS_FullPathNavigationContract_v1.md) 为准——完整 canonical IRC 教师（非 endpoint→TS branch）、Move/Stop eligibility 分离（terminal=no_future_contact 行进入 Endpoint Stop 数据）、Stop 为目标端点到达（d_end 0.10/0.30 Å）。本合同的旧 TS 教师字段仅作历史草案保留。
 
 > 状态：已登记设计草案；字段语义供 G3-P1 实现，正式 schema/validator/fixture 尚未发布
 > 层级：G3.P；数据/特征/标签/run/bundle 接口；规范效力以宪法 §9.6 登记及实现验收为准

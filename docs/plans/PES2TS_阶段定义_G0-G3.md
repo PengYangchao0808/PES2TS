@@ -3,9 +3,9 @@
 > 状态：权威（阶段与边界定义的唯一来源）
 > 层级：主干 G0/G1/G2/G3/G4；工作流 C/R/X
 > 取代关系：取代《统一开发顺序与阶段验收》中的 S0–S8/demo 阶段表；S0–S8 内容降为历史映射（见 §5）
-> 上游依赖：[开发宪法（内容 v2.7）](../PES2TS_开发宪法_v1.md)、[ADR-0010](../design/decisions/ADR-0010-PES-N反应状态价值与STOP-MOVE统一决策.md)、[ADR-0017](../design/decisions/ADR-0017-统一残差决策与G2有限回退.md)
+> 上游依赖：[开发宪法（内容 v2.9）](../PES2TS_开发宪法_v1.md)、[ADR-0010](../design/decisions/ADR-0010-PES-N反应状态价值与STOP-MOVE统一决策.md)、[ADR-0017](../design/decisions/ADR-0017-统一残差决策与G2有限回退.md)、[ADR-0031](../design/decisions/ADR-0031-MOVE-PROCESS统一学习合同.md)
 > 下游消费者：完整开发流方案（整合版）、整体开发与发布方案、AGENT.md、G2 生成攻坚计划、文档修订台账
-> 当前版本：v4.6 @ 2026-10-18（新增 G–V 双轴映射指针；ADR-0021 的双侧教师/BC/IQL 研究排期保留为历史；正式阶段出口保持）
+> 当前版本：v4.8 @ 2026-10-21（ADR-0031 MOVE–PROCESS；V5.3-MP S0–S4；G3.P 的 Move/Process 语义更新；G2/G4 正式阶段出口保持）
 > 文件名：保留历史名 `_G0-G3` 以兼容既有链接；本文件内容已扩展至 G0–G4。
 > G–V 映射：[G–V 映射表](../design/PES2TS_G_V_MAPPING_v1_20261018.md)；机器可读源 `config/registry/g_v_map.yaml`。G 是代码/物理能力，V 是训练/测试战役；V5–V7 不是新阶段。
 
@@ -36,7 +36,7 @@
 
 G2.T 仍为 G2 的四例/24例测试，不是独立阶段；物理验证贯穿各阶段。PES-N 不是新增 G5。详细任务见 [PES-N未来开发计划](PES2TS_PES-N未来开发计划_v2_20261005.md)。
 
-G3.P 教师预训练可与 G2 并行；正式决策接入先 STOP 监督，再真实动作模仿/残差、离线 Q，最后冻结模型闭环。预训练不阻塞正式 STOP 线，不降低 G2/G3.0–G4 的出口门；静态排序可先交付，G/R 使用同一内核。规范以开发宪法为准，本次规划改版不声称模型或新能力已实现。首期方案及版本见 [G3-P1](PES2TS_G3_P1_IRC教师预训练与模型版本计划_v1_20261006.md)与[ADR-0013](../design/decisions/ADR-0013-G3并行IRC预训练与模型版本体系.md)。
+G3.P 教师预训练可与 G2 并行；自 ADR-0031 起，正式决策接入为 **MOVE + PROCESS**（不再以单一 STOP 头为第二任务）：MOVE 沿完整曲线推进并跨 TS，PROCESS 输出有向进度/端点完成/排序；No-Move 由 p_end 与化学一致性决定。V5.3-MP 的 S0–S4 与三臂见 [V5.3-MP 计划](PES2TS_V5.3-MP_大规模MOVE-PROCESS联合训练计划_v1_20261021.md)。预训练不阻塞 V5.3-MP，不降低 G2/G3.0–G4 的出口门；静态排序可先交付，G/R 使用同一内核。规范以开发宪法 v2.9 与 MoveProcessContract v1 为准，本次规划改版不声称模型或新能力已实现。首期方案及版本见 [G3-P1](PES2TS_G3_P1_IRC教师预训练与模型版本计划_v1_20261006.md)与[ADR-0013](../design/decisions/ADR-0013-G3并行IRC预训练与模型版本体系.md)。
 
 ---
 

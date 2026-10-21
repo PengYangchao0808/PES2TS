@@ -1,10 +1,11 @@
 # PES2TS Reaction-Intent Contract v2
 
-> 状态：**Active-Normative**（2026-10-21）
+> 状态：**Active-Normative**（2026-10-21；Stop/q 条款由 ADR-0031 取代）
 > 日期：2026-10-21（v1：2026-10-20）
 > 作用：统一 `G_rxn`、reaction intent、endpoint-label invariance、reaction reversal、progress、stop、CV/Jacobian lifting 的定义
-> 决策记录：[ADR-0030](../design/decisions/ADR-0030-V5.2全路径导航与端点停止.md)
-> 任务合同：[PES2TS_FullPathNavigationContract_v1](PES2TS_FullPathNavigationContract_v1.md)
+> 后续决策：[ADR-0031](../design/decisions/ADR-0031-MOVE-PROCESS统一学习合同.md)（MOVE–PROCESS；2026-10-21）
+> 当前任务合同：[MoveProcessContract v1](PES2TS_MoveProcessContract_v1.md)（PROCESS q/ordering/endpoint 唯一真相）
+> 历史任务合同：[PES2TS_FullPathNavigationContract_v1](PES2TS_FullPathNavigationContract_v1.md)（**SUPERSEDED by ADR-0031**）
 > 取代关系：取代 [v1](PES2TS_ReactionIntent_Contract_v1.md) §4（q 定义与 Stop 语义）与 §6.2（v1 行 295–301，即 v1 §4.6 进度）的 q 公式；v1 的 intent/relabel/reverse 语义不变
 > 沿袭 v1：取代旧文档中的 `branch` 方向语义、`endpoint-symmetric` 术语、单独 `direction token` 语义
 

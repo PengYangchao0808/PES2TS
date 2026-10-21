@@ -1,13 +1,14 @@
-# PES2TS 开发宪法 v2.8（统一残差决策、MDP研究闭环与G2有限回退；V5.2+ 全路径导航与端点停止增量）
+# PES2TS 开发宪法 v2.9（统一残差决策、MDP研究闭环与G2有限回退；V5.3-MP MOVE–PROCESS 统一学习增量）
 
 > 状态：权威（**唯一规范来源 / SSOT**）
 > 层级：全仓全局，凌驾于所有计划/设计/方案文档之上（报告为只读历史，不受改写，仅受指针约束）
 > 取代关系：保留唯一 SSOT；本版取代旧 G/R 独立学习与几何距离/位移主接口路线，采用 PES-N；原 v1 精确快照已归档
 > 上游依赖：无（本文件是规范根）
 > 下游消费者：`AGENT.md`、`docs/README.md`、`docs/plans/PES2TS_文档修订台账.md`、所有 plan/design/contracts、实验与发布流程
-> 当前版本：内容 v2.8 @ 2026-10-21（ADR-0030 全路径导航与端点停止增量）；文件名保留 `_v1` 以兼容既有链接
+> 当前版本：内容 v2.9 @ 2026-10-21（ADR-0031 MOVE–PROCESS 统一学习增量）；文件名保留 `_v1` 以兼容既有链接
 > 决策记录：[ADR-0010](design/decisions/ADR-0010-PES-N反应状态价值与STOP-MOVE统一决策.md)、[ADR-0011](design/decisions/ADR-0011-三模块产品架构与统一可视化.md)、[ADR-0013](design/decisions/ADR-0013-G3并行IRC预训练与模型版本体系.md)；计划：[PES-N 未来开发计划](plans/PES2TS_PES-N未来开发计划_v2_20261005.md)、[G3-P1](plans/PES2TS_G3_P1_IRC教师预训练与模型版本计划_v1_20261006.md)
 > 生效边界：开发规范与规划方向生效；实现、模型、真实能力和生产默认不因本次文档变更升级
+> v2.9 增量（2026-10-21）：[ADR-0031](design/decisions/ADR-0031-MOVE-PROCESS统一学习合同.md) + [MoveProcessContract v1](contracts/PES2TS_MoveProcessContract_v1.md)：V5.3-MP 的任务定为 **MOVE + PROCESS**——一个共享 EGNN，两个功能头；MOVE 输出关键原子位移并跨越 TS；PROCESS 输出有向进度 q、目标端点完成置信度 p_end 与排序分数；**No-Move = p_end ≥ τ_end 且目标化学状态一致**，q 仅辅助/诊断，不得单独触发停止；TS 永远是途经点。输入边界不变（当前单帧 + 合法有向拓扑；禁止参考端点 XYZ/历史/真值）。旧 FullPathNavigationContract v1 的 Endpoint Stop 单一 d_end 语义被本增量取代；D2-G 对旧 T1 的负结论继续有效，V5.3-MP 是独立预注册战役。§6.7 的 V5.2+ 注记自本版起仅保留为历史；任务语义以 MoveProcessContract v1 为唯一真相。
 > v2.8 增量（2026-10-21）：[ADR-0030](design/decisions/ADR-0030-V5.2全路径导航与端点停止.md) + [FullPathNavigationContract v1](contracts/PES2TS_FullPathNavigationContract_v1.md)：V5.2+ 策略任务定为 **Full-Path Navigation**（R→TS→P / P→TS→R）——Move 沿完整 canonical IRC 教师推进并**跨越 TS**；No-Move = **Endpoint Stop**（目标端点到达，d_end 候选窗口 0.10/0.30 Å）；TS 是途经点，不触发停止；q 为分段归一化辅助量（A=−1/TS=0/B=+1）。§6.7 的"完整 A→TS 与 B→TS、不跨 TS 串接"自本增量起**仅保留为 V5.1a/V4 历史教师隔离语义**，不再是 V5.2+ 训练依据。任务语义的单一真相为上述合同；文档一致性由 `scripts/agent_ops/docs_consistency.py --strict` 强制。
 > v2.7 增量：[ADR-0021](design/decisions/ADR-0021-无序双端拓扑与完整双侧TS教师主线.md)、[统一训练与进度方案v4](plans/PES2TS_双端拓扑条件训练与项目进度统一方案_v4_20261015.md)：登记无序双端点、完整双侧TS教师及相容研究转移的适用范围；未发布schema、未升级能力或生产默认
 > v2.7 映射补充（2026-10-18）：G = 代码/物理能力，V = 训练/测试战役；V5–V7 不是新 G 阶段。见 [ADR-0025](design/decisions/ADR-0025-G-V双轴映射与战役注册.md) 与 [G–V 映射](design/PES2TS_G_V_MAPPING_v1_20261018.md)；本补充只登记治理规则，不改写正文规范。
@@ -268,6 +269,8 @@ G3.P 的入口是来源、图/原子映射、坐标与标签语义、冻结分�
 
 ### 6.7 无序双端点与完整双侧 TS 教师研究（ADR-0021）
 
+> **v2.9 注记（2026-10-21，ADR-0031）**：V5.3-MP 的 Move/Process 任务语义以 [MoveProcessContract v1](contracts/PES2TS_MoveProcessContract_v1.md) 为唯一真相；本节的 V5.2+ 注记（ADR-0030 / Endpoint Stop 单一 d_end）自本版起仅保留为历史。D2-G 对旧 T1 的负结论继续有效，V5.3-MP 是独立预注册战役，不得靠重命名绕开原门控。本节其余隔离/审计/R1 边界条款继续有效。
+>
 > **v2.8 注记（2026-10-21，ADR-0030）**：本节的"完整 A→TS 与 B→TS、不跨 TS 串接"自宪法 v2.8 起仅保留为 **V5.1a/V4 历史教师隔离语义**；V5.2+ 的策略任务为 Full-Path Navigation（完整 canonical IRC、Move 跨越 TS、No-Move=目标端点到达），见 [ADR-0030](../design/decisions/ADR-0030-V5.2全路径导航与端点停止.md) 与 [FullPathNavigationContract v1](contracts/PES2TS_FullPathNavigationContract_v1.md)。本节其余隔离/审计/R1 边界条款继续有效。
 
 本节是§5.1–§5.2、§6.5、§7.3在本研究版本的明确适用登记。采用无序完整端点图对、映射、电子态与任务约束；A/B仅身份编号，交换不得改变反应组/分裂或同一物理状态的预测。当前结构与真实E/g决定运动策略，不能永久指定全局成断键正逆方向。
@@ -441,6 +444,10 @@ version bump + 变更记录；重大不变量变更须同时更新 §3 与 `AGEN
 | Chemical Shield | 执行前确定性资格与规则层，另有执行后真实质量验收 |
 | ReactiveState / PESNTrajectory | 跨来源物理状态 / 带来源及转移资格的状态容器 |
 | Preparation Layer | 低成本帧切换 DFT 精修前的受限准备 |
+| MOVE | 沿指定 Reaction Intent 的关键原子位移；允许且必须跨越 TS |
+| PROCESS | Reaction Process State：有向进度 q、目标端点完成置信度 p_end、排序分数 |
+| No-Move | p_end ≥ τ_end 且目标化学状态一致时的停止决策；TS 永不触发 |
+| MoveProcessContract v1 | V5.3-MP 的 MOVE/PROCESS/No-Move/TS 语义唯一任务合同 |
 | SSOT | 本文件；阶段/计划/投影均服从本规范 |
 
 ---

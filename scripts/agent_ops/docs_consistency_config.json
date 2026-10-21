@@ -40,7 +40,8 @@
     "NEXT_DAY_DECISION_MEMO.md",
     "FAILURE_AND_REMAINING_WORK.md",
     "24H_FINAL_REPORT.md",
-    "24H_EXECUTION_TIMELINE.md"
+    "24H_EXECUTION_TIMELINE.md",
+    "docs/contracts/PES2TS_FullPathNavigationContract_v1.md"
   ],
   "root_scope": [
     "README.md",
@@ -50,7 +51,8 @@
     "FAILURE_AND_REMAINING_WORK.md",
     "24H_FINAL_REPORT.md",
     "24H_EXECUTION_TIMELINE.md",
-    "R3_RESULT_SUMMARY.md"
+    "R3_RESULT_SUMMARY.md",
+    "V53_ROLLOUT_REPORT.md"
   ],
   "required_files": {
     "docs/design/decisions/ADR-0030-V5.2全路径导航与端点停止.md": [
@@ -72,6 +74,27 @@
       "d_end",
       "0.10",
       "0.30"
+    ],
+    "docs/design/decisions/ADR-0031-MOVE-PROCESS统一学习合同.md": [
+      "MOVE",
+      "PROCESS",
+      "No-Move",
+      "ReactionProcessHead"
+    ],
+    "docs/contracts/PES2TS_MoveProcessContract_v1.md": [
+      "MOVE",
+      "PROCESS",
+      "No-Move",
+      "endpoint completion",
+      "ReactionProcessHead"
+    ],
+    "docs/plans/PES2TS_V5.3-MP_大规模MOVE-PROCESS联合训练计划_v1_20261021.md": [
+      "V5.3-MP",
+      "S0",
+      "S1",
+      "S2",
+      "S3",
+      "Move guard"
     ]
   },
   "historical_banner_marker": "ADR-0030"

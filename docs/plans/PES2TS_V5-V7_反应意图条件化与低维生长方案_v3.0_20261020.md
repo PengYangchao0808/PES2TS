@@ -1,6 +1,8 @@
 # PES2TS / PES-N V5–V7 反应意图条件化与低维生长方案 v3.0
 
-> **v3.2 任务纠偏修订（2026-10-21）**：V5.2 的 Move/Stop/q 语义按 [ADR-0030](../design/decisions/ADR-0030-V5.2全路径导航与端点停止.md) 与 [FullPathNavigationContract v1](../contracts/PES2TS_FullPathNavigationContract_v1.md) 修订——Full-Path Navigation（R→TS→P / P→TS→R）；Move 保留完整曲线教师并跨越 TS；No-Move=目标端点到达（Endpoint Stop，d_end 0.10/0.30 Å）；TS 是途经点不触发停止；q 为分段归一化辅助量 + 全路径 directed ordering。
+> **v3.3 MOVE–PROCESS 修订（2026-10-21）**：V5.2/V5.2-R 已关闭（D2-G STOP）；V5.3-MP 以 [ADR-0031](../design/decisions/ADR-0031-MOVE-PROCESS统一学习合同.md) / [MoveProcessContract v1](../contracts/PES2TS_MoveProcessContract_v1.md) 为唯一任务合同：一个共享 EGNN，MOVE + PROCESS 两头；No-Move = p_end ≥ τ_end 且目标化学状态一致；q 仅辅助/诊断；TS 永远继续 MOVE。旧的 FullPathNavigationContract v1（Endpoint Stop 单一 d_end）仅为历史。V5.3-MP 的 S0–S4 与三臂 A/B/C 见 [V5.3-MP 计划](PES2TS_V5.3-MP_大规模MOVE-PROCESS联合训练计划_v1_20261021.md)。
+>
+> **v3.2 任务纠偏修订（2026-10-21，历史）**：V5.2 的 Move/Stop/q 语义按 [ADR-0030](../design/decisions/ADR-0030-V5.2全路径导航与端点停止.md) 与 [FullPathNavigationContract v1](../contracts/PES2TS_FullPathNavigationContract_v1.md) 修订——Full-Path Navigation（R→TS→P / P→TS→R）；Move 保留完整曲线教师并跨越 TS；No-Move=目标端点到达（Endpoint Stop，d_end 0.10/0.30 Å）；TS 是途经点不触发停止；q 为分段归一化辅助量 + 全路径 directed ordering。
 >
 > **v3.1 监督修订（2026-10-20）**：V5.1-R3 固定为 `intent_directed_irc_step`：一条完整 IRC、两种有向 intent、沿完整曲线 first-contact 单步监督；TS 不是 R3 停止目标。Stop/Progress 仍在 V5.2。
 >

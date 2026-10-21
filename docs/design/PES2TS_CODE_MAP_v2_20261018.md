@@ -90,6 +90,24 @@ scripts/agent_ops/docs_consistency.py                   # docs gate: python scri
 - 遗留符号 `TSStopHeadV3` / `ts_stop_loss_v52` / `stop_label_from_distance_v52` = **LEGACY_TS_STOP**（仅旧 checkpoint 加载/ablation，不用于新训练）；落点 `models/key_atom_heads_v3.py`、`models/key_atom_loss_v52_v3.py`、`offline/data/key_atom_dataset_v3.py`。
 - `pes2ts_core/pesn/offline/data/key_atom_teacher.py` docstring 中 "TS-terminal" 为**遗留措辞**（R3 builder 实际传入完整曲线），见 [任务纠偏审计](../reports/PES2TS_V52_任务纠偏审计_20261021.md) §2。
 
+**V5.3-MP（proposed，G3.P；ADR-0031 MOVE–PROCESS 统一学习）**
+
+```text
+pes2ts_core/pesn/models/key_atom_heads_v3.py            # existing: ProgressHeadV3 kept; add ReactionProcessHead + KeyAtomV53MPModel
+pes2ts_core/pesn/models/key_atom_loss_v53mp_v3.py       # planned: L_Move + L_Process (ranking/progress/endpoint, independent masks)
+pes2ts_core/pesn/offline/training/key_atom_v53mp_train_v3.py  # planned: staged trainer, arms A/B/C, Move guard, gradient monitor
+pes2ts_core/pesn/offline/data/key_atom_dataset_v3.py    # fix: load all statuses; MOVE/PROCESS independent eligibility
+pes2ts_core/pesn/offline/data/key_atom_endpoint_labels_v1.py  # existing: keep as diagnostic + high-confidence endpoint labels
+scripts/campaigns/r3_v53mp_run.py                       # planned: S0-S4 driver
+scripts/agent_ops/data_gate/r3_build_tables.py          # extend: 2k/5k/20k cohort six-table build
+pes2ts_core/pesn/offline/publishing/export.py           # planned: pes2ts_move_process_bundle_v1
+config/campaigns/pes2ts_v53mp_20261021.yaml             # planned: S0-S4, arms, authorization, freeze hashes
+```
+
+- 命名：`V5.3-ENG` = 30h rollout/relax 工程闭环（historical）；`V5.3-MP` = 本战役。
+- 旧 `V5.2-R` 已 **Closed（D2-G STOP）**；其模块 `key_atom_heads_v52r.py` / `r3_v52r_run.py` 为 planned 历史，不进入新训练。
+- 旧 `TSStopHeadV3` 继续标 **LEGACY_TS_STOP**；新 PROCESS 头不得复用该名字。
+
 ### V6（proposed，G3.2 + G2.T）
 
 ```text

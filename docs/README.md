@@ -1,10 +1,18 @@
 # PES2TS 文档索引
 
-## 2026-10-21 V5.2-R 全路径导航与端点停止（当前）
+## 2026-10-21 V5.3-MP MOVE–PROCESS 统一学习（当前）
+
+- **[ADR-0031 MOVE–PROCESS 统一学习合同](design/decisions/ADR-0031-MOVE-PROCESS统一学习合同.md)**（**Accepted**）：一个共享 EGNN，两个头——MOVE（关键原子位移，跨越 TS）+ PROCESS（有向进度 q、端点完成置信度 p_end、ordering）；No-Move = p_end ≥ τ_end 且目标化学状态一致；q 仅辅助/诊断；TS 永远继续 MOVE。取代 FullPathNavigationContract v1 的任务语义。
+- **[MoveProcessContract v1](contracts/PES2TS_MoveProcessContract_v1.md)**（**Active-Normative**）：MOVE/PROCESS/No-Move/TS 的唯一任务合同；输入仍为当前单帧 + 合法有向拓扑，禁止参考端点 XYZ/历史/真值；旧单构象 `d_end` 与 P5 basin 降级为诊断量。
+- **[V5.3-MP 大规模 MOVE–PROCESS 联合训练计划 v1](plans/PES2TS_V5.3-MP_大规模MOVE-PROCESS联合训练计划_v1_20261021.md)**（**Proposed**）：S0 数据资格/建库（CPU）→ S1 2k 冒烟 → S2 5k → S3 20k 正式 → S4 条件扩量；三臂 A=Move-only / B=Move+Progress / C=Move+PROCESS；当前 GPU=0，S0 通过且 S1 单独授权后才开训。
+- **[V5.3-MP 文档同步清单 v1](plans/PES2TS_V5.3-MP_文档同步清单_v1_20261021.md)**：P0–P6 同步项与 docs gate 判据。
+- **命名**：`V5.3-ENG` = 已执行的 30h rollout/relax 工程闭环（历史）；`V5.3-MP` = 本战役。
+
+## 2026-10-21 V5.2-R 全路径导航与端点停止（历史，CLOSED at D2-G）
 
 - **[ADR-0030 V5.2 全路径导航与端点停止](design/decisions/ADR-0030-V5.2全路径导航与端点停止.md)**（**Accepted**）：Stop 旧定义为 TS 邻域属任务定义错误；改为 Full-Path Navigation + Endpoint Stop；条款级取代 ADR-0021/0028/0029 相关语义。
-- **[FullPathNavigationContract v1](contracts/PES2TS_FullPathNavigationContract_v1.md)**（**Active-Normative**）：Move/Stop/TS/q 语义唯一来源；d_end 0.10/0.30 Å 候选窗口；pes2ts_fullpath_nav_labels_v1；docs gate。
-- **[V5.2-R 全路径导航与端点停止修复方案 v1](plans/PES2TS_V52R_全路径导航与端点停止修复方案_v1_20261021.md)**（**Active-Proposed**）：D0 标签/版本审计 → D1 冻结编码器 Endpoint Head + directed ordering → T1 联合 → R 全路径 rollout（长度感知预算）。
+- **[FullPathNavigationContract v1](contracts/PES2TS_FullPathNavigationContract_v1.md)**（**SUPERSEDED by ADR-0031 / MoveProcessContract v1**）：保留为 ADR-0030 历史证据；Move/Stop/TS/q 旧语义不再用于新训练。
+- **[V5.2-R 全路径导航与端点停止修复方案 v1](plans/PES2TS_V52R_全路径导航与端点停止修复方案_v1_20261021.md)**（**Closed — D2-G STOP**）：D0 PASS / D1 FAIL / D0.1 PASS / D2 P1 PASS + P4/P5 FAIL；T1 不授权；负结果归档，由 V5.3-MP 接续。
 - **[V5.2 任务纠偏审计 20261021](reports/PES2TS_V52_任务纠偏审计_20261021.md)**：终点样本被 terminal 排除、旧 Stop 正例全在 TS 附近、20 步预算不足、provenance 缺口等实测证据。
 - 合同修订：[ReactionIntent Contract v2](contracts/PES2TS_ReactionIntent_Contract_v2.md)、[GeometryPolicyContract v2](contracts/PES2TS_GeometryPolicyContract_v2.md)（取代 v1 的 Stop/q 条款）。
 

@@ -1,5 +1,7 @@
 # V5.3 Rollout 报告 — PES2TS_30H_R3_V52_V53
 
+> **历史命名（V5.3-ENG）**：本报告是 30h 战役的 rollout/relax **工程闭环**，不是科学验证。自 2026-10-21 起，新的 V5.3-MP（MOVE + PROCESS 大规模联合训练）见 [ADR-0031](docs/design/decisions/ADR-0031-MOVE-PROCESS统一学习合同.md) 与 [V5.3-MP 计划](docs/plans/PES2TS_V5.3-MP_大规模MOVE-PROCESS联合训练计划_v1_20261021.md)；本报告内容不改写。
+>
 > 生成：2026-10-20T21:25Z · 编制：supervisor · G4-Rollout = **PASS（仅工程闭环，非科学验证）**
 > 模式：**H20**（V5.2 监督失败 → 上限控制器 only；v52 臂 diagnostic-only，机器强制标注）
 > 证据：`outputs/pesn/30h_campaign/v53/g4_evidence_pack.json`（engineering_closure_ok=true）

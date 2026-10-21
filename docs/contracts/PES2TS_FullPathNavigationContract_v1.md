@@ -1,6 +1,8 @@
 # PES2TS FullPathNavigationContract v1（规范 / 设计冻结）
 
-> 状态：**Active-Normative**（2026-10-21 起为本仓库 Move/Stop/TS/q 语义的唯一任务合同）
+> 状态：**SUPERSEDED（2026-10-21，ADR-0031 / MoveProcessContract v1）**。本文件保留为 ADR-0030 历史证据；新的 MOVE/PROCESS/No-Move 语义以 [MoveProcessContract v1](PES2TS_MoveProcessContract_v1.md) 为唯一真相。本文中的 Endpoint Stop 单一 `d_end` 语义已降级为诊断量；任务纠偏审计（ADR-0030）结论继续有效。
+>
+> 原状态（历史）：**Active-Normative**（2026-10-21 起为本仓库 Move/Stop/TS/q 语义的唯一任务合同）
 > 决策记录：[ADR-0030](../design/decisions/ADR-0030-V5.2全路径导航与端点停止.md)
 > 上游依赖：[开发宪法](../PES2TS_开发宪法_v1.md)（v2.8 增量）、[ReactionIntent Contract v2](PES2TS_ReactionIntent_Contract_v2.md)、[GeometryPolicyContract v2](PES2TS_GeometryPolicyContract_v2.md)
 > 取代：GeometryPolicyContract v1 §4.2/§5.2、ReactionIntent Contract v1 §4、30h 计划 §5.3/§5.6 的 Stop 语义（详见 ADR-0030 §5）

@@ -3,8 +3,8 @@
 # table in docs/design/PES2TS_G_V_MAPPING_v1_20261018.md is rendered from it.
 schema: pes2ts_gv_map_v1
 map_version: "2026-10-18.1"
-plan_revision: "2026-10-21.1"
-plan_revision_note: "V5–V7 v3.0 reaction-intent revision: V5.1-R3 active; V5.1-R2/v2.0 superseded; V5.2–V5.4 reinterpreted under ReactionIntent Contract v1; old V6.0–V6.2 and V7-A/B/C archived; new V6/V7 campaigns register only after V5.2 contract freeze. 2026-10-21 ADR-0030: V5.2-R full-path navigation + endpoint stop active; V5.2 executed under legacy TS-stop task (negative, frozen); V5.3+ gate notes updated to endpoint stop / length-aware rollout budget."
+plan_revision: "2026-10-21.2"
+plan_revision_note: "2026-10-21 ADR-0031: V5.2/V5.2-R CLOSED (D2-G STOP; T1 not authorized; negative archived); new V5.3-MP MOVE+PROCESS campaign registered (S0 data build -> S1 2k smoke -> S2 5k -> S3 20k); old 30h V5.3 rollout renamed V5.3-ENG (executed, engineering-only); FullPathNavigationContract v1 superseded by MoveProcessContract v1; V6/V7 unchanged until V5.3-MP contract freeze."
 
 stages:
   G0:
@@ -265,8 +265,8 @@ campaigns:
       - pes2ts_core/pesn/models/dual_egnn.py
       - pes2ts_core/pesn/models/dual_ts_policy.py
   V5.2-R:
-    title: V5.2-R full-path navigation + endpoint stop + directed ordering
-    status: proposed
+    title: V5.2-R full-path navigation + endpoint stop + directed ordering (CLOSED at D2-G)
+    status: archived
     primary_g: G3.P.1
     supporting_g: [G3.P.0, G3.P.3, G0, G1]
     data_dependencies: [G0, G1]
@@ -278,29 +278,51 @@ campaigns:
       - scripts/campaigns/r3_v52r_run.py
     config: config/campaigns/pes2ts_v52r_20261021.yaml
     data_manifest: data/manifests/v5/split_manifest.json
-    gates: [V5.2R-D0-labels, V5.2R-D1-endpoint-head, V5.2R-T1-joint, V5.2R-rollout]
-    evidence: docs/plans/PES2TS_V52R_全路径导航与端点停止修复方案_v1_20261021.md
-    gate_note: ADR-0030/FullPathNavigationContract v1; full-traversal Move (crosses TS); endpoint stop d_end 0.10/0.30 candidate frozen pre-T1; directed q ordering; Move guard <=2% hard; dev folds 0-2 only; docs_consistency gate mandatory; rollout budget B=max(40,ceil(1.5*L_key/0.08))
+    gates: [V5.2R-D0-labels, V5.2R-D1-endpoint-head, V5.2R-D2-input-sufficiency, V5.2R-D2G-review]
+    evidence: docs/reports/PES2TS_V52R_输入充分性决策记录_20261021.md
+    gate_note: "ADR-0030 line; D0 PASS / D1 FAIL / D0.1 PASS / D2 P1 PASS (goal-oracle) + P4 FAIL + P5 FAIL; D2-G STOP, T1 NOT authorized; GPU spend 0; negative archived; superseded by ADR-0031 / MoveProcessContract v1 for new work"
     comparison_only:
       - pes2ts_core/pesn/models/dual_egnn.py
       - pes2ts_core/pesn/models/dual_ts_policy.py
-  V5.3:
-    title: V5.3 known-B single-endpoint PREDICT-ACTION growth (A->TS->B)
-    status: proposed
+  V5.3-ENG:
+    title: V5.3-ENG 30h no-physics rollout + constrained-relax engineering closure (historical)
+    status: executed
     primary_g: G3.P.2
     supporting_g: [G3.P.1, G3.P.3, G0, G1]
     data_dependencies: [G0, G1]
     code_scope:
-      - pes2ts_core/pesn/models/key_atom_egnn.py
-      - pes2ts_core/pesn/models/key_atom_painn.py
-      - pes2ts_core/pesn/offline/training/key_atom_bc.py
-      - pes2ts_core/pesn/offline/evaluation/key_atom_protocols.py
-      - scripts/campaigns/run_v5_3_geometry.py
-    config: config/campaigns/v5_3_geometry.yaml
+      - pes2ts_core/pesn/models/rollout_v3.py
+      - scripts/agent_ops/feature_gate/v53_rollout_exec.py
+      - scripts/agent_ops/feature_gate/v53_relax_exec.py
+      - scripts/agent_ops/feature_gate/v53_g4_evidence.py
+    config: config/campaigns/pes2ts_30h_20261020.yaml
     data_manifest: data/manifests/v5/split_manifest.json
-    gates: [V5-G1, V5.3-rollout, V5.3-relax, V5.3-classic-comparison, V5.3-cost]
-    evidence: docs/plans/PES2TS_30h_R3_V52_V53_分层训练与验收计划_v1.1_20261020.md
-    gate_note: "known-B PREDICT-ACTION-RELAX; 5/10/20 no-physics rollout; constrained RELAX; Classic/R3/V5.2 same budget; verified TS separate; no Unknown-B, no sealed; per ADR-0030: full-path endpoint-stop semantics; rollout budget must be length-aware (B=max(40,ceil(1.5*L_key/0.08))), 20-step budget is historical only"
+    gates: [G4-Rollout]
+    evidence: V53_ROLLOUT_REPORT.md
+    gate_note: "H20 engineering-only; G4 PASS = engineering closure, NOT scientific validation; 216 no-physics episodes + 36 real xTB constrained relaxations; TS_candidate_only; no verified TS claim; superseded as the active V5.3 line by V5.3-MP (ADR-0031)"
+    comparison_only:
+      - pes2ts_core/pesn/models/dual_egnn.py
+      - pes2ts_core/pesn/models/dual_ts_policy.py
+  V5.3-MP:
+    title: V5.3-MP large-scale MOVE + PROCESS unified training (S0 data build -> S1 2k -> S2 5k -> S3 20k)
+    status: proposed
+    primary_g: G3.P.2
+    supporting_g: [G3.P.0, G3.P.1, G3.P.3, G0, G1]
+    data_dependencies: [G0, G1]
+    code_scope:
+      - pes2ts_core/pesn/models/key_atom_heads_v3.py
+      - pes2ts_core/pesn/models/key_atom_loss_v53mp_v3.py
+      - pes2ts_core/pesn/offline/training/key_atom_v53mp_train_v3.py
+      - pes2ts_core/pesn/offline/data/key_atom_dataset_v3.py
+      - pes2ts_core/pesn/offline/data/key_atom_endpoint_labels_v1.py
+      - scripts/campaigns/r3_v53mp_run.py
+      - scripts/agent_ops/data_gate/r3_build_tables.py
+      - pes2ts_core/pesn/offline/publishing/export.py
+    config: config/campaigns/pes2ts_v53mp_20261021.yaml
+    data_manifest: data/manifests/v5/split_manifest.json
+    gates: [V53MP-S0-data, V53MP-S1-smoke, V53MP-S2-scale, V53MP-S3-formal, V53MP-S3-closed-loop]
+    evidence: docs/plans/PES2TS_V5.3-MP_大规模MOVE-PROCESS联合训练计划_v1_20261021.md
+    gate_note: "ADR-0031 / MoveProcessContract v1; one shared StarEGNNV3 (55,441) + MOVE + PROCESS (q/endpoint/ordering); No-Move = p_end >= tau_end AND chemical state consistent; TS always MOVE; q auxiliary only; input single-frame + legal directed topology, no reference endpoint XYZ/history/truth; S0 is a real six-table data build over the ~200k reaction DB (current six-table = 50 curves/12,034 rows); GPU 0 until S0 PASS and S1 explicit authorization; arms A Move-only / B Move+Progress / C Move+PROCESS; Move guard <=2% hard (scientific_failure, not invalid); sealed folds stay sealed"
     comparison_only:
       - pes2ts_core/pesn/models/dual_egnn.py
       - pes2ts_core/pesn/models/dual_ts_policy.py

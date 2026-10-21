@@ -1,5 +1,17 @@
 # PES2TS 文档修订台账（协同性）
 
+## 2026-10-21 增量登记：ADR-0031 MOVE–PROCESS 统一学习（V5.3-MP）
+
+- 新增规范件：[ADR-0031 MOVE–PROCESS 统一学习合同](../design/decisions/ADR-0031-MOVE-PROCESS统一学习合同.md)（**Accepted**）、[MoveProcessContract v1](../contracts/PES2TS_MoveProcessContract_v1.md)（**Active-Normative**，MOVE/PROCESS/No-Move/TS 唯一任务合同）、[V5.3-MP 大规模联合训练计划 v1](PES2TS_V5.3-MP_大规模MOVE-PROCESS联合训练计划_v1_20261021.md)、[V5.3-MP 文档同步清单 v1](PES2TS_V5.3-MP_文档同步清单_v1_20261021.md)。
+- **V5.2 / V5.2-R 关闭**：D2-G STOP（T1 不授权，P5 标签不冻结，GPU 消耗 0）；D0/D0.1/D1/D2 证据保留，旧负结果对旧任务继续有效。
+- 取代关系：[FullPathNavigationContract v1](../contracts/PES2TS_FullPathNavigationContract_v1.md) 标 **SUPERSEDED by ADR-0031 / MoveProcessContract v1**；[ADR-0030](../design/decisions/ADR-0030-V5.2全路径导航与端点停止.md) 标 **Partially superseded**（任务纠偏结论继续有效，单一 `d_end` Endpoint Stop 语义降级为诊断量）。
+- 宪法升 **v2.9**：新增 MOVE–PROCESS 增量；§6.7 加 v2.9 注记；术语表新增 MOVE/PROCESS/No-Move/MoveProcessContract v1。
+- 命名区分：**V5.3-ENG** = 已执行的 30h rollout/relax 工程闭环（历史）；**V5.3-MP** = 本大规模 MOVE–PROCESS 战役。
+- 注册更新：`config/registry/g_v_map.yaml` 中 `V5.2-R` → `archived`（D2-G STOP），旧 `V5.3` → `V5.3-ENG` `executed`，新增 `V5.3-MP` `proposed`（gates `V53MP-S0-data`/`S1-smoke`/`S2-scale`/`S3-formal`/`S3-closed-loop`）；`plan_revision: 2026-10-21.2`；G–V 映射文档由 `scripts/render_gv_map.py --write` 重新生成。
+- 索引同步：根 README 新增 V5.3-MP 当前段；AGENT §10 指针置顶 V5.3-MP；docs 索引新增当前段并把 V5.2-R 标历史；合同/ADR/计划状态同步。
+- 数据事实登记：当前六表仅 50 曲线/12,034 行；~200k 反应库尚未转 V5 六表；S0 是真实建库而非配置开关；S0 通过前 GPU=0。
+- 本轮仅文档/注册/规范修订；未改业务训练代码、未启动训练/QC、未触 sealed（folds 3/4 继续封存）。docs gate `--strict` CLEAN。
+
 ## 2026-10-21 增量登记：ADR-0030 全路径导航与端点停止（V5.2-R）
 
 - 新增规范件：[ADR-0030 V5.2 全路径导航与端点停止](../design/decisions/ADR-0030-V5.2全路径导航与端点停止.md)（**Accepted**）、[FullPathNavigationContract v1](../contracts/PES2TS_FullPathNavigationContract_v1.md)（**Active-Normative**，Move/Stop/TS/q 唯一任务合同）、[V5.2-R 全路径导航与端点停止修复方案 v1](PES2TS_V52R_全路径导航与端点停止修复方案_v1_20261021.md)、[V5.2 任务纠偏审计 20261021](../reports/PES2TS_V52_任务纠偏审计_20261021.md)（证据基础）。
@@ -67,7 +79,7 @@
 > 取代关系：本文持续登记；2026-10-05 当前学习主线按 ADR-0010 更新，旧日期记录保留
 > 上游依赖：[开发宪法](../PES2TS_开发宪法_v1.md)、[阶段定义](PES2TS_阶段定义_G0-G3.md)
 > 下游消费者：文档索引、执行投影、各阶段开发与审计
-> 当前版本：v3.19 @ 2026-10-21（ADR-0030 全路径导航与端点停止（V5.2-R）；FullPathNavigationContract v1；V5.2-R 方案 v1；任务纠偏审计；ReactionIntent/GeometryPolicy v2；30h 计划 Executed-Frozen）
+> 当前版本：v3.20 @ 2026-10-21（ADR-0031 MOVE–PROCESS 统一学习；MoveProcessContract v1；V5.3-MP 计划与同步清单；V5.2/V5.2-R 关闭；宪法 v2.9；V5.3-ENG / V5.3-MP 命名）
 
 ---
 

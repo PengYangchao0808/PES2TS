@@ -1,10 +1,11 @@
 # PES2TS GeometryPolicyContract v2
 
-> 状态：**Active-Normative**（2026-10-21）
+> 状态：**Active-Normative**（2026-10-21；No-Move/Stop 条款由 ADR-0031 取代）
 > 日期：2026-10-21（v1：2026-10-20）
 > 层级：V5 Geometry Policy（G3.P.0–.3）；V6/V7 继承同一状态/动作语义
-> 决策记录：[ADR-0030](../design/decisions/ADR-0030-V5.2全路径导航与端点停止.md)
-> 任务合同：[PES2TS_FullPathNavigationContract_v1](PES2TS_FullPathNavigationContract_v1.md)
+> 后续决策：[ADR-0031](../design/decisions/ADR-0031-MOVE-PROCESS统一学习合同.md)（MOVE–PROCESS；2026-10-21）
+> 当前任务合同：[MoveProcessContract v1](PES2TS_MoveProcessContract_v1.md)（MOVE/PROCESS/No-Move 唯一真相）
+> 历史任务合同：[PES2TS_FullPathNavigationContract_v1](PES2TS_FullPathNavigationContract_v1.md)（**SUPERSEDED by ADR-0031**）
 > 取代关系：取代 [v1](PES2TS_GeometryPolicyContract_v1.md) §4.2（No-Move 语义）与 §5.2（停止标签）；v1 其余条款沿袭
 > 上游依赖：[V5–V7 v2.0 方案](../plans/PES2TS_V5-V7_三阶段研究与架构修订方案_v2.0_20261020.md)、[ADR-0028](../design/decisions/ADR-0028-关键原子几何策略合同与V5-V7任务拆分.md)（§2.1 No-Move 语义已由 ADR-0030 部分取代）
 > 下游消费者：V5.2 标签/特征/模型、V5.3 训练、V5.4 rollout、V6 物理修正、V7 RL
