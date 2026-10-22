@@ -1443,6 +1443,15 @@ def train_run_v53mp(
     lru = _FeatureLRU(
         dataset, capacity=int(config.feature_cache_capacity),
         level=FEATURE_LEVEL_V53MP, intent_off=False)
+    # Inner-val gets its OWN cache: the val slice is FIXED for the run, so
+    # pinning it (capacity >= len + margin) means each val feature is built
+    # exactly once.  Sharing the training LRU would let the 3200 per-eval
+    # training inserts evict val entries, forcing ~3200-5000 rebuilds on
+    # every eval (~8 min of a 3750-update 5k run).  Features are pure
+    # functions of the record, so caching choices cannot change numerics.
+    val_lru = _FeatureLRU(
+        dataset, capacity=max(len(inner_val_pos), 1) + 64,
+        level=FEATURE_LEVEL_V53MP, intent_off=False)
 
     log_path = out / "train_log.jsonl"
     effective = config.total_updates
@@ -1508,7 +1517,7 @@ def train_run_v53mp(
                     sort_keys=True) + "\n")
         if update % max(int(config.val_every), 1) == 0 or update == effective:
             val = _inner_val_loss(
-                model, dataset, lru, inner_val_pos, labels_v52,
+                model, dataset, val_lru, inner_val_pos, labels_v52,
                 endpoint_labels, config,
                 endpoint_pos_weight=endpoint_pos_weight, update=update)
             with open(log_path, "a", encoding="utf-8") as handle:
@@ -1539,7 +1548,7 @@ def train_run_v53mp(
 
     # --- τ_end calibration on inner-val, then frozen into payload+metrics --
     tau_block = _calibrate_tau_on(
-        model, dataset, lru, inner_val_pos, labels_v52, endpoint_labels,
+        model, dataset, val_lru, inner_val_pos, labels_v52, endpoint_labels,
         config, endpoint_pos_weight=endpoint_pos_weight)
     for path in (best_path, last_path):
         if path.is_file():
