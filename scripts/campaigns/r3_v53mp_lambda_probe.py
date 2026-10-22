@@ -31,6 +31,8 @@ import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+import numpy as np
+
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
@@ -71,22 +73,26 @@ def _zero(model) -> None:
         param.grad = None
 
 
-def _term_grads(model, loss_kwargs, terms: Tuple[str, ...],
+def _term_grads(model, batch, loss_kwargs_base, terms: Tuple[str, ...],
                 ) -> Dict[str, Tuple[float, float]]:
     """(encoder, head) grad norms per term by gradient linearity.
 
     ``∇L_term = ∇total(λ_term=1) − ∇total(0)`` computed ELEMENTWISE on the
     per-parameter grads (the frozen loss is never reimplemented; norms of
-    differences, never differences of norms).
+    differences, never differences of norms).  Each λ setting gets its OWN
+    forward pass (the graph is never backwarded twice).
     """
     from pes2ts_core.pesn.models.key_atom_loss_v53mp_v3 import (
         key_atom_loss_v53mp,
     )
-    import torch
+    from pes2ts_core.pesn.contracts.key_atom_v3 import forward_view_v3
 
     def grads_with(**lams):
         _zero(model)
-        out = key_atom_loss_v53mp(**loss_kwargs, **lams)
+        fwd = model(forward_view_v3(batch))
+        out = key_atom_loss_v53mp(u=fwd["u"], q_pred=fwd["q"],
+                                  endpoint_logit=fwd["endpoint_logit"],
+                                  **loss_kwargs_base, **lams)
         out["loss"].backward()
         return {name: (param.grad.detach().clone() if param.grad is not None
                        else None)
@@ -181,6 +187,16 @@ def run_probe(tables_dir: str, split_path: str, device: str,
     model = KeyAtomV53MPModel(backbone=backbone).to(device)
 
     rng = __import__("numpy").random.RandomState(17 + 52)
+    # endpoint pos_weight from the inner-train pool (the same structural
+    # estimate the trainer makes at run start — never from dev)
+    y_all = []
+    for i in train_pos:
+        lab = endpoint_labels.by_sample.get(str(samples[int(i)].sample_id))
+        if lab is not None and int(lab.endpoint_label) in (0, 1):
+            y_all.append(int(lab.endpoint_label))
+    n_pos = int(sum(y_all))
+    n_neg = int(len(y_all) - n_pos)
+    endpoint_pos_weight = (n_neg / n_pos) if n_pos > 0 else 1.0
     terms = ("lambda_rank", "lambda_q", "lambda_endpoint")
     ratios: Dict[str, List[float]] = {t: [] for t in terms}
     t0 = time.time()
@@ -192,15 +208,29 @@ def run_probe(tables_dir: str, split_path: str, device: str,
             _labels_for_batch,
             sample_order_pairs,
         )
+        sampler_cfg = __import__("types").SimpleNamespace(
+            batch_curves=8, frames_per_curve=4)
         positions = _curve_batch_positions(
-            samples, train_pos, seed=17, rng_state=rng)
-        built = [
-            build_sample_features_v3(
+            samples, train_pos, config=sampler_cfg, rng=rng)
+        built = []
+        for p in positions:
+            feat = build_sample_features_v3(
                 dataset.to_sample_v3(samples[int(p)]),
                 level="F2", intent_off=False)
-            for p in positions
-        ]
+            # zero-pad y_teacher for terminal/masked rows (same discipline
+            # as the trainer's _FeatureLRU — mixed batches never lose the
+            # key; the frame_mask/weights exclude them from the move loss)
+            if feat.get("y_teacher") is None:
+                n_key = len(samples[int(p)].intent.key_rows())
+                feat = dict(feat)
+                feat["y_teacher"] = np.zeros((n_key, 3), dtype=np.float32)
+            built.append(feat)
         batch = to_torch_batch(collate_v3(built), device=device)
+        from pes2ts_core.pesn.offline.training.key_atom_v53mp_train_v3 import (
+            _frame_mask_for,
+        )
+        frame_mask = _frame_mask_for(
+            [samples[int(p)] for p in positions], device)
         sample_ids = [str(s) for s in batch["sample_ids"]]
         lab = _labels_for_batch(sample_ids, labels, device)
         ep = _endpoint_for_batch(sample_ids, endpoint_labels, device)
@@ -211,22 +241,26 @@ def run_probe(tables_dir: str, split_path: str, device: str,
             [__import__("torch").zeros(
                 1, dtype=__import__("torch").long, device=n_keys.device),
              __import__("torch").cumsum(n_keys, dim=0)])
-        fwd = model(forward_view_v3(batch))
+        # forward/backward per λ setting happens INSIDE _term_grads (one
+        # graph per setting; never backwarded twice).  loss_kwargs_base
+        # carries only the batch/label tensors (model outputs are produced
+        # by the per-setting forward).
         loss_kwargs = dict(
-            u=fwd["u"], y=batch["y_teacher"],
+            y=batch["y_teacher"],
             degK=batch[NODE_DEGK_KEY][batch[NODE_KEY_SET_KEY]],
             key_ptr=key_ptr, pos=batch[NODE_POS_KEY],
             key_index=batch[NODE_KEY_SET_KEY], pair_index=batch["pair_index"],
-            q_pred=fwd["q"], q_true=lab["q_true"], q_mask=lab["q_mask"],
+            q_true=lab["q_true"], q_mask=lab["q_mask"],
             order_pairs=order_pairs,
-            endpoint_logit=fwd["endpoint_logit"], y_endpoint=ep["y_endpoint"],
+            y_endpoint=ep["y_endpoint"],
             endpoint_mask=ep["endpoint_mask"],
-            endpoint_pos_weight=1.0,
+            endpoint_pos_weight=endpoint_pos_weight,
             lambda_cos=0.02,
+            frame_mask=frame_mask,
             frame_weight=batch["frame_weight"],
             pair_edit=batch["pair_edit"],
         )
-        per_term = _term_grads(model, loss_kwargs, terms)
+        per_term = _term_grads(model, batch, loss_kwargs, terms)
         move_enc = per_term["__move__"][0]
         for term in terms:
             term_enc = per_term[term][0]
