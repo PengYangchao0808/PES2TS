@@ -116,11 +116,16 @@ SEEDS_FORMAL = (17, 29, 43)
 #: S2 = 10: 9 planned runs + 1 consumed by the 2026-10-21T23:35:39 pre-plan
 #: ``interrupted`` A_s17 attempt (recorded before the S2 plan freeze); the
 #: failure was real and recorded, so the cap is bumped by exactly that count.
-#: S3 = 11: 9 planned runs + 2 consumed by the 2026-10-22 WSL OOM restart
+#: S3 = 13: 9 planned runs + 2 consumed by the first 2026-10-22 WSL OOM restart
+#:      + 2 consumed by the second one (the 11:16 two-way attempt): the GUEST
+#:      cgroup never OOM-ed (memory.events oom_kill=0, anon 37.0 GiB when the
+#:      VM vanished) — the HOST ran out, which a guest cgroup cannot prevent.
+#:      Concurrency is therefore 1 for the rest of S3.
+#: S3-old = 11: 9 planned runs + 2 consumed by the 2026-10-22 WSL OOM restart
 #: (host memory exhaustion killed the A_s17/A_s29 driver processes mid-run;
 #: both were real recorded attempts, reconciled to ``interrupted`` and
 #: retried, so the cap is bumped by exactly that count — never silently).
-PHASE_CAPS = {"S1": 4, "S2": 10, "S3": 11}
+PHASE_CAPS = {"S1": 4, "S2": 10, "S3": 13}
 STAGE_AUTH_BIT = {"S1": "s1_authorized", "S2": "s2_authorized", "S3": "s3_authorized"}
 STAGE_GATE_ID = {
     "S1": "V53MP-S1-smoke",
