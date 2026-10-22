@@ -113,7 +113,10 @@ SEEDS_FORMAL = (17, 29, 43)
 #: (LAMBDA_ARM_MISMATCH, fixed in the driver the same day; the failure was a
 #: real recorded attempt, so the cap is bumped by exactly that count — never
 #: silently raised).
-PHASE_CAPS = {"S1": 4, "S2": 9, "S3": 9}
+#: S2 = 10: 9 planned runs + 1 consumed by the 2026-10-21T23:35:39 pre-plan
+#: ``interrupted`` A_s17 attempt (recorded before the S2 plan freeze); the
+#: failure was real and recorded, so the cap is bumped by exactly that count.
+PHASE_CAPS = {"S1": 4, "S2": 10, "S3": 9}
 STAGE_AUTH_BIT = {"S1": "s1_authorized", "S2": "s2_authorized", "S3": "s3_authorized"}
 STAGE_GATE_ID = {
     "S1": "V53MP-S1-smoke",
