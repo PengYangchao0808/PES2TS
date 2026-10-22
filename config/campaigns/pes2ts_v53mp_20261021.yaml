@@ -5,7 +5,7 @@
 # 变更规则: 任何字段变更 = config_sha256 变更 + runplan 重建（plan-init --force）+ 重新冻结
 schema: pes2ts_v53mp_campaign_v1
 campaign_id: PES2TS_V53MP_MOVE_PROCESS
-version: 0.1.0-s0
+version: 0.1.0-s3   # 2026-10-22: S2 门 V53MP-S2-scale 通过（9/9 done、guard 全过、零 NaN），S3 授权
 governance:
   constitution: docs/PES2TS_开发宪法_v1.md   # v2.8 增量（ADR-0031）
   contracts:
@@ -18,7 +18,7 @@ governance:
     s0_authorized: true      # 计划 §12.1/§12.2：S0-A 元数据资格 + S0-B 经授权提取（逐次记录）
     s1_authorized: true      # 2026-10-22：S0 全部门通过（S0 报告）+ S0-F 7/7 + λ 探针回填；用户授权整个 V5.3 阶段
     s2_authorized: true      # 2026-10-22：S1 健康检查通过（三臂 ok、guard 不破、GPU 1829s<3600s cap、无 NaN）——用户授权整个 V5.3 阶段
-    s3_authorized: false     # 计划 §12.4：S2 通过 + S1 实测预算冻结后授权
+    s3_authorized: true      # 2026-10-22：S2 门 V53MP-S2-scale 通过（见 S2 5k 规模报告），用户授权 S3
     sealed_authorized: false
     confirm_authorized: false
   provenance_required:   # 每个 run record / 导出 bundle 必填，缺一拒发
