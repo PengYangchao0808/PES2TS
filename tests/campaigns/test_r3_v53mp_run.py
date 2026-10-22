@@ -286,10 +286,18 @@ def test_gate_check_full_pass(tmp_path: Path) -> None:
 def test_run_refuses_without_s1_authorization(tmp_path: Path) -> None:
     root = _v53mp_root(tmp_path)
     tables, split = _stub_data(root)
+    # the authorization gate must read a config with s1_authorized=false —
+    # never the live campaign config (whose bit flips as stages advance)
+    import yaml
+    cfg = yaml.safe_load(CONFIG.read_text(encoding="utf-8"))
+    cfg["governance"]["authorization"]["s1_authorized"] = False
+    cfg_path = tmp_path / "config_unauthorized.yaml"
+    cfg_path.write_text(yaml.safe_dump(cfg, allow_unicode=True, sort_keys=False),
+                        encoding="utf-8")
     plan = _run([
         "--output-root", str(root), "plan-init",
         "--tier", "2k", "--tables-dir", str(tables), "--split", str(split),
-        "--config", str(CONFIG),
+        "--config", str(cfg_path),
     ])
     assert plan.returncode == 0, plan.stderr
 
@@ -299,7 +307,7 @@ def test_run_refuses_without_s1_authorization(tmp_path: Path) -> None:
         "--output-root", str(root), "run",
         "--run-id", "v53mp_2k_A_s17",
         "--tables-dir", str(tables), "--split", str(split),
-        "--config", str(CONFIG),
+        "--config", str(cfg_path),
         "--ledger", str(ledger),
         "--gpu-lock", str(gpu_lock),
     ])

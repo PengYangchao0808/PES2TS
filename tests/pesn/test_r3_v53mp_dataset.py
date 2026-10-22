@@ -238,10 +238,11 @@ def test_tampered_shard_fails_closed(tables_dir: Path) -> None:
     write_geometry_shards(tables_dir)
     shard = next(tables_dir.glob("shard_*.npz"))
     shard.write_bytes(b"not a zip file at all")
-    lazy = ShardedKeyAtomDatasetV3(tables_dir, label_statuses=ALL_STATUSES)
-    # verification happens on first geometry load, BEFORE any parse
-    # (fail-closed on sha; no lazy fallback to CSV after corruption)
+    # fail-closed on sha either at init bulk pre-verification or on first
+    # geometry load (lazy fallback); BEFORE any parse, and with no lazy
+    # fallback to CSV after corruption
     with pytest.raises(KeyAtomDatasetV3Error) as exc:
+        lazy = ShardedKeyAtomDatasetV3(tables_dir, label_statuses=ALL_STATUSES)
         lazy.frame_xyz(CURVE_IDS[0], 0)
     assert exc.value.code in ("SHARD_SHA", "SHARD_READ")
 

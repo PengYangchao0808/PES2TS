@@ -59,8 +59,10 @@ from __future__ import annotations
 import csv
 import hashlib
 import json
+import time
 import zipfile
 from collections import OrderedDict
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Final, Iterable, Mapping, Sequence
@@ -152,8 +154,17 @@ def _check_columns(table: str, rows: Sequence[Mapping[str, str]]) -> None:
              f"{table} is missing required columns {missing}")
 
 
+#: Streaming chunk size for :func:`_sha256` (bounded memory on the multi-GB
+#: CSV tables; same hex digest as one-shot ``read_bytes()`` hashing).
+_SHA256_CHUNK_BYTES: Final[int] = 1 << 20
+
+
 def _sha256(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    digest = hashlib.sha256()
+    with path.open("rb") as fh:
+        for chunk in iter(lambda: fh.read(_SHA256_CHUNK_BYTES), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
 def _verify_data_manifest_at(tables_dir: Path) -> str:
@@ -1151,7 +1162,9 @@ class ShardedKeyAtomDatasetV3:
         self._shard_curve_path: dict[str, str] = {}
         self._shard_sha: dict[str, str] = {}
         self._shard_verified: set[str] = set()
+        self.shard_verify_seconds = 0.0
         self._load_shard_index()
+        self._preverify_shards()
 
         # --- light state: irc_node scan + sample index (optionally cached) ---
         # ``light_cache=True`` (V5.3-MP training loop): the light init scan is
@@ -1444,6 +1457,32 @@ class ShardedKeyAtomDatasetV3:
                          "SHARD_CURVE_DUP",
                          f"curve {cid} appears in more than one shard")
                 self._shard_curve_path[str(cid)] = rel
+
+    def _preverify_shards(self) -> None:
+        """Fail-closed bulk sha256 verification of every indexed shard.
+
+        Runs once at init (after :meth:`_load_shard_index`) with a bounded
+        thread pool — hashlib and file reads release the GIL, so the hashes
+        overlap.  Populates :attr:`_shard_verified` so the training loop's
+        first :meth:`frame_xyz` never hashes a shard; the lazy check in
+        :meth:`_load_curve_frames_shard` remains as fallback for any shard
+        not covered here.  Wall time is recorded in
+        ``shard_verify_seconds`` (observable, never printed).
+        """
+        t0 = time.perf_counter()
+        rels = sorted(self._shard_sha)
+        if self.verify_manifest and rels:
+            def _hash_one(rel: str) -> tuple[str, str]:
+                return rel, _sha256(self.tables_dir / rel)
+            with ThreadPoolExecutor(max_workers=min(8, len(rels))) as pool:
+                for rel, actual in pool.map(_hash_one, rels):
+                    expected = self._shard_sha[rel]
+                    _require(bool(expected) and actual == expected,
+                             "SHARD_SHA",
+                             f"{rel}: index sha256 {expected[:12]}… != actual "
+                             f"{actual[:12]}…")
+                    self._shard_verified.add(rel)
+        self.shard_verify_seconds = time.perf_counter() - t0
 
     def _load_curve_frames_shard(
         self, curve_id: str, shard_path: Path,

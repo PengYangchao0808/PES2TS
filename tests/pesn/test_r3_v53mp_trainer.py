@@ -821,3 +821,36 @@ def test_resume_identical_to_fresh_run(tmp_path, env, lanes_ready) -> None:
             env.ds, env.labels, env.endpoint, cfg_c, dir_resumed,
             dev_positions=env.dev_pos, resume=True)
     assert exc.value.code == "RESUME_IDENTITY_MISMATCH"
+
+
+def test_feature_lru_zero_pads_missing_teacher(env, lanes_ready) -> None:
+    """Real-data regression: terminal/masked rows carry y_teacher=None
+    (unlike this fixture's always-teacher rows); the trainer's feature LRU
+    must zero-pad so mixed batches never lose the key."""
+    import dataclasses
+
+    base = env.ds.samples[0]
+    rec_none = dataclasses.replace(base, target_action_u=None)
+
+    class _FakeDS:
+        def __init__(self, ds, rec):
+            self._ds, self._rec = ds, rec
+
+        def records(self, _idx):
+            return [self._rec]
+
+        def to_sample_v3(self, rec):
+            return self._ds.to_sample_v3(rec)
+
+    lru = tr._FeatureLRU(_FakeDS(env.ds, rec_none), capacity=4)
+    built = lru.get(0)
+    n_key = len(base.intent.key_rows())
+    assert built["y_teacher"] is not None
+    assert built["y_teacher"].shape == (n_key, 3)
+    assert float(np.abs(built["y_teacher"]).max()) == 0.0
+    # collate keeps y_teacher when mixed with a teacher-bearing sample
+    ok_built = build_sample_features_v3(
+        env.ds.to_sample_v3(env.ds.samples[1]), level="F2", intent_off=False)
+    batch = to_torch_batch(collate_v3([built, ok_built]), device="cpu")
+    assert "y_teacher" in batch
+    assert batch["y_teacher"].shape[0] == n_key * 2

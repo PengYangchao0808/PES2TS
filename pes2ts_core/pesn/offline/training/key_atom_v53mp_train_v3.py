@@ -181,6 +181,10 @@ class V53MPTrainerConfig:
     #: full dev).  Only the S1 smoke tier uses it (≤1 GPU-h budget);
     #: S2/S3 evaluate the FULL frozen dev set (comparability).
     eval_max_samples: Optional[int] = None
+    #: inner-val cap (seeded, FIXED per run): selection + τ_end calibration
+    #: use this subset; keeps the per-100-update inner-val sweep cheap at
+    #: 5k/20k scale.  None = the full inner-val pool.
+    inner_val_max_samples: Optional[int] = None
 
     def __post_init__(self) -> None:
         if self.arm not in ("A", "B", "C"):
@@ -438,6 +442,15 @@ class _FeatureLRU:
         built = build_sample_features_v3(
             self._dataset.to_sample_v3(rec),
             level=self._level, intent_off=self._intent_off)
+        # V5.3-MP loads ALL label statuses; terminal/masked rows carry no
+        # teacher (y_teacher=None).  Zero-pad so collated batches always
+        # carry ``y_teacher`` — the MOVE loss's frame_mask + zero
+        # frame_weight exclude these rows from numerator and denominator,
+        # so the padding never contributes a gradient.
+        if built.get("y_teacher") is None:
+            n_key = len(rec.intent.key_rows())
+            built = dict(built)
+            built["y_teacher"] = np.zeros((n_key, 3), dtype=np.float32)
         self._data[key] = built
         while len(self._data) > self._capacity:
             self._data.popitem(last=False)
@@ -466,20 +479,62 @@ def _update_rng(seed: int, update: int, salt: int = 0) -> np.random.RandomState:
     return np.random.RandomState(key)
 
 
+class _CurveDirIndex:
+    """Prebuilt ``(curve, direction)`` pools + sorted curve list.
+
+    Built ONCE per run over the train pool (one pass, ascending position
+    order) so each update's :func:`_curve_batch_positions` draw does not
+    rescan the ~1M–5M-entry pool.  Structure is bit-identical to the
+    per-update rebuild it replaces: ``pools`` appends positions in
+    ``indices`` iteration order; ``curves`` is the sorted unique curve-id
+    list — the ``rng.choice`` draws are therefore unchanged.
+    """
+
+    __slots__ = ("curves", "pools")
+
+    def __init__(
+        self,
+        curves: List[str],
+        pools: Dict[Tuple[str, str], List[int]],
+    ) -> None:
+        self.curves = curves
+        self.pools = pools
+
+    @classmethod
+    def build(
+        cls,
+        samples: Sequence[Any],
+        indices: Sequence[int],
+    ) -> "_CurveDirIndex":
+        pools: Dict[Tuple[str, str], List[int]] = {}
+        seen: set = set()
+        for i in indices:
+            rec = samples[int(i)]
+            cid = str(rec.curve_id)
+            seen.add(cid)
+            pools.setdefault(
+                (cid, str(rec.intent.direction)), []).append(int(i))
+        return cls(sorted(seen), pools)
+
+
 def _curve_batch_positions(
     samples: Sequence[Any],
     indices: Sequence[int],
     *,
     config: V53MPTrainerConfig,
     rng: np.random.RandomState,
+    index: Optional[_CurveDirIndex] = None,
 ) -> List[int]:
-    """One curve-balanced batch (dataset positions) from ``indices``."""
-    by_curve_dir: Dict[Tuple[str, str], List[int]] = {}
-    for i in indices:
-        rec = samples[int(i)]
-        by_curve_dir.setdefault(
-            (str(rec.curve_id), str(rec.intent.direction)), []).append(int(i))
-    curves = sorted({str(samples[int(i)].curve_id) for i in indices})
+    """One curve-balanced batch (dataset positions) from ``indices``.
+
+    ``index`` (optional) supplies the prebuilt pools/curve list (see
+    :class:`_CurveDirIndex`); when ``None`` they are rebuilt here, which
+    is bit-identical to the prebuilt path (same containers, same order).
+    """
+    if index is None:
+        index = _CurveDirIndex.build(samples, indices)
+    by_curve_dir = index.pools
+    curves = index.curves
     if not curves:
         raise V53MPTrainerError("SAMPLER_EMPTY", "no train curves to sample")
     chosen = list(rng.choice(
@@ -1139,12 +1194,19 @@ def evaluate_v53mp(
         "n_ts_rows": n_ts,
     }
 
+    # MOVE metrics are teacher-defined: only ``ok`` rows carry a teacher
+    # target (terminal/masked/conflict rows are zero-padded by the feature
+    # LRU so batches never crash, but they must not enter the MOVE metrics).
+    move_positions = [
+        int(p) for p in positions
+        if str(getattr(dataset.records([int(p)])[0], "label_status", "ok"))
+        == "ok"]
     move = evaluate_checkpoint(
-        model, dataset, cache, list(positions), device=config.device)
+        model, dataset, cache, move_positions, device=config.device)
     move_baseline = None
     if r3_model is not None:
         move_baseline = evaluate_checkpoint(
-            r3_model, dataset, cache, list(positions), device=config.device)
+            r3_model, dataset, cache, move_positions, device=config.device)
     guard: Dict[str, Any] = {
         "policy": ("record + guard (<= {}% RMSE degradation vs matched R3 "
                    "zero-shot; breach = scientific_failure, run KEPT)"
@@ -1302,6 +1364,17 @@ def train_run_v53mp(
     _assert_no_confirm(samples, train_pos, "train")
     _assert_no_confirm(samples, inner_val_pos, "inner-val")
     _assert_no_confirm(samples, dev_pos, "dev")
+
+    # --- inner-val cap (seeded, FIXED for the run): selection + τ_end use
+    # --- this subset so the per-100-update sweep stays cheap at 5k/20k ------
+    if config.inner_val_max_samples is not None and \
+            len(inner_val_pos) > int(config.inner_val_max_samples):
+        _rng_iv = np.random.RandomState(int(config.seed) ^ 0x1E7A1)
+        inner_val_pos = sorted(_rng_iv.choice(
+            list(inner_val_pos), size=int(config.inner_val_max_samples),
+            replace=False).tolist())
+    # --- sampler index: built ONCE over the finalised train pool -----------
+    curve_index = _CurveDirIndex.build(samples, train_pos)
     train_curves = {str(samples[p].curve_id) for p in train_pos}
     val_curves = {str(samples[p].curve_id) for p in inner_val_pos}
     dev_curves = {str(samples[p].curve_id) for p in dev_pos}
@@ -1380,7 +1453,8 @@ def train_run_v53mp(
             _set_encoder_trainable(model, True)   # stage B: joint
         positions = _curve_batch_positions(
             samples, train_pos, config=config,
-            rng=_update_rng(config.seed, update, salt=0))
+            rng=_update_rng(config.seed, update, salt=0),
+            index=curve_index)
         batch, records = _batch_from_positions(
             dataset, lru, positions, device)
         optimizer.zero_grad(set_to_none=True)
@@ -1544,6 +1618,8 @@ def train_run_v53mp(
         "last_train_loss": last_loss,
         "n_train_samples": len(train_pos),
         "n_inner_val_samples": len(inner_val_pos),
+        "inner_val_max_samples": (None if config.inner_val_max_samples is None
+                                  else int(config.inner_val_max_samples)),
         "n_dev_samples_total": len(dev_pos),
         "n_dev_samples_evaluated": len(dev_pos_eval),
         "eval_max_samples": (None if config.eval_max_samples is None

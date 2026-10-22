@@ -100,11 +100,20 @@ FEATURES_MODULE_PATH = "pes2ts_core/pesn/features/key_atom_graph_v3.py"
 
 TIER_PHASE = {"2k": "S1", "5k": "S2", "20k": "S3"}
 TIER_LIMITS = {"2k": 2000, "5k": 5000, "20k": 20000}
+#: Geometry LRU bound passed to ``ShardedKeyAtomDatasetV3``: covers the whole
+#: tier pool plus the frozen dev margin, so a curve's shard geometry is
+#: decompressed at most once per run (measured: ~0.13 s/update of redundant
+#: npz reads at 5k with the old 512-curve default).
+GEOMETRY_CACHE_CURVES = {"2k": 3500, "5k": 6500, "20k": 26000}
 ARMS = ("A", "B", "C")
 SEEDS_S1 = (17,)
 SEEDS_FORMAL = (17, 29, 43)
 #: per-phase launch-attempt caps == plan counts (all attempts incl. retries)
-PHASE_CAPS = {"S1": 3, "S2": 9, "S3": 9}
+#: S1 = 4: 3 planned arms + 1 consumed by the 2026-10-22 λ-wiring bug
+#: (LAMBDA_ARM_MISMATCH, fixed in the driver the same day; the failure was a
+#: real recorded attempt, so the cap is bumped by exactly that count — never
+#: silently raised).
+PHASE_CAPS = {"S1": 4, "S2": 9, "S3": 9}
 STAGE_AUTH_BIT = {"S1": "s1_authorized", "S2": "s2_authorized", "S3": "s3_authorized"}
 STAGE_GATE_ID = {
     "S1": "V53MP-S1-smoke",
@@ -914,6 +923,12 @@ def cmd_run(args: argparse.Namespace) -> int:
                 split_manifest=str(split_path),
                 label_statuses=LABEL_STATUSES,   # ok/masked/terminal/conflict
                 light_cache=True,   # V5.3-MP: manifest-bound light-index cache
+                # Geometry LRU sized to the tier pool (+ dev margin): each
+                # curve's shard geometry is decompressed at most ONCE per
+                # run instead of ~6x at 5k / ~6x at 20k (measured ~40 KB
+                # per curve → ≤1 GB at 20k).  Shard sha256 is pre-verified
+                # at init, so the loop never hashes.
+                cache_curves=GEOMETRY_CACHE_CURVES[tier],
             )
             samples = dataset.samples
             # Label cache (V5.3-MP): the v52 + endpoint label tables are pure
@@ -959,13 +974,22 @@ def cmd_run(args: argparse.Namespace) -> int:
                     "SPLIT_SCHEMA: frozen dev subset has no loaded samples"
                 )
             schedule = dict((config.get("training_contract") or {}).get("schedule") or {})
+            # per-arm λ gating (the trainer validates arm/λ consistency):
+            # A = move-only (all 0); B = +rank +q; C = +endpoint too
+            lam_rank = float(values.get("lambda_rank") or 0.0)
+            lam_q = float(values.get("lambda_q") or 0.0)
+            lam_ep = float(values.get("lambda_endpoint") or 0.0)
+            if arm == "A":
+                lam_rank = lam_q = lam_ep = 0.0
+            elif arm == "B":
+                lam_ep = 0.0
             trainer_config = V53MPTrainerConfig(
                 arm=arm,
                 seed=seed,
                 backbone_init="r3",
-                lambda_rank=float(values.get("lambda_rank") or 0.0),
-                lambda_q=float(values.get("lambda_q") or 0.0),
-                lambda_endpoint=float(values.get("lambda_endpoint") or 0.0),
+                lambda_rank=lam_rank,
+                lambda_q=lam_q,
+                lambda_endpoint=lam_ep,
                 freeze_encoder_updates=int(schedule.get("freeze_encoder_updates", 400)),
                 joint_updates=_tier_joint_updates(schedule, tier),
                 lr_head=float(schedule.get("lr_head", 3e-4)),
@@ -977,8 +1001,18 @@ def cmd_run(args: argparse.Namespace) -> int:
                     else None
                 ),
                 eval_max_samples=(
-                    int(schedule.get("s1_eval_max_samples"))
-                    if tier == "2k" and schedule.get("s1_eval_max_samples")
+                    int((config.get("training_contract") or {})
+                        .get("s1_eval_max_samples"))
+                    if tier == "2k"
+                    and (config.get("training_contract") or {})
+                        .get("s1_eval_max_samples")
+                    else None
+                ),
+                inner_val_max_samples=(
+                    int((config.get("training_contract") or {})
+                        .get("inner_val_max_samples"))
+                    if (config.get("training_contract") or {})
+                        .get("inner_val_max_samples")
                     else None
                 ),
                 device=args.device,
