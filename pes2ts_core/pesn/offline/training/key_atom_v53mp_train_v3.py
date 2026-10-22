@@ -83,6 +83,11 @@ from pes2ts_core.pesn.features.key_atom_graph_v3 import (
     to_torch_batch,
 )
 from pes2ts_core.pesn.models.key_atom_egnn_v3 import StarEGNNV3
+from pes2ts_core.pesn.offline.training.feature_prefetch_v53mp import (
+    FeaturePrefetcher,
+    log_prefetch_issue,
+    maybe_create_prefetcher,
+)
 from pes2ts_core.pesn.offline.training.key_atom_bc_v3 import (
     TrainerError,
     evaluate_checkpoint,
@@ -432,6 +437,44 @@ class _FeatureLRU:
         self._intent_off = intent_off
         self._data: "OrderedDict[int, Mapping[str, Any]]" = OrderedDict()
 
+    def contains(self, position: int) -> bool:
+        return int(position) in self._data
+
+    def _finalize(self, rec: Any,
+                  built: Mapping[str, Any]) -> Mapping[str, Any]:
+        # V5.3-MP loads ALL label statuses; terminal/masked rows carry no
+        # teacher (y_teacher=None).  Zero-pad so collated batches always
+        # carry ``y_teacher`` — the MOVE loss's frame_mask + zero
+        # frame_weight exclude these rows from numerator and denominator,
+        # so the padding never contributes a gradient.
+        if built.get("y_teacher") is None:
+            n_key = len(rec.intent.key_rows())
+            built = dict(built)
+            built["y_teacher"] = np.zeros((n_key, 3), dtype=np.float32)
+        return built
+
+    def _insert(self, key: int, built: Mapping[str, Any]) -> Mapping[str, Any]:
+        self._data[key] = built
+        while len(self._data) > self._capacity:
+            self._data.popitem(last=False)
+        return built
+
+    def put_built(self, position: int, rec: Any,
+                  built: Mapping[str, Any]) -> Mapping[str, Any]:
+        """Insert a PREFETCHED feature dict (same finalize as the serial path).
+
+        Features are pure functions of the record, so a prefetched dict is
+        bit-identical to what :meth:`get` would have built; ``put_built``
+        only replays the exact post-processing (y_teacher zero-pad) and the
+        identical eviction rule, keeping serial and parallel paths
+        numerics-equivalent.
+        """
+        key = int(position)
+        hit = self._data.get(key)
+        if hit is not None:
+            return hit
+        return self._insert(key, self._finalize(rec, built))
+
     def get(self, position: int) -> Mapping[str, Any]:
         key = int(position)
         hit = self._data.pop(key, None)
@@ -442,19 +485,7 @@ class _FeatureLRU:
         built = build_sample_features_v3(
             self._dataset.to_sample_v3(rec),
             level=self._level, intent_off=self._intent_off)
-        # V5.3-MP loads ALL label statuses; terminal/masked rows carry no
-        # teacher (y_teacher=None).  Zero-pad so collated batches always
-        # carry ``y_teacher`` — the MOVE loss's frame_mask + zero
-        # frame_weight exclude these rows from numerator and denominator,
-        # so the padding never contributes a gradient.
-        if built.get("y_teacher") is None:
-            n_key = len(rec.intent.key_rows())
-            built = dict(built)
-            built["y_teacher"] = np.zeros((n_key, 3), dtype=np.float32)
-        self._data[key] = built
-        while len(self._data) > self._capacity:
-            self._data.popitem(last=False)
-        return built
+        return self._insert(key, self._finalize(rec, built))
 
 
 class _CacheView:
@@ -687,10 +718,73 @@ def _frame_mask_for(records: Sequence[Any], device: str) -> torch.Tensor:
         dtype=torch.bool, device=device)
 
 
+def _prefetch_fill(
+    lru: _FeatureLRU,
+    dataset: Any,
+    positions: Sequence[int],
+    prefetcher: Optional[FeaturePrefetcher],
+) -> None:
+    """Best-effort parallel build of the CACHE MISSES among ``positions``.
+
+    The main process keeps doing ``dataset.records``/``to_sample_v3`` (they
+    need the dataset's geometry LRU and are cheap); only
+    ``build_sample_features_v3`` runs in the fork workers, over contiguous
+    chunks (see ``FeaturePrefetcher.build_many``).  On ANY failure the pool
+    logs one stderr line, closes itself, and the untouched misses are built
+    by the serial ``lru.get`` path below — a prefetch bug costs performance
+    only, never a run.
+    """
+    if prefetcher is None or not prefetcher.active:
+        return
+    missing = [int(p) for p in positions if not lru.contains(int(p))]
+    if not missing:
+        return
+    try:
+        recs = dataset.records(missing)
+        samples = [dataset.to_sample_v3(rec) for rec in recs]
+        built_list = prefetcher.build_many(samples)
+        if built_list is None or len(built_list) != len(missing):
+            # pool disabled/degraded (already logged) — serial path builds
+            return
+        for pos, rec, built in zip(missing, recs, built_list):
+            lru.put_built(pos, rec, built)
+    except Exception as exc:
+        log_prefetch_issue(
+            "lru fill failed ({}: {}); falling back to serial".format(
+                type(exc).__name__, exc))
+        if prefetcher is not None:
+            prefetcher.terminate()
+
+
+def _prefetch_warm_lru(
+    lru: _FeatureLRU,
+    dataset: Any,
+    positions: Sequence[int],
+    prefetcher: Optional[FeaturePrefetcher],
+    *,
+    chunk: int = 256,
+) -> None:
+    """Pre-warm an LRU (dev eval cache) in parallel chunks of ``chunk``.
+
+    Best-effort: any mid-way failure stops warming early and the eval's own
+    ``cache[position]`` reads build the rest serially — numerics unchanged
+    (features are pure functions of the record).
+    """
+    if prefetcher is None or not prefetcher.active:
+        return
+    pos = [int(p) for p in positions]
+    for start in range(0, len(pos), int(chunk)):
+        _prefetch_fill(lru, dataset, pos[start:start + int(chunk)], prefetcher)
+        if not prefetcher.active:
+            return
+
+
 def _batch_from_positions(
     dataset: Any, lru: _FeatureLRU, positions: Sequence[int], device: str,
+    prefetcher: Optional[FeaturePrefetcher] = None,
 ) -> Tuple[Dict[str, Any], List[Any]]:
     records = dataset.records([int(p) for p in positions])
+    _prefetch_fill(lru, dataset, positions, prefetcher)
     built = [lru.get(int(p)) for p in positions]
     batch = to_torch_batch(collate_v3(built), device=device)
     return batch, records
@@ -784,6 +878,7 @@ def _inner_val_loss(
     endpoint_pos_weight: float,
     update: int,
     batch_size: int = 64,
+    prefetcher: Optional[FeaturePrefetcher] = None,
 ) -> float:
     """Weighted mean inner-val loss (same loss; selection uses this ONLY)."""
     model.train(False)
@@ -793,7 +888,7 @@ def _inner_val_loss(
         for start in range(0, len(positions), batch_size):
             chunk = list(positions[start:start + batch_size])
             batch, records = _batch_from_positions(
-                dataset, lru, chunk, config.device)
+                dataset, lru, chunk, config.device, prefetcher=prefetcher)
             loss_out = _loss_on_batch(
                 model, batch, records, labels_v52, endpoint_labels, config,
                 endpoint_pos_weight=endpoint_pos_weight,
@@ -1319,7 +1414,48 @@ def train_run_v53mp(
     subset of the split manifest (driver-owned).  Confirm-subset curves in
     ANY position set are a typed refusal.  Draws are pure functions of
     (seed, update), so ``resume=True`` continues bit-identically.
+
+    Feature building may be fork-parallelised (opt-in flag file
+    ``outputs/pesn/v53mp/reports/feature_workers.on``, default OFF): the
+    pool is created HERE — before ``load_model_v53mp`` can initialise CUDA
+    — and closed in a ``finally``.  Numerics are bit-identical either way
+    (same ``build_sample_features_v3``, same arguments).
     """
+    # --- optional feature prefetch pool (gate read at trainer start; fork
+    # --- MUST precede any CUDA initialisation, hence the very top) --------
+    feature_prefetcher = maybe_create_prefetcher(FEATURE_LEVEL_V53MP, False)
+    feature_workers = (int(feature_prefetcher.workers)
+                       if feature_prefetcher is not None else 0)
+    try:
+        return _train_run_v53mp_impl(
+            dataset, labels_v52, endpoint_labels, config, out_dir,
+            r3_ckpt=r3_ckpt, r3_eval_ckpt=r3_eval_ckpt,
+            dev_positions=dev_positions, train_positions=train_positions,
+            resume=resume, provenance=provenance,
+            feature_prefetcher=feature_prefetcher,
+            feature_workers=feature_workers)
+    finally:
+        if feature_prefetcher is not None:
+            feature_prefetcher.close()
+
+
+def _train_run_v53mp_impl(
+    dataset: Any,
+    labels_v52: Any,
+    endpoint_labels: Any,
+    config: V53MPTrainerConfig,
+    out_dir: Any,
+    *,
+    r3_ckpt: Any = None,
+    r3_eval_ckpt: Any = None,
+    dev_positions: Optional[Sequence[int]] = None,
+    train_positions: Optional[Sequence[int]] = None,
+    resume: bool = True,
+    provenance: Optional[Mapping[str, Any]] = None,
+    feature_prefetcher: Optional[FeaturePrefetcher] = None,
+    feature_workers: int = 0,
+) -> Dict[str, Any]:
+    """Body of :func:`train_run_v53mp` (pool lifecycle owned by the caller)."""
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
     prov: Dict[str, Any] = {k: None for k in PROVENANCE_PLACEHOLDER_KEYS}
@@ -1482,7 +1618,7 @@ def train_run_v53mp(
             rng=_update_rng(config.seed, update, salt=0),
             index=curve_index)
         batch, records = _batch_from_positions(
-            dataset, lru, positions, device)
+            dataset, lru, positions, device, prefetcher=feature_prefetcher)
         optimizer.zero_grad(set_to_none=True)
         loss_out = _loss_on_batch(
             model, batch, records, labels_v52, endpoint_labels, config,
@@ -1536,7 +1672,8 @@ def train_run_v53mp(
             val = _inner_val_loss(
                 model, dataset, val_lru, inner_val_pos, labels_v52,
                 endpoint_labels, config,
-                endpoint_pos_weight=endpoint_pos_weight, update=update)
+                endpoint_pos_weight=endpoint_pos_weight, update=update,
+                prefetcher=feature_prefetcher)
             with open(log_path, "a", encoding="utf-8") as handle:
                 handle.write(json.dumps(
                     {"update": update, "inner_val_loss": val},
@@ -1607,6 +1744,13 @@ def train_run_v53mp(
     # fallback keeps the old behaviour: one shared training LRU for both the
     # model and the R3 baseline passes.
     dev_cache = dev_lru if dev_lru is not None else lru
+    # Parallel PRE-WARM of the pinned dev cache (chunks of 256): the eval
+    # itself then hits the LRU.  Pure cache-warmup — evaluate_v53mp /
+    # evaluate_checkpoint are untouched and build any miss serially, so a
+    # degraded/absent pool changes only speed, never numerics.
+    if dev_lru is not None:
+        _prefetch_warm_lru(dev_lru, dataset, dev_pos_eval,
+                           feature_prefetcher, chunk=256)
     metrics = evaluate_v53mp(
         model, r3_model, dataset, labels_v52, endpoint_labels,
         _CacheView(dev_cache), dev_pos_eval, config,
@@ -1661,6 +1805,7 @@ def train_run_v53mp(
         "selection_metric": "inner-val loss (scale-tier pool train curves)",
         "seeds": seed_map,
         "device": device,
+        "feature_workers": int(feature_workers),
         "wall_clock_s": round(time.time() - t0, 3),
         "checkpoint_best_sha256": sha256_file(best_path),
         "checkpoint_best_path": str(best_path),
