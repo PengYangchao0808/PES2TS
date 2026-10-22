@@ -239,7 +239,7 @@ def test_lru_put_built_matches_get_including_zero_pad():
 # ---------------------------------------------------------------------------
 
 
-def test_read_feature_workers_boundaries(tmp_path):
+def test_read_feature_workers_boundaries(tmp_path, monkeypatch):
     cases = {"2": 2, "8": 8, "12": 12, " 8 \n": 8,
              "1": 0, "13": 0, "0": 0, "-3": 0, "abc": 0, "8.5": 0, "": 0}
     for text, expected in cases.items():
@@ -248,7 +248,10 @@ def test_read_feature_workers_boundaries(tmp_path):
         assert read_feature_workers(flag) == expected, repr(text)
     # missing file => 0
     assert read_feature_workers(tmp_path / "missing.on") == 0
-    # default (repo-relative) path, no flag in the working tree => 0
+    # default path resolution (monkeypatched so the test does not depend on
+    # whether the campaign host currently has the gate enabled)
+    import pes2ts_core.pesn.offline.training.feature_prefetch_v53mp as _pf
+    monkeypatch.setattr(_pf, "FEATURE_WORKERS_FLAG", tmp_path / "missing.on")
     assert read_feature_workers() == 0
 
 

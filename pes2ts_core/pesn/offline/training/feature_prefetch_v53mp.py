@@ -26,6 +26,7 @@ Design constraints (S3 campaign discipline):
 
 from __future__ import annotations
 
+import gc
 import multiprocessing
 import sys
 from functools import partial
@@ -110,6 +111,18 @@ def split_contiguous(items: Sequence[Any], n_chunks: int) -> List[List[Any]]:
     return chunks
 
 
+def _worker_init() -> None:
+    """Worker initializer: never run a GC cycle in the child.
+
+    The child inherits the parent's whole heap (the 20k dataset is ~20 GiB).
+    A collection would touch every tracked container's header, COW-copying
+    those pages into the child — measured as a slow anon climb in the
+    parent's cgroup.  Workers only build acyclic dicts/arrays, so the
+    cycle collector has nothing to do anyway.
+    """
+    gc.disable()
+
+
 def _worker_build_chunk(
     samples: Sequence[KeyAtomSampleV3],
     level: str,
@@ -156,7 +169,7 @@ class FeaturePrefetcher:
         self._closed = False
         self._broken = False
         ctx = multiprocessing.get_context("fork")
-        self._pool = ctx.Pool(workers)
+        self._pool = ctx.Pool(workers, initializer=_worker_init)
 
     @property
     def active(self) -> bool:
@@ -256,6 +269,14 @@ def maybe_create_prefetcher(
     workers = read_feature_workers(flag_path)
     if workers <= 0:
         return None
+    # BEFORE the fork: move everything already loaded (dataset light index,
+    # label tables — the ~20 GiB that never dies) into the permanent
+    # generation.  Children then inherit a heap the cycle collector never
+    # walks, so forking does not COW-copy the dataset page by page.
+    try:
+        gc.freeze()
+    except Exception:                       # pragma: no cover - defensive
+        pass
     try:
         return FeaturePrefetcher(workers, level, intent_off)
     except Exception as exc:
