@@ -1452,6 +1452,23 @@ def train_run_v53mp(
     val_lru = _FeatureLRU(
         dataset, capacity=max(len(inner_val_pos), 1) + 64,
         level=FEATURE_LEVEL_V53MP, intent_off=False)
+    # Final dev eval gets its OWN pinned cache, shared by BOTH passes inside
+    # evaluate_v53mp (the model, then the matched R3 baseline): the frozen
+    # dev set (~138k positions) dwarfs the 8192-entry training LRU, so
+    # reusing it made the second evaluate_checkpoint pass rebuild every dev
+    # feature (~8 min of wasted compute per run).  Capacity is
+    # len(dev_positions) + 64 so each dev feature is built exactly once and
+    # the baseline pass is a pure hit.  MEMORY GUARD: a pinned full-dev entry
+    # set costs ≈0.6–0.7 GB at the 138k tier; only pin while
+    # len(dev_positions) <= 200_000, otherwise fall back to the training LRU
+    # (thrashing, but bounded memory).  The training loop keeps ``lru`` and
+    # the inner-val/tau path keeps ``val_lru``.  Features are pure functions
+    # of the record, so caching choices cannot change numerics.
+    dev_lru: Optional[_FeatureLRU] = None
+    if len(dev_pos) <= 200_000:
+        dev_lru = _FeatureLRU(
+            dataset, capacity=len(dev_pos) + 64,
+            level=FEATURE_LEVEL_V53MP, intent_off=False)
 
     log_path = out / "train_log.jsonl"
     effective = config.total_updates
@@ -1586,9 +1603,13 @@ def train_run_v53mp(
             dev_pos_eval, size=int(config.eval_max_samples),
             replace=False).tolist())
 
+    # Dedicated dev cache when it fits the memory guard (see above); the
+    # fallback keeps the old behaviour: one shared training LRU for both the
+    # model and the R3 baseline passes.
+    dev_cache = dev_lru if dev_lru is not None else lru
     metrics = evaluate_v53mp(
         model, r3_model, dataset, labels_v52, endpoint_labels,
-        _CacheView(lru), dev_pos_eval, config,
+        _CacheView(dev_cache), dev_pos_eval, config,
         train_q_mean=train_q_mean, tau_end=tau_block.get("tau_end"))
     metrics.update({
         "arm": config.arm,
