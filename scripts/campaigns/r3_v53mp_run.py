@@ -116,7 +116,16 @@ SEEDS_FORMAL = (17, 29, 43)
 #: S2 = 10: 9 planned runs + 1 consumed by the 2026-10-21T23:35:39 pre-plan
 #: ``interrupted`` A_s17 attempt (recorded before the S2 plan freeze); the
 #: failure was real and recorded, so the cap is bumped by exactly that count.
-#: S3 = 14: 9 planned runs + 4 consumed by the two 2026-10-22 host-OOM
+#: S3 = 15: 9 planned runs + 4 consumed by the two 2026-10-22 host-OOM
+#:      restarts + 1 consumed by the 2026-10-23 external termination of
+#:      B_s43 (see S3-old-14 below) + 1 consumed by the 2026-10-23 host
+#:      restart killing C_s17 at update 12500 (the systemd scope vanished
+#:      with memory.events oom_kill=0 — NOT a cgroup OOM; the host-side
+#:      restart tore down the session tree; a real recorded attempt,
+#:      reconciled to ``interrupted``, retried by the ledger — the cap is
+#:      bumped by exactly that count, never silently).
+#:      Concurrency stays 1 for the rest of S3.
+#: S3-old-14 = 14: 9 planned runs + 4 consumed by the two 2026-10-22 host-OOM
 #:      restarts (see S3-old-13 below) + 1 consumed by the 2026-10-23
 #:      external termination of B_s43 mid-run (~update 800; a real recorded
 #:      attempt, reconciled to ``interrupted`` and retried by the ledger —
@@ -132,7 +141,7 @@ SEEDS_FORMAL = (17, 29, 43)
 #: (host memory exhaustion killed the A_s17/A_s29 driver processes mid-run;
 #: both were real recorded attempts, reconciled to ``interrupted`` and
 #: retried, so the cap is bumped by exactly that count — never silently).
-PHASE_CAPS = {"S1": 4, "S2": 10, "S3": 14}
+PHASE_CAPS = {"S1": 4, "S2": 10, "S3": 15}
 STAGE_AUTH_BIT = {"S1": "s1_authorized", "S2": "s2_authorized", "S3": "s3_authorized"}
 STAGE_GATE_ID = {
     "S1": "V53MP-S1-smoke",
