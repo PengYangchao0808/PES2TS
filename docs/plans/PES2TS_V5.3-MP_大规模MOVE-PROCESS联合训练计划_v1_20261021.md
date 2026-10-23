@@ -1,6 +1,7 @@
 # PES2TS V5.3-MP：大规模 MOVE–PROCESS 联合训练计划 v1.1
 
 > 状态：**Proposed v1.1**（2026-10-21 用户评审后修订；v1 为有条件通过）
+> 执行状态（2026-10-23）：S0/S1/S2/S3 训练全部完成——门 V53MP-S0 系列、S1-smoke、S2-scale、S3-formal 均通过（[S0](../reports/PES2TS_V53MP_S0_数据建库与资格报告_20261022.md) / [S1](../reports/PES2TS_V53MP_S1_2k冒烟报告_20261022.md) / [S2](../reports/PES2TS_V53MP_S2_5k规模报告_20261022.md) / [S3](../reports/PES2TS_V53MP_S3_20k主结果报告_20261023.md) 报告）；闭环门 V53MP-S3-closed-loop 单独报告；S4 另议
 > 日期：2026-10-21 · 版本：v1.1
 > 决策记录：[ADR-0031](../design/decisions/ADR-0031-MOVE-PROCESS统一学习合同.md)
 > 唯一任务合同：[MoveProcessContract v1](../contracts/PES2TS_MoveProcessContract_v1.md)
