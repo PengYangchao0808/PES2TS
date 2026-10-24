@@ -946,18 +946,73 @@ def cmd_run(args: argparse.Namespace) -> int:
                 config, config_path, tables_dir, split_path,
                 run_id=run_id, tier=tier,
             )
-            dataset = ShardedKeyAtomDatasetV3(
-                args.tables_dir,
-                split_manifest=str(split_path),
-                label_statuses=LABEL_STATUSES,   # ok/masked/terminal/conflict
-                light_cache=True,   # V5.3-MP: manifest-bound light-index cache
-                # Geometry LRU sized to the tier pool (+ dev margin): each
-                # curve's shard geometry is decompressed at most ONCE per
-                # run instead of ~6x at 5k / ~6x at 20k (measured ~40 KB
-                # per curve → ≤1 GB at 20k).  Shard sha256 is pre-verified
-                # at init, so the loop never hashes.
-                cache_curves=GEOMETRY_CACHE_CURVES[tier],
-            )
+            loader_version = "v1"
+            loader_idx_sha256 = None
+            if args.loader == "v2":
+                # Loader v2 (S4 plan §4 / lane I1): columnar memmap index.
+                # Fail-closed BEFORE any launch: every idx_v2 artifact must
+                # exist (the dataset re-verifies binding/shas afterwards).
+                from pes2ts_core.pesn.offline.data.key_atom_dataset_v3_col import (
+                    ColumnarKeyAtomDatasetV3,
+                )
+                idx_dir = Path(args.tables_dir) / "idx_v2"
+                required = ["curves.json", "actions.npy",
+                            "sid_lookup_keys.npy", "sid_lookup_vals.npy",
+                            "curve_node_energies.npy"]
+                missing = [str(idx_dir / name) for name in required
+                           if not (idx_dir / name).is_file()]
+                for sub in ("samples", "intents", "labels_v52", "labels_ep",
+                            "label_curves"):
+                    if not (idx_dir / sub).is_dir():
+                        missing.append(str(idx_dir / sub))
+                if missing:
+                    raise V53MPConfigError(
+                        "IDX2_MISSING: --loader v2 requires a built idx_v2 "
+                        "(run scripts/agent_ops/data_gate/"
+                        "r3_v53mp_build_idx_v2.py); missing: {}".format(
+                            ", ".join(sorted(missing)))
+                    )
+                loader_idx_sha256 = sha256_file(idx_dir / "curves.json")
+                dataset = ColumnarKeyAtomDatasetV3(
+                    args.tables_dir,
+                    split_manifest=str(split_path),
+                    label_statuses=LABEL_STATUSES,
+                    cache_curves=GEOMETRY_CACHE_CURVES[tier],
+                )
+                loader_version = "v2"
+            else:
+                dataset = ShardedKeyAtomDatasetV3(
+                    args.tables_dir,
+                    split_manifest=str(split_path),
+                    label_statuses=LABEL_STATUSES,   # ok/masked/terminal/conflict
+                    light_cache=True,   # V5.3-MP: manifest-bound light-index cache
+                    # Geometry LRU sized to the tier pool (+ dev margin): each
+                    # curve's shard geometry is decompressed at most ONCE per
+                    # run instead of ~6x at 5k / ~6x at 20k (measured ~40 KB
+                    # per curve → ≤1 GB at 20k).  Shard sha256 is pre-verified
+                    # at init, so the loop never hashes.
+                    cache_curves=GEOMETRY_CACHE_CURVES[tier],
+                )
+            provenance["loader_version"] = loader_version
+            provenance["loader_idx_sha256"] = loader_idx_sha256
+            provenance["double_buffer"] = (args.double_buffer == "on")
+            provenance["pinned_h2d"] = (args.pinned_h2d == "on")
+            provenance["feature_workers_override"] = args.feature_workers
+            # geometry memmap pack (plan §5.2): active only on the v2 loader
+            # when geom/ is present with a matching binding
+            geometry_pack_info = None
+            geom_binding = getattr(dataset, "geom_pack_binding", None)
+            if geom_binding:
+                geometry_pack_info = {
+                    "schema": geom_binding.get("schema") or
+                              "v53mp_geom_pack_v1",
+                    "coords_sha256": geom_binding.get("coords_sha256"),
+                    "shard_index_sha256":
+                        geom_binding.get("shard_index_sha256"),
+                    "n_curves": geom_binding.get("n_curves"),
+                    "total_atom_rows": geom_binding.get("total_atom_rows"),
+                }
+            provenance["geometry_pack"] = geometry_pack_info
             samples = dataset.samples
             # Label cache (V5.3-MP): the v52 + endpoint label tables are pure
             # functions of the frozen tables; reuse the cache written by the
@@ -968,18 +1023,24 @@ def cmd_run(args: argparse.Namespace) -> int:
                 load_label_cache,
                 save_label_cache,
             )
-            try:
-                labels, endpoint_labels = load_label_cache(
-                    args.tables_dir,
-                    dataset_manifest_sha256=dataset.manifest_sha256,
-                )
-            except LabelCacheError:
-                labels = dataset.v52_labels()
-                endpoint_labels = build_endpoint_labels_spec_v1(dataset, labels)
-                save_label_cache(
-                    args.tables_dir, labels, endpoint_labels,
-                    dataset_manifest_sha256=dataset.manifest_sha256,
-                )
+            if args.loader == "v2":
+                # lazy per-row views over the idx_v2 label columns (same
+                # access surface as load_label_cache's tables; no eager
+                # expansion — S4 plan §2 memory ledger)
+                labels, endpoint_labels = dataset.label_tables()
+            else:
+                try:
+                    labels, endpoint_labels = load_label_cache(
+                        args.tables_dir,
+                        dataset_manifest_sha256=dataset.manifest_sha256,
+                    )
+                except LabelCacheError:
+                    labels = dataset.v52_labels()
+                    endpoint_labels = build_endpoint_labels_spec_v1(dataset, labels)
+                    save_label_cache(
+                        args.tables_dir, labels, endpoint_labels,
+                        dataset_manifest_sha256=dataset.manifest_sha256,
+                    )
             split_doc = json.loads(split_path.read_text(encoding="utf-8"))
             pool_curve_ids = _tier_pool_curve_ids(split_doc, tier)
             # Preflight: typed refusals on empty/confirm-contaminated pools.
@@ -993,14 +1054,60 @@ def cmd_run(args: argparse.Namespace) -> int:
                 {int(p) for p in list(train_pos) + list(inner_val_pos)}
             )
             dev_curve_ids = set(_subset_curve_ids(split_doc, "dev"))
-            dev_positions = [
-                i for i, s in enumerate(samples)
-                if str(s.curve_id) in dev_curve_ids
-            ]
+            # single derivation shared with the dev-pack builder
+            # (key_atom_dev_pack_v53mp.dev_positions_from_split)
+            from pes2ts_core.pesn.offline.data.key_atom_dev_pack_v53mp import (
+                dev_positions_from_split,
+                features_sha256_of,
+                positions_sha256,
+            )
+            dev_positions = dev_positions_from_split(samples, dev_curve_ids)
             if not dev_positions:
                 raise LedgerError(
                     "SPLIT_SCHEMA: frozen dev subset has no loaded samples"
                 )
+            # -- dev feature pack (S4 plan §5.3 / lane I2) --------------------
+            dev_pack_path = None
+            dev_pack_info = None
+            if args.dev_pack == "auto":
+                fsha = features_sha256_of()
+                psha = positions_sha256(dev_positions)
+                candidate = (Path(args.tables_dir) / "dev_packs"
+                             / fsha / psha)
+                binding_json = list(candidate.glob("*.json")) \
+                    if candidate.is_dir() else []
+                if len(binding_json) != 1:
+                    raise V53MPConfigError(
+                        "DEV_PACK_MISSING: --dev-pack auto requires the "
+                        "frozen dev pack at {} (one binding json); found {} "
+                        "(build with scripts/agent_ops/data_gate/"
+                        "r3_v53mp_build_dev_pack.py, or pass "
+                        "--dev-pack off)".format(candidate, len(binding_json))
+                    )
+                pack_binding = json.loads(
+                    binding_json[0].read_text(encoding="utf-8"))
+                # features_sha256/positions_sha256 resolve the DIRECTORY, so
+                # a mismatch here means the binding json drifted from its own
+                # path — refuse, never silently fall back.
+                if (str(pack_binding.get("features_sha256")) != fsha
+                        or str(pack_binding.get("positions_sha256")) != psha
+                        or str(pack_binding.get("feature_level")) != "F2"):
+                    raise V53MPConfigError(
+                        "DEV_PACK_BINDING: pack binding mismatch "
+                        "(features {}/{} positions {}/{} level {})".format(
+                            str(pack_binding.get("features_sha256"))[:12],
+                            fsha[:12],
+                            str(pack_binding.get("positions_sha256"))[:12],
+                            psha[:12], pack_binding.get("feature_level"))
+                    )
+                dev_pack_path = str(candidate)
+                dev_pack_info = {
+                    "path": dev_pack_path,
+                    "positions_sha256": psha,
+                    "features_sha256": fsha,
+                    "n_positions": int(pack_binding.get("n_positions", 0)),
+                }
+            provenance["dev_pack"] = dev_pack_info
             schedule = dict((config.get("training_contract") or {}).get("schedule") or {})
             # per-arm λ gating (the trainer validates arm/λ consistency):
             # A = move-only (all 0); B = +rank +q; C = +endpoint too
@@ -1050,7 +1157,35 @@ def cmd_run(args: argparse.Namespace) -> int:
                 r3_ckpt=r3_ckpt, r3_eval_ckpt=r3_ckpt,
                 dev_positions=dev_positions, train_positions=train_positions,
                 resume=True, provenance=provenance,
+                dev_feature_pack=dev_pack_path,
+                double_buffer=(args.double_buffer == "on"),
+                pinned_h2d=(args.pinned_h2d == "on"),
+                feature_workers=args.feature_workers,
             )
+            # loader provenance lands in metrics.json (top level, next to the
+            # trainer-written keys) — provenance already carries it into the
+            # checkpoint payloads via prov.
+            metrics["loader_version"] = loader_version
+            metrics["loader_idx_sha256"] = loader_idx_sha256
+            metrics["dev_pack"] = dev_pack_info
+            metrics["geometry_pack"] = geometry_pack_info
+            metrics["double_buffer"] = (args.double_buffer == "on")
+            metrics["pinned_h2d"] = (args.pinned_h2d == "on")
+            metrics["feature_workers_override"] = args.feature_workers
+            metrics_path = out_dir / "metrics.json"
+            if metrics_path.is_file():
+                payload = json.loads(metrics_path.read_text(encoding="utf-8"))
+                payload["loader_version"] = loader_version
+                payload["loader_idx_sha256"] = loader_idx_sha256
+                payload["dev_pack"] = dev_pack_info
+                payload["geometry_pack"] = geometry_pack_info
+                payload["double_buffer"] = (args.double_buffer == "on")
+                payload["pinned_h2d"] = (args.pinned_h2d == "on")
+                payload["feature_workers_override"] = args.feature_workers
+                metrics_path.write_text(
+                    json.dumps(payload, indent=1, sort_keys=True) + "\n",
+                    encoding="utf-8",
+                )
         except BaseException as exc:
             fail = dict(record)
             fail["status"] = "failed"
@@ -1147,6 +1282,31 @@ def _build_parser() -> argparse.ArgumentParser:
     run.add_argument("--r3-ckpt", default=R3_WINNER_CKPT)
     run.add_argument("--gpu-lock", default=GPU_LOCK)
     run.add_argument("--device", default="cuda")
+    run.add_argument("--loader", default="v1", choices=("v1", "v2"),
+                     help="v1 = ShardedKeyAtomDatasetV3 (light pickle); "
+                          "v2 = ColumnarKeyAtomDatasetV3 (idx_v2 memmap; "
+                          "requires scripts/agent_ops/data_gate/"
+                          "r3_v53mp_build_idx_v2.py output)")
+    run.add_argument("--dev-pack", default="off", choices=("auto", "off"),
+                     help="auto = serve the final dev eval from the frozen "
+                          "dev feature pack (plan §5.3; requires "
+                          "scripts/agent_ops/data_gate/"
+                          "r3_v53mp_build_dev_pack.py output; typed refusal "
+                          "on any binding mismatch — never a silent "
+                          "fallback); off = build dev features per run")
+    run.add_argument("--double-buffer", default="off", choices=("on", "off"),
+                     help="on = background-thread prefetch of update k+1's "
+                          "features during batch k's forward (plan §4.3/B3; "
+                          "fail-open, numerics unchanged); default off "
+                          "(B0–B2 reproducibility)")
+    run.add_argument("--pinned-h2d", default="off", choices=("on", "off"),
+                     help="on = stage H2D copies through reusable pinned "
+                          "buffers with non_blocking copies (plan §6/B3; "
+                          "same output contract, fail-open); default off")
+    run.add_argument("--feature-workers", type=int, default=None,
+                     help="explicit fork-pool size [0-12] overriding the "
+                          "feature_workers.on gate file (0 = serial; plan "
+                          "§4.3/B4 workers_for_concurrency)")
     return parser
 
 

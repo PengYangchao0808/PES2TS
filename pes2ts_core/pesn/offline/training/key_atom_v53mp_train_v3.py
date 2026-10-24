@@ -62,6 +62,8 @@ provenance; this module owns the math loop only.
 from __future__ import annotations
 
 import json
+import os
+import threading
 import time
 from collections import OrderedDict
 from dataclasses import asdict, dataclass
@@ -84,9 +86,14 @@ from pes2ts_core.pesn.features.key_atom_graph_v3 import (
 )
 from pes2ts_core.pesn.models.key_atom_egnn_v3 import StarEGNNV3
 from pes2ts_core.pesn.offline.training.feature_prefetch_v53mp import (
+    DoubleBufferedPrefetcher,
     FeaturePrefetcher,
     log_prefetch_issue,
     maybe_create_prefetcher,
+)
+from pes2ts_core.pesn.offline.training.h2d_pinned_v53mp import (
+    PinnedBufferPool,
+    to_torch_batch_pinned,
 )
 from pes2ts_core.pesn.offline.training.key_atom_bc_v3 import (
     TrainerError,
@@ -302,6 +309,86 @@ class V53MPTrainerConfig:
 # split protocol (curve-level, confirm firewall)
 # ---------------------------------------------------------------------------
 
+#: I4 (plan §7-B2): columnar startup fast paths over the v2 loader's
+#: vectorized columns (identical results; per-item paths kept verbatim).
+#: ``V53MP_DISABLE_COLUMNAR_FAST=1`` at import forces the per-item path —
+#: the startup certificate's reference arm.  Tests toggle the module flag.
+_COLUMNAR_FAST = os.environ.get("V53MP_DISABLE_COLUMNAR_FAST", "") != "1"
+
+
+def _startup_of(samples: Any) -> Any:
+    """Vectorized startup columns for ``samples``; None = per-item path.
+
+    Works for the v2 lazy sequence (``samples._ds.startup``); the v1
+    tuple / full loader has no ``_ds`` and always gets None (v1 path
+    byte-identical by construction).
+    """
+    if not _COLUMNAR_FAST:
+        return None
+    ds = getattr(samples, "_ds", None)
+    if ds is None:
+        return None
+    return getattr(ds, "startup", None)
+
+
+def _curve_id_set_of(samples: Any, positions: Sequence[int]) -> set:
+    """Set of curve_ids of ``positions`` (vectorized on the v2 loader)."""
+    st = _startup_of(samples)
+    if st is not None:
+        return st.curve_id_set(positions)
+    return {str(samples[int(p)].curve_id) for p in positions}
+
+
+def _assert_label_coverage(
+    samples: Any,
+    labels_v52: Any,
+    endpoint_labels: Any,
+    needed: Sequence[Sequence[int]],
+    n_samples: int,
+) -> None:
+    """Fail-closed label coverage over the FULL used slice.
+
+    Per-item path (v1 / eager tables): every position's sample_id must be
+    in both tables (VERBATIM from the original loop).  Columnar fast path
+    (I4): the lazy v2 label tables are written in SAMPLE ORDER by the idx
+    builder (which asserted full coverage fail-closed), so
+    ``covers_all_positions`` (row-count equality) is the structural check;
+    a small probe of REAL ``by_sample`` lookups (first/last of each group)
+    pins the row-order identity.  Any probe miss falls through to the
+    per-item path for that group.
+    """
+    fast = (_startup_of(samples) is not None
+            and bool(getattr(labels_v52, "covers_all_positions", None))
+            and bool(getattr(endpoint_labels, "covers_all_positions", None)))
+    if fast:
+        for tbl, name in ((labels_v52, "v52"),
+                          (endpoint_labels, "endpoint")):
+            _require(tbl.covers_all_positions(n_samples),
+                     "LABEL_COVERAGE" if name == "v52"
+                     else "ENDPOINT_LABEL_COVERAGE",
+                     "{} table covers {} rows, dataset has {}".format(
+                         name, tbl._n_rows, n_samples))
+        # probe real lookups at group boundaries (row-order identity)
+        for group in needed:
+            if not group:
+                continue
+            for p in (int(group[0]), int(group[-1])):
+                sid = str(samples[int(p)].sample_id)
+                _require(sid in labels_v52.by_sample, "LABEL_MISSING",
+                         "sample {} has no v52 label row".format(sid))
+                _require(sid in endpoint_labels.by_sample,
+                         "ENDPOINT_LABEL_MISSING",
+                         "sample {} has no endpoint label row".format(sid))
+        return
+    for group in needed:
+        for p in group:
+            sid = str(samples[int(p)].sample_id)
+            _require(sid in labels_v52.by_sample, "LABEL_MISSING",
+                     "sample {} has no v52 label row".format(sid))
+            _require(sid in endpoint_labels.by_sample,
+                     "ENDPOINT_LABEL_MISSING",
+                     "sample {} has no endpoint label row".format(sid))
+
 
 def _curve_fold(samples: Sequence[Any], index: int) -> Optional[int]:
     value = getattr(samples[int(index)], "fold", None)
@@ -312,6 +399,16 @@ def _assert_no_confirm(
     samples: Sequence[Any], positions: Sequence[int], where: str,
 ) -> None:
     """Confirm-subset folds (3/4) may never enter any position set."""
+    st = _startup_of(samples)
+    if st is not None and len(positions) > 0:
+        # I4 fast path: gather folds (vectorized); -1 = None (never 3/4),
+        # so only int values in {3,4} can refuse — identical to the
+        # per-item {fold} & CONFIRM_FOLDS intersection below.
+        folds = st.fold_array(positions)
+        bad = sorted({int(f) for f in folds if int(f) in CONFIRM_FOLDS_V53MP})
+        _require(not bad, "CONFIRM_POSITIONS",
+                 "{} positions touch confirm folds {}".format(where, bad))
+        return
     bad = sorted({_curve_fold(samples, p) for p in positions}
                  & CONFIRM_FOLDS_V53MP)
     _require(not bad, "CONFIRM_POSITIONS",
@@ -336,6 +433,34 @@ def v53mp_pool_split(
     """
     pool_ids = {str(c) for c in pool_curve_ids}
     _require(bool(pool_ids), "POOL_EMPTY", "pool_curve_ids is empty")
+    st = _startup_of(samples)
+    if st is not None:
+        # I4 fast path (vectorized): EXACTLY the same result.  The seeded
+        # rng draws happen at CURVE level over the STRING-sorted curve list
+        # (rng.shuffle(shuffled)) — replayed verbatim below, so the draw
+        # sequence (and every downstream position) is identical; only the
+        # pool/curve MASKING is vectorized.
+        pool = st.positions_in_curves(pool_ids)
+        _require(pool.size > 0, "POOL_EMPTY",
+                 "no samples for pool curves {}".format(sorted(pool_ids)[:5]))
+        _assert_no_confirm(samples, pool, "pool")
+        curves = st.unique_sorted_curve_ids(pool)
+        _require(len(curves) >= 2, "SPLIT_CURVES",
+                 "need >=2 pool curves, got {}".format(len(curves)))
+        rng = np.random.RandomState(int(seed) ^ 0x5EED53)
+        shuffled = list(curves)
+        rng.shuffle(shuffled)                      # IDENTICAL draw sequence
+        n_val = max(1, int(round(float(inner_val_fraction) * len(shuffled))))
+        n_val = min(n_val, len(shuffled) - 1)
+        val_curves = set(shuffled[:n_val])
+        val_rows = np.asarray(
+            sorted(st.curve_row[c] for c in val_curves), dtype=np.int64)
+        is_val = np.isin(np.asarray(st.curve_idx)[pool], val_rows)
+        val = pool[is_val].tolist()
+        train = pool[~is_val].tolist()
+        _require(bool(train) and bool(val), "SPLIT_EMPTY",
+                 "inner split produced an empty side")
+        return train, val
     pool = [i for i, s in enumerate(samples) if str(s.curve_id) in pool_ids]
     _require(bool(pool), "POOL_EMPTY",
              "no samples for pool curves {}".format(sorted(pool_ids)[:5]))
@@ -537,6 +662,29 @@ class _CurveDirIndex:
         samples: Sequence[Any],
         indices: Sequence[int],
     ) -> "_CurveDirIndex":
+        st = _startup_of(samples)
+        if st is not None and len(indices) > 0:
+            # I4 fast path (vectorized): same pools (each group's positions
+            # in ASCENDING order — a stable argsort of the ascending index
+            # array preserves it) and the same STRING-sorted curve list.
+            # The pools dict INSERTION order differs but only lookups occur
+            # (never iteration), so the sampler draws are identical.
+            idx = np.asarray(indices, dtype=np.int64)
+            ci = np.asarray(st.curve_idx)[idx]
+            di = st.direction_int(idx)
+            key = ci.astype(np.int64) * 2 + di.astype(np.int64)
+            order = np.argsort(key, kind="stable")
+            keys_sorted = key[order]
+            runs = np.split(order, np.flatnonzero(np.diff(keys_sorted)) + 1)
+            pools: Dict[Tuple[str, str], List[int]] = {}
+            for run in runs:
+                k = int(key[int(run[0])])     # run holds ORIGINAL indices
+                cid = st.curve_ids[k // 2]
+                direction = "forward" if (k % 2) == 0 else "reverse"
+                pools[(cid, direction)] = idx[run].tolist()
+            curves = sorted(st.curve_ids[int(c)]
+                            for c in np.unique(ci))
+            return cls(curves, pools)
         pools: Dict[Tuple[str, str], List[int]] = {}
         seen: set = set()
         for i in indices:
@@ -782,11 +930,43 @@ def _prefetch_warm_lru(
 def _batch_from_positions(
     dataset: Any, lru: _FeatureLRU, positions: Sequence[int], device: str,
     prefetcher: Optional[FeaturePrefetcher] = None,
+    *,
+    h2d_pool: Optional[Any] = None,
+    dbuf: Optional[Any] = None,
+    update: Optional[int] = None,
+    dataset_gate: Optional[Any] = None,
 ) -> Tuple[Dict[str, Any], List[Any]]:
-    records = dataset.records([int(p) for p in positions])
-    _prefetch_fill(lru, dataset, positions, prefetcher)
-    built = [lru.get(int(p)) for p in positions]
-    batch = to_torch_batch(collate_v3(built), device=device)
+    """One batch (records + collated torch batch) for ``positions``.
+
+    I3 additions (all default-off; defaults reproduce the pre-I3 path
+    byte-for-byte):
+      * ``h2d_pool`` — pinned-buffer H2D staging (same output contract);
+      * ``dbuf``/``update`` — pop a double-buffered build for THIS update
+        if the background thread finished it (the LRU put stays on THIS
+        thread; the background thread never touches the LRU);
+      * ``dataset_gate`` — lock serialising dataset/geometry access with
+        the double-buffer thread (only taken when the dbuf is active).
+    """
+    pos = [int(p) for p in positions]
+    if dbuf is not None and update is not None:
+        popped = dbuf.pop(int(update))
+        if popped is not None and popped["positions"] == pos:
+            for p, rec, built in zip(pos, popped["records"], popped["built"]):
+                lru.put_built(int(p), rec, built)
+    if dataset_gate is not None:
+        with dataset_gate:
+            records = dataset.records(pos)
+            _prefetch_fill(lru, dataset, pos, prefetcher)
+            built = [lru.get(int(p)) for p in pos]
+    else:
+        records = dataset.records(pos)
+        _prefetch_fill(lru, dataset, pos, prefetcher)
+        built = [lru.get(int(p)) for p in pos]
+    collated = collate_v3(built)
+    if h2d_pool is not None:
+        batch = to_torch_batch_pinned(collated, device, h2d_pool)
+    else:
+        batch = to_torch_batch(collated, device=device)
     return batch, records
 
 
@@ -879,6 +1059,7 @@ def _inner_val_loss(
     update: int,
     batch_size: int = 64,
     prefetcher: Optional[FeaturePrefetcher] = None,
+    dataset_gate: Optional[Any] = None,
 ) -> float:
     """Weighted mean inner-val loss (same loss; selection uses this ONLY)."""
     model.train(False)
@@ -888,7 +1069,8 @@ def _inner_val_loss(
         for start in range(0, len(positions), batch_size):
             chunk = list(positions[start:start + batch_size])
             batch, records = _batch_from_positions(
-                dataset, lru, chunk, config.device, prefetcher=prefetcher)
+                dataset, lru, chunk, config.device, prefetcher=prefetcher,
+                dataset_gate=dataset_gate)
             loss_out = _loss_on_batch(
                 model, batch, records, labels_v52, endpoint_labels, config,
                 endpoint_pos_weight=endpoint_pos_weight,
@@ -989,6 +1171,36 @@ def estimate_endpoint_pos_weight(
     are never passed in, so they cannot flow back (structural guarantee).
     Zero positives ⇒ pos_weight 1.0 (flagged via n_pos=0; never fabricate).
     """
+    ep_col = getattr(endpoint_labels, "ep_label_col", None)
+    st = _startup_of(samples)
+    if st is not None and ep_col is not None \
+            and len(train_positions) > 0 \
+            and endpoint_labels.covers_all_positions(st.n):
+        # I4 fast path (vectorized): the lazy endpoint table is written in
+        # SAMPLE ORDER, so gathering ep_label at the train positions counts
+        # the SAME labels.  Probe row-order identity on the boundaries
+        # (real by_sample lookups); any miss falls through per-item.
+        pos = np.asarray(train_positions, dtype=np.int64)
+        probe_ok = True
+        for p in (int(pos[0]), int(pos[-1])):
+            sid = str(samples[int(p)].sample_id)
+            if int(ep_col[p]) != int(endpoint_labels.by_sample[sid]
+                                      .endpoint_label):
+                probe_ok = False
+                break
+        if probe_ok:
+            labels = np.asarray(ep_col)[pos]
+            n_pos = int((labels == 1).sum())
+            n_neg = int((labels == 0).sum())
+            pos_weight = (n_neg / n_pos) if n_pos > 0 else 1.0
+            return {
+                "pos_weight": float(pos_weight),
+                "n_pos": int(n_pos),
+                "n_neg": int(n_neg),
+                "source": ("inner-train rows of the v53mp pool split "
+                           "(seed={}); never recomputed from dev".format(
+                               seed)),
+            }
     n_pos = 0
     n_neg = 0
     for p in train_positions:
@@ -1007,6 +1219,47 @@ def estimate_endpoint_pos_weight(
         "source": ("inner-train rows of the v53mp pool split "
                    "(seed={}); never recomputed from dev".format(seed)),
     }
+
+
+def _train_q_mean(samples: Any, labels_v52: Any,
+                  train_positions: Sequence[int]) -> Optional[float]:
+    """Mean q over q-masked inner-train rows (constant-q baseline).
+
+    Per-item path (VERBATIM from the original inline block): two by_sample
+    lookups per position.  Columnar fast path (I4): the lazy v52 table is
+    written in SAMPLE ORDER, so gathering ``q``/``q_mask`` at the train
+    positions yields the SAME float64 subsequence in the same order —
+    ``np.mean`` over it is bitwise-identical to the original
+    ``float(np.mean(list))`` (numpy converts the list to a float64 array
+    and pairwise-sums; same values, same order).  Probe row-order identity
+    on the boundaries; any miss falls through per-item.
+    """
+    q_col = getattr(labels_v52, "q_col", None)
+    q_mask_col = getattr(labels_v52, "q_mask_col", None)
+    st = _startup_of(samples)
+    if st is not None and q_col is not None and q_mask_col is not None \
+            and len(train_positions) > 0 \
+            and labels_v52.covers_all_positions(st.n):
+        pos = np.asarray(train_positions, dtype=np.int64)
+        probe_ok = True
+        for p in (int(pos[0]), int(pos[-1])):
+            sid = str(samples[int(p)].sample_id)
+            lab = labels_v52.by_sample[sid]
+            if bool(q_mask_col[p]) != bool(lab.q_mask) or \
+                    (bool(lab.q_mask) and
+                     float(q_col[p]) != float(lab.q)):
+                probe_ok = False
+                break
+        if probe_ok:
+            q = np.asarray(q_col)[pos].astype(np.float64)
+            m = np.asarray(q_mask_col)[pos]
+            vals = q[m]
+            return float(np.mean(vals)) if vals.size else None
+    train_q_vals = [
+        float(labels_v52.by_sample[str(samples[p].sample_id)].q)
+        for p in train_positions
+        if labels_v52.by_sample[str(samples[p].sample_id)].q_mask]
+    return float(np.mean(train_q_vals)) if train_q_vals else None
 
 
 # ---------------------------------------------------------------------------
@@ -1403,6 +1656,10 @@ def train_run_v53mp(
     train_positions: Optional[Sequence[int]] = None,
     resume: bool = True,
     provenance: Optional[Mapping[str, Any]] = None,
+    dev_feature_pack: Any = None,
+    double_buffer: bool = False,
+    pinned_h2d: bool = False,
+    feature_workers: Optional[int] = None,
 ) -> Dict[str, Any]:
     """Train one V5.3-MP run; writes checkpoint{_{best,last}}.pt + metrics.
 
@@ -1415,6 +1672,26 @@ def train_run_v53mp(
     ANY position set are a typed refusal.  Draws are pure functions of
     (seed, update), so ``resume=True`` continues bit-identically.
 
+    ``dev_feature_pack`` (S4 plan §5.3 / lane I2): an optional pack
+    directory (or an open :class:`DevFeaturePackView`) holding the frozen
+    dev F2 features.  When provided, the final dev eval (model pass AND
+    R3-baseline pass) reads features lazily from the pack instead of
+    building + pinning them in the dev LRU — numerics are bit-identical
+    (the pack stores the FINALIZED ``build_sample_features_v3`` dicts,
+    verified by ``r3_v53mp_dev_pack_certificate.py``); when None the code
+    path is byte-identical to the pre-pack behaviour.
+
+    I3 (plan §4.3/§6 / lanes B3): ``double_buffer`` (default False — B0–B2
+    reproducibility) prefetches update k+1's feature build on a background
+    thread while the main thread runs forward on batch k
+    (:class:`DoubleBufferedPrefetcher`; fail-open, pure ``(seed, update)``
+    sampling so numerics are unchanged); ``pinned_h2d`` (default False)
+    stages H2D copies through reusable pinned buffers
+    (:func:`to_torch_batch_pinned`; same output contract, fail-open);
+    ``feature_workers`` (default None = flag-file gate) overrides the fork
+    pool size (driver ``--feature-workers``; the B4 formula
+    :func:`workers_for_concurrency`).  All three are recorded in metrics.
+
     Feature building may be fork-parallelised (opt-in flag file
     ``outputs/pesn/v53mp/reports/feature_workers.on``, default OFF): the
     pool is created HERE — before ``load_model_v53mp`` can initialise CUDA
@@ -1423,7 +1700,8 @@ def train_run_v53mp(
     """
     # --- optional feature prefetch pool (gate read at trainer start; fork
     # --- MUST precede any CUDA initialisation, hence the very top) --------
-    feature_prefetcher = maybe_create_prefetcher(FEATURE_LEVEL_V53MP, False)
+    feature_prefetcher = maybe_create_prefetcher(
+        FEATURE_LEVEL_V53MP, False, workers=feature_workers)
     feature_workers = (int(feature_prefetcher.workers)
                        if feature_prefetcher is not None else 0)
     try:
@@ -1433,7 +1711,10 @@ def train_run_v53mp(
             dev_positions=dev_positions, train_positions=train_positions,
             resume=resume, provenance=provenance,
             feature_prefetcher=feature_prefetcher,
-            feature_workers=feature_workers)
+            feature_workers=feature_workers,
+            dev_feature_pack=dev_feature_pack,
+            double_buffer=double_buffer,
+            pinned_h2d=pinned_h2d)
     finally:
         if feature_prefetcher is not None:
             feature_prefetcher.close()
@@ -1454,6 +1735,9 @@ def _train_run_v53mp_impl(
     provenance: Optional[Mapping[str, Any]] = None,
     feature_prefetcher: Optional[FeaturePrefetcher] = None,
     feature_workers: int = 0,
+    dev_feature_pack: Any = None,
+    double_buffer: bool = False,
+    pinned_h2d: bool = False,
 ) -> Dict[str, Any]:
     """Body of :func:`train_run_v53mp` (pool lifecycle owned by the caller)."""
     out = Path(out_dir)
@@ -1475,17 +1759,26 @@ def _train_run_v53mp_impl(
     for p in dev_pos:
         _require(0 <= p < n_samples, "POSITION_RANGE",
                  "position {} outside 0..{}".format(p, n_samples - 1))
-    dev_curve_set = {str(samples[p].curve_id) for p in dev_pos}
+    dev_curve_set = _curve_id_set_of(samples, dev_pos)
     if train_positions is None:
         # default pool = every curve NOT in the frozen dev subset
-        pool = [i for i in range(n_samples)
-                if str(samples[i].curve_id) not in dev_curve_set]
+        st = _startup_of(samples)
+        if st is not None:
+            dev_rows = np.asarray(
+                sorted(st.curve_row[c] for c in dev_curve_set
+                       if c in st.curve_row), dtype=np.int64)
+            pool = np.flatnonzero(
+                ~np.isin(np.asarray(st.curve_idx), dev_rows)
+            ).astype(np.int64).tolist()
+        else:
+            pool = [i for i in range(n_samples)
+                    if str(samples[i].curve_id) not in dev_curve_set]
     else:
         pool = [int(p) for p in train_positions]
     for p in pool:
         _require(0 <= p < n_samples, "POSITION_RANGE",
                  "position {} outside 0..{}".format(p, n_samples - 1))
-    pool_curves = {str(samples[p].curve_id) for p in pool}
+    pool_curves = _curve_id_set_of(samples, pool)
     train_pos, inner_val_pos = v53mp_pool_split(
         samples, pool_curve_ids=sorted(pool_curves), seed=config.seed,
         inner_val_fraction=config.inner_val_fraction)
@@ -1511,9 +1804,9 @@ def _train_run_v53mp_impl(
             replace=False).tolist())
     # --- sampler index: built ONCE over the finalised train pool -----------
     curve_index = _CurveDirIndex.build(samples, train_pos)
-    train_curves = {str(samples[p].curve_id) for p in train_pos}
-    val_curves = {str(samples[p].curve_id) for p in inner_val_pos}
-    dev_curves = {str(samples[p].curve_id) for p in dev_pos}
+    train_curves = _curve_id_set_of(samples, train_pos)
+    val_curves = _curve_id_set_of(samples, inner_val_pos)
+    dev_curves = _curve_id_set_of(samples, dev_pos)
     _require(not (dev_curves & (train_curves | val_curves)),
              "DEV_TRAIN_OVERLAP",
              "dev curves overlap the train pool: {}".format(
@@ -1521,14 +1814,8 @@ def _train_run_v53mp_impl(
 
     # --- label coverage (fail-closed on the FULL used slice) --------------
     needed = [train_pos, inner_val_pos, dev_pos]
-    for group in needed:
-        for p in group:
-            sid = str(samples[int(p)].sample_id)
-            _require(sid in labels_v52.by_sample, "LABEL_MISSING",
-                     "sample {} has no v52 label row".format(sid))
-            _require(sid in endpoint_labels.by_sample,
-                     "ENDPOINT_LABEL_MISSING",
-                     "sample {} has no endpoint label row".format(sid))
+    _assert_label_coverage(samples, labels_v52, endpoint_labels,
+                           needed, n_samples)
 
     # --- endpoint pos_weight: ONCE, inner-train only (T3.3) ---------------
     ep_weights = estimate_endpoint_pos_weight(
@@ -1600,14 +1887,61 @@ def _train_run_v53mp_impl(
     # (thrashing, but bounded memory).  The training loop keeps ``lru`` and
     # the inner-val/tau path keeps ``val_lru``.  Features are pure functions
     # of the record, so caching choices cannot change numerics.
+    # I2 (plan §5.3): when a dev feature pack is provided, BOTH eval passes
+    # read the frozen features lazily from it — no dev LRU, no warm build,
+    # no ~4.7 GB pin.  Verified fail-closed BEFORE the training loop so a
+    # stale pack never burns a run.
+    dev_pack_view = None
+    if dev_feature_pack is not None:
+        from pes2ts_core.pesn.offline.data.key_atom_dev_pack_v53mp import (
+            DevFeaturePackView,
+        )
+        if isinstance(dev_feature_pack, DevFeaturePackView):
+            dev_pack_view = dev_feature_pack
+        else:
+            dev_pack_view = DevFeaturePackView.open(
+                Path(dev_feature_pack),
+                expected_positions=dev_pos,
+                feature_level=FEATURE_LEVEL_V53MP)
     dev_lru: Optional[_FeatureLRU] = None
-    if len(dev_pos) <= 200_000:
+    if dev_pack_view is None and len(dev_pos) <= 200_000:
         dev_lru = _FeatureLRU(
             dataset, capacity=len(dev_pos) + 64,
             level=FEATURE_LEVEL_V53MP, intent_off=False)
 
     log_path = out / "train_log.jsonl"
     effective = config.total_updates
+    # I3 (plan §4.3): optional double buffer — a background thread prefetches
+    # update k+1's build while the main thread runs forward on batch k.  The
+    # (seed, update) sampler is pure, so the thread's positions are the SAME
+    # the main loop will draw; the LRU put stays on the main thread; a shared
+    # gate serialises the (cheap) dataset/geometry access.  Any thread error
+    # disables the buffer (fail-open → synchronous path, numerics unchanged).
+    dbuf = None
+    dataset_gate = None
+    h2d_pool = PinnedBufferPool() if pinned_h2d else None
+    if double_buffer and feature_prefetcher is not None:
+        dataset_gate = threading.Lock()
+
+        def _dbuf_compute(u: int) -> List[int]:
+            return _curve_batch_positions(
+                samples, train_pos, config=config,
+                rng=_update_rng(config.seed, int(u), salt=0),
+                index=curve_index)
+
+        def _dbuf_materialize(pos: Sequence[int]) -> Dict[str, Any]:
+            with dataset_gate:
+                recs = dataset.records([int(p) for p in pos])
+                return {"records": recs,
+                        "samples": [dataset.to_sample_v3(r) for r in recs]}
+
+        dbuf = DoubleBufferedPrefetcher(
+            feature_prefetcher, dataset, _dbuf_compute, _dbuf_materialize,
+            level=FEATURE_LEVEL_V53MP, intent_off=False)
+    elif double_buffer and feature_prefetcher is None:
+        log_prefetch_issue(
+            "double_buffer requested but the feature pool is off "
+            "(flag file / --feature-workers); running without double buffer")
     t0 = time.time()
     last_loss: Optional[float] = None
     for update in range(start_update, effective + 1):
@@ -1617,8 +1951,14 @@ def _train_run_v53mp_impl(
             samples, train_pos, config=config,
             rng=_update_rng(config.seed, update, salt=0),
             index=curve_index)
+        # prefetch update+1 on the background thread BEFORE the forward of
+        # this batch (submit is non-blocking; falls back when busy/broken)
+        if dbuf is not None and update < effective:
+            dbuf.submit(update + 1)
         batch, records = _batch_from_positions(
-            dataset, lru, positions, device, prefetcher=feature_prefetcher)
+            dataset, lru, positions, device, prefetcher=feature_prefetcher,
+            h2d_pool=h2d_pool, dbuf=dbuf, update=update,
+            dataset_gate=dataset_gate)
         optimizer.zero_grad(set_to_none=True)
         loss_out = _loss_on_batch(
             model, batch, records, labels_v52, endpoint_labels, config,
@@ -1673,7 +2013,7 @@ def _train_run_v53mp_impl(
                 model, dataset, val_lru, inner_val_pos, labels_v52,
                 endpoint_labels, config,
                 endpoint_pos_weight=endpoint_pos_weight, update=update,
-                prefetcher=feature_prefetcher)
+                prefetcher=feature_prefetcher, dataset_gate=dataset_gate)
             with open(log_path, "a", encoding="utf-8") as handle:
                 handle.write(json.dumps(
                     {"update": update, "inner_val_loss": val},
@@ -1687,6 +2027,12 @@ def _train_run_v53mp_impl(
             _save(last_path, _ckpt_payload(
                 model, optimizer, update, best_val, best_update,
                 config, seed_map, prov))
+
+    # I3: stop the double-buffer thread before selection/eval (no more
+    # updates to prefetch); idempotent, joins the thread.
+    dbuf_healthy = bool(dbuf is not None and dbuf.active)
+    if dbuf is not None:
+        dbuf.close()
 
     # --- selection: inner-val ONLY ----------------------------------------
     if best_path.is_file():
@@ -1716,11 +2062,7 @@ def _train_run_v53mp_impl(
         model.load_state_dict(state["model"])
 
     # --- constant-q baseline from the inner-train slice only --------------
-    train_q_vals = [
-        float(labels_v52.by_sample[str(samples[p].sample_id)].q)
-        for p in train_pos
-        if labels_v52.by_sample[str(samples[p].sample_id)].q_mask]
-    train_q_mean = float(np.mean(train_q_vals)) if train_q_vals else None
+    train_q_mean = _train_q_mean(samples, labels_v52, train_pos)
 
     r3_model = None
     if r3_eval_ckpt is not None:
@@ -1743,17 +2085,23 @@ def _train_run_v53mp_impl(
     # Dedicated dev cache when it fits the memory guard (see above); the
     # fallback keeps the old behaviour: one shared training LRU for both the
     # model and the R3 baseline passes.
-    dev_cache = dev_lru if dev_lru is not None else lru
-    # Parallel PRE-WARM of the pinned dev cache (chunks of 256): the eval
-    # itself then hits the LRU.  Pure cache-warmup — evaluate_v53mp /
-    # evaluate_checkpoint are untouched and build any miss serially, so a
-    # degraded/absent pool changes only speed, never numerics.
-    if dev_lru is not None:
-        _prefetch_warm_lru(dev_lru, dataset, dev_pos_eval,
-                           feature_prefetcher, chunk=256)
+    # I2 (plan §5.3): the dev pack serves BOTH passes (model + R3 baseline)
+    # through the same ``cache[position]`` protocol — no warm, no pin.
+    if dev_pack_view is not None:
+        dev_cache_obj: Any = dev_pack_view
+    else:
+        dev_cache = dev_lru if dev_lru is not None else lru
+        # Parallel PRE-WARM of the pinned dev cache (chunks of 256): the eval
+        # itself then hits the LRU.  Pure cache-warmup — evaluate_v53mp /
+        # evaluate_checkpoint are untouched and build any miss serially, so a
+        # degraded/absent pool changes only speed, never numerics.
+        if dev_lru is not None:
+            _prefetch_warm_lru(dev_lru, dataset, dev_pos_eval,
+                               feature_prefetcher, chunk=256)
+        dev_cache_obj = _CacheView(dev_cache)
     metrics = evaluate_v53mp(
         model, r3_model, dataset, labels_v52, endpoint_labels,
-        _CacheView(dev_cache), dev_pos_eval, config,
+        dev_cache_obj, dev_pos_eval, config,
         train_q_mean=train_q_mean, tau_end=tau_block.get("tau_end"))
     metrics.update({
         "arm": config.arm,
@@ -1806,6 +2154,19 @@ def _train_run_v53mp_impl(
         "seeds": seed_map,
         "device": device,
         "feature_workers": int(feature_workers),
+        "double_buffer": bool(dbuf is not None),
+        "double_buffer_active": bool(dbuf_healthy),
+        "pinned_h2d": bool(h2d_pool is not None),
+        "pinned_h2d_stats": (h2d_pool.stats() if h2d_pool is not None
+                             else None),
+        "dev_feature_pack": (
+            {"pack_dir": str(dev_pack_view.pack_dir),
+             "n_positions": int(dev_pack_view.n_positions),
+             "features_sha256": str(
+                 dev_pack_view.binding.get("features_sha256")),
+             "positions_sha256": str(
+                 dev_pack_view.binding.get("positions_sha256"))}
+            if dev_pack_view is not None else None),
         "wall_clock_s": round(time.time() - t0, 3),
         "checkpoint_best_sha256": sha256_file(best_path),
         "checkpoint_best_path": str(best_path),

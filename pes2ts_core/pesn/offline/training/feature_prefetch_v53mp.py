@@ -22,6 +22,21 @@ Design constraints (S3 campaign discipline):
 * **bit-identical numerics** — the same ``build_sample_features_v3`` is
   called with the same arguments (level/intent_off are pass-throughs); no
   dtype or precision handling differs from the serial path.
+
+I3 (plan §4.3 / §5.5 / §7-B3/B4): :func:`workers_for_concurrency`
+implements the plan's worker-scaling formula for B4 concurrent runs, and
+:class:`DoubleBufferedPrefetcher` adds the plan's double-buffer — a
+background thread prefetches update k+1's feature build while the main
+thread runs forward on batch k.  The background thread NEVER touches the
+feature LRU or any non-thread-safe state (it orchestrates
+``dataset.records`` → ``to_sample_v3`` → ``pool.build_many`` and hands
+the built list back; the main thread does the LRU put + collate serially
+after popping).  Any thread/queue error logs one line and permanently
+falls back to the synchronous path (same fail-open discipline as the
+pool).  The ``(seed, update)`` sampling sequence and the feature bytes
+are IDENTICAL to the sync path — pinned by
+``tests/pesn/test_double_buffer_v53mp.py``.  All of it is opt-in via the
+trainer's ``double_buffer=False`` default (B0–B2 reproducibility).
 """
 
 from __future__ import annotations
@@ -29,9 +44,10 @@ from __future__ import annotations
 import gc
 import multiprocessing
 import sys
+import threading
 from functools import partial
 from pathlib import Path
-from typing import Any, Iterable, List, Optional, Sequence
+from typing import Any, Callable, Dict, List, Optional, Sequence
 
 from pes2ts_core.pesn.features.key_atom_graph_v3 import (
     KeyAtomSampleV3,
@@ -42,10 +58,12 @@ __all__ = [
     "FEATURE_WORKERS_FLAG",
     "FEATURE_WORKERS_MAX",
     "FEATURE_WORKERS_MIN",
+    "DoubleBufferedPrefetcher",
     "FeaturePrefetcher",
     "maybe_create_prefetcher",
     "read_feature_workers",
     "split_contiguous",
+    "workers_for_concurrency",
 ]
 
 #: Activation gate (repo-relative; read from the trainer's CWD).  Default
@@ -259,16 +277,30 @@ def maybe_create_prefetcher(
     intent_off: bool,
     *,
     flag_path: Optional[Path] = None,
+    workers: Optional[int] = None,
 ) -> Optional[FeaturePrefetcher]:
-    """Gate + construct: a pool iff the flag file enables it, else ``None``.
+    """Gate + construct: a pool iff enabled, else ``None``.
+
+    ``workers`` (I3): explicit override of the flag-file gate (the run
+    driver's ``--feature-workers``).  ``None`` (default) = today's
+    flag-file behaviour, byte-identical; an int in [FEATURE_WORKERS_MIN,
+    FEATURE_WORKERS_MAX] forces that many workers; ``0`` forces the serial
+    path (``None``); out-of-range values are clamped (never a refusal —
+    the orchestrator computes them from the concurrency formula).
 
     Any construction failure logs one stderr line and returns ``None`` —
     the caller proceeds serially.  Callers MUST close() the result (the
     V5.3-MP trainer does so in a ``finally``).
     """
-    workers = read_feature_workers(flag_path)
-    if workers <= 0:
-        return None
+    if workers is not None:
+        if int(workers) <= 0:
+            return None
+        n_workers = max(FEATURE_WORKERS_MIN,
+                        min(FEATURE_WORKERS_MAX, int(workers)))
+    else:
+        n_workers = read_feature_workers(flag_path)
+        if n_workers <= 0:
+            return None
     # BEFORE the fork: move everything already loaded (dataset light index,
     # label tables — the ~20 GiB that never dies) into the permanent
     # generation.  Children then inherit a heap the cycle collector never
@@ -278,9 +310,192 @@ def maybe_create_prefetcher(
     except Exception:                       # pragma: no cover - defensive
         pass
     try:
-        return FeaturePrefetcher(workers, level, intent_off)
+        return FeaturePrefetcher(n_workers, level, intent_off)
     except Exception as exc:
         log_prefetch_issue(
             "pool construction failed ({}: {}); running serial".format(
                 type(exc).__name__, exc))
         return None
+
+
+def workers_for_concurrency(n_ways: int) -> int:
+    """Plan §4.3 worker formula for ``n_ways`` concurrent runs.
+
+    ``max(FEATURE_WORKERS_MIN, min(FEATURE_WORKERS_MAX, 32 // n_ways - 1))``
+    — 12 workers single-way (cap), 12 at 2 ways (32//2-1=15, capped),
+    9 at 3 ways, 7 at 4 ways, floor 2.  Guarded against n_ways < 1.
+    """
+    n = max(1, int(n_ways))
+    return max(FEATURE_WORKERS_MIN,
+               min(FEATURE_WORKERS_MAX, 32 // n - 1))
+
+
+# ---------------------------------------------------------------------------
+# double buffer (plan §4.3 / I3): prefetch update k+1 during forward on k
+# ---------------------------------------------------------------------------
+class DoubleBufferedPrefetcher:
+    """Background-thread prefetch of the NEXT update's feature build.
+
+    The (seed, update) sampler is a PURE function, so update k+1's
+    positions can be computed while the main thread runs forward/backward
+    on batch k.  The background thread ONLY:
+
+    1. computes positions for ``update`` (caller-supplied pure ``compute``
+       callable),
+    2. calls ``dataset.records`` + ``dataset.to_sample_v3`` (read-only
+       dataset access),
+    3. submits ``pool.build_many`` and waits for the built list.
+
+    It NEVER touches the feature LRU (no ``put_built``), the optimizer, or
+    any trainer state — it returns ``{"positions", "records", "built"}``
+    through a one-slot buffer guarded by a ``threading.Condition``.  The
+    MAIN thread pops the result, does ``lru.put_built`` + collate
+    serially.
+
+    Thread-safety of the dataset overlap (e.g. inner-val running while the
+    k+1 job loads geometry): all dataset reads are PURE functions of
+    immutable files — concurrent geometry loads can only waste work
+    (redundant decompress), never return different bytes; with the
+    geometry pack (I2) there is no shared mutable state at all.  The
+    feature LRU is the only shared MUTABLE structure and the thread never
+    touches it.  Any exception in the thread logs ONE stderr line
+    (``log_prefetch_issue``) and permanently disables the buffer — every
+    later update takes the existing synchronous path (fail-open; a
+    double-buffer bug costs performance only, never a run, never
+    numerics: the positions for update k are ALWAYS recomputed by the
+    caller's own ``_update_rng(seed, k)`` draw, so a stale/failed prefetch
+    cannot alter the sampling sequence).
+
+    One job in flight at a time (the trainer submits k+1 after popping k);
+    ``submit`` on a busy buffer returns False and the caller falls back.
+    ``close()`` is idempotent, joins the thread, never raises.
+    """
+
+    def __init__(
+        self,
+        pool: FeaturePrefetcher,
+        dataset: Any,
+        compute: Callable[[int], Sequence[int]],
+        materialize: Callable[[Sequence[int]], Dict[str, Any]],
+        *,
+        level: str,
+        intent_off: bool = False,
+    ) -> None:
+        """``compute(update) -> positions`` (pure); ``materialize(positions)
+        -> {"records": [...], "samples": [...]}`` (dataset access)."""
+        self._pool = pool
+        self._dataset = dataset
+        self._compute = compute
+        self._materialize = materialize
+        self._level = str(level)
+        self._intent_off = bool(intent_off)
+        self._cond = threading.Condition()
+        self._pending: Optional[int] = None      # update queued for the thread
+        self._inflight: bool = False             # thread working on a job
+        self._result: Optional[Dict[str, Any]] = None
+        self._broken = False
+        self._closed = False
+        self._thread = threading.Thread(
+            target=self._loop, name="v53mp-dbuffer", daemon=True)
+        self._thread.start()
+
+    @property
+    def active(self) -> bool:
+        return (not self._broken and not self._closed
+                and self._pool is not None and self._pool.active)
+
+    def submit(self, update: int) -> bool:
+        """Queue the prefetch of ``update`` (main thread).  False = busy/off."""
+        if not self.active:
+            return False
+        with self._cond:
+            if self._result is not None and \
+                    int(self._result["update"]) < int(update):
+                self._result = None      # stale slot: never block the new job
+            if self._pending is not None or self._inflight \
+                    or self._result is not None:
+                return False          # one slot: caller builds sync this step
+            self._pending = int(update)
+            self._cond.notify()
+            return True
+
+    def pop(self, update: int) -> Optional[Dict[str, Any]]:
+        """Take the finished job for ``update`` (main thread) or None.
+
+        A result for a DIFFERENT update is a legitimate timing artifact
+        (the sync path already built that batch while the thread was still
+        working) — it is dropped silently; the buffer stays live.  Pure
+        ``(seed, update)`` functions make stale results harmless waste.
+        """
+        with self._cond:
+            result = self._result
+            self._result = None
+        if result is None:
+            return None
+        if int(result["update"]) != int(update):
+            return None
+        return result
+
+    def _disable(self) -> None:
+        if not self._broken:
+            log_prefetch_issue(
+                "double buffer disabled; run continues on the synchronous "
+                "prefetch path")
+        self._broken = True
+
+    def _loop(self) -> None:
+        while True:
+            with self._cond:
+                while self._pending is None and not self._closed:
+                    self._cond.wait(timeout=0.5)
+                if self._closed:
+                    return
+                update = self._pending
+                self._pending = None
+                self._inflight = True
+            try:
+                positions = [int(p) for p in self._compute(update)]
+                packed = self._materialize(positions)
+                built_list = self._pool.build_many(packed["samples"])
+                if built_list is None or len(built_list) != len(positions):
+                    # pool degraded mid-job — fall back (the caller's sync
+                    # path re-checks lru misses and builds serially)
+                    self._disable()
+                    return
+                result = {
+                    "update": int(update),
+                    "positions": positions,
+                    "records": packed["records"],
+                    "built": built_list,
+                }
+                with self._cond:
+                    self._inflight = False
+                    if self._closed:
+                        return
+                    self._result = result
+            except Exception as exc:            # noqa: BLE001 - fail-open
+                log_prefetch_issue(
+                    "double-buffer job failed ({}: {}); disabling".format(
+                        type(exc).__name__, exc))
+                self._disable()
+                return
+
+    def close(self) -> None:
+        """Stop the thread; idempotent, never raises."""
+        self._closed = True
+        with self._cond:
+            self._cond.notify()
+        thread, self._thread = self._thread, None
+        if thread is None:
+            return
+        try:
+            thread.join(timeout=30.0)
+        except Exception:                       # pragma: no cover - defensive
+            pass
+
+    def __enter__(self) -> "DoubleBufferedPrefetcher":
+        return self
+
+    def __exit__(self, *exc_info: Any) -> bool:
+        self.close()
+        return False
