@@ -11,8 +11,8 @@
 | 项 | 当前 | 推荐（`config/wslconfig.recommended.ini`） | 理由 |
 |---|---|---|---|
 | `memory` | **56GB** | **40GB** | 56 GB 把宿主机挤干 → 两次 host OOM（2026-10-22）。40 GB 给 Windows 留 ~24 GB（宿主 64 GB 假设；宿主更小按 70% 折算） |
-| `swap` | 0 | **8GB** | 只作安全气垫，不是容量。swap 被训练真实使用 = 失败（见 §3 swap 判定门） |
-| `swapFile` | `E:\wsl_swap\swap.vhdx` | 不变 | 放快速本地盘 |
+| `swap` | 0 | **0（保持关闭）** | 不启用 swap：换页写入损耗 SSD 寿命，且“靠 swap 跑完”本身就是失败 run（见 §3）。内存安全由 40 GB 上限 + 每 run cgroup 限额保证 |
+| `swapFile` | `E:\wsl_swap\swap.vhdx` | **删除该行** | swap 关闭后不再需要；确认无其他 WSL 发行版使用后可删掉该 vhdx 释放空间 |
 | `autoMemoryReclaim` | `gradual` | 不变（`[experimental]` 段） | 逐步归还内存给宿主 |
 
 **应用方式**：把 `config/wslconfig.recommended.ini` 内容拷到 Windows 侧 `%UserProfile%\.wslconfig`，然后在 PowerShell 执行 `wsl --shutdown` 重启 VM。不重启不生效。
@@ -62,13 +62,15 @@ Windows 侧（guest 看不到宿主余量，需另采）：`wsl --status`，或 
 
 ---
 
-## 3. Swap 判定门（硬门，plan §5.1）
+## 3. Swap 策略（硬门：不启用、不使用）
 
-> `memory.swap.current` 在训练期**持续 >0 = 失败**。不接受"靠 swap 跑完"。
+> 本机策略：**swap 永远关闭**（`.wslconfig` 里 `swap=0`）。原因有两个：swap 写入会损耗 SSD 寿命；而且训练一旦真的用上 swap，延迟会崩，这个 run 本身也该判失败。
 
-- `.wslconfig swap=8GB` 只是气垫：允许偶发的、瞬时的换页不杀死 run；但 `cgroup_scope.sh` 会统计 swap>0 的**持续秒数**，>60 s 直接退出码 90。
-- 战役级 run（`r3_v53mp_cgroup_run.sh`）另设 `MemorySwapMax=0`——训练 scope 内根本不许换页，溢出即 in-scope OOM kill，比静默降速到不可用要好。
-- 判定到 swap 持续 >0 时：先查是不是 `.wslconfig` 没重启生效（`wsl --status`），再查是不是并发路数超了（每路 6 G × 路数 + 缓存 > VM 上限）。
+- `.wslconfig` 不配置 swap、不配置 `swapFile`；`/proc/swaps` 应为空。若发现 swap 被打开，先改回 `swap=0` 并 `wsl --shutdown`。
+- `cgroup_scope.sh` 仍每 2 s 采 `memory.swap.current`，systemd 路径固定 `MemorySwapMax=0`。这是**检测/防御**，不是“允许一点 swap 的气垫”。
+- 退出码 90（swap 持续 >60 s）保留：现在的含义是“环境异常/有人开了 swap”，不是“跑得慢但可接受”。
+- 没有 swap 后，内存超限的唯一表现是 OOM kill（退出码 137 / gate 91）。这是预期行为：早失败、留证据，比静默降速到不可用要好。
+- 判定到 swap >0 时：先查 `.wslconfig` 是否被改回、是否重启生效（`wsl --status`），再查并发路数（每路 6 G × 路数 + 缓存 > VM 上限）。
 
 ---
 
