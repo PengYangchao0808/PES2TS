@@ -171,6 +171,28 @@ def test_verdict_b0_pass_and_fail() -> None:
     assert killed["checks"]["oom_gate"] is False
 
 
+def test_verdict_b0_seconds_target_unit_fix() -> None:
+    """--b0-ms-target 0.078 (s/update, plan §7 wording) must give the same
+    [66.3, 89.7] ms band as 78.0 — not a nonsense [0.07, 0.09] ms band."""
+    secs = ib.verdict_b0(median_ms=78.0, anon_peak_bytes=int(26.0e9),
+                         swap_max_bytes=0, oom_kill=0, ms_target=0.078)
+    millis = ib.verdict_b0(median_ms=78.0, anon_peak_bytes=int(26.0e9),
+                           swap_max_bytes=0, oom_kill=0, ms_target=78.0)
+    assert secs["pass"] is True and millis["pass"] is True
+    assert secs["bounds"]["median_ms_update"] == [66.3, 89.7]
+    assert secs["bounds"] == millis["bounds"]
+    # an observed 98.8 ms (the archived B0) is OUTSIDE the 78±15% band
+    # either way — the fix is about the band's unit, not its width
+    slow = ib.verdict_b0(median_ms=98.795, anon_peak_bytes=int(26.0e9),
+                         swap_max_bytes=0, oom_kill=0, ms_target=0.078)
+    assert slow["checks"]["median_ms_update_in_band"] is False
+    assert slow["bounds"]["median_ms_update"] == [66.3, 89.7]
+    # legacy ms-scale call sites are untouched
+    assert ib.normalize_ms_target(78.0) == 78.0
+    assert ib.normalize_ms_target(0.078) == 78.0
+    assert ib.normalize_ms_target(0.5) == 500.0
+
+
 def test_render_report_md_smoke() -> None:
     report = ib.build_report(
         tag="B0", run_plan="plan.jsonl", run_id="v53mp_20k_A_s17",
@@ -681,3 +703,535 @@ def test_dry_run_updates_le_freeze_refused(tmp_path: Path) -> None:
             "--output-root", str(out_root),
             "--dry-run",
         ])
+
+
+# ---------------------------------------------------------------------------
+# per-rung / ladder recompute (read-only, no GPU, no re-run)
+# ---------------------------------------------------------------------------
+
+
+def _rep(rep: int, median_ms: float, anon_gb: float, startup_s: float,
+         swap: int = 0, oom: int = 0) -> dict:
+    return {"rep": rep, "median_ms": median_ms, "p95_ms": median_ms + 3.0,
+            "startup_s": startup_s, "anon_peak_bytes": int(anon_gb * 1e9),
+            "swap_max_bytes": swap, "oom_kill": oom, "vram_peak_mib": 2500,
+            "exit": 0, "gate_exit": 0}
+
+
+def _report(tag: str, reps: list, original_pass: bool = False) -> dict:
+    """A minimal archived-report-shaped dict (the recompute only needs
+    tag / reps / verdict; aggregate is derived from reps)."""
+    return {"schema": "pes2ts_infra_bench_v2", "tag": tag,
+            "generated_at": "2026-10-24T00:00:00Z", "reps": reps,
+            "verdict": {"gate": tag, "pass": original_pass,
+                        "checks": {}, "bounds": {}, "observed": {}}}
+
+
+#: the four archived bench reports' per-rep metrics (B0_20261023T222828Z ..
+#: B3_20261024T000312Z), mirrored so the ladder tests do not depend on
+#: outputs/ being present.
+_ARCHIVED_LADDER = [
+    ("B0", [_rep(0, 98.795, 30.785, 264.7), _rep(1, 96.9, 30.798, 289.1),
+            _rep(2, 99.8, 30.857, 286.0)]),
+    ("B1", [_rep(0, 73.405, 7.193, 25.1), _rep(1, 75.28, 7.202, 24.9),
+            _rep(2, 77.115, 7.205, 24.1)]),
+    ("B2", [_rep(0, 77.145, 3.539, 25.4), _rep(1, 74.455, 3.59, 26.0),
+            _rep(2, 75.48, 3.537, 26.0)]),
+    ("B3", [_rep(0, 87.6, 3.566, 26.1), _rep(1, 92.575, 3.618, 25.6),
+            _rep(2, 89.73, 3.557, 25.8)]),
+]
+
+
+def _archived_ladder_reports() -> list:
+    return [_report(tag, reps) for tag, reps in _ARCHIVED_LADDER]
+
+
+def test_ladder_b0_self_certifies() -> None:
+    """B0 defines its own baseline (median ms / max anon from its own
+    reps); the archived 98.8 ms / 30.9 GB run is green against itself."""
+    b0 = _archived_ladder_reports()[0]
+    verdict = ib.verdict_b0_self(b0["reps"])
+    assert verdict["pass"] is True
+    assert verdict["mode"] == "self_baseline"
+    assert verdict["failing_checks"] == []
+    assert verdict["baseline"]["median_ms_update"] == 98.795
+    assert verdict["baseline"]["anon_peak_gb"] == 30.857
+    # per-rep band: baseline ±15%
+    assert verdict["bounds"]["median_ms_update"] == [83.98, 113.61]
+    assert verdict["bounds"]["anon_peak_gb"] == [26.23, 35.49]
+    assert all(c["median_ms_in_band"] and c["anon_peak_in_band"]
+               for c in verdict["observed"]["per_rep"])
+
+
+def test_ladder_b0_self_fails_on_outlier_rep() -> None:
+    """One rep outside the self-band (or with swap/oom) red-flags B0."""
+    reps = [_rep(0, 98.795, 30.8, 286.0), _rep(1, 96.9, 30.8, 286.0),
+            _rep(2, 150.0, 30.8, 286.0)]   # 150 > 98.795*1.15
+    verdict = ib.verdict_b0_self(reps)
+    assert verdict["pass"] is False
+    assert "reps_median_ms_in_band" in verdict["failing_checks"]
+    # swap/oom stay hard gates inside the self-band too
+    swapped = ib.verdict_b0_self(
+        [_rep(0, 98.0, 30.8, 286.0), _rep(1, 97.0, 30.8, 286.0, swap=4096),
+         _rep(2, 99.0, 30.8, 286.0)])
+    assert swapped["pass"] is False
+    assert "swap_gate" in swapped["failing_checks"]
+    killed = ib.verdict_b0_self(
+        [_rep(0, 98.0, 30.8, 286.0), _rep(1, 97.0, 30.8, 286.0),
+         _rep(2, 99.0, 30.8, 286.0, oom=1)])
+    assert killed["pass"] is False
+    assert "oom_gate" in killed["failing_checks"]
+
+
+def test_ladder_b1_b2_green_b3_red_only_ms() -> None:
+    """Regression-only policy: B1/B2 improve massively and are green (no
+    lower band); B3 is red ONLY because 89.73 > 1.15 x 75.48 = 86.80."""
+    reports = _archived_ladder_reports()
+    result = ib.recompute_ladder(reports)
+    rungs = {r["tag"]: r for r in result["rungs"]}
+    assert [r["tag"] for r in result["rungs"]] == ["B0", "B1", "B2", "B3"]
+    assert result["pass"] is False
+    # B0 self-baseline
+    assert rungs["B0"]["verdict"]["pass"] is True
+    assert rungs["B0"]["baseline_tag"] is None
+    # B1: 75.28 <= 1.15*98.795 = 113.61, anon 7.205 <= 35.49
+    b1 = rungs["B1"]["verdict"]
+    assert b1["pass"] is True and b1["failing_checks"] == []
+    assert b1["bounds"]["median_ms_update_max"] == 113.61
+    assert b1["bounds"]["anon_peak_gb_max"] == 35.49
+    assert b1["observed"]["median_ms"] == 75.28
+    assert b1["observed"]["anon_peak_gb"] == 7.205
+    # B2 vs B1: 75.48 <= 86.57, anon 3.59 <= 8.29
+    b2 = rungs["B2"]["verdict"]
+    assert b2["pass"] is True and b2["failing_checks"] == []
+    assert b2["bounds"]["median_ms_update_max"] == 86.57
+    assert b2["bounds"]["anon_peak_gb_max"] == 8.29
+    # B3 vs B2: 89.73 > 86.80 -> red for ms ONLY (anon 3.618 <= 4.13 green)
+    b3 = rungs["B3"]["verdict"]
+    assert b3["pass"] is False
+    assert b3["failing_checks"] == ["median_ms_no_regression"]
+    assert b3["checks"]["median_ms_no_regression"] is False
+    assert b3["checks"]["anon_no_regression"] is True
+    assert b3["checks"]["startup_no_regression"] is True
+    assert b3["checks"]["swap_gate"] is True
+    assert b3["checks"]["oom_gate"] is True
+    assert b3["bounds"]["median_ms_update_max"] == 86.8
+    assert b3["observed"]["median_ms"] == 89.73
+    # the ORIGINAL verdict of each archived report is preserved for audit
+    for report, rung in zip(reports, result["rungs"]):
+        assert rung["original_verdict"] == report["verdict"]
+        assert rung["original_verdict"]["pass"] is False  # old fixed band
+
+
+def test_ladder_allows_large_improvement_no_lower_band() -> None:
+    """A rung 10x faster / 10x leaner than the one below is green."""
+    base = _report("B0", [_rep(i, 100.0, 30.0, 100.0) for i in range(3)])
+    lean = _report("B1", [_rep(i, 10.0, 3.0, 10.0) for i in range(3)])
+    result = ib.recompute_ladder([base, lean])
+    assert result["rungs"][1]["verdict"]["pass"] is True
+    assert result["pass"] is True
+
+
+def test_ladder_swap_oom_still_hard_fail() -> None:
+    """Even a big improvement is red when swap or oom is nonzero."""
+    base = _report("B0", [_rep(i, 98.0, 30.0, 260.0) for i in range(3)])
+    swapped = _report("B1", [_rep(0, 70.0, 7.0, 25.0, swap=1 << 20),
+                             _rep(1, 71.0, 7.0, 25.0),
+                             _rep(2, 72.0, 7.0, 25.0)])
+    result = ib.recompute_ladder([base, swapped])
+    b1 = result["rungs"][1]["verdict"]
+    assert b1["pass"] is False
+    assert b1["failing_checks"] == ["swap_gate"]
+    assert b1["checks"]["median_ms_no_regression"] is True
+    assert b1["checks"]["anon_no_regression"] is True
+    # oom alone is enough too
+    oomy = _report("B1", [_rep(0, 70.0, 7.0, 25.0),
+                          _rep(1, 71.0, 7.0, 25.0, oom=2),
+                          _rep(2, 72.0, 7.0, 25.0)])
+    b1_oom = ib.recompute_ladder([base, oomy])["rungs"][1]["verdict"]
+    assert b1_oom["pass"] is False
+    assert b1_oom["failing_checks"] == ["oom_gate"]
+
+
+def test_ladder_startup_regression_red() -> None:
+    """startup <= 1.15 x previous rung's startup is part of the ladder."""
+    base = _report("B0", [_rep(i, 98.0, 30.0, 25.0) for i in range(3)])
+    slow_start = _report("B1", [_rep(0, 70.0, 7.0, 40.0),
+                                _rep(1, 71.0, 7.0, 41.0),
+                                _rep(2, 72.0, 7.0, 39.0)])
+    b1 = ib.recompute_ladder([base, slow_start])["rungs"][1]["verdict"]
+    assert b1["pass"] is False
+    assert b1["failing_checks"] == ["startup_no_regression"]
+    assert b1["bounds"]["startup_s_max"] == 28.75
+
+
+def test_ladder_requires_b0_baseline() -> None:
+    """A ladder not starting at B0 is refused (fail-closed)."""
+    with pytest.raises(SystemExit, match="RECOMPUTE_BASELINE_MISSING"):
+        ib.recompute_ladder([_report("B1", [_rep(0, 75.0, 7.0, 25.0)])])
+    with pytest.raises(SystemExit, match="RECOMPUTE_EMPTY"):
+        ib.recompute_ladder([])
+
+
+# ---- CLI --recompute over the real archived reports ----------------------
+
+
+ARCHIVED_BENCH_ROOT = REPO / "outputs/pesn/v53mp/infra_bench"
+ARCHIVED_TAGS = ("B0_20261023T222828Z", "B1_20261023T230605Z",
+                 "B2_20261023T233021Z", "B3_20261024T000312Z")
+
+
+def _archived_report_paths() -> list:
+    return [ARCHIVED_BENCH_ROOT / tag / "report.json" for tag in ARCHIVED_TAGS]
+
+
+def test_recompute_archived_reports_json(tmp_path: Path) -> None:
+    """End-to-end: recompute the four ARCHIVED B0..B3 report.json files —
+    B0/B1/B2 green, B3 red for the ms regression only — without touching
+    the originals."""
+    paths = _archived_report_paths()
+    if not all(p.is_file() for p in paths):
+        pytest.skip("archived B0-B3 report.json not present")
+    before = {p: p.read_bytes() for p in paths}
+    out = tmp_path / "recompute.json"
+    rc = ib.main(["--recompute"] + [str(p) for p in paths]
+                 + ["--recompute-out", str(out)])
+    assert rc == 1                      # B3 ms regression -> overall red
+    result = json.loads(out.read_text(encoding="utf-8"))
+    assert result["schema"] == ib.RECOMPUTE_SCHEMA
+    assert result["kind"] == "ladder"
+    assert result["pass"] is False
+    rungs = {r["tag"]: r for r in result["rungs"]}
+    assert [r["tag"] for r in result["rungs"]] == ["B0", "B1", "B2", "B3"]
+    assert rungs["B0"]["verdict"]["pass"] is True
+    assert rungs["B1"]["verdict"]["pass"] is True
+    assert rungs["B2"]["verdict"]["pass"] is True
+    assert rungs["B3"]["verdict"]["pass"] is False
+    assert rungs["B3"]["verdict"]["failing_checks"] == [
+        "median_ms_no_regression"]
+    assert rungs["B3"]["verdict"]["checks"]["anon_no_regression"] is True
+    # the archived metrics are the ones the acceptance quotes
+    assert rungs["B0"]["verdict"]["baseline"]["median_ms_update"] == 98.795
+    assert rungs["B0"]["verdict"]["baseline"]["anon_peak_gb"] == 30.857
+    assert rungs["B1"]["verdict"]["observed"]["median_ms"] == 75.28
+    assert rungs["B1"]["verdict"]["observed"]["anon_peak_gb"] == 7.205
+    assert rungs["B2"]["verdict"]["observed"]["median_ms"] == 75.48
+    assert rungs["B3"]["verdict"]["observed"]["median_ms"] == 89.73
+    # sources recorded + ORIGINAL verdicts preserved for audit
+    assert [s["tag"] for s in result["sources"]] == ["B0", "B1", "B2", "B3"]
+    for source, rung in zip(result["sources"], result["rungs"]):
+        assert source["original_verdict"] == rung["original_verdict"]
+        assert rung["original_verdict"]["pass"] is False  # old fixed band
+    # archived reports byte-for-byte untouched
+    for p, data in before.items():
+        assert p.read_bytes() == data, p
+
+
+def test_recompute_accepts_bench_root_dir_and_prints_stdout(
+        tmp_path: Path, capsys) -> None:
+    """--recompute accepts a bench ROOT dir (report.json inferred) and
+    emits a single pure JSON document on stdout."""
+    paths = _archived_report_paths()
+    if not all(p.is_file() for p in paths):
+        pytest.skip("archived B0-B3 report.json not present")
+    dirs = [p.parent for p in paths]
+    rc = ib.main(["--recompute"] + [str(d) for d in dirs])
+    assert rc == 1
+    captured = capsys.readouterr()
+    result = json.loads(captured.out)   # stdout must be ONE JSON doc
+    assert result["kind"] == "ladder"
+    assert [r["tag"] for r in result["rungs"]] == ["B0", "B1", "B2", "B3"]
+    # the one-line summary went to stderr
+    summary = json.loads(captured.err.splitlines()[0])
+    assert summary["action"] == "infra_bench_recompute"
+    assert summary["pass"] is False
+
+
+def test_recompute_cli_on_synthetic_reports_and_out_refusal(
+        tmp_path: Path) -> None:
+    """--recompute works on synthetic archived reports too; writing the
+    verdict over an INPUT report is refused."""
+    paths = []
+    for tag, reps in _ARCHIVED_LADDER:
+        p = tmp_path / tag / "report.json"
+        p.parent.mkdir(parents=True, exist_ok=True)
+        doc = _report(tag, reps)
+        p.write_text(json.dumps(doc), encoding="utf-8")
+        paths.append(p)
+    # green ladder: swap B3 for a non-regressing rung
+    good_b3 = _report("B3", [_rep(i, 74.0, 3.5, 25.5) for i in range(3)])
+    paths[-1].write_text(json.dumps(good_b3), encoding="utf-8")
+    out = tmp_path / "ladder.json"
+    rc = ib.main(["--recompute"] + [str(p) for p in paths]
+                 + ["--recompute-out", str(out)])
+    assert rc == 0
+    result = json.loads(out.read_text(encoding="utf-8"))
+    assert result["pass"] is True
+    # refusal: --recompute-out pointing at an input report
+    with pytest.raises(SystemExit, match="RECOMPUTE_OUT_IS_INPUT"):
+        ib.main(["--recompute", str(paths[0]), "--recompute-out",
+                 str(paths[0])])
+    # missing input
+    with pytest.raises(SystemExit, match="RECOMPUTE_REPORT_MISSING"):
+        ib.main(["--recompute", str(tmp_path / "nope" / "report.json")])
+    # original synthetic reports untouched by the green recompute
+    assert json.loads(paths[-1].read_text(encoding="utf-8"))["reps"] == \
+        good_b3["reps"]
+
+
+# ---------------------------------------------------------------------------
+# gate-check subprocess: cgroup-contained (mocked Popen; no systemd/GPU)
+# ---------------------------------------------------------------------------
+
+
+_GATE_OK_JSON = json.dumps(
+    {"items": {"config_yaml": "pass"}, "details": {}, "ok": True}) + "\n"
+_GATE_WRAPPER_STDERR = (
+    "[cgroup_scope] fallback=0 unit=infra-scope-1 max=8G high=7G "
+    "outdir=/x/_gate_check\n"
+    '{"peak_anon_bytes":123,"max_swap_current_bytes":0,'
+    '"swap_sustained_s":0,"oom_kill":0,"cmd_exit":0,"gate_exit":0}\n'
+)
+
+
+def _gate_outdir_from_cmd(cmd: list) -> Path:
+    i = 2                                   # after bash + cgroup_scope.sh
+    if cmd[i] == "--fallback":
+        i += 1
+    return Path(cmd[i + 2])
+
+
+class _FakeGateProc:
+    """subprocess.Popen stand-in for the gate-check wrapper launch."""
+
+    def __init__(self, cmd, rc=0, stdout_text="", stderr_text="",
+                 summary=None, timeout_on_first_wait=False, calls=None):
+        self.cmd = list(cmd)
+        self.returncode = None
+        self.pid = 4242
+        self._rc = rc
+        self._waits = 0
+        self._timeout_on_first_wait = timeout_on_first_wait
+        if calls is not None:
+            calls.append(self)
+        outdir = _gate_outdir_from_cmd(self.cmd)
+        if summary is not None:
+            outdir.mkdir(parents=True, exist_ok=True)
+            (outdir / "cgroup_summary.json").write_text(
+                json.dumps(summary), encoding="utf-8")
+
+    def wait(self, timeout=None):
+        self._waits += 1
+        if self._timeout_on_first_wait and self._waits == 1:
+            raise ib.subprocess.TimeoutExpired(cmd=self.cmd,
+                                               timeout=timeout or 0)
+        self.returncode = self._rc
+        return self.returncode
+
+
+def _install_fake_gate_popen(monkeypatch, rc=0, stdout_text="",
+                             stderr_text="", summary=None,
+                             timeout_on_first_wait=False):
+    """Patch ib.subprocess.Popen so run_gate_check never spawns anything."""
+    created = []
+
+    def _popen(cmd, **kwargs):
+        proc = _FakeGateProc(cmd, rc=rc, summary=summary,
+                             timeout_on_first_wait=timeout_on_first_wait,
+                             calls=created)
+        proc.kwargs = kwargs
+        out_fh = kwargs.get("stdout")
+        err_fh = kwargs.get("stderr")
+        if stdout_text and out_fh is not None:
+            out_fh.write(stdout_text)
+        if stderr_text and err_fh is not None:
+            err_fh.write(stderr_text)
+        return proc
+
+    monkeypatch.setattr(ib.subprocess, "Popen", _popen)
+    return created
+
+
+def test_run_gate_check_wraps_driver_in_cgroup_scope(
+        tmp_path: Path, monkeypatch) -> None:
+    """The gate-check driver must run INSIDE cgroup_scope.sh with the
+    8G/7G defaults, outdir under the probe root, and its own session
+    (so a timeout can kill the whole tree)."""
+    created = _install_fake_gate_popen(
+        monkeypatch, rc=0, stdout_text=_GATE_OK_JSON,
+        stderr_text=_GATE_WRAPPER_STDERR, summary={"cmd_exit": 0})
+    probe = tmp_path / "bench"
+    result = ib.run_gate_check(tmp_path / "cfg.yaml", tmp_path / "tables",
+                               None, probe)
+    assert len(created) == 1
+    cmd = created[0].cmd
+    assert cmd[0] == "bash"
+    assert cmd[1] == str(ib.CGROUP_SCOPE)
+    assert cmd[2:5] == ["8G", "7G", str(probe / "_gate_check")]
+    assert cmd[5] == sys.executable
+    assert cmd[6] == str(ib.RUN_DRIVER)
+    assert cmd[7:9] == ["--output-root", str(probe)]
+    assert cmd[9] == "gate-check"
+    assert "--config" in cmd and "--tables-dir" in cmd
+    kwargs = created[0].kwargs
+    assert kwargs["start_new_session"] is True
+    assert kwargs["cwd"] == str(ib.REPO)
+    # success propagation
+    assert result["ok"] is True
+    assert result["returncode"] == 0
+    assert result["timed_out"] is False
+    assert result["items"] == {"config_yaml": "pass"}
+    # stdout/stderr preserved under bench_top/_gate_check/
+    gate_dir = probe / "_gate_check"
+    assert (gate_dir / "gate_stdout.log").read_text(
+        encoding="utf-8") == _GATE_OK_JSON
+    assert "[cgroup_scope]" in (gate_dir / "gate_stderr.log").read_text(
+        encoding="utf-8")
+    assert (gate_dir / "cgroup_summary.json").is_file()
+
+
+def test_run_gate_check_split_flag_forwarded(
+        tmp_path: Path, monkeypatch) -> None:
+    created = _install_fake_gate_popen(
+        monkeypatch, rc=0, stdout_text=_GATE_OK_JSON)
+    ib.run_gate_check(tmp_path / "cfg.yaml", tmp_path / "tables",
+                      tmp_path / "split.json", tmp_path / "bench")
+    cmd = created[0].cmd
+    assert cmd[cmd.index("--split") + 1] == str(tmp_path / "split.json")
+
+
+def test_run_gate_check_custom_memory_limits(
+        tmp_path: Path, monkeypatch) -> None:
+    created = _install_fake_gate_popen(
+        monkeypatch, rc=0, stdout_text=_GATE_OK_JSON)
+    ib.run_gate_check(tmp_path / "cfg.yaml", tmp_path / "tables", None,
+                      tmp_path / "bench", gate_memory_max="4G",
+                      gate_memory_high="3G")
+    cmd = created[0].cmd
+    assert cmd[2:5] == ["4G", "3G", str(tmp_path / "bench" / "_gate_check")]
+
+
+def test_run_gate_check_fallback_flag_forwarded(
+        tmp_path: Path, monkeypatch) -> None:
+    created = _install_fake_gate_popen(
+        monkeypatch, rc=0, stdout_text=_GATE_OK_JSON)
+    ib.run_gate_check(tmp_path / "cfg.yaml", tmp_path / "tables", None,
+                      tmp_path / "bench", fallback=True)
+    cmd = created[0].cmd
+    assert cmd[2] == "--fallback"
+    assert _gate_outdir_from_cmd(cmd) == tmp_path / "bench" / "_gate_check"
+
+
+def test_run_gate_check_wrapper_stderr_does_not_pollute_json(
+        tmp_path: Path, monkeypatch) -> None:
+    """cgroup_scope.sh logs (incl. its own JSON summary line) go to
+    stderr; parsing must pick the DRIVER's JSON off stdout only."""
+    _install_fake_gate_popen(
+        monkeypatch, rc=0, stdout_text=_GATE_OK_JSON,
+        stderr_text=_GATE_WRAPPER_STDERR)
+    result = ib.run_gate_check(tmp_path / "cfg.yaml", tmp_path / "tables",
+                               None, tmp_path / "bench")
+    assert result["ok"] is True
+    assert result["items"] == {"config_yaml": "pass"}
+    assert result["stderr_tail"].startswith("[cgroup_scope]")
+
+
+def test_run_gate_check_driver_failure_never_becomes_success(
+        tmp_path: Path, monkeypatch) -> None:
+    """rc != 0 (driver gate failure OR wrapper oom/swap gate 90/91) must
+    stay a failure even when the stdout JSON claims ok — the wrapper may
+    only tighten, never loosen, the verdict."""
+    for rc in (1, 91):
+        _install_fake_gate_popen(
+            monkeypatch, rc=rc, stdout_text=_GATE_OK_JSON,
+            summary={"cmd_exit": rc})
+        result = ib.run_gate_check(tmp_path / "cfg.yaml", tmp_path / "tables",
+                                   None, tmp_path / "bench")
+        assert result["ok"] is False
+        assert result["returncode"] == rc
+        monkeypatch.undo()
+
+
+def test_run_gate_check_driver_ok_false_is_failure(
+        tmp_path: Path, monkeypatch) -> None:
+    _install_fake_gate_popen(
+        monkeypatch, rc=1,
+        stdout_text=json.dumps({"items": {"x": "fail"}, "ok": False}) + "\n")
+    result = ib.run_gate_check(tmp_path / "cfg.yaml", tmp_path / "tables",
+                               None, tmp_path / "bench")
+    assert result["ok"] is False
+    assert result["items"] == {"x": "fail"}
+
+
+def test_run_gate_check_wrapper_summary_cmd_exit_blocks_success(
+        tmp_path: Path, monkeypatch) -> None:
+    """rc==0 + driver ok, but the wrapper summary reports cmd_exit!=0:
+    the gate must fail closed."""
+    _install_fake_gate_popen(
+        monkeypatch, rc=0, stdout_text=_GATE_OK_JSON,
+        summary={"cmd_exit": 137})
+    result = ib.run_gate_check(tmp_path / "cfg.yaml", tmp_path / "tables",
+                               None, tmp_path / "bench")
+    assert result["ok"] is False
+
+
+def test_run_gate_check_timeout_kills_process_tree(
+        tmp_path: Path, monkeypatch) -> None:
+    created = _install_fake_gate_popen(
+        monkeypatch, rc=-9, timeout_on_first_wait=True)
+    killed = []
+    monkeypatch.setattr(ib.os, "getpgid", lambda pid: 4343)
+    monkeypatch.setattr(ib.os, "killpg",
+                        lambda pgid, sig: killed.append((pgid, sig)))
+    result = ib.run_gate_check(tmp_path / "cfg.yaml", tmp_path / "tables",
+                               None, tmp_path / "bench")
+    assert killed == [(4343, ib.signal.SIGKILL)]
+    assert result["ok"] is False
+    assert result["timed_out"] is True
+    assert result["returncode"] == -9
+    # both waits happened: the timed one, then the post-kill reap
+    assert created[0]._waits == 2
+
+
+def test_run_gate_check_unparseable_stdout_fails_closed(
+        tmp_path: Path, monkeypatch) -> None:
+    _install_fake_gate_popen(monkeypatch, rc=0, stdout_text="garbage\n")
+    result = ib.run_gate_check(tmp_path / "cfg.yaml", tmp_path / "tables",
+                               None, tmp_path / "bench")
+    assert result["ok"] is False       # rc 0 but no driver ok -> failure
+
+
+def test_gate_memory_cli_defaults_and_overrides() -> None:
+    args = ib._build_parser().parse_args([])
+    assert args.gate_memory_max == "8G"
+    assert args.gate_memory_high == "7G"
+    args = ib._build_parser().parse_args([
+        "--gate-memory-max", "4G", "--gate-memory-high", "2G"])
+    assert args.gate_memory_max == "4G"
+    assert args.gate_memory_high == "2G"
+
+
+def test_bench_main_passes_gate_memory_to_gate_check(
+        tmp_path: Path, monkeypatch) -> None:
+    """CLI overrides flow from bench_main into run_gate_check kwargs."""
+    captured = {}
+
+    def _fake_gate(config_path, tables_dir, split_path, probe_root,
+                   **kwargs):
+        captured.update(kwargs)
+        captured["probe_root"] = probe_root
+        return {"ok": False, "returncode": 1, "items": None}
+
+    monkeypatch.setattr(ib, "run_gate_check", _fake_gate)
+    rc = ib.main([
+        "--tag", "B0",
+        "--run-plan", json.dumps(_source_row()),
+        "--config", str(_source_config(tmp_path)),
+        "--updates", "2000", "--reps", "1",
+        "--output-root", str(tmp_path / "bench"),
+        "--gate-memory-max", "6G", "--gate-memory-high", "5G",
+    ])
+    assert rc == 2                       # gate failure -> exit 2
+    assert captured["gate_memory_max"] == "6G"
+    assert captured["gate_memory_high"] == "5G"
+    assert captured["probe_root"] == tmp_path / "bench"

@@ -77,6 +77,11 @@ __all__ = [
 DEV_PACKS_DIRNAME = "dev_packs"
 #: Pack schema id (binding json ``schema``).
 DEV_PACK_SCHEMA = "v53mp_dev_pack_v1"
+#: Migration-time sha256 cache sidecars (``scripts/infra/sha_sidecar.py``)
+#: land NEXT to pack files as ``<target>.sha256sidecar.json``; they are NOT
+#: binding jsons and are excluded from binding discovery (still exactly ONE
+#: real binding required — fail-closed on anything else).
+SIDECAR_JSON_SUFFIX = ".sha256sidecar.json"
 #: Frozen feature module (sha-bound; NEVER edited by this lane).
 FEATURES_MODULE_PATH = Path("pes2ts_core/pesn/features/key_atom_graph_v3.py")
 
@@ -407,7 +412,11 @@ class DevFeaturePackView:
         """
         pack_dir = Path(pack_dir)
         fsha = features_sha256_of()
-        candidates = sorted(pack_dir.glob("*.json"))
+        # migration ``*.sha256sidecar.json`` caches are NOT binding jsons
+        candidates = sorted(
+            path for path in pack_dir.glob("*.json")
+            if not path.name.endswith(SIDECAR_JSON_SUFFIX)
+        )
         _require(len(candidates) == 1, "PACK_BINDING_MISSING",
                  f"{pack_dir}: expected exactly one binding json, found "
                  f"{[p.name for p in candidates]}")

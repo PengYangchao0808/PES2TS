@@ -112,6 +112,7 @@ __all__ = [
     "V53MP_SCHEMA",
     "V53MPTrainerConfig",
     "V53MPTrainerError",
+    "apply_cuda_memory_fraction",
     "assert_no_legacy_head",
     "average_precision",
     "calibrate_tau_end",
@@ -197,6 +198,11 @@ class V53MPTrainerConfig:
     #: use this subset; keeps the per-100-update inner-val sweep cheap at
     #: 5k/20k scale.  None = the full inner-val pool.
     inner_val_max_samples: Optional[int] = None
+    #: per-process CUDA memory fraction cap (torch.cuda.
+    #: set_per_process_memory_fraction, 0 < f <= 1); applied on CUDA devices
+    #: BEFORE the model load / first real allocation.  None = no cap —
+    #: zero behaviour change vs the pre-cap trainer.
+    cuda_memory_fraction: Optional[float] = None
 
     def __post_init__(self) -> None:
         if self.arm not in ("A", "B", "C"):
@@ -267,6 +273,12 @@ class V53MPTrainerConfig:
             raise V53MPTrainerError(
                 "INNER_VAL_FRACTION",
                 "inner_val_fraction must lie in (0, 1)")
+        if self.cuda_memory_fraction is not None and not (
+                0.0 < float(self.cuda_memory_fraction) <= 1.0):
+            raise V53MPTrainerError(
+                "CUDA_MEMORY_FRACTION",
+                "cuda_memory_fraction must lie in (0, 1] when set, got "
+                "{}".format(self.cuda_memory_fraction))
         if not (0.0 < float(self.tau_target_precision) <= 1.0):
             raise V53MPTrainerError(
                 "TAU_TARGET",
@@ -502,6 +514,67 @@ def assert_no_legacy_head(model: torch.nn.Module) -> None:
                 "module {} carries legacy_frozen=True (LEGACY_TS_STOP) — "
                 "refusing new training (contract §6)".format(
                     name or type(module).__name__))
+
+
+def _cuda_device_index(device: str) -> int:
+    """Device index from a ``"cuda"`` / ``"cuda:N"`` device string (default 0)."""
+    text = str(device)
+    if ":" in text:
+        try:
+            return int(text.split(":", 1)[1])
+        except ValueError:
+            return 0
+    return 0
+
+
+def apply_cuda_memory_fraction(config: V53MPTrainerConfig) -> Optional[float]:
+    """Cap this process's CUDA allocator BEFORE the first real allocation.
+
+    Active ONLY for CUDA devices with ``cuda_memory_fraction`` set: calls
+    ``torch.cuda.init()`` then ``torch.cuda.set_per_process_memory_fraction``
+    on the run's device index.  On CPU devices (or when the fraction is
+    ``None``) this is a no-op returning ``None`` — zero behaviour change vs
+    the pre-cap trainer.  Returns the applied fraction (float) or None.
+    """
+    if config.cuda_memory_fraction is None:
+        return None
+    if not str(config.device).startswith("cuda"):
+        return None
+    fraction = float(config.cuda_memory_fraction)
+    torch.cuda.init()
+    torch.cuda.set_per_process_memory_fraction(
+        fraction, _cuda_device_index(config.device))
+    return fraction
+
+
+def _reset_peak_memory_stats(device: str) -> None:
+    """Reset CUDA peak-memory stats (no-op on CPU; never crashes)."""
+    if str(device).startswith("cuda"):
+        torch.cuda.reset_peak_memory_stats(device)
+
+
+def _gpu_memory_metrics(config: V53MPTrainerConfig) -> Dict[str, Any]:
+    """Top-level peak-memory report keys for the run metrics.
+
+    CUDA devices report the post-run peaks in BYTES (integers) plus the
+    fraction actually applied (float or None).  CPU devices never touch
+    torch.cuda: they write 0/0/None (explicit, tested).
+    """
+    if not str(config.device).startswith("cuda"):
+        return {
+            "gpu_max_memory_allocated_bytes": 0,
+            "gpu_max_memory_reserved_bytes": 0,
+            "gpu_memory_fraction_applied": None,
+        }
+    return {
+        "gpu_max_memory_allocated_bytes": int(
+            torch.cuda.max_memory_allocated(config.device)),
+        "gpu_max_memory_reserved_bytes": int(
+            torch.cuda.max_memory_reserved(config.device)),
+        "gpu_memory_fraction_applied": (
+            None if config.cuda_memory_fraction is None
+            else float(config.cuda_memory_fraction)),
+    }
 
 
 def load_model_v53mp(
@@ -1748,6 +1821,13 @@ def _train_run_v53mp_impl(
     device = config.device
     if device.startswith("cuda") and not torch.cuda.is_available():
         raise V53MPTrainerError("CUDA_UNAVAILABLE", "device=cuda but no CUDA")
+    # --- CUDA memory suite (cap + peak recording) -------------------------
+    # The per-process fraction cap (when set) MUST land before the model
+    # load / first real allocator allocation below; peak-memory stats are
+    # reset right after CUDA init so the reported peaks cover exactly this
+    # run.  On CPU devices both are explicit no-ops (tested).
+    apply_cuda_memory_fraction(config)
+    _reset_peak_memory_stats(device)
 
     # --- position sets (fail-closed BEFORE any model/loss lane import) -----
     samples = dataset.samples
@@ -2103,6 +2183,9 @@ def _train_run_v53mp_impl(
         model, r3_model, dataset, labels_v52, endpoint_labels,
         dev_cache_obj, dev_pos_eval, config,
         train_q_mean=train_q_mean, tau_end=tau_block.get("tau_end"))
+    # GPU memory suite: post-run peaks (bytes) + the fraction actually
+    # applied (CPU devices: 0/0/None, never touching torch.cuda — tested).
+    _gpu_mem = _gpu_memory_metrics(config)
     metrics.update({
         "arm": config.arm,
         "seed": int(config.seed),
@@ -2153,6 +2236,12 @@ def _train_run_v53mp_impl(
         "selection_metric": "inner-val loss (scale-tier pool train curves)",
         "seeds": seed_map,
         "device": device,
+        "gpu_max_memory_allocated_bytes":
+            _gpu_mem["gpu_max_memory_allocated_bytes"],
+        "gpu_max_memory_reserved_bytes":
+            _gpu_mem["gpu_max_memory_reserved_bytes"],
+        "gpu_memory_fraction_applied":
+            _gpu_mem["gpu_memory_fraction_applied"],
         "feature_workers": int(feature_workers),
         "double_buffer": bool(dbuf is not None),
         "double_buffer_active": bool(dbuf_healthy),

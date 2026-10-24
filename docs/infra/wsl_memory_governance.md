@@ -10,7 +10,7 @@
 
 | 项 | 当前 | 推荐（`config/wslconfig.recommended.ini`） | 理由 |
 |---|---|---|---|
-| `memory` | **56GB** | **40GB** | 56 GB 把宿主机挤干 → 两次 host OOM（2026-10-22）。40 GB 给 Windows 留 ~24 GB（宿主 64 GB 假设；宿主更小按 70% 折算） |
+| `memory` | **36GB（待下一次 `wsl --shutdown` 生效；当前 boot 仍 40GB）** | **36GB** | 56 GB 把宿主 commit 推到悬崖 → 2026-10-22 host OOM；2026-10-24 两次 WSL 终止确认是 `STATUS_COMMITMENT_LIMIT`。40 GB 在 54GB 全树验证时仅余 8.787GB；36GB 是 phase-0 Oracle 复核后的安全 floor（目标 headroom≥12GB） |
 | `swap` | 0 | **0（保持关闭）** | 不启用 swap：换页写入损耗 SSD 寿命，且“靠 swap 跑完”本身就是失败 run（见 §3）。内存安全由 40 GB 上限 + 每 run cgroup 限额保证 |
 | `swapFile` | `E:\wsl_swap\swap.vhdx` | **删除该行** | swap 关闭后不再需要；确认无其他 WSL 发行版使用后可删掉该 vhdx 释放空间 |
 | `autoMemoryReclaim` | `gradual` | 不变（`[experimental]` 段） | 逐步归还内存给宿主 |
@@ -18,6 +18,8 @@
 **应用方式**：把 `config/wslconfig.recommended.ini` 内容拷到 Windows 侧 `%UserProfile%\.wslconfig`，然后在 PowerShell 执行 `wsl --shutdown` 重启 VM。不重启不生效。
 
 **为什么 56 GB 会打死宿主**：2026-10-22 两次 VM 死机时，guest cgroup 限 50 GiB、`oom_kill=0`、guest anon 37.0 GiB——即 **宿主机先耗尽**，任何 guest 内部的 cgroup 上限都无法预防。因此第一层治理必须在 Windows 侧（`.wslconfig memory=40GB`），第二层才是 guest 内的 per-run scope。
+
+**2026-10-24 已闭环的根因（不是 guest OOM）**：两次终止都是 Hyper-V `StorageVSP` 在写 `E:\WSL\ext4.vhdx` 时返回 `0xC000012D = STATUS_COMMITMENT_LIMIT`，随后 Worker Event 18560 vCPU triple fault。40 GB 是**上限**，WSL 仍会随 guest page cache 增长而增加宿主 commit；全树 54 GB migrate/copy 必须逐文件 `posix_fadvise(DONTNEED)`（`migrate_data_to_ext4.py` 已默认开启），B2 单路 `gate-check` 必须复用 sidecar，训练必须用 cgroup 限页缓存。任何 57 GB 级全树操作前，宿主 commit headroom 必须 ≥8 GB（目标 ≥12 GB），并用 `scripts/infra/host_commit_monitor.ps1` 留证。
 
 ---
 
@@ -32,7 +34,8 @@ Windows 64 GB
       └─ 采样：cgroup_scope.sh 每 2 s 落 memory.current / swap.current / anon / file / oom*
 ```
 
-- **单路训练（现状）**：`MemoryMax=34G / MemoryHigh=32G`。20k 单 run 稳态 anon 25.9–26.0 GB，终评瞬时峰值 30.75 GiB，都在 34 G 之下。
+- **单路 v1 训练（历史）**：`MemoryMax=34G / MemoryHigh=32G`。20k v1 单 run 稳态 anon 25.9–26.0 GB，终评瞬时峰值 30.75 GiB，都在 34 G 之下；该值**不适用于 loader v2 的 B2/迁移后数据**，会把页缓存推到 host commit 悬崖。
+- **单路 v2 B2（2026-10-24 起）**：`MemoryMax=12G / MemoryHigh=10G`。实测 anon ≈3.5 GB、guest cache 约 6 GB、min host commit headroom 11.32GB（500-step smoke 12.09GB）；使用 34 G 旧值会重复 `0xC000012D`。
 - **I1 之后每 run 一个 `MemoryMax=6G` scope**：loader v2（memmap 列式索引）落地后单 run anon 目标 ≤2.5 GB（50k）/ ≤4 GB（100k），6 G 上限足够；某一路 OOM 只会 OOM-kill 自己的 scope，不拖垮 VM，更不拖垮其他 run。
 
 ### 2.1 用 `cgroup_scope.sh` 启动一次受控 run
@@ -192,7 +195,7 @@ B1–B4 每级只改一个变量（plan §7 阶梯），**一次只上一级**�
 
 | 症状 | 处理 |
 |---|---|
-| VM 整个重启、guest 无 oom_kill | 宿主 OOM：查 Windows 侧可用内存采样；确认 `.wslconfig memory≤40GB` 且 `wsl --shutdown` 过 |
+| VM 整个重启、guest 无 oom_kill | 宿主 OOM/commit 悬崖：先查 Hyper-V `StorageVSP` Event ID 8 的 `0xC000012D` 与 Worker 18560；确认 `.wslconfig memory≤40GB`、未回 56GB，并检查宿主 commit headroom（≥8 GB）；全树 I/O 使用 `migrate_data_to_ext4.py`（默认 per-file fadvise） |
 | scope 内 oom_kill>0（退出码 91 或 137） | 单 run 超 MemoryMax：先确认是否 I1 后还在用 34G 旧值；再查该 tier 的 anon 预算（plan §2 表） |
 | 退出码 90 | swap 持续 >60 s：见 §3 |
 | 搬迁被拒 NOT_EXT4 | 目标不是 ext4（drvfs/9p/tmpfs 都不行）——换挂载点 |

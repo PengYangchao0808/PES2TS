@@ -854,3 +854,117 @@ def test_feature_lru_zero_pads_missing_teacher(env, lanes_ready) -> None:
     batch = to_torch_batch(collate_v3([built, ok_built]), device="cpu")
     assert "y_teacher" in batch
     assert batch["y_teacher"].shape[0] == n_key * 2
+
+
+# ---------------------------------------------------------------------------
+# CUDA memory suite: fraction validation, application, metrics keys
+# (CPU-only — torch.cuda entry points are monkeypatched; no GPU required)
+# ---------------------------------------------------------------------------
+
+
+def test_config_cuda_memory_fraction_validation() -> None:
+    # default: None (zero behaviour change)
+    assert V53MPTrainerConfig(arm="A", seed=17).cuda_memory_fraction is None
+    # 0 < f <= 1 accepted
+    ok = V53MPTrainerConfig(arm="A", seed=17, cuda_memory_fraction=0.17)
+    assert ok.cuda_memory_fraction == 0.17
+    assert V53MPTrainerConfig(
+        arm="A", seed=17, cuda_memory_fraction=1.0).cuda_memory_fraction == 1.0
+    # boundary / out-of-range values are TYPED refusals
+    for bad in (0.0, -0.1, 1.5, float("nan")):
+        with pytest.raises(V53MPTrainerError) as exc:
+            V53MPTrainerConfig(
+                arm="A", seed=17, cuda_memory_fraction=bad)
+        assert exc.value.code == "CUDA_MEMORY_FRACTION", bad
+
+
+def test_apply_cuda_memory_fraction_calls_set_fraction(monkeypatch) -> None:
+    calls = []
+
+    def _record(name):
+        def _fn(*args, **kwargs):
+            calls.append((name, args, kwargs))
+        return _fn
+
+    monkeypatch.setattr(tr.torch.cuda, "init", _record("init"))
+    monkeypatch.setattr(
+        tr.torch.cuda, "set_per_process_memory_fraction",
+        _record("set_per_process_memory_fraction"))
+
+    # default None: the fraction setter is NEVER called (pre-cap behaviour)
+    cfg_none = V53MPTrainerConfig(arm="A", seed=17, device="cuda")
+    assert tr.apply_cuda_memory_fraction(cfg_none) is None
+    assert calls == []
+
+    # fraction 0.17 on bare "cuda": init + setter with device index 0
+    cfg = V53MPTrainerConfig(
+        arm="A", seed=17, device="cuda", cuda_memory_fraction=0.17)
+    assert tr.apply_cuda_memory_fraction(cfg) == 0.17
+    assert [c[0] for c in calls] == [
+        "init", "set_per_process_memory_fraction"]
+    frac_call = calls[1]
+    assert frac_call[1] == (0.17, 0)       # (fraction, device_index=0)
+
+    # explicit device index is passed through verbatim
+    calls.clear()
+    cfg1 = V53MPTrainerConfig(
+        arm="A", seed=17, device="cuda:1", cuda_memory_fraction=0.17)
+    assert tr.apply_cuda_memory_fraction(cfg1) == 0.17
+    assert calls[1][1] == (0.17, 1)        # device index 1
+
+    # CPU device: NEVER touches torch.cuda even with a fraction set
+    calls.clear()
+    cfg_cpu = V53MPTrainerConfig(
+        arm="A", seed=17, device="cpu", cuda_memory_fraction=0.17)
+    assert tr.apply_cuda_memory_fraction(cfg_cpu) is None
+    assert calls == []
+
+
+def test_reset_peak_memory_stats_noop_on_cpu(monkeypatch) -> None:
+    calls = []
+    monkeypatch.setattr(
+        tr.torch.cuda, "reset_peak_memory_stats",
+        lambda *args, **kwargs: calls.append((args, kwargs)))
+    tr._reset_peak_memory_stats("cpu")          # explicit no-op, no crash
+    assert calls == []
+    tr._reset_peak_memory_stats("cuda:2")       # forwarded verbatim on CUDA
+    assert calls == [(("cuda:2",), {})]
+
+
+def test_gpu_memory_metrics_keys_int_or_none_on_cpu() -> None:
+    # CPU device: 0 bytes / None fraction (explicit contract, never crashes)
+    cfg = V53MPTrainerConfig(arm="A", seed=17, device="cpu")
+    mem = tr._gpu_memory_metrics(cfg)
+    assert set(mem) == {
+        "gpu_max_memory_allocated_bytes",
+        "gpu_max_memory_reserved_bytes",
+        "gpu_memory_fraction_applied",
+    }
+    assert mem["gpu_max_memory_allocated_bytes"] == 0
+    assert mem["gpu_max_memory_reserved_bytes"] == 0
+    assert mem["gpu_memory_fraction_applied"] is None
+    assert isinstance(mem["gpu_max_memory_allocated_bytes"], int)
+    assert isinstance(mem["gpu_max_memory_reserved_bytes"], int)
+    # a fraction on a CPU device is never "applied"
+    cfg_frac = V53MPTrainerConfig(
+        arm="A", seed=17, device="cpu", cuda_memory_fraction=0.17)
+    assert tr._gpu_memory_metrics(cfg_frac)["gpu_memory_fraction_applied"] is None
+
+
+def test_smoke_metrics_carry_gpu_memory_keys(tmp_path, env, lanes_ready) -> None:
+    out = tmp_path / "run_gpu_mem"
+    cfg = _smoke_cfg(arm="A", smoke_updates=1, val_every=1)
+    metrics = train_run_v53mp(
+        env.ds, env.labels, env.endpoint, cfg, out,
+        dev_positions=env.dev_pos, resume=False)
+    # top-level keys present with the CPU contract values (int/None)
+    assert isinstance(metrics["gpu_max_memory_allocated_bytes"], int)
+    assert isinstance(metrics["gpu_max_memory_reserved_bytes"], int)
+    assert metrics["gpu_max_memory_allocated_bytes"] == 0
+    assert metrics["gpu_max_memory_reserved_bytes"] == 0
+    assert metrics["gpu_memory_fraction_applied"] is None
+    # persisted metrics.json carries the same top-level keys
+    payload = json.loads((out / "metrics.json").read_text(encoding="utf-8"))
+    assert payload["gpu_max_memory_allocated_bytes"] == 0
+    assert payload["gpu_max_memory_reserved_bytes"] == 0
+    assert payload["gpu_memory_fraction_applied"] is None

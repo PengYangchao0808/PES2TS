@@ -46,6 +46,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 import sys
 from datetime import datetime, timezone
@@ -79,6 +80,7 @@ from scripts.agent_ops.supervisor.stage_bind import (  # noqa: E402
     DEFAULT_TASK_STATE_PATH,
     assert_stage_binding,
 )
+from scripts.infra import sha_sidecar  # noqa: E402
 
 DEFAULT_V53MP_ROOT = "outputs/pesn/v53mp"
 V53MP_ROOT_REL = "v53mp"          # rel to outputs/pesn/
@@ -331,6 +333,43 @@ def _verify_plan_pin_sidecar(plan_path: Path) -> Dict[str, Any]:
     except (OSError, json.JSONDecodeError) as exc:
         raise LedgerError("PLAN_PIN_CORRUPT: {}: {}".format(pin_path, exc)) from exc
     return verify_plan_pin(plan_path, pin)
+
+
+#: Migration-time sha256 cache sidecars (``scripts/infra/sha_sidecar.py``)
+#: land NEXT to real artifacts as ``<target>.sha256sidecar.json``; they are
+#: NOT binding jsons and must never count toward the "exactly one binding
+#: json" rule (everything else besides the single real binding still fails
+#: closed).
+SIDECAR_JSON_SUFFIX = ".sha256sidecar.json"
+
+
+def _dev_pack_binding_jsons(candidate: Path) -> List[Path]:
+    """The pack's real binding json candidates (``*.json`` minus sidecars)."""
+    if not candidate.is_dir():
+        return []
+    return sorted(
+        path for path in candidate.glob("*.json")
+        if not path.name.endswith(SIDECAR_JSON_SUFFIX)
+    )
+
+
+def _resolve_dev_pack_binding(candidate: Path) -> Path:
+    """Locate the dev pack's SINGLE binding json (fail-closed).
+
+    Sidecar pollution (``*.sha256sidecar.json`` written by the data
+    migration) is ignored; anything other than exactly one real binding
+    json raises the typed ``DEV_PACK_MISSING`` refusal.
+    """
+    binding_json = _dev_pack_binding_jsons(candidate)
+    if len(binding_json) != 1:
+        raise V53MPConfigError(
+            "DEV_PACK_MISSING: --dev-pack auto requires the "
+            "frozen dev pack at {} (one binding json); found {} "
+            "(build with scripts/agent_ops/data_gate/"
+            "r3_v53mp_build_dev_pack.py, or pass "
+            "--dev-pack off)".format(candidate, len(binding_json))
+        )
+    return binding_json[0]
 
 
 def _verify_five_sha_binding(
@@ -626,6 +665,81 @@ def _gate_item_file_import(rel_path: str, attr: str, module: str) -> Tuple[str, 
     return _gate_item_import(attr, module)
 
 
+def _drop_page_cache(path: Path) -> None:
+    """Best-effort eviction of ``path`` from the page cache (Linux only).
+
+    After a cache-MISS rehash of a multi-GB data file, the freshly read
+    pages would stay resident in the guest page cache and push the host
+    toward the commit cliff (a gate-check re-read of the full ~54 GB data
+    set did exactly that while the training cgroup itself peaked at
+    ~9.4 GB).  ``posix_fadvise(POSIX_FADV_DONTNEED)`` is a pure advisory
+    hint: no-op off Linux, no-op when unavailable, and NEVER raises —
+    the digest is already correct, cache hygiene is secondary.
+    """
+    if not sys.platform.startswith("linux"):
+        return
+    fadvise = getattr(os, "posix_fadvise", None)
+    dontneed = getattr(os, "POSIX_FADV_DONTNEED", None)
+    if fadvise is None or dontneed is None:
+        return
+    try:
+        fd = os.open(str(path), os.O_RDONLY)
+    except OSError:
+        return
+    try:
+        fadvise(fd, 0, 0, dontneed)
+    except (OSError, ValueError):
+        pass
+    finally:
+        try:
+            os.close(fd)
+        except OSError:
+            pass
+
+
+def _sidecar_hit_sha256(path: Path) -> Optional[str]:
+    """Cached digest when ``path``'s sidecar stat-tuple still binds, else None.
+
+    Reuses the sidecar module's own stat binding so the hit semantics can
+    never drift from the migration writer's.  ``None`` = cache miss (no
+    sidecar / corrupt sidecar / stat drift) — the caller rehashes.
+    """
+    try:
+        stat_tuple = sha_sidecar._stat_tuple(path)  # follows symlinks
+    except FileNotFoundError:
+        return None
+    doc = sha_sidecar._read_sidecar(sha_sidecar.sidecar_path(path))
+    if sha_sidecar._sidecar_matches(doc, stat_tuple):
+        return str(doc["sha256"])
+    return None
+
+
+def _manifest_file_sha256(target: Path) -> str:
+    """sha256 of one manifest-listed data file, sidecar-cache-first.
+
+    The migration sidecars (``scripts/infra/sha_sidecar.py``) bind the
+    CONTENT (``os.stat`` follows symlinks) and land next to the RESOLVED
+    target — so a post-migration source symlink must be ``Path.resolve()``-ed
+    to pick up the target-side sidecar (the link-side path is also probed for
+    layouts that wrote the sidecar at the listed path).  A valid sidecar
+    returns the cached digest WITHOUT reading the (potentially multi-GB)
+    file; a cache miss / stat drift / corrupt sidecar rehashes through the
+    public ``sidecar_sha256`` (sidecar refreshed in place with the original
+    semantics) and then drops the file's page cache so the one-off full
+    read cannot accumulate in the guest page cache.  The returned digest is
+    byte-identical to ``sha256_file`` — only the I/O path changes.
+    """
+    resolved = target.resolve()  # symlink -> real target (sidecar lives there)
+    hit = _sidecar_hit_sha256(target)
+    if hit is None and resolved != target:
+        hit = _sidecar_hit_sha256(resolved)
+    if hit is not None:
+        return hit  # cache hit: the data file is NOT read
+    digest = sha_sidecar.sidecar_sha256(resolved)  # miss: rehash + write sidecar
+    _drop_page_cache(resolved)  # the full read must not stay resident
+    return digest
+
+
 def _verify_manifest_shas(tables_dir: Path, name: str) -> Tuple[str, str]:
     path = tables_dir / name
     if not path.is_file():
@@ -647,7 +761,7 @@ def _verify_manifest_shas(tables_dir: Path, name: str) -> Tuple[str, str]:
         target = tables_dir / rel
         if not target.is_file():
             return "fail", "{}: listed file {} missing".format(name, rel)
-        actual = sha256_file(target)
+        actual = _manifest_file_sha256(target)
         if actual != sha:
             return "fail", "{}: {} sha mismatch".format(name, rel)
     return "pass", "{} verified ({} file(s))".format(name, len(entries))
@@ -1074,18 +1188,9 @@ def cmd_run(args: argparse.Namespace) -> int:
                 psha = positions_sha256(dev_positions)
                 candidate = (Path(args.tables_dir) / "dev_packs"
                              / fsha / psha)
-                binding_json = list(candidate.glob("*.json")) \
-                    if candidate.is_dir() else []
-                if len(binding_json) != 1:
-                    raise V53MPConfigError(
-                        "DEV_PACK_MISSING: --dev-pack auto requires the "
-                        "frozen dev pack at {} (one binding json); found {} "
-                        "(build with scripts/agent_ops/data_gate/"
-                        "r3_v53mp_build_dev_pack.py, or pass "
-                        "--dev-pack off)".format(candidate, len(binding_json))
-                    )
+                binding_path = _resolve_dev_pack_binding(candidate)
                 pack_binding = json.loads(
-                    binding_json[0].read_text(encoding="utf-8"))
+                    binding_path.read_text(encoding="utf-8"))
                 # features_sha256/positions_sha256 resolve the DIRECTORY, so
                 # a mismatch here means the binding json drifted from its own
                 # path — refuse, never silently fall back.
@@ -1151,6 +1256,7 @@ def cmd_run(args: argparse.Namespace) -> int:
                     else None
                 ),
                 device=args.device,
+                cuda_memory_fraction=args.cuda_memory_fraction,
             )
             metrics = train_run_v53mp(
                 dataset, labels, endpoint_labels, trainer_config, out_dir,
@@ -1244,6 +1350,20 @@ def cmd_run(args: argparse.Namespace) -> int:
 # --------------------------------------------------------------------------
 
 
+def _parse_cuda_memory_fraction(text: str) -> float:
+    """argparse type: per-process CUDA memory fraction in (0, 1]."""
+    try:
+        value = float(text)
+    except (TypeError, ValueError) as exc:
+        raise argparse.ArgumentTypeError(
+            "--cuda-memory-fraction must be a float in (0, 1], got {!r}".format(
+                text)) from exc
+    if not (0.0 < value <= 1.0):
+        raise argparse.ArgumentTypeError(
+            "--cuda-memory-fraction must lie in (0, 1], got {}".format(text))
+    return value
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="r3_v53mp_run",
@@ -1282,6 +1402,12 @@ def _build_parser() -> argparse.ArgumentParser:
     run.add_argument("--r3-ckpt", default=R3_WINNER_CKPT)
     run.add_argument("--gpu-lock", default=GPU_LOCK)
     run.add_argument("--device", default="cuda")
+    run.add_argument("--cuda-memory-fraction", type=_parse_cuda_memory_fraction,
+                     default=None,
+                     help="per-process CUDA allocator cap (0 < f <= 1); "
+                          "applied via torch.cuda.set_per_process_memory_"
+                          "fraction before the model load.  Default: no cap "
+                          "(zero behaviour change)")
     run.add_argument("--loader", default="v1", choices=("v1", "v2"),
                      help="v1 = ShardedKeyAtomDatasetV3 (light pickle); "
                           "v2 = ColumnarKeyAtomDatasetV3 (idx_v2 memmap; "

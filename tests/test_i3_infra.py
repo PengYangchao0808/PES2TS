@@ -1,15 +1,18 @@
 """I3 infra tests: orchestrator cgroup wrapper + workers mode, B4 drill
-dry-run/verdict, thread-env A/B checker (plan §4.3/§5.1/§5.5/§7-B4).
+dry-run/verdict (+ whole-card VRAM gate / ``--cuda-memory-fraction``
+passthrough), thread-env A/B checker (plan §4.3/§5.1/§5.5/§7-B4).
 
 No GPU, no launches: the orchestrator tests exercise ``--dry-run`` +
 ``_slot_command``/``_derive_memory_high``/``_feature_workers_for``; the
 drill test builds + validates the full plan in ``--dry-run`` and pins
-``verdict_phase``; the thread-env test pins the compare logic on
+``verdict_phase`` (the drill's VRAM sampler is exercised with a mocked
+``subprocess``); the thread-env test pins the compare logic on
 synthetic worker outputs.
 """
 
 from __future__ import annotations
 
+import argparse
 import json
 import sys
 from pathlib import Path
@@ -178,7 +181,7 @@ def test_select_rows_distinct_arm_seed() -> None:
 
 
 def test_verdict_phase_gates() -> None:
-    # N=1: only the oom gate applies
+    # N=1: only the oom gate applies (whole-card vram is REFERENCE only)
     v1 = drill.verdict_phase(1, [{"wall_s": 100.0, "anon_peak_bytes": 5_000_000_000,
                                   "oom_kill": 0, "returncode": 0,
                                   "median_ms": 61.7, "run_id": "r0"}],
@@ -193,25 +196,73 @@ def test_verdict_phase_gates() -> None:
               "returncode": 0, "median_ms": 71.0, "run_id": "r2"},
              {"wall_s": 105.0, "anon_peak_bytes": 6_000_000_000, "oom_kill": 0,
               "returncode": 0, "median_ms": 72.0, "run_id": "r3"}]
-    v3 = drill.verdict_phase(3, slots, baseline_wall_s=100.0)
+    v3 = drill.verdict_phase(3, slots, baseline_wall_s=100.0,
+                             vram_peak_mib=6100, vram_samples=340)
     assert v3["pass"]
     assert v3["observed"]["total_anon_bytes"] == 20_000_000_000
+    assert v3["observed"]["vram_peak_mib"] == 6100
     assert v3["checks"]["total_anon_lt_24gb"] is True
+    assert v3["checks"]["whole_card_vram_le_6800_mib"] is True
     assert v3["checks"]["per_run_wall_le_1_5x_baseline"] is True
     # N=3 total anon over the gate -> fail
     slots_hi = [dict(s, anon_peak_bytes=8_000_000_000) for s in slots]
-    v3_fail = drill.verdict_phase(3, slots_hi, baseline_wall_s=100.0)
+    v3_fail = drill.verdict_phase(3, slots_hi, baseline_wall_s=100.0,
+                                  vram_peak_mib=6100, vram_samples=340)
     assert not v3_fail["pass"]
     assert v3_fail["checks"]["total_anon_lt_24gb"] is False
     # wall ratio breach -> fail
     slots_slow = [dict(s, wall_s=160.0) for s in slots]
-    v3_slow = drill.verdict_phase(3, slots_slow, baseline_wall_s=100.0)
+    v3_slow = drill.verdict_phase(3, slots_slow, baseline_wall_s=100.0,
+                                  vram_peak_mib=6100, vram_samples=340)
     assert not v3_slow["pass"]
     assert v3_slow["checks"]["per_run_wall_le_1_5x_baseline"] is False
     # oom -> fail
     slots_oom = [dict(slots[0], oom_kill=1), slots[1], slots[2]]
-    v3_oom = drill.verdict_phase(3, slots_oom, baseline_wall_s=100.0)
+    v3_oom = drill.verdict_phase(3, slots_oom, baseline_wall_s=100.0,
+                                 vram_peak_mib=6100, vram_samples=340)
     assert not v3_oom["pass"] and v3_oom["checks"]["oom_kill_zero"] is False
+    # rc / all_slots gates unchanged (see the dedicated regression below)
+    assert set(v3["checks"]) >= {"oom_kill_zero", "all_slots_completed",
+                                 "total_anon_lt_24gb",
+                                 "whole_card_vram_le_6800_mib"}
+    assert "whole_card_vram_le_6800_mib" in v3["gates"]
+
+
+def test_verdict_phase_whole_card_vram_gate_boundaries() -> None:
+    """N=3 whole-card gate: 6800 MiB passes, 6801 fails, no samples fails."""
+    slots = [{"wall_s": 100.0, "anon_peak_bytes": 5_000_000_000, "oom_kill": 0,
+              "returncode": 0, "median_ms": 70.0, "run_id": "r{}".format(i)}
+             for i in range(3)]
+    v_ok = drill.verdict_phase(3, slots, baseline_wall_s=100.0,
+                               vram_peak_mib=6800, vram_samples=100)
+    assert v_ok["checks"]["whole_card_vram_le_6800_mib"] is True
+    assert v_ok["pass"] is True
+    v_hi = drill.verdict_phase(3, slots, baseline_wall_s=100.0,
+                               vram_peak_mib=6801, vram_samples=100)
+    assert v_hi["checks"]["whole_card_vram_le_6800_mib"] is False
+    assert v_hi["pass"] is False
+    # fail-closed: sampler missing / empty file -> peak 0 -> N=3 fails
+    v_missing = drill.verdict_phase(3, slots, baseline_wall_s=100.0,
+                                    vram_peak_mib=0, vram_samples=0)
+    assert v_missing["checks"]["whole_card_vram_le_6800_mib"] is False
+    assert v_missing["pass"] is False
+    assert v_missing["observed"]["vram_peak_mib"] == 0
+    # fail-closed for the default too (verdict called without sampler data)
+    v_default = drill.verdict_phase(3, slots, baseline_wall_s=100.0)
+    assert v_default["pass"] is False
+    # N=1 / N=4: NOT enforced — recorded informationally only
+    v1 = drill.verdict_phase(1, [slots[0]], baseline_wall_s=None,
+                             vram_peak_mib=6900, vram_samples=100)
+    assert "whole_card_vram_le_6800_mib" not in v1["checks"]
+    assert v1["observed"]["whole_card_vram_le_6800_mib"] is False
+    assert v1["observed"]["vram_peak_mib"] == 6900
+    assert v1["pass"] is True
+    v4 = drill.verdict_phase(4, slots + [dict(slots[0], run_id="r3")],
+                             baseline_wall_s=100.0,
+                             vram_peak_mib=6900, vram_samples=100)
+    assert "whole_card_vram_le_6800_mib" not in v4["checks"]
+    assert v4["observed"]["vram_peak_mib"] == 6900
+    assert v4["pass"] is True
 
 
 def test_verdict_phase_slot_failure_is_hard_fail() -> None:
@@ -358,6 +409,138 @@ def test_drill_bad_ns_refused(tmp_path: Path) -> None:
             "--output-root", str(tmp_path / "drill"),
             "--ns", "0", "--dry-run",
         ])
+
+
+# ---------------------------------------------------------------------------
+# B4 drill: whole-card VRAM sampler + cuda-memory-fraction passthrough
+# ---------------------------------------------------------------------------
+def test_vram_sampler_start_stop_mocked(tmp_path: Path,
+                                        monkeypatch) -> None:
+    """Whole-card sampler contract: nvidia-smi -l 2 -> phase_root file,
+    reliably terminate/wait-stopped; nvidia-smi missing = empty file
+    (parse peak 0 -> the N=3 gate fails closed).  No GPU touched."""
+    seen: dict = {}
+
+    class _FakeProc:
+        def __init__(self) -> None:
+            self.terminated = False
+            self.waited = False
+            self.killed = False
+
+        def terminate(self) -> None:
+            self.terminated = True
+
+        def wait(self, timeout: float = 0) -> int:
+            self.waited = True
+            return 0
+
+        def kill(self) -> None:
+            self.killed = True
+
+    def _fake_popen(cmd, **kw):
+        seen["cmd"] = list(cmd)
+        seen["stdout"] = kw["stdout"]
+        seen["proc"] = _FakeProc()
+        return seen["proc"]
+
+    monkeypatch.setattr(drill.subprocess, "Popen", _fake_popen)
+    vram_path = tmp_path / drill.VRAM_SAMPLE_FILENAME
+    handle = drill._start_vram_sampler(tmp_path)
+    assert handle is not None and vram_path.is_file()
+    assert seen["cmd"] == ["nvidia-smi", "--query-gpu=memory.used",
+                           "--format=csv,noheader", "-l", "2"]
+    vram_path.write_text("6100 MiB\n6400 MiB\n", encoding="utf-8")
+    drill._stop_vram_sampler(handle)
+    assert seen["proc"].terminated is True and seen["proc"].waited is True
+    assert not seen["proc"].killed
+    # samples parsed by the REUSED infra_bench parser
+    stats = drill.ib.parse_vram_samples(drill.ib._read_lines(vram_path))
+    assert stats == {"vram_peak_mib": 6400, "vram_samples": 2}
+    drill._stop_vram_sampler(None)          # no-op
+
+    def _boom(cmd, **kw):
+        raise OSError("nvidia-smi: not found")
+
+    monkeypatch.setattr(drill.subprocess, "Popen", _boom)
+    sub = tmp_path / "no_smi"
+    assert drill._start_vram_sampler(sub) is None
+    empty = sub / drill.VRAM_SAMPLE_FILENAME
+    assert empty.is_file() and empty.read_text(encoding="utf-8") == ""
+    assert drill.ib.parse_vram_samples(
+        drill.ib._read_lines(empty))["vram_peak_mib"] == 0
+    drill._stop_vram_sampler(None)          # missing sampler: still safe
+
+
+def test_cuda_memory_fraction_validation(tmp_path: Path) -> None:
+    assert drill._cuda_memory_fraction_arg("0.17") == 0.17
+    assert drill._cuda_memory_fraction_arg(1) == 1.0
+    for bad in ("0", "-0.1", "1.5", "junk", "nan"):
+        with pytest.raises(argparse.ArgumentTypeError):
+            drill._cuda_memory_fraction_arg(bad)
+    # CLI: bad values are refused before anything is built or launched
+    with pytest.raises(SystemExit):
+        drill.main(["--cuda-memory-fraction", "1.5", "--dry-run"])
+    with pytest.raises(SystemExit):
+        drill.main(["--cuda-memory-fraction", "0", "--dry-run"])
+    # plan builder: fail-closed too (off-CLI callers)
+    with pytest.raises(SystemExit) as exc:
+        drill.build_phase_plan(
+            {"run_id": "v53mp_20k_A_s17", "arm": "A", "seed": 17},
+            "B4_n3", 2000, 1, tmp_path, tmp_path, tmp_path, tmp_path,
+            tmp_path, "cuda", "6G", 6, cuda_memory_fraction=0)
+    assert "BAD_CUDA_MEMORY_FRACTION" in str(exc.value)
+
+
+def test_drill_dry_run_cuda_memory_fraction_argv(tmp_path: Path,
+                                                 monkeypatch) -> None:
+    """--cuda-memory-fraction f -> every slot argv carries
+    '--cuda-memory-fraction f'; default -> flag absent.  Dry-run launches
+    nothing (Popen is trapped)."""
+    plan = tmp_path / "run_plan_v53mp_20k.jsonl"
+    _write_plan(plan, _plan_rows(9))
+    cfg = REPO / "config/campaigns/pes2ts_v53mp_20261021.yaml"
+    if not cfg.is_file():
+        pytest.skip("frozen campaign config missing")
+    monkeypatch.setattr(drill.ib, "validate_bench_root",
+                        lambda *a, **k: {"five_sha": "ok"})
+
+    def _no_launch(*a, **k):
+        raise AssertionError("dry-run must not launch GPU/training")
+
+    monkeypatch.setattr(drill.subprocess, "Popen", _no_launch)
+
+    out_frac = tmp_path / "drill_frac"
+    rc = drill.main([
+        "--plan", str(plan), "--output-root", str(out_frac),
+        "--ns", "1,3", "--updates", "2000", "--config", str(cfg),
+        "--cuda-memory-fraction", "0.17", "--dry-run",
+    ])
+    assert rc == 0
+    report = json.loads((out_frac / "report.json").read_text(encoding="utf-8"))
+    assert report["cuda_memory_fraction"] == 0.17
+    for phase in report["phases"]:
+        for slot in phase["slots"]:
+            argv = slot["argv"]
+            i = argv.index("--cuda-memory-fraction")
+            assert argv[i + 1] == "0.17"
+            # driver arg: AFTER the driver path (forwarded by the wrapper)
+            assert i > argv.index(str(drill.ib.RUN_DRIVER))
+            assert slot["cuda_memory_fraction"] == 0.17
+
+    out_plain = tmp_path / "drill_plain"
+    rc = drill.main([
+        "--plan", str(plan), "--output-root", str(out_plain),
+        "--ns", "1,3", "--updates", "2000", "--config", str(cfg),
+        "--dry-run",
+    ])
+    assert rc == 0
+    report = json.loads(
+        (out_plain / "report.json").read_text(encoding="utf-8"))
+    assert report["cuda_memory_fraction"] is None
+    for phase in report["phases"]:
+        for slot in phase["slots"]:
+            assert "--cuda-memory-fraction" not in slot["argv"]
+            assert slot["cuda_memory_fraction"] is None
 
 
 # ---------------------------------------------------------------------------

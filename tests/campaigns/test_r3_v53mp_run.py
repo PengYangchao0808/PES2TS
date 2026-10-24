@@ -343,3 +343,298 @@ def test_run_refuses_unknown_run_id(tmp_path: Path) -> None:
     ])
     assert proc.returncode == 2
     assert "RUN_NOT_IN_PLAN" in proc.stderr
+
+
+# --------------------------------------------------------------------------
+# run: --cuda-memory-fraction CLI (parse + 0<f<=1 validation + pass-through)
+# --------------------------------------------------------------------------
+
+
+def _driver_module():
+    if str(REPO) not in sys.path:
+        sys.path.insert(0, str(REPO))
+    from scripts.campaigns import r3_v53mp_run as drv
+
+    return drv
+
+
+def test_run_cli_cuda_memory_fraction_default_none() -> None:
+    drv = _driver_module()
+    args = drv._build_parser().parse_args(
+        ["run", "--run-id", "v53mp_2k_A_s17"])
+    # default None => zero behaviour change (no fraction applied)
+    assert args.cuda_memory_fraction is None
+
+
+def test_run_cli_cuda_memory_fraction_parses_and_validates() -> None:
+    drv = _driver_module()
+    parser = drv._build_parser()
+    # valid 0 < f <= 1 parses to float
+    args = parser.parse_args([
+        "run", "--run-id", "v53mp_2k_A_s17",
+        "--cuda-memory-fraction", "0.17"])
+    assert args.cuda_memory_fraction == 0.17
+    args = parser.parse_args([
+        "run", "--run-id", "v53mp_2k_A_s17",
+        "--cuda-memory-fraction", "1.0"])
+    assert args.cuda_memory_fraction == 1.0
+    # out-of-range / unparseable values exit 2 (argparse fail-closed)
+    for bad in ("0", "-0.1", "1.5", "nan", "abc"):
+        with pytest.raises(SystemExit) as exc:
+            parser.parse_args([
+                "run", "--run-id", "v53mp_2k_A_s17",
+                "--cuda-memory-fraction", bad])
+        assert exc.value.code == 2, bad
+
+
+def test_run_cli_cuda_memory_fraction_rejects_out_of_range_subprocess() -> None:
+    # end-to-end CLI surface: refused by argparse BEFORE any ledger/GPU work
+    proc = _run([
+        "run", "--run-id", "v53mp_2k_A_s17",
+        "--cuda-memory-fraction", "1.5",
+    ])
+    assert proc.returncode == 2
+    assert "cuda-memory-fraction" in proc.stderr
+
+
+def test_run_cli_cuda_memory_fraction_passes_into_trainer_config() -> None:
+    """cmd_run must hand args.cuda_memory_fraction to V53MPTrainerConfig."""
+    import inspect
+
+    drv = _driver_module()
+    source = inspect.getsource(drv.cmd_run)
+    assert "cuda_memory_fraction=args.cuda_memory_fraction" in source
+
+
+# --------------------------------------------------------------------------
+# run: --dev-pack auto binding discovery (migration *.sha256sidecar.json)
+# --------------------------------------------------------------------------
+
+
+def _make_candidate(tmp_path: Path) -> Path:
+    candidate = tmp_path / "dev_pack"
+    candidate.mkdir()
+    return candidate
+
+
+def _touch_sidecars(candidate: Path, n: int = 4) -> None:
+    for i in range(n):
+        (candidate / "blobs.npy.{}.sha256sidecar.json".format(i)).write_text(
+            "{}", encoding="utf-8")
+
+
+def test_dev_pack_binding_selected_despite_sidecar_jsons(tmp_path: Path) -> None:
+    """1 binding json + N migration sidecars: the binding is selected."""
+    drv = _driver_module()
+    candidate = _make_candidate(tmp_path)
+    binding = candidate / ("b" * 64 + ".json")
+    binding.write_text("{}", encoding="utf-8")
+    _touch_sidecars(candidate)
+    assert drv._resolve_dev_pack_binding(candidate) == binding
+    assert drv._dev_pack_binding_jsons(candidate) == [binding]
+
+
+def test_dev_pack_sidecars_without_binding_still_refused(
+        tmp_path: Path) -> None:
+    """Sidecars but no binding json: DEV_PACK_MISSING, found 0."""
+    drv = _driver_module()
+    candidate = _make_candidate(tmp_path)
+    _touch_sidecars(candidate)
+    with pytest.raises(drv.V53MPConfigError) as exc:
+        drv._resolve_dev_pack_binding(candidate)
+    assert "DEV_PACK_MISSING" in str(exc.value)
+    assert "found 0" in str(exc.value)
+
+
+def test_dev_pack_two_bindings_still_refused(tmp_path: Path) -> None:
+    """Two real binding jsons: DEV_PACK_MISSING, found 2 (fail-closed)."""
+    drv = _driver_module()
+    candidate = _make_candidate(tmp_path)
+    (candidate / ("a" * 64 + ".json")).write_text("{}", encoding="utf-8")
+    (candidate / ("b" * 64 + ".json")).write_text("{}", encoding="utf-8")
+    _touch_sidecars(candidate)
+    with pytest.raises(drv.V53MPConfigError) as exc:
+        drv._resolve_dev_pack_binding(candidate)
+    assert "DEV_PACK_MISSING" in str(exc.value)
+    assert "found 2" in str(exc.value)
+
+
+# --------------------------------------------------------------------------
+# gate-check: manifest sha verification via migration sidecars (no 54 GB
+# re-read — the gate-check subprocess runs OUTSIDE the training cgroup and
+# must not re-accumulate the full data set in the guest page cache)
+# --------------------------------------------------------------------------
+
+
+def _write_all_sidecars(tables: Path, names=SIX_TABLES) -> None:
+    """Populate migration sidecars for the listed stub files."""
+    from scripts.infra.sha_sidecar import sidecar_sha256
+
+    for name in names:
+        sidecar_sha256(tables / name)
+
+
+def _spy_rehash(drv, monkeypatch, record: list) -> None:
+    """Patch the rehash path to record calls but keep true digests."""
+    import hashlib as _hashlib
+    from pathlib import Path as _Path
+
+    def _fake_sha256_file(path):
+        record.append(str(path))
+        return _hashlib.sha256(_Path(path).read_bytes()).hexdigest()
+
+    monkeypatch.setattr(drv.sha_sidecar, "sha256_file", _fake_sha256_file)
+
+
+def test_verify_manifest_shas_sidecar_hit_never_reads_data_file(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Valid sidecars for every listed file: NO data-file read at all."""
+    drv = _driver_module()
+    root = _v53mp_root(tmp_path)
+    tables, _split = _stub_data(root)
+    _write_all_sidecars(tables)
+
+    def _forbidden(path):
+        pytest.fail("cache hit must not rehash {}".format(path))
+
+    monkeypatch.setattr(drv.sha_sidecar, "sha256_file", _forbidden)
+
+    result, detail = drv._verify_manifest_shas(tables, "data_manifest.json")
+    assert result == "pass", detail
+    assert "{} verified ({} file(s))".format(
+        "data_manifest.json", len(SIX_TABLES)) in detail
+
+
+def test_verify_manifest_shas_symlink_uses_target_sidecar(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Migrated source symlink resolves to the TARGET-side sidecar."""
+    drv = _driver_module()
+    root = _v53mp_root(tmp_path)
+    tables, _split = _stub_data(root)
+    _write_all_sidecars(tables)
+
+    # migrate one table: real file moves to the migrated volume, the
+    # manifest-listed path becomes a symlink; its tables-side sidecar goes
+    # away with the move — only the TARGET-side sidecar remains.
+    real_dir = tmp_path / "migrated"
+    real_dir.mkdir()
+    real = real_dir / "irc_curve.csv"
+    real.write_bytes((tables / "irc_curve.csv").read_bytes())
+    tables.joinpath("irc_curve.csv").unlink()
+    tables.joinpath("irc_curve.csv").symlink_to(real)
+    from scripts.infra.sha_sidecar import sidecar_path, sidecar_sha256
+
+    sidecar_path(tables / "irc_curve.csv").unlink()  # link-side sidecar gone
+    sidecar_sha256(real)  # migration wrote the sidecar NEXT TO THE TARGET
+    assert not sidecar_path(tables / "irc_curve.csv").exists()
+    assert sidecar_path(real).is_file()
+
+    def _forbidden(path):
+        pytest.fail("target-side sidecar hit must not rehash {}".format(path))
+
+    monkeypatch.setattr(drv.sha_sidecar, "sha256_file", _forbidden)
+
+    result, detail = drv._verify_manifest_shas(tables, "data_manifest.json")
+    assert result == "pass", detail
+
+
+def test_verify_manifest_shas_cache_miss_rehashes_and_drops(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """No sidecars: every file rehashes, then drops its page cache; the
+    refreshed sidecars preserve the ORIGINAL digest semantics."""
+    drv = _driver_module()
+    root = _v53mp_root(tmp_path)
+    tables, _split = _stub_data(root)  # no sidecars -> all misses
+
+    rehashed: list[str] = []
+    dropped: list[str] = []
+    _spy_rehash(drv, monkeypatch, rehashed)
+    monkeypatch.setattr(drv, "_drop_page_cache",
+                        lambda p: dropped.append(str(p)))
+
+    result, detail = drv._verify_manifest_shas(tables, "data_manifest.json")
+    assert result == "pass", detail
+    assert sorted(Path(p).name for p in rehashed) == sorted(SIX_TABLES)
+    # every rehashed file also dropped its cache (never accumulate)
+    assert sorted(dropped) == sorted(rehashed)
+    # original sidecar semantics: sidecars now exist AND carry the true digests
+    from scripts.infra.sha_sidecar import sidecar_path
+
+    for name in SIX_TABLES:
+        side = sidecar_path(tables / name)
+        assert side.is_file(), name
+        doc = json.loads(side.read_text(encoding="utf-8"))
+        assert doc["sha256"] == hashlib.sha256(
+            (tables / name).read_bytes()).hexdigest()
+
+
+def test_verify_manifest_shas_mismatch_still_fails(
+        tmp_path: Path) -> None:
+    """Cache-miss rehash whose digest drifts from the manifest still fails."""
+    drv = _driver_module()
+    root = _v53mp_root(tmp_path)
+    tables, _split = _stub_data(root)
+    (tables / "irc_curve.csv").write_text(
+        "curve_id\ntampered\n", encoding="utf-8")
+
+    result, detail = drv._verify_manifest_shas(tables, "data_manifest.json")
+    assert result == "fail"
+    assert "sha mismatch" in detail
+
+
+def test_verify_manifest_shas_sidecar_hit_mismatch_still_fails(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """A cache hit cannot mask drift: tampered file + matching sidecar but
+    manifest sha frozen -> still fail (fail-closed, no rehash needed)."""
+    drv = _driver_module()
+    root = _v53mp_root(tmp_path)
+    tables, _split = _stub_data(root)
+    _write_all_sidecars(tables)  # all six files cached ...
+    (tables / "irc_curve.csv").write_text(
+        "curve_id\ntampered\n", encoding="utf-8")  # ... then drift happens
+    from scripts.infra.sha_sidecar import sidecar_sha256
+
+    sidecar_sha256(tables / "irc_curve.csv")  # cache matches the tampering
+
+    def _forbidden(path):
+        pytest.fail("cache hit must not rehash {}".format(path))
+
+    monkeypatch.setattr(drv.sha_sidecar, "sha256_file", _forbidden)
+
+    result, detail = drv._verify_manifest_shas(tables, "data_manifest.json")
+    assert result == "fail"
+    assert "sha mismatch" in detail
+
+
+def test_verify_manifest_shas_corrupt_sidecar_falls_back_to_rehash(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """A corrupt sidecar is a cache miss: full rehash, sidecar rewritten."""
+    drv = _driver_module()
+    root = _v53mp_root(tmp_path)
+    tables, _split = _stub_data(root)
+    _write_all_sidecars(tables)
+    from scripts.infra.sha_sidecar import sidecar_path
+
+    bad = sidecar_path(tables / "irc_curve.csv")
+    bad.write_text("{corrupt", encoding="utf-8")
+
+    rehashed: list[str] = []
+    _spy_rehash(drv, monkeypatch, rehashed)
+    monkeypatch.setattr(drv, "_drop_page_cache", lambda p: None)
+
+    result, detail = drv._verify_manifest_shas(tables, "data_manifest.json")
+    assert result == "pass", detail
+    # ONLY the corrupt-sidecar file rehashes; the other five stay cached
+    assert [Path(p).name for p in rehashed] == ["irc_curve.csv"]
+    doc = json.loads(bad.read_text(encoding="utf-8"))
+    assert doc["sha256"] == hashlib.sha256(
+        (tables / "irc_curve.csv").read_bytes()).hexdigest()
+
+
+def test_drop_page_cache_never_raises(tmp_path: Path) -> None:
+    """_drop_page_cache is advisory: valid/missing/foreign fds never raise."""
+    drv = _driver_module()
+    target = tmp_path / "x.bin"
+    target.write_bytes(b"x" * 4096)
+    drv._drop_page_cache(target)  # Linux: posix_fadvise; elsewhere no-op
+    drv._drop_page_cache(tmp_path / "missing.bin")  # missing: tolerated

@@ -17,13 +17,27 @@ imported and REUSED, never copied), each with:
   owns the GPU window; a concurrent campaign/orchestrator run is refused
   up front rather than deadlocking at the flock).
 
+Every phase also runs ONE whole-card VRAM sampler for its full duration
+(``nvidia-smi --query-gpu=memory.used --format=csv,noheader -l 2`` →
+``<phase_root>/vram_samples.txt``, reliably terminate/wait-stopped in a
+``finally`` even when the phase raises), parsed with
+``infra_bench.parse_vram_samples`` (REUSED, never copied).
+
 Measured per N: per-run wall time, per-run anon peak (from the cgroup
-sampler CSVs), total anon sum, oom_kill count.  Verdict (plan §7-B4):
+sampler CSVs), total anon sum, oom_kill count, whole-card VRAM peak.
+Verdict (plan §7-B4):
 
 * ``oom_kill == 0`` (every N),
 * per-run wall ``<= 1.5 x`` the N=1 baseline (N > 1),
 * N=3 total anon ``< 24 GB`` (the plan's ``3 x anon < 24 GB`` gate; the
-  N=4 total is reported informationally — the plan gates 3-way only).
+  N=4 total is reported informationally — the plan gates 3-way only),
+* N=3 whole-card VRAM peak ``<= 6800 MiB``
+  (``whole_card_vram_le_6800_mib`` — ENFORCED at N=3 only; N=1 records
+  it as a reference and N=4 reports it, neither gates.  A missing /
+  empty sample file parses to 0 and is FAIL-CLOSED for N=3).
+
+``--cuda-memory-fraction f`` (0 < f <= 1) is forwarded to every driver
+argv as ``--cuda-memory-fraction f``; default off (flag absent).
 
 Phases run SEQUENTIALLY (N=1 first — it is the baseline — then 3, then
 4); the N runs inside one phase are concurrent.  ``--dry-run`` builds
@@ -49,7 +63,7 @@ import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, IO, List, Optional, Tuple
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
@@ -71,6 +85,13 @@ DEFAULT_MEMORY_MAX = "6G"
 B3_ANON_SUM_GATE_BYTES = 24_000_000_000
 #: B4 gate: per-run wall <= 1.5x the N=1 baseline.
 B4_WALL_RATIO_GATE = 1.5
+#: B4 gate (plan §7): whole-card VRAM peak <= 6800 MiB at N=3
+#: (ENFORCED at N=3 only; N=1/N=4 record it informationally).
+WHOLE_CARD_VRAM_GATE_MIB = 6800
+#: per-phase sampler output (phase_root/<this file>).
+VRAM_SAMPLE_FILENAME = "vram_samples.txt"
+VRAM_SAMPLE_CMD = ["nvidia-smi", "--query-gpu=memory.used",
+                   "--format=csv,noheader", "-l", "2"]
 
 
 def _log(msg: str) -> None:
@@ -79,6 +100,74 @@ def _log(msg: str) -> None:
 
 def _utc_now() -> str:
     return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+
+
+def _cuda_memory_fraction_arg(value: Any) -> float:
+    """argparse type: 0 < f <= 1 (fail-closed on junk / 0 / negatives)."""
+    try:
+        frac = float(value)
+    except (TypeError, ValueError):
+        raise argparse.ArgumentTypeError(
+            "cuda-memory-fraction must be a number in (0, 1], got {!r}"
+            .format(value))
+    if not (0.0 < frac <= 1.0):
+        raise argparse.ArgumentTypeError(
+            "cuda-memory-fraction must satisfy 0 < f <= 1, got {!r}"
+            .format(value))
+    return frac
+
+
+# ---------------------------------------------------------------------------
+# whole-card VRAM sampler (one per N phase; infra_bench mechanism, REUSED)
+# ---------------------------------------------------------------------------
+def _start_vram_sampler(phase_root: Path
+                         ) -> Optional[Tuple[subprocess.Popen, IO[str]]]:
+    """Start the whole-card ``nvidia-smi -l 2`` sampler for one phase.
+
+    Output goes to ``phase_root/vram_samples.txt``, which is always
+    created (an empty/absent log parses to peak 0 → the N=3 whole-card
+    gate fails CLOSED).  Returns ``(proc, fh)`` or ``None`` when the
+    sampler cannot start (nvidia-smi missing/unusable) — the caller
+    still stops/cleans up via :func:`_stop_vram_sampler`.
+    """
+    phase_root.mkdir(parents=True, exist_ok=True)
+    vram_path = phase_root / VRAM_SAMPLE_FILENAME
+    fh = vram_path.open("w", encoding="utf-8")
+    try:
+        proc = subprocess.Popen(VRAM_SAMPLE_CMD, stdout=fh,
+                                stderr=subprocess.DEVNULL)
+    except OSError as exc:
+        fh.close()                            # file left in place, EMPTY
+        _log("[vram] sampler unavailable ({}): {} stays empty — the N=3 "
+             "whole-card gate fails closed".format(exc, vram_path))
+        return None
+    return proc, fh
+
+
+def _stop_vram_sampler(handle: Optional[Tuple[subprocess.Popen, IO[str]]]
+                        ) -> None:
+    """Reliable stop: terminate → wait (kill on timeout) → always close."""
+    if handle is None:
+        return
+    proc, fh = handle
+    try:
+        try:
+            proc.terminate()
+        except OSError:
+            pass
+        try:
+            proc.wait(timeout=10)
+        except subprocess.TimeoutExpired:     # pragma: no cover
+            try:
+                proc.kill()
+                proc.wait(timeout=5)
+            except OSError:
+                pass
+    finally:
+        try:
+            fh.close()
+        except OSError:
+            pass
 
 
 def _parse_memory_high(memory_max: str) -> str:
@@ -120,13 +209,22 @@ def build_phase_plan(
     config_path: Path, r3_ckpt: Path, device: str,
     memory_max: str, feature_workers: int, slot_index: int = 0,
     thread_caps: bool = False,
+    cuda_memory_fraction: Optional[float] = None,
 ) -> Dict[str, Any]:
     """Build + validate one phase's N slot roots (plan/config/pin/binding).
 
     Returns a per-slot descriptor list.  Fail-closed: any driver-gate
-    refusal (SystemExit from ``validate_bench_root``) propagates.
+    refusal (SystemExit from ``validate_bench_root``) propagates, as does
+    an invalid ``cuda_memory_fraction`` (must satisfy 0 < f <= 1).
     """
     high = _parse_memory_high(memory_max)
+    if cuda_memory_fraction is not None:
+        try:
+            cuda_memory_fraction = _cuda_memory_fraction_arg(
+                cuda_memory_fraction)
+        except argparse.ArgumentTypeError as exc:
+            raise SystemExit(
+                "error: BAD_CUDA_MEMORY_FRACTION: {}".format(exc))
     slots: List[Dict[str, Any]] = []
     from pes2ts_core.utils.hashing import sha256_file
 
@@ -171,6 +269,10 @@ def build_phase_plan(
             "--dev-pack", "auto",
             "--feature-workers", str(int(feature_workers)),
         ]
+        if cuda_memory_fraction is not None:
+            # forwarded to the driver (NOT re-implemented here): every slot
+            # of this phase gets the same cap, argv evidence in dry-run
+            argv += ["--cuda-memory-fraction", "{}".format(cuda_memory_fraction)]
         slots.append({
             "slot": slot,
             "run_id": str(row["run_id"]),
@@ -184,6 +286,7 @@ def build_phase_plan(
             "memory_max": memory_max,
             "memory_high": high,
             "feature_workers": int(feature_workers),
+            "cuda_memory_fraction": cuda_memory_fraction,
             "argv": argv,
         })
     return {"phase_root": str(phase_root), "slots": slots,
@@ -232,12 +335,25 @@ def _parse_slot_result(slot: Dict[str, Any], wall_s: float,
 
 
 def verdict_phase(phase_n: int, slot_results: List[Dict[str, Any]],
-                  baseline_wall_s: Optional[float]) -> Dict[str, Any]:
-    """Plan §7-B4 gates for one phase (pure; unit-testable)."""
+                  baseline_wall_s: Optional[float],
+                  vram_peak_mib: Optional[int] = None,
+                  vram_samples: int = 0) -> Dict[str, Any]:
+    """Plan §7-B4 gates for one phase (pure; unit-testable).
+
+    ``vram_peak_mib``/``vram_samples`` come from the per-phase whole-card
+    ``nvidia-smi -l 2`` sampler (``infra_bench.parse_vram_samples``).  The
+    ``whole_card_vram_le_6800_mib`` gate is ENFORCED at N=3 only; N=1 and
+    N=4 record it informationally.  Missing samples (0) FAIL CLOSED at
+    N=3.
+    """
     walls = [r["wall_s"] for r in slot_results]
     anons = [r["anon_peak_bytes"] for r in slot_results]
     oom_total = sum(int(r["oom_kill"]) for r in slot_results)
     anon_sum = sum(anons)
+    peak_mib = int(vram_peak_mib or 0)
+    n_vram = int(vram_samples or 0)
+    # fail-closed: no samples at all (peak 0) can never pass
+    vram_ok = n_vram > 0 and 0 < peak_mib <= WHOLE_CARD_VRAM_GATE_MIB
     slot_ok = all(
         int(r.get("returncode", 1)) == 0 and r.get("median_ms") is not None
         for r in slot_results)
@@ -253,6 +369,7 @@ def verdict_phase(phase_n: int, slot_results: List[Dict[str, Any]],
         worst_ratio = None
     if phase_n == 3:
         checks["total_anon_lt_24gb"] = anon_sum < B3_ANON_SUM_GATE_BYTES
+        checks["whole_card_vram_le_6800_mib"] = vram_ok
     return {
         "n_ways": phase_n,
         "pass": all(checks.values()),
@@ -265,6 +382,10 @@ def verdict_phase(phase_n: int, slot_results: List[Dict[str, Any]],
             "total_anon_bytes": anon_sum,
             "total_anon_gb": round(anon_sum / 1e9, 3),
             "oom_kill_total": oom_total,
+            "vram_peak_mib": peak_mib,
+            "vram_samples": n_vram,
+            # informational everywhere; gating only via checks at N=3
+            "whole_card_vram_le_6800_mib": vram_ok,
             "failed_slots": [
                 r.get("run_id") for r in slot_results
                 if int(r.get("returncode", 1)) != 0
@@ -275,6 +396,9 @@ def verdict_phase(phase_n: int, slot_results: List[Dict[str, Any]],
             "per_run_wall_le_1_5x_baseline":
                 "<= 1.5 x the N=1 phase wall (N>1)",
             "oom_kill_zero": "== 0 (every N)",
+            "whole_card_vram_le_6800_mib":
+                "<= 6800 MiB whole-card nvidia-smi peak (N=3 ENFORCED; "
+                "N=1/N=4 informational; missing samples = fail)",
         },
     }
 
@@ -323,6 +447,14 @@ def run_drill(args: argparse.Namespace) -> int:
             "error: CGROUP_SCOPE_MISSING: {} (the drill is per-run "
             "cgroup-scoped)".format(CGROUP_SCOPE))
     feature_workers = workers_for_concurrency(max(n_values))
+    cuda_fraction: Optional[float] = getattr(
+        args, "cuda_memory_fraction", None)
+    if cuda_fraction is not None:             # fail-closed, even off-CLI
+        try:
+            cuda_fraction = _cuda_memory_fraction_arg(cuda_fraction)
+        except argparse.ArgumentTypeError as exc:
+            raise SystemExit(
+                "error: BAD_CUDA_MEMORY_FRACTION: {}".format(exc))
 
     # --- plan: build + validate every phase/slot WITHOUT launching --------
     phases: List[Dict[str, Any]] = []
@@ -340,7 +472,8 @@ def run_drill(args: argparse.Namespace) -> int:
                 memory_max=args.memory_max,
                 feature_workers=workers_for_concurrency(n),
                 slot_index=slot,
-                thread_caps=bool(args.thread_caps))
+                thread_caps=bool(args.thread_caps),
+                cuda_memory_fraction=cuda_fraction)
             slots_meta.append(phase["slots"][0])
         phases.append({"n": n, "phase_root": str(phase_root),
                        "slots": slots_meta,
@@ -357,6 +490,7 @@ def run_drill(args: argparse.Namespace) -> int:
             "updates": args.updates,
             "memory_max": args.memory_max,
             "feature_workers_max": feature_workers,
+            "cuda_memory_fraction": cuda_fraction,
             "phases": phases,               # includes per-slot argv (evidence)
             "drill_lock": DRILL_LOCK,
         }
@@ -380,42 +514,57 @@ def run_drill(args: argparse.Namespace) -> int:
         phase_results: List[Dict[str, Any]] = []
         for phase in phases:
             n = phase["n"]
-            _log("[phase] N={} launching {} concurrent runs …".format(
-                n, len(phase["slots"])))
-            procs = []
-            t0 = time.perf_counter()
-            for slot in phase["slots"]:
-                env = dict(os.environ)
-                env["CGROUP_SCOPE_UNIT"] = "v53mp-drill-n{}-slot{}".format(
-                    n, slot["slot"])
-                log_path = Path(slot["cgroup_outdir"]).parent / "stdout.log"
-                log_path.parent.mkdir(parents=True, exist_ok=True)
-                fh = log_path.open("w", encoding="utf-8")
-                proc = subprocess.Popen(
-                    slot["argv"], stdout=fh, stderr=subprocess.STDOUT,
-                    text=True, env=env)
-                procs.append((proc, fh, slot, time.perf_counter()))
-            results: List[Dict[str, Any]] = []
-            for proc, fh, slot, t_start in procs:
-                rc = proc.wait()
-                fh.close()
-                results.append(_parse_slot_result(
-                    slot, time.perf_counter() - t_start, rc))
-            phase_wall = time.perf_counter() - t0
+            phase_root = Path(phase["phase_root"])
+            vram_path = phase_root / VRAM_SAMPLE_FILENAME
+            _log("[phase] N={} launching {} concurrent runs "
+                 "(whole-card VRAM sampler → {}) …".format(
+                     n, len(phase["slots"]), vram_path))
+            sampler = _start_vram_sampler(phase_root)
+            try:
+                procs = []
+                t0 = time.perf_counter()
+                for slot in phase["slots"]:
+                    env = dict(os.environ)
+                    env["CGROUP_SCOPE_UNIT"] = "v53mp-drill-n{}-slot{}".format(
+                        n, slot["slot"])
+                    log_path = Path(slot["cgroup_outdir"]).parent / "stdout.log"
+                    log_path.parent.mkdir(parents=True, exist_ok=True)
+                    fh = log_path.open("w", encoding="utf-8")
+                    proc = subprocess.Popen(
+                        slot["argv"], stdout=fh, stderr=subprocess.STDOUT,
+                        text=True, env=env)
+                    procs.append((proc, fh, slot, time.perf_counter()))
+                results: List[Dict[str, Any]] = []
+                for proc, fh, slot, t_start in procs:
+                    rc = proc.wait()
+                    fh.close()
+                    results.append(_parse_slot_result(
+                        slot, time.perf_counter() - t_start, rc))
+                phase_wall = time.perf_counter() - t0
+            finally:
+                # reliable stop even when the phase raised mid-flight
+                _stop_vram_sampler(sampler)
             results.sort(key=lambda r: r["slot"])
+            vram = ib.parse_vram_samples(ib._read_lines(vram_path))
             verdict = verdict_phase(
-                n, results, baseline_wall if n > 1 else None)
+                n, results, baseline_wall if n > 1 else None,
+                vram_peak_mib=vram["vram_peak_mib"],
+                vram_samples=vram["vram_samples"])
             if n == 1 and results:
                 baseline_wall = results[0]["wall_s"]
             phase_results.append({
                 "n": n, "phase_wall_s": round(phase_wall, 1),
+                "vram_sample_file": str(vram_path),
+                "vram_peak_mib": vram["vram_peak_mib"],
+                "vram_samples": vram["vram_samples"],
                 "results": results})
             phase_verdicts.append(verdict)
             _log("[phase] N={} done: walls={} total_anon_gb={} "
-                 "oom={} pass={}".format(
+                 "oom={} vram_peak_mib={} pass={}".format(
                      n, [r["wall_s"] for r in results],
                      verdict["observed"]["total_anon_gb"],
                      verdict["observed"]["oom_kill_total"],
+                     verdict["observed"]["vram_peak_mib"],
                      verdict["pass"]))
     finally:
         try:
@@ -433,6 +582,7 @@ def run_drill(args: argparse.Namespace) -> int:
         "updates": args.updates,
         "memory_max": args.memory_max,
         "feature_workers_max": feature_workers,
+        "cuda_memory_fraction": cuda_fraction,
         "baseline_wall_s": baseline_wall,
         "phases": phase_results,
         "verdicts": phase_verdicts,
@@ -445,15 +595,17 @@ def run_drill(args: argparse.Namespace) -> int:
           "- plan: `{}`".format(plan_path),
           "- updates: {}, memory_max: {}, feature_workers(max): {}".format(
               args.updates, args.memory_max, feature_workers),
-          "- baseline (N=1) wall: {} s".format(baseline_wall), "",
-          "| N | walls (s) | total anon (GB) | oom_kill | pass |",
-          "|---|---|---|---|---|"]
+          "- baseline (N=1) wall: {} s".format(baseline_wall),
+          "- cuda_memory_fraction: {}".format(cuda_fraction), "",
+          "| N | walls (s) | total anon (GB) | oom_kill | vram peak (MiB) | pass |",
+          "|---|---|---|---|---|---|"]
     for verdict, pres in zip(phase_verdicts, phase_results):
-        md.append("| {} | {} | {} | {} | {} |".format(
+        md.append("| {} | {} | {} | {} | {} | {} |".format(
             verdict["n_ways"],
             verdict["observed"]["walls_s"],
             verdict["observed"]["total_anon_gb"],
             verdict["observed"]["oom_kill_total"],
+            verdict["observed"]["vram_peak_mib"],
             verdict["pass"]))
     md += ["", "## Verdicts", "", "```json",
            json.dumps(phase_verdicts, indent=1, sort_keys=True), "```", ""]
@@ -491,6 +643,11 @@ def main(argv: Optional[List[str]] = None) -> int:
                         help="wrap each slot in thread_caps.sh (OMP/BLAS=1; "
                              "plan §5.5 — measured numerics-safe for the "
                              "feature builder)")
+    parser.add_argument("--cuda-memory-fraction",
+                        type=_cuda_memory_fraction_arg, default=None,
+                        help="0 < f <= 1: forwarded to every slot's driver "
+                             "argv as '--cuda-memory-fraction f' "
+                             "(default: off — flag absent)")
     parser.add_argument("--dry-run", action="store_true",
                         help="build + validate the full plan (roots, "
                              "configs, wrappers, worker counts) without "

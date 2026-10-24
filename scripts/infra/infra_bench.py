@@ -31,7 +31,11 @@ The config is NEVER copied or edited — ``--config`` points at the original
 split / r3-ckpt likewise point at the original paths.  Before any rep
 runs, the bench root is validated with the driver's OWN machinery:
 
-1. ``r3_v53mp_run.py --output-root <root> gate-check`` (subprocess);
+1. ``r3_v53mp_run.py --output-root <root> gate-check`` (subprocess,
+   launched through ``cgroup_scope.sh`` so even a sidecar-hit gate-check
+   stays cgroup-contained — a future cache miss must never re-read the
+   full data set unconstrained and push the host toward the commit
+   cliff);
 2. in-process ``read_run_plan`` + ``verify_plan_pin`` +
    ``assert_stage_binding`` + the driver's five-sha re-hash of the row.
 
@@ -76,6 +80,24 @@ oom_kill, with a machine-readable verdict per §7 (B0 gate: reproduce
 
 ``--dry-run`` fabricates a rep with stub timing files (78 ms/update) so
 the parse/report/verdict path is fully testable without GPU or training.
+
+``--recompute REPORT [REPORT ...]`` is a READ-ONLY audit entry point: it
+loads already-archived ``report.json`` files (B0..B3) and re-judges them
+as a per-rung LADDER without re-running anything:
+
+* the BASELINE rung (B0) self-certifies against its OWN three reps —
+  ms median and anon peak are taken from the reps themselves (no fixed
+  78 ms / 26 GB target, which mis-red B1/B2 whose anon is *smaller*),
+  every rep must land inside baseline ±15%, swap=0 and oom=0;
+* every higher rung is REGRESSION-ONLY vs the rung below:
+  ``median_ms <= 1.15 x baseline median_ms``,
+  ``anon_peak <= 1.15 x baseline anon``,
+  ``startup_s <= 1.15 x baseline startup`` plus the hard swap/oom
+  gates.  Significant improvements are allowed (no lower band).
+
+The new JSON verdict goes to stdout (and to ``--recompute-out`` when
+given); the archived ``report.json`` files are NEVER rewritten and their
+original verdict is embedded in the output for audit.
 """
 
 from __future__ import annotations
@@ -83,6 +105,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import shutil
 import signal
 import statistics
@@ -232,6 +255,20 @@ def parse_vram_samples(lines: Sequence[str]) -> Dict[str, Any]:
     return {"vram_peak_mib": peak, "vram_samples": n}
 
 
+def normalize_ms_target(ms_target: float) -> float:
+    """B0 ms-target unit fix (plan §7 wording "~0.078 s/update").
+
+    A target in (0, 1) is a SECONDS-per-update value (the historic
+    ``--b0-ms-target 0.078`` invocation, which previously produced a
+    nonsense [0.07, 0.09] ms band and red-flagged a healthy 98.8 ms run);
+    it is converted to milliseconds.  Values already in ms (>= 1.0) pass
+    through unchanged, so legacy call sites (78.0) keep their band.
+    """
+    if 0.0 < float(ms_target) < 1.0:
+        return float(ms_target) * 1000.0
+    return float(ms_target)
+
+
 def verdict_b0(median_ms: Optional[float], anon_peak_bytes: int,
                swap_max_bytes: int, oom_kill: int,
                ms_target: float = B0_MS_TARGET,
@@ -241,7 +278,10 @@ def verdict_b0(median_ms: Optional[float], anon_peak_bytes: int,
     """Machine-readable B0 verdict (plan §7: reproduce 0.078 s / 26 GB).
 
     Hard gates from §5.1 ride along: swap_max must be 0 and oom_kill 0.
+    ``ms_target`` accepts seconds-scale values (0.078) as well as
+    milliseconds (78.0) — see ``normalize_ms_target``.
     """
+    ms_target = normalize_ms_target(ms_target)
     ms_lo, ms_hi = ms_target * (1 - ms_tol), ms_target * (1 + ms_tol)
     anon_lo = anon_target_gb * (1 - anon_tol) * 1e9
     anon_hi = anon_target_gb * (1 + anon_tol) * 1e9
@@ -262,6 +302,7 @@ def verdict_b0(median_ms: Optional[float], anon_peak_bytes: int,
                              round(anon_hi / 1e9, 2)],
             "swap_max_bytes": 0,
             "oom_kill": 0,
+            "ms_target_ms": round(ms_target, 3),
         },
         "observed": {
             "median_ms_update": median_ms,
@@ -269,6 +310,233 @@ def verdict_b0(median_ms: Optional[float], anon_peak_bytes: int,
             "swap_max_bytes": swap_max_bytes,
             "oom_kill": oom_kill,
         },
+    }
+
+
+# ---------------------------------------------------------------------------
+# per-rung / ladder recompute (read-only verdict over archived report.json)
+# ---------------------------------------------------------------------------
+
+#: ladder policy: higher rungs may not REGRESS vs the rung below (no lower
+#: band — significant improvements are allowed); B0 self-baselines.
+LADDER_TOLERANCE = 0.15
+RECOMPUTE_SCHEMA = "pes2ts_infra_bench_recompute_v1"
+
+
+def ladder_metrics(report: Dict[str, Any]) -> Dict[str, Any]:
+    """Ladder metrics of one archived bench report (derived, read-only).
+
+    Computed from the per-rep rows when present (median of per-rep median
+    ms/update, MAX anon peak — the conservative aggregate —, median
+    startup, max swap/oom), falling back to the stored ``aggregate``
+    block so older reports without usable reps still recompute.
+    """
+    reps = list(report.get("reps") or [])
+    agg = report.get("aggregate") or {}
+    medians = [r["median_ms"] for r in reps if r.get("median_ms") is not None]
+    startups = [r["startup_s"] for r in reps
+                if r.get("startup_s") is not None]
+    anons = [r.get("anon_peak_bytes") or 0 for r in reps]
+    swaps = [r.get("swap_max_bytes") or 0 for r in reps]
+    ooms = [r.get("oom_kill") or 0 for r in reps]
+    return {
+        "tag": report.get("tag"),
+        "median_ms": (round(statistics.median(medians), 3) if medians
+                      else agg.get("median_ms_update")),
+        "anon_peak_gb": (round(max(anons) / 1e9, 3) if anons
+                         else agg.get("anon_peak_gb_max")),
+        "startup_s": (round(statistics.median(startups), 1) if startups
+                      else agg.get("startup_s_median")),
+        "swap_max_bytes": max(swaps) if swaps
+                          else (agg.get("swap_max_bytes") or 0),
+        "oom_kill": max(ooms) if ooms else (agg.get("oom_kill_max") or 0),
+        "n_reps": len(reps),
+    }
+
+
+def verdict_b0_self(reps: Sequence[Dict[str, Any]],
+                    ms_tol: float = B0_MS_TOLERANCE,
+                    anon_tol: float = B0_ANON_TOLERANCE) -> Dict[str, Any]:
+    """Self-baselined B0 verdict (ladder mode).
+
+    B0 defines its OWN baseline from its own reps — median of the per-rep
+    median ms/update, MAX per-rep anon peak — and requires every rep to
+    land within that baseline ±tol.  The hard §5.1 gates (swap=0,
+    oom=0) still apply.  The fixed plan-§7 targets (78 ms / 26 GB) are
+    NOT consulted: a slower-but-stable B0 (e.g. the archived 98.8 ms /
+    30.9 GB run) passes its own band instead of red-flagging every
+    higher rung through a stale absolute target.
+    """
+    ms_vals = [r["median_ms"] for r in reps if r.get("median_ms") is not None]
+    anon_vals = [r.get("anon_peak_bytes") or 0 for r in reps]
+    swaps = [r.get("swap_max_bytes") or 0 for r in reps]
+    ooms = [r.get("oom_kill") or 0 for r in reps]
+    swap_max = max(swaps) if swaps else 0
+    oom_max = max(ooms) if ooms else 0
+    if not ms_vals or not anon_vals:
+        return {
+            "gate": "B0", "mode": "self_baseline", "pass": False,
+            "checks": {"baseline_defined": False},
+            "failing_checks": ["baseline_defined"],
+            "bounds": {}, "observed": {"n_reps": len(reps)},
+        }
+    baseline_ms = round(statistics.median(ms_vals), 3)
+    baseline_anon_gb = round(max(anon_vals) / 1e9, 3)
+    ms_lo, ms_hi = baseline_ms * (1 - ms_tol), baseline_ms * (1 + ms_tol)
+    anon_lo, anon_hi = (baseline_anon_gb * (1 - anon_tol),
+                        baseline_anon_gb * (1 + anon_tol))
+    per_rep = []
+    reps_ms_ok = True
+    reps_anon_ok = True
+    for r in reps:
+        rms = r.get("median_ms")
+        ranon_gb = round((r.get("anon_peak_bytes") or 0) / 1e9, 3)
+        ms_ok = bool(rms is not None and ms_lo <= rms <= ms_hi)
+        anon_ok = bool(anon_lo <= ranon_gb <= anon_hi)
+        reps_ms_ok = reps_ms_ok and ms_ok
+        reps_anon_ok = reps_anon_ok and anon_ok
+        per_rep.append({"rep": r.get("rep"), "median_ms": rms,
+                        "anon_peak_gb": ranon_gb,
+                        "median_ms_in_band": ms_ok,
+                        "anon_peak_in_band": anon_ok})
+    checks = {
+        "baseline_defined": True,
+        "reps_median_ms_in_band": bool(reps_ms_ok),
+        "reps_anon_peak_in_band": bool(reps_anon_ok),
+        "swap_gate": swap_max == 0,
+        "oom_gate": oom_max == 0,
+    }
+    failing = [k for k, v in checks.items() if not v]
+    return {
+        "gate": "B0", "mode": "self_baseline", "pass": not failing,
+        "checks": checks, "failing_checks": failing,
+        "bounds": {
+            "median_ms_update": [round(ms_lo, 2), round(ms_hi, 2)],
+            "anon_peak_gb": [round(anon_lo, 2), round(anon_hi, 2)],
+            "swap_max_bytes": 0,
+            "oom_kill": 0,
+        },
+        "baseline": {"median_ms_update": baseline_ms,
+                     "anon_peak_gb": baseline_anon_gb,
+                     "n_reps": len(reps)},
+        "observed": {"per_rep": per_rep,
+                     "swap_max_bytes": swap_max,
+                     "oom_kill": oom_max},
+    }
+
+
+def verdict_rung_regression(tag: str,
+                            current: Dict[str, Any],
+                            previous: Dict[str, Any],
+                            tol: float = LADDER_TOLERANCE) -> Dict[str, Any]:
+    """Regression-only verdict for rung ``tag`` vs the rung below.
+
+    Only UPPER bounds apply: median ms/update, anon peak and startup may
+    each grow by at most ``tol`` relative to the previous rung's metric;
+    improvements of any size are green (no lower band — B1's 7.2 GB anon
+    is an improvement over B0's 30.9 GB, not a "failure").  The hard
+    §5.1 gates (swap=0, oom=0) remain.  A missing metric on either side
+    fails closed (the check is False).
+    """
+
+    def _le(cur: Optional[float], prev: Optional[float]) -> bool:
+        if cur is None or prev is None:
+            return False
+        return float(cur) <= float(prev) * (1.0 + tol)
+
+    checks = {
+        "median_ms_no_regression": _le(current.get("median_ms"),
+                                       previous.get("median_ms")),
+        "anon_no_regression": _le(current.get("anon_peak_gb"),
+                                  previous.get("anon_peak_gb")),
+        "startup_no_regression": _le(current.get("startup_s"),
+                                     previous.get("startup_s")),
+        "swap_gate": (current.get("swap_max_bytes") or 0) == 0,
+        "oom_gate": (current.get("oom_kill") or 0) == 0,
+    }
+    failing = [k for k, v in checks.items() if not v]
+    prev_ms = previous.get("median_ms")
+    prev_anon = previous.get("anon_peak_gb")
+    prev_startup = previous.get("startup_s")
+    return {
+        "gate": tag, "mode": "regression_vs_{}".format(
+            previous.get("tag")),
+        "pass": not failing, "checks": checks, "failing_checks": failing,
+        "bounds": {
+            "median_ms_update_max": (round(prev_ms * (1 + tol), 2)
+                                     if prev_ms is not None else None),
+            "anon_peak_gb_max": (round(prev_anon * (1 + tol), 2)
+                                 if prev_anon is not None else None),
+            "startup_s_max": (round(prev_startup * (1 + tol), 2)
+                              if prev_startup is not None else None),
+            "swap_max_bytes": 0,
+            "oom_kill": 0,
+        },
+        "baseline": previous,
+        "observed": current,
+    }
+
+
+def recompute_ladder(reports: Sequence[Dict[str, Any]],
+                     tol: float = LADDER_TOLERANCE,
+                     ms_tol: float = B0_MS_TOLERANCE,
+                     anon_tol: float = B0_ANON_TOLERANCE) -> Dict[str, Any]:
+    """Re-derive per-rung verdicts from ARCHIVED bench report dicts.
+
+    Reports are ordered by rung number (B0 < B1 < ...; unparseable tags
+    keep their input position after the numbered ones).  Rung B0 is
+    self-baselined (``verdict_b0_self``); every higher rung is judged
+    regression-only against the rung below (``verdict_rung_regression``).
+    Read-only: the input dicts are never mutated and the ORIGINAL verdict
+    carried by each report is embedded per rung for audit.  Fail-closed:
+    an empty ladder or a missing B0 baseline raises SystemExit.
+    """
+    if not reports:
+        raise SystemExit("error: RECOMPUTE_EMPTY: no reports given")
+    indexed = list(enumerate(reports))
+
+    def _rung_num(pair):
+        idx, rep = pair
+        m = re.match(r"^B(\d+)", str(rep.get("tag") or ""))
+        return (0, int(m.group(1)), idx) if m else (1, 0, idx)
+
+    ordered = [rep for _idx, rep in sorted(indexed, key=_rung_num)]
+    if str(ordered[0].get("tag") or "") != "B0":
+        raise SystemExit(
+            "error: RECOMPUTE_BASELINE_MISSING: the ladder must start at "
+            "B0 (got {!r})".format(ordered[0].get("tag")))
+    rungs: List[Dict[str, Any]] = []
+    prev_metrics: Optional[Dict[str, Any]] = None
+    for report in ordered:
+        metrics = ladder_metrics(report)
+        if prev_metrics is None:
+            verdict = verdict_b0_self(report.get("reps") or [],
+                                      ms_tol=ms_tol, anon_tol=anon_tol)
+            baseline_tag = None
+        else:
+            verdict = verdict_rung_regression(
+                str(metrics.get("tag")), metrics, prev_metrics, tol=tol)
+            baseline_tag = prev_metrics.get("tag")
+        rungs.append({
+            "tag": metrics.get("tag"),
+            "baseline_tag": baseline_tag,
+            "metrics": metrics,
+            "verdict": verdict,
+            "original_verdict": report.get("verdict"),
+        })
+        prev_metrics = metrics
+    return {
+        "schema": RECOMPUTE_SCHEMA,
+        "kind": "ladder",
+        "generated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "tolerance": tol,
+        "policy": ("B0 self-baselines from its own reps (median ms, max "
+                   "anon, each rep within baseline ±{}; swap=0, oom=0); "
+                   "higher rungs are regression-only vs the rung below "
+                   "(median ms / anon / startup <= 1+{} x previous, no "
+                   "lower band; swap=0, oom=0)".format(tol, tol)),
+        "rungs": rungs,
+        "pass": all(r["verdict"]["pass"] for r in rungs),
     }
 
 
@@ -707,29 +975,96 @@ def validate_bench_root(bench_root: Path, plan_path: Path, run_id: str,
             "pin_sha256": pin["sha256"], "five_sha": "ok", "stage": "g0"}
 
 
+#: gate-check runs inside cgroup_scope.sh with a HARD memory cap (a future
+#: sidecar cache MISS re-reads the full ~54 GB data set; unconstrained that
+#: pushes the WSL2 host toward the commit cliff).  Defaults match the plan
+#: §5.1 per-task budget; overridable via --gate-memory-max/--gate-memory-high.
+GATE_MEMORY_MAX_DEFAULT = "8G"
+GATE_MEMORY_HIGH_DEFAULT = "7G"
+GATE_CHECK_TIMEOUT_S = 900.0
+
+
 def run_gate_check(config_path: Path, tables_dir: Path,
-                   split_path: Optional[Path], probe_root: Path) -> Dict[
-                       str, Any]:
+                   split_path: Optional[Path], probe_root: Path,
+                   gate_memory_max: str = GATE_MEMORY_MAX_DEFAULT,
+                   gate_memory_high: str = GATE_MEMORY_HIGH_DEFAULT,
+                   timeout_s: float = GATE_CHECK_TIMEOUT_S,
+                   fallback: bool = False) -> Dict[str, Any]:
     """``r3_v53mp_run.py --output-root <probe> gate-check`` as a subprocess.
 
     Read-only w.r.t. the ledger (cmd_gate_check never touches it); uses a
     bench root only to satisfy the top-level --output-root assertion.
+
+    The driver is launched THROUGH ``cgroup_scope.sh`` so the gate-check
+    process itself is cgroup-contained (memory max/high above): today the
+    sidecar cache keeps it tiny, but a cache miss must never re-read the
+    data set unconstrained.  Artifacts land in ``<probe>/_gate_check/``:
+    the wrapper's cgroup_sample/cgroup_summary plus ``gate_stdout.log`` /
+    ``gate_stderr.log``.  The wrapper logs to STDERR only, so the driver's
+    ``{"items": ..., "ok": ...}`` JSON stays the last stdout line and is
+    parsed exactly as before (no wrapper pollution).
+
+    Failure never becomes success through the wrapper: ``ok`` requires
+    returncode 0 AND the driver's own ``ok`` AND (when present) the
+    wrapper summary's ``cmd_exit == 0`` — the wrapper may only make the
+    verdict STRICTER (oom/swap gate codes 91/90), never the reverse.
+    On timeout the whole process tree (wrapper + driver) is SIGKILLed via
+    its own session/process group (``start_new_session`` + ``killpg``).
     """
-    cmd = [sys.executable, str(RUN_DRIVER), "--output-root", str(probe_root),
-           "gate-check", "--config", str(config_path),
-           "--tables-dir", str(tables_dir)]
+    gate_outdir = Path(probe_root) / "_gate_check"
+    gate_outdir.mkdir(parents=True, exist_ok=True)
+    driver_cmd = [sys.executable, str(RUN_DRIVER),
+                  "--output-root", str(probe_root),
+                  "gate-check", "--config", str(config_path),
+                  "--tables-dir", str(tables_dir)]
     if split_path is not None:
-        cmd += ["--split", str(split_path)]
-    proc = subprocess.run(cmd, cwd=str(REPO), capture_output=True, text=True)
-    out = proc.stdout.strip()
+        driver_cmd += ["--split", str(split_path)]
+    cmd = ["bash", str(CGROUP_SCOPE)]
+    if fallback:
+        cmd.append("--fallback")
+    cmd += [gate_memory_max, gate_memory_high, str(gate_outdir)] + driver_cmd
+
+    stdout_path = gate_outdir / "gate_stdout.log"
+    stderr_path = gate_outdir / "gate_stderr.log"
+    timed_out = False
+    with stdout_path.open("w", encoding="utf-8") as out_fh, \
+            stderr_path.open("w", encoding="utf-8") as err_fh:
+        proc = subprocess.Popen(
+            cmd, cwd=str(REPO), stdout=out_fh, stderr=err_fh,
+            text=True, start_new_session=True)
+        try:
+            proc.wait(timeout=timeout_s)
+        except subprocess.TimeoutExpired:
+            timed_out = True
+            try:
+                os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
+            except (ProcessLookupError, PermissionError, OSError):
+                proc.kill()
+            proc.wait()
+    rc = proc.returncode
+
+    out = stdout_path.read_text(encoding="utf-8", errors="replace").strip()
+    err = stderr_path.read_text(encoding="utf-8", errors="replace")
     try:
         doc = json.loads(out.rsplit("\n", 1)[-1]) if out else {}
     except json.JSONDecodeError:
         doc = {"raw": out[-2000:]}
-    return {"ok": proc.returncode == 0 and bool(doc.get("ok")),
-            "returncode": proc.returncode,
+    # wrapper accounting is belt-and-braces: a nonzero cmd_exit (or an
+    # unreadable summary next to a suspicious rc) can only FAIL the gate
+    summary_path = gate_outdir / "cgroup_summary.json"
+    wrapper_cmd_exit: Optional[int] = None
+    if summary_path.is_file():
+        try:
+            wrapper_cmd_exit = json.loads(
+                summary_path.read_text(encoding="utf-8")).get("cmd_exit")
+        except (OSError, json.JSONDecodeError):
+            wrapper_cmd_exit = None
+    ok = ((not timed_out) and rc == 0 and bool(doc.get("ok"))
+          and wrapper_cmd_exit in (None, 0))
+    return {"ok": ok, "returncode": rc, "timed_out": timed_out,
             "items": doc.get("items"),
-            "stderr_tail": proc.stderr[-500:]}
+            "outdir": str(gate_outdir),
+            "stderr_tail": err[-500:]}
 
 
 # ---------------------------------------------------------------------------
@@ -951,7 +1286,10 @@ def bench_main(args: argparse.Namespace) -> int:
     if args.dry_run:
         gate = {"ok": True, "returncode": 0, "skipped": "dry-run"}
     else:
-        gate = run_gate_check(run_config, tables_dir, split_path, bench_top)
+        gate = run_gate_check(run_config, tables_dir, split_path, bench_top,
+                              gate_memory_max=args.gate_memory_max,
+                              gate_memory_high=args.gate_memory_high,
+                              fallback=args.fallback)
         if not gate.get("ok"):
             print(json.dumps({"action": "infra_bench", "error": "GATE_CHECK_FAILED",
                               "gate_check": gate}, sort_keys=True))
@@ -1066,6 +1404,62 @@ def bench_main(args: argparse.Namespace) -> int:
     return 1 if failed else 0
 
 
+def recompute_main(args: argparse.Namespace) -> int:
+    """Read-only ladder recompute of archived bench ``report.json`` files.
+
+    Loads each REPORT (never written to, never overwritten), re-derives
+    the per-rung verdicts, prints the new JSON verdict to stdout and (when
+    ``--recompute-out`` is given) writes it there too.  The ORIGINAL
+    verdict of every input report is embedded per rung for audit, so the
+    archived reports stay authoritative.
+    """
+    reports: List[Dict[str, Any]] = []
+    sources: List[Dict[str, Any]] = []
+    for spec in args.recompute:
+        path = Path(spec)
+        if path.is_dir():
+            path = path / "report.json"
+        if not path.is_file():
+            raise SystemExit(
+                "error: RECOMPUTE_REPORT_MISSING: {}".format(spec))
+        try:
+            doc = json.loads(path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as exc:
+            raise SystemExit(
+                "error: RECOMPUTE_REPORT_INVALID: {}: {}".format(
+                    path, exc)) from exc
+        if not isinstance(doc, dict):
+            raise SystemExit(
+                "error: RECOMPUTE_REPORT_INVALID: {} is not a JSON "
+                "object".format(path))
+        reports.append(doc)
+        sources.append({"path": str(path), "tag": doc.get("tag"),
+                        "generated_at": doc.get("generated_at"),
+                        "original_verdict": doc.get("verdict")})
+    result = recompute_ladder(reports, tol=args.ladder_tol)
+    result["sources"] = sources
+    text = json.dumps(result, sort_keys=True, indent=1) + "\n"
+    if args.recompute_out:
+        out = Path(args.recompute_out)
+        resolved_inputs = {Path(s["path"]).resolve() for s in sources}
+        if out.resolve() in resolved_inputs:
+            raise SystemExit(
+                "error: RECOMPUTE_OUT_IS_INPUT: refusing to overwrite an "
+                "archived report: {}".format(out))
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(text, encoding="utf-8")
+    # one-line summary on STDERR so stdout stays a single pure JSON doc
+    sys.stderr.write(json.dumps(
+        {"action": "infra_bench_recompute", "kind": "ladder",
+         "pass": result["pass"],
+         "rungs": [{"tag": r["tag"], "pass": r["verdict"]["pass"],
+                    "failing_checks": r["verdict"].get("failing_checks", [])}
+                   for r in result["rungs"]]},
+        sort_keys=True) + "\n")
+    sys.stdout.write(text)
+    return 0 if result["pass"] else 1
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="infra_bench",
@@ -1126,6 +1520,14 @@ def _build_parser() -> argparse.ArgumentParser:
                         help="scope MemoryMax (current single-run value; "
                              "post-I1 use 6G per plan §5.1)")
     parser.add_argument("--memory-high", default="32G")
+    parser.add_argument("--gate-memory-max", default=GATE_MEMORY_MAX_DEFAULT,
+                        help="cgroup_scope.sh MemoryMax for the gate-check "
+                             "subprocess (gate-check stays cgroup-contained "
+                             "even on sidecar cache hits; a cache miss must "
+                             "never re-read the data set unconstrained)")
+    parser.add_argument("--gate-memory-high", default=GATE_MEMORY_HIGH_DEFAULT,
+                        help="cgroup_scope.sh MemoryHigh for the gate-check "
+                             "subprocess")
     parser.add_argument("--fallback", action="store_true",
                         help="cgroup_scope.sh --fallback (manual cgroup-v2 "
                              "dir instead of systemd-run --scope)")
@@ -1142,15 +1544,37 @@ def _build_parser() -> argparse.ArgumentParser:
                         help="fabricate stub reps; exercises parse/report/"
                              "verdict without GPU, driver or training")
     # B0 gate tuning (defaults are the plan §7 targets)
-    parser.add_argument("--b0-ms-target", type=float, default=B0_MS_TARGET)
+    parser.add_argument("--b0-ms-target", type=float, default=B0_MS_TARGET,
+                        help="B0 median ms/update target; values in (0,1) "
+                             "are read as SECONDS/update (e.g. 0.078 = the "
+                             "plan §7 ~0.078 s/update) and converted to ms")
     parser.add_argument("--b0-ms-tol", type=float, default=B0_MS_TOLERANCE)
     parser.add_argument("--b0-anon-gb", type=float, default=B0_ANON_TARGET_GB)
     parser.add_argument("--b0-anon-tol", type=float, default=B0_ANON_TOLERANCE)
+    # read-only ladder recompute over archived report.json files
+    parser.add_argument("--recompute", nargs="+", metavar="REPORT",
+                        default=None,
+                        help="READ-ONLY: recompute per-rung verdicts from "
+                             "archived bench report.json files (a bench "
+                             "root dir or the report.json itself), ladder "
+                             "order B0..Bn; B0 self-baselines from its own "
+                             "reps, higher rungs are regression-only vs "
+                             "the rung below; nothing is re-run and no "
+                             "input report is ever overwritten (the "
+                             "original verdict is embedded for audit)")
+    parser.add_argument("--recompute-out", default=None,
+                        help="write the recomputed ladder JSON here in "
+                             "addition to stdout (never an input report)")
+    parser.add_argument("--ladder-tol", type=float, default=LADDER_TOLERANCE,
+                        help="per-rung regression tolerance (default 0.15 "
+                             "= 1.15x the previous rung's metric)")
     return parser
 
 
 def main(argv: Optional[List[str]] = None) -> int:
     args = _build_parser().parse_args(argv)
+    if args.recompute:
+        return recompute_main(args)
     return bench_main(args)
 
 

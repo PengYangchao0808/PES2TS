@@ -236,6 +236,48 @@ def test_pack_count_mismatch_refused(tmp_path: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
+# binding discovery: migration ``*.sha256sidecar.json`` pollution
+# ---------------------------------------------------------------------------
+def _write_sidecars(pack_dir: Path) -> None:
+    """Simulate the migration's sha256 cache sidecars next to pack files."""
+    for name in ("blobs.npy", "offsets.npy", "positions.npy"):
+        (pack_dir / (name + ".sha256sidecar.json")).write_text(
+            json.dumps({"sha256": "0" * 64}), encoding="utf-8")
+
+
+def test_pack_open_ignores_migration_sidecars(tmp_path: Path) -> None:
+    """1 binding + N ``*.sha256sidecar.json``: open still selects the binding."""
+    blob = blob_encode(_sample_dict())
+    pack_dir = _write_mini_pack(tmp_path, [0, 1], [blob, blob])
+    _write_sidecars(pack_dir)
+    view = DevFeaturePackView.open(pack_dir, feature_level="F2")
+    assert view.n_positions == 2
+    assert view.positions.tolist() == [0, 1]
+
+
+def test_pack_open_sidecars_only_still_refused(tmp_path: Path) -> None:
+    """Sidecars but NO binding json: still a typed refusal (fail-closed)."""
+    pack_dir = tmp_path / "pack"
+    pack_dir.mkdir()
+    _write_sidecars(pack_dir)
+    with pytest.raises(DevPackError) as exc:
+        DevFeaturePackView.open(pack_dir)
+    assert exc.value.code == "PACK_BINDING_MISSING"
+
+
+def test_pack_open_two_bindings_still_refused(tmp_path: Path) -> None:
+    """Two real binding jsons (with sidecars present): still refused."""
+    blob = blob_encode(_sample_dict())
+    pack_dir = _write_mini_pack(tmp_path, [0], [blob])
+    (pack_dir / ("f" * 64 + ".json")).write_text(
+        json.dumps({"schema": "v53mp_dev_pack_v1"}), encoding="utf-8")
+    _write_sidecars(pack_dir)
+    with pytest.raises(DevPackError) as exc:
+        DevFeaturePackView.open(pack_dir)
+    assert exc.value.code == "PACK_BINDING_MISSING"
+
+
+# ---------------------------------------------------------------------------
 # trainer integration: pack vs none = bitwise-equal metrics
 # ---------------------------------------------------------------------------
 def test_trainer_pack_vs_none_metrics_identical(tmp_path: Path) -> None:
