@@ -31,10 +31,21 @@ Verdict (plan §7-B4):
 * per-run wall ``<= 1.5 x`` the N=1 baseline (N > 1),
 * N=3 total anon ``< 24 GB`` (the plan's ``3 x anon < 24 GB`` gate; the
   N=4 total is reported informationally — the plan gates 3-way only),
-* N=3 whole-card VRAM peak ``<= 6800 MiB``
-  (``whole_card_vram_le_6800_mib`` — ENFORCED at N=3 only; N=1 records
+* N=3 whole-card VRAM peak ``<= --whole-card-vram-gate-mib``
+  (default **7680 MiB = 7.5 GiB**; checks/observed key
+  ``whole_card_vram_le_gate_mib`` — ENFORCED at N=3 only; N=1 records
   it as a reference and N=4 reports it, neither gates.  A missing /
   empty sample file parses to 0 and is FAIL-CLOSED for N=3).
+
+Gate revision history (auditable):
+
+* 6800 MiB — set 2026-10-24 by the S4 收尾方案 under the assumption of
+  per-run whole-card share ``<< 0.8 GB`` and idle 1.2–1.3 GB;
+* **7680 MiB (7.5 GiB)** — REVISED 2026-10-25 on measurement: single-run
+  torch peak 2.50 GiB, idle 2008 MiB, and an N=3 drill peaking at
+  7882 MiB with 3/3 runs rc=0 and zero OOM (the old 6800 gate failed a
+  healthy run).  User decision: gate at ``<= 7.5 GiB`` = card 8188 MiB
+  minus ~508 MiB safety margin.
 
 ``--cuda-memory-fraction f`` (0 < f <= 1) is forwarded to every driver
 argv as ``--cuda-memory-fraction f``; default off (flag absent).
@@ -89,9 +100,15 @@ DEFAULT_MEMORY_MAX = "6G"
 B3_ANON_SUM_GATE_BYTES = 24_000_000_000
 #: B4 gate: per-run wall <= 1.5x the N=1 baseline.
 B4_WALL_RATIO_GATE = 1.5
-#: B4 gate (plan §7): whole-card VRAM peak <= 6800 MiB at N=3
-#: (ENFORCED at N=3 only; N=1/N=4 record it informationally).
-WHOLE_CARD_VRAM_GATE_MIB = 6800
+#: B4 gate (plan §7): whole-card VRAM peak <= WHOLE_CARD_VRAM_GATE_MIB
+#: at N=3 (ENFORCED at N=3 only; N=1/N=4 record it informationally).
+#: 7680 MiB (7.5 GiB) — REVISED 2026-10-25 from the 2026-10-24 plan value
+#: of 6800 on measurement (idle 2008 MiB, single-run torch peak 2.50 GiB,
+#: N=3 drill peak 7882 MiB with 3/3 rc=0 / zero OOM — the old gate
+#: failed a healthy run); 7.5 GiB = 8188 MiB card - ~508 MiB safety
+#: margin (user decision 2026-10-25).  Override per drill with
+#: ``--whole-card-vram-gate-mib``.
+WHOLE_CARD_VRAM_GATE_MIB = 7680
 #: per-phase sampler output (phase_root/<this file>).
 VRAM_SAMPLE_FILENAME = "vram_samples.txt"
 VRAM_SAMPLE_CMD = ["nvidia-smi", "--query-gpu=memory.used",
@@ -147,6 +164,24 @@ def _eval_vram_gate_timeout_arg(value: Any) -> int:
         raise argparse.ArgumentTypeError(
             "eval-vram-gate-timeout-s must be >= 0, got {!r}".format(value))
     return seconds
+
+
+def _whole_card_vram_gate_mib_arg(value: Any) -> int:
+    """argparse type: whole-card VRAM verdict gate in MiB (>= 1).
+
+    Default :data:`WHOLE_CARD_VRAM_GATE_MIB` (7680 = 7.5 GiB, revised
+    2026-10-25 from 6800 — see the module docstring's revision history).
+    """
+    try:
+        mib = int(value)
+    except (TypeError, ValueError):
+        raise argparse.ArgumentTypeError(
+            "whole-card-vram-gate-mib must be an integer >= 1, got {!r}"
+            .format(value))
+    if mib < 1:
+        raise argparse.ArgumentTypeError(
+            "whole-card-vram-gate-mib must be >= 1, got {!r}".format(value))
+    return mib
 
 
 # ---------------------------------------------------------------------------
@@ -391,15 +426,25 @@ def _parse_slot_result(slot: Dict[str, Any], wall_s: float,
 def verdict_phase(phase_n: int, slot_results: List[Dict[str, Any]],
                   baseline_wall_s: Optional[float],
                   vram_peak_mib: Optional[int] = None,
-                  vram_samples: int = 0) -> Dict[str, Any]:
+                  vram_samples: int = 0,
+                  vram_gate_mib: Optional[int] = None) -> Dict[str, Any]:
     """Plan §7-B4 gates for one phase (pure; unit-testable).
 
     ``vram_peak_mib``/``vram_samples`` come from the per-phase whole-card
-    ``nvidia-smi -l 2`` sampler (``infra_bench.parse_vram_samples``).  The
-    ``whole_card_vram_le_6800_mib`` gate is ENFORCED at N=3 only; N=1 and
-    N=4 record it informationally.  Missing samples (0) FAIL CLOSED at
-    N=3.
+    ``nvidia-smi -l 2`` sampler (``infra_bench.parse_vram_samples``).
+    ``vram_gate_mib`` overrides the whole-card threshold for THIS verdict
+    (None = :data:`WHOLE_CARD_VRAM_GATE_MIB`, currently 7680 = 7.5 GiB —
+    revised 2026-10-25 from 6800; see the module docstring for the audit
+    trail).  The ``whole_card_vram_le_gate_mib`` gate is ENFORCED at N=3
+    only; N=1 and N=4 record it informationally.  Missing samples (0)
+    FAIL CLOSED at N=3.  The verdict carries the ACTUAL threshold under
+    ``whole_card_vram_gate_mib`` for report compatibility (the key was
+    renamed from the threshold-less ``whole_card_vram_le_6800_mib`` when
+    the gate became parameterized).
     """
+    gate_mib = int(vram_gate_mib
+                   if vram_gate_mib is not None
+                   else WHOLE_CARD_VRAM_GATE_MIB)
     walls = [r["wall_s"] for r in slot_results]
     anons = [r["anon_peak_bytes"] for r in slot_results]
     oom_total = sum(int(r["oom_kill"]) for r in slot_results)
@@ -407,7 +452,7 @@ def verdict_phase(phase_n: int, slot_results: List[Dict[str, Any]],
     peak_mib = int(vram_peak_mib or 0)
     n_vram = int(vram_samples or 0)
     # fail-closed: no samples at all (peak 0) can never pass
-    vram_ok = n_vram > 0 and 0 < peak_mib <= WHOLE_CARD_VRAM_GATE_MIB
+    vram_ok = n_vram > 0 and 0 < peak_mib <= gate_mib
     slot_ok = all(
         int(r.get("returncode", 1)) == 0 and r.get("median_ms") is not None
         for r in slot_results)
@@ -423,10 +468,12 @@ def verdict_phase(phase_n: int, slot_results: List[Dict[str, Any]],
         worst_ratio = None
     if phase_n == 3:
         checks["total_anon_lt_24gb"] = anon_sum < B3_ANON_SUM_GATE_BYTES
-        checks["whole_card_vram_le_6800_mib"] = vram_ok
+        checks["whole_card_vram_le_gate_mib"] = vram_ok
     return {
         "n_ways": phase_n,
         "pass": all(checks.values()),
+        # the ACTUAL threshold this verdict applied (7680 by default)
+        "whole_card_vram_gate_mib": gate_mib,
         "checks": checks,
         "observed": {
             "walls_s": walls,
@@ -439,7 +486,7 @@ def verdict_phase(phase_n: int, slot_results: List[Dict[str, Any]],
             "vram_peak_mib": peak_mib,
             "vram_samples": n_vram,
             # informational everywhere; gating only via checks at N=3
-            "whole_card_vram_le_6800_mib": vram_ok,
+            "whole_card_vram_le_gate_mib": vram_ok,
             "failed_slots": [
                 r.get("run_id") for r in slot_results
                 if int(r.get("returncode", 1)) != 0
@@ -450,9 +497,10 @@ def verdict_phase(phase_n: int, slot_results: List[Dict[str, Any]],
             "per_run_wall_le_1_5x_baseline":
                 "<= 1.5 x the N=1 phase wall (N>1)",
             "oom_kill_zero": "== 0 (every N)",
-            "whole_card_vram_le_6800_mib":
-                "<= 6800 MiB whole-card nvidia-smi peak (N=3 ENFORCED; "
-                "N=1/N=4 informational; missing samples = fail)",
+            "whole_card_vram_le_gate_mib":
+                "<= {} MiB whole-card nvidia-smi peak (N=3 ENFORCED; "
+                "N=1/N=4 informational; missing samples = fail)".format(
+                    gate_mib),
         },
     }
 
@@ -521,6 +569,15 @@ def run_drill(args: argparse.Namespace) -> int:
         except argparse.ArgumentTypeError as exc:
             raise SystemExit(
                 "error: BAD_EVAL_VRAM_GATE: {}".format(exc))
+    vram_gate_arg = getattr(args, "whole_card_vram_gate_mib", None)
+    if vram_gate_arg is None:                 # default: module constant
+        vram_gate = WHOLE_CARD_VRAM_GATE_MIB
+    else:                                     # fail-closed, even off-CLI
+        try:
+            vram_gate = _whole_card_vram_gate_mib_arg(vram_gate_arg)
+        except argparse.ArgumentTypeError as exc:
+            raise SystemExit(
+                "error: BAD_WHOLE_CARD_VRAM_GATE: {}".format(exc))
 
     # --- plan: build + validate every phase/slot WITHOUT launching --------
     phases: List[Dict[str, Any]] = []
@@ -561,6 +618,7 @@ def run_drill(args: argparse.Namespace) -> int:
             "cuda_memory_fraction": cuda_fraction,
             "eval_vram_gate_mib": eval_gate_mib,
             "eval_vram_gate_timeout_s": eval_gate_timeout_s,
+            "whole_card_vram_gate_mib": vram_gate,
             "phases": phases,               # includes per-slot argv (evidence)
             "drill_lock": DRILL_LOCK,
         }
@@ -619,7 +677,8 @@ def run_drill(args: argparse.Namespace) -> int:
             verdict = verdict_phase(
                 n, results, baseline_wall if n > 1 else None,
                 vram_peak_mib=vram["vram_peak_mib"],
-                vram_samples=vram["vram_samples"])
+                vram_samples=vram["vram_samples"],
+                vram_gate_mib=vram_gate)
             if n == 1 and results:
                 baseline_wall = results[0]["wall_s"]
             phase_results.append({
@@ -655,6 +714,7 @@ def run_drill(args: argparse.Namespace) -> int:
         "cuda_memory_fraction": cuda_fraction,
         "eval_vram_gate_mib": eval_gate_mib,
         "eval_vram_gate_timeout_s": eval_gate_timeout_s,
+        "whole_card_vram_gate_mib": vram_gate,
         "baseline_wall_s": baseline_wall,
         "phases": phase_results,
         "verdicts": phase_verdicts,
@@ -670,7 +730,8 @@ def run_drill(args: argparse.Namespace) -> int:
           "- baseline (N=1) wall: {} s".format(baseline_wall),
           "- cuda_memory_fraction: {}".format(cuda_fraction),
           "- eval_vram_gate_mib: {} (timeout {} s)".format(
-              eval_gate_mib, eval_gate_timeout_s), "",
+              eval_gate_mib, eval_gate_timeout_s),
+          "- whole_card_vram_gate_mib: {}".format(vram_gate), "",
           "| N | walls (s) | total anon (GB) | oom_kill | vram peak (MiB) | pass |",
           "|---|---|---|---|---|---|"]
     for verdict, pres in zip(phase_verdicts, phase_results):
@@ -733,6 +794,15 @@ def main(argv: Optional[List[str]] = None) -> int:
                         help="max seconds each slot's trainer waits per "
                              "gated eval (fail-open; default 600; forwarded "
                              "only when --eval-vram-gate-mib is set)")
+    parser.add_argument("--whole-card-vram-gate-mib",
+                        type=_whole_card_vram_gate_mib_arg,
+                        default=WHOLE_CARD_VRAM_GATE_MIB,
+                        help="N=3 whole-card VRAM verdict gate in MiB "
+                             "(default {}; revised 2026-10-25 from 6800 "
+                             "on measurement — see the module docstring; "
+                             "ENFORCED at N=3 only, N=1/N=4 informational, "
+                             "missing samples fail closed)".format(
+                                 WHOLE_CARD_VRAM_GATE_MIB))
     parser.add_argument("--dry-run", action="store_true",
                         help="build + validate the full plan (roots, "
                              "configs, wrappers, worker counts) without "

@@ -294,7 +294,7 @@ def test_verdict_phase_gates() -> None:
     assert v3["observed"]["total_anon_bytes"] == 20_000_000_000
     assert v3["observed"]["vram_peak_mib"] == 6100
     assert v3["checks"]["total_anon_lt_24gb"] is True
-    assert v3["checks"]["whole_card_vram_le_6800_mib"] is True
+    assert v3["checks"]["whole_card_vram_le_gate_mib"] is True
     assert v3["checks"]["per_run_wall_le_1_5x_baseline"] is True
     # N=3 total anon over the gate -> fail
     slots_hi = [dict(s, anon_peak_bytes=8_000_000_000) for s in slots]
@@ -316,27 +316,43 @@ def test_verdict_phase_gates() -> None:
     # rc / all_slots gates unchanged (see the dedicated regression below)
     assert set(v3["checks"]) >= {"oom_kill_zero", "all_slots_completed",
                                  "total_anon_lt_24gb",
-                                 "whole_card_vram_le_6800_mib"}
-    assert "whole_card_vram_le_6800_mib" in v3["gates"]
+                                 "whole_card_vram_le_gate_mib"}
+    assert "whole_card_vram_le_gate_mib" in v3["gates"]
+    # the verdict records the ACTUAL threshold it applied (default 7680)
+    assert v3["whole_card_vram_gate_mib"] == drill.WHOLE_CARD_VRAM_GATE_MIB
+    assert drill.WHOLE_CARD_VRAM_GATE_MIB == 7680
 
 
 def test_verdict_phase_whole_card_vram_gate_boundaries() -> None:
-    """N=3 whole-card gate: 6800 MiB passes, 6801 fails, no samples fails."""
+    """N=3 whole-card gate: 7680 MiB passes, 7681 fails, no samples fails.
+
+    Default gate = 7680 (7.5 GiB; revised 2026-10-25 from 6800 on
+    measurement — idle 2008 MiB, N=3 peak 7882 MiB with 3/3 rc=0).
+    """
     slots = [{"wall_s": 100.0, "anon_peak_bytes": 5_000_000_000, "oom_kill": 0,
               "returncode": 0, "median_ms": 70.0, "run_id": "r{}".format(i)}
              for i in range(3)]
     v_ok = drill.verdict_phase(3, slots, baseline_wall_s=100.0,
-                               vram_peak_mib=6800, vram_samples=100)
-    assert v_ok["checks"]["whole_card_vram_le_6800_mib"] is True
+                               vram_peak_mib=7680, vram_samples=100)
+    assert v_ok["checks"]["whole_card_vram_le_gate_mib"] is True
     assert v_ok["pass"] is True
     v_hi = drill.verdict_phase(3, slots, baseline_wall_s=100.0,
-                               vram_peak_mib=6801, vram_samples=100)
-    assert v_hi["checks"]["whole_card_vram_le_6800_mib"] is False
+                               vram_peak_mib=7681, vram_samples=100)
+    assert v_hi["checks"]["whole_card_vram_le_gate_mib"] is False
     assert v_hi["pass"] is False
+    # parameterized threshold overrides the default per verdict
+    v_custom = drill.verdict_phase(3, slots, baseline_wall_s=100.0,
+                                   vram_peak_mib=7000, vram_samples=100,
+                                   vram_gate_mib=6800)
+    assert v_custom["whole_card_vram_gate_mib"] == 6800
+    assert v_custom["checks"]["whole_card_vram_le_gate_mib"] is False
+    v_default_same = drill.verdict_phase(3, slots, baseline_wall_s=100.0,
+                                         vram_peak_mib=7000, vram_samples=100)
+    assert v_default_same["checks"]["whole_card_vram_le_gate_mib"] is True
     # fail-closed: sampler missing / empty file -> peak 0 -> N=3 fails
     v_missing = drill.verdict_phase(3, slots, baseline_wall_s=100.0,
                                     vram_peak_mib=0, vram_samples=0)
-    assert v_missing["checks"]["whole_card_vram_le_6800_mib"] is False
+    assert v_missing["checks"]["whole_card_vram_le_gate_mib"] is False
     assert v_missing["pass"] is False
     assert v_missing["observed"]["vram_peak_mib"] == 0
     # fail-closed for the default too (verdict called without sampler data)
@@ -344,16 +360,16 @@ def test_verdict_phase_whole_card_vram_gate_boundaries() -> None:
     assert v_default["pass"] is False
     # N=1 / N=4: NOT enforced — recorded informationally only
     v1 = drill.verdict_phase(1, [slots[0]], baseline_wall_s=None,
-                             vram_peak_mib=6900, vram_samples=100)
-    assert "whole_card_vram_le_6800_mib" not in v1["checks"]
-    assert v1["observed"]["whole_card_vram_le_6800_mib"] is False
-    assert v1["observed"]["vram_peak_mib"] == 6900
+                             vram_peak_mib=7900, vram_samples=100)
+    assert "whole_card_vram_le_gate_mib" not in v1["checks"]
+    assert v1["observed"]["whole_card_vram_le_gate_mib"] is False
+    assert v1["observed"]["vram_peak_mib"] == 7900
     assert v1["pass"] is True
     v4 = drill.verdict_phase(4, slots + [dict(slots[0], run_id="r3")],
                              baseline_wall_s=100.0,
-                             vram_peak_mib=6900, vram_samples=100)
-    assert "whole_card_vram_le_6800_mib" not in v4["checks"]
-    assert v4["observed"]["vram_peak_mib"] == 6900
+                             vram_peak_mib=7900, vram_samples=100)
+    assert "whole_card_vram_le_gate_mib" not in v4["checks"]
+    assert v4["observed"]["vram_peak_mib"] == 7900
     assert v4["pass"] is True
 
 
@@ -716,6 +732,68 @@ def test_drill_dry_run_eval_vram_gate_argv(tmp_path: Path,
             assert "--eval-vram-gate-mib" not in slot["argv"]
             assert "--eval-vram-gate-timeout-s" not in slot["argv"]
             assert slot["eval_vram_gate_mib"] is None
+
+
+# ---------------------------------------------------------------------------
+# B4 drill: --whole-card-vram-gate-mib (verdict gate parameterization;
+# default 7680 = 7.5 GiB, revised 2026-10-25 from 6800 — see the module
+# docstring revision history)
+# ---------------------------------------------------------------------------
+def test_whole_card_vram_gate_cli_default_and_custom(tmp_path: Path,
+                                                     monkeypatch) -> None:
+    """--whole-card-vram-gate-mib lands at report top level (default 7680);
+    run_drill threads it into every verdict; invalid values refused."""
+    import inspect
+
+    assert drill.WHOLE_CARD_VRAM_GATE_MIB == 7680
+    plan = tmp_path / "run_plan_v53mp_20k.jsonl"
+    _write_plan(plan, _plan_rows(3))
+    cfg = REPO / "config/campaigns/pes2ts_v53mp_20261021.yaml"
+    if not cfg.is_file():
+        pytest.skip("frozen campaign config missing")
+    monkeypatch.setattr(drill.ib, "validate_bench_root",
+                        lambda *a, **k: {"five_sha": "ok"})
+
+    def _no_launch(*a, **k):
+        raise AssertionError("dry-run must not launch GPU/training")
+
+    monkeypatch.setattr(drill.subprocess, "Popen", _no_launch)
+
+    # default: the module constant, recorded at report top level
+    out_default = tmp_path / "drill_vram_default"
+    rc = drill.main([
+        "--plan", str(plan), "--output-root", str(out_default),
+        "--ns", "1", "--updates", "2000", "--config", str(cfg),
+        "--dry-run",
+    ])
+    assert rc == 0
+    report = json.loads(
+        (out_default / "report.json").read_text(encoding="utf-8"))
+    assert report["whole_card_vram_gate_mib"] == 7680
+
+    # custom value: recorded at report top level
+    out_custom = tmp_path / "drill_vram_custom"
+    rc = drill.main([
+        "--plan", str(plan), "--output-root", str(out_custom),
+        "--ns", "1", "--updates", "2000", "--config", str(cfg),
+        "--whole-card-vram-gate-mib", "8000", "--dry-run",
+    ])
+    assert rc == 0
+    report = json.loads(
+        (out_custom / "report.json").read_text(encoding="utf-8"))
+    assert report["whole_card_vram_gate_mib"] == 8000
+
+    # execute-mode threading: run_drill passes the value into verdict_phase
+    source = inspect.getsource(drill.run_drill)
+    assert "vram_gate_mib=vram_gate" in source
+
+    # invalid values are refused by argparse BEFORE anything is built
+    for bad in ("0", "-1", "junk", "nan", "1.5"):
+        with pytest.raises(SystemExit) as exc:
+            drill.main(["--whole-card-vram-gate-mib", bad, "--dry-run"])
+        assert exc.value.code == 2, bad
+    assert drill._whole_card_vram_gate_mib_arg("7680") == 7680
+    assert drill._whole_card_vram_gate_mib_arg(1) == 1
 
 
 # ---------------------------------------------------------------------------
