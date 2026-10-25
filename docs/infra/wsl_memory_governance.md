@@ -10,7 +10,7 @@
 
 | 项 | 当前 | 推荐（`config/wslconfig.recommended.ini`） | 理由 |
 |---|---|---|---|
-| `memory` | **36GB（待下一次 `wsl --shutdown` 生效；当前 boot 仍 40GB）** | **36GB** | 56 GB 把宿主 commit 推到悬崖 → 2026-10-22 host OOM；2026-10-24 两次 WSL 终止确认是 `STATUS_COMMITMENT_LIMIT`。40 GB 在 54GB 全树验证时仅余 8.787GB；36GB 是 phase-0 Oracle 复核后的安全 floor（目标 headroom≥12GB） |
+| `memory` | **36GB（2026-10-24 22:32 boot 已生效：guest 35 GiB、swap 0；复验记录 `outputs/pesn/v53mp/reports/postrestart_gates_20261025.log`）** | **36GB** | 56 GB 把宿主 commit 推到悬崖 → 2026-10-22 host OOM；2026-10-24 两次 WSL 终止确认是 `STATUS_COMMITMENT_LIMIT`。40 GB 在 54GB 全树验证时仅余 8.787GB；36GB 是 phase-0 Oracle 复核后的安全 floor（目标 headroom≥12GB） |
 | `swap` | 0 | **0（保持关闭）** | 不启用 swap：换页写入损耗 SSD 寿命，且“靠 swap 跑完”本身就是失败 run（见 §3）。内存安全由 40 GB 上限 + 每 run cgroup 限额保证 |
 | `swapFile` | `E:\wsl_swap\swap.vhdx` | **删除该行** | swap 关闭后不再需要；确认无其他 WSL 发行版使用后可删掉该 vhdx 释放空间 |
 | `autoMemoryReclaim` | `gradual` | 不变（`[experimental]` 段） | 逐步归还内存给宿主 |
