@@ -698,3 +698,116 @@ def test_drop_page_cache_never_raises(tmp_path: Path) -> None:
     target.write_bytes(b"x" * 4096)
     drv._drop_page_cache(target)  # Linux: posix_fadvise; elsewhere no-op
     drv._drop_page_cache(tmp_path / "missing.bin")  # missing: tolerated
+
+
+# --------------------------------------------------------------------------
+# run: 50k tier support (S4; 收尾方案 §4 阶段 C) — nested-prefix math,
+# run-id/phase wiring, plan-init surface; existing tiers byte-unchanged
+# --------------------------------------------------------------------------
+
+
+def test_tier_maps_include_50k_and_existing_tiers_unchanged() -> None:
+    drv = _driver_module()
+    assert drv.TIER_LIMITS == {
+        "2k": 2000, "5k": 5000, "20k": 20000, "50k": 50000}
+    assert drv.TIER_PHASE == {"2k": "S1", "5k": "S2", "20k": "S3", "50k": "S4"}
+    # nested-prefix sizes: strictly increasing
+    sizes = [drv.TIER_LIMITS[t] for t in ("2k", "5k", "20k", "50k")]
+    assert sizes == sorted(sizes) and len(set(sizes)) == 4
+    # S4 wiring: fail-closed auth bit (absent from the frozen 20261021
+    # config -> 50k launches refuse until an independent config freeze),
+    # gate id, cap mirroring S3 (9 planned + retries)
+    assert drv.STAGE_AUTH_BIT["S4"] == "s4_authorized"
+    assert drv.STAGE_GATE_ID["S4"] == "V53MP-S4-50k"
+    assert drv.PHASE_CAPS["S4"] == 15
+    # geometry LRU follows the 1.3x curve of the 20k entry (26k)
+    assert drv.GEOMETRY_CACHE_CURVES == {
+        "2k": 3500, "5k": 6500, "20k": 26000, "50k": 65000}
+    # every tier maps to a phase with an auth bit and a cap
+    for tier, phase in drv.TIER_PHASE.items():
+        assert phase in drv.STAGE_AUTH_BIT, tier
+        assert phase in drv.PHASE_CAPS, tier
+        assert phase in drv.STAGE_GATE_ID, tier
+
+
+def test_parse_run_id_accepts_50k() -> None:
+    drv = _driver_module()
+    assert drv._parse_run_id("v53mp_50k_A_s17") == ("50k", "A", 17)
+    assert drv._parse_run_id("v53mp_50k_C_s43") == ("50k", "C", 43)
+    # unknown tiers stay refused
+    for bad in ("v53mp_60k_A_s17", "v53mp_100k_A_s17"):
+        with pytest.raises(ValueError):
+            drv._parse_run_id(bad)
+
+
+def test_tier_joint_updates_50k_factor_25() -> None:
+    drv = _driver_module()
+    schedule = {"joint_updates_base_2k": 1500}
+    # 1500 x (50000 // 2000) = 1500 x 25 = 37500 -> 400 + 37500 = 37,900
+    # formal updates (收尾方案 wall-clock table)
+    assert drv._tier_joint_updates(schedule, "50k") == 37500
+    assert 400 + drv._tier_joint_updates(schedule, "50k") == 37900
+    # existing tiers unchanged — NOTE the code uses floor division, so 5k
+    # is 1500 x (5000 // 2000) = 3000 (the frozen 5k plan ran 3,400 =
+    # 400 + 3000; the yaml comment's "5k=3750" is pre-existing doc drift)
+    assert drv._tier_joint_updates(schedule, "2k") == 1500
+    assert drv._tier_joint_updates(schedule, "5k") == 3000
+    assert drv._tier_joint_updates(schedule, "20k") == 15000
+
+
+def test_tier_pool_curve_ids_50k_shapes() -> None:
+    drv = _driver_module()
+    from scripts.agent_ops.ledger.run_ledger import LedgerError
+
+    # tier-mapping shape: the 50k key
+    doc_map = {"subsets": {"pool": {"20k": ["c1"], "50k": ["c1", "c2"]}}}
+    assert drv._tier_pool_curve_ids(doc_map, "50k") == ["c1", "c2"]
+    assert drv._tier_pool_curve_ids(doc_map, "20k") == ["c1"]
+    # list-ranked shape: rank <= 50000
+    doc_list = {"subsets": {"pool": [
+        {"curve_id": "a", "rank": 10},
+        {"curve_id": "b", "rank": 30000}]}}
+    assert drv._tier_pool_curve_ids(doc_list, "50k") == ["a", "b"]
+    assert drv._tier_pool_curve_ids(doc_list, "20k") == ["a"]
+    # a mapping manifest without a 50k tier fails closed
+    only20k = {"subsets": {"pool": {"20k": ["c1"]}}}
+    with pytest.raises(LedgerError):
+        drv._tier_pool_curve_ids(only20k, "50k")
+
+
+def test_plan_init_50k_tier_formal_length_and_phase(tmp_path: Path) -> None:
+    """--tier 50k: 9 formal runs at phase S4, 400 + 1500 x 25 = 37,900
+    updates (frozen config schedule), SEEDS_FORMAL, no smoke cap."""
+    from scripts.agent_ops.ledger.run_ledger import read_run_plan
+
+    root = _v53mp_root(tmp_path)
+    tables, split = _stub_data(root)
+    proc = _run([
+        "--output-root", str(root), "plan-init",
+        "--tier", "50k", "--tables-dir", str(tables), "--split", str(split),
+        "--config", str(CONFIG),
+    ])
+    assert proc.returncode == 0, proc.stderr
+    plan = read_run_plan(root / "run_plan_v53mp_50k.jsonl")
+    expected = {
+        "v53mp_50k_{}_s{}".format(arm, seed)
+        for arm in ("A", "B", "C") for seed in (17, 29, 43)
+    }
+    assert plan["run_ids"] == expected
+    for line in plan["by_run_id"].values():
+        assert line["phase"] == "S4"
+        assert line["tier"] == "50k"
+        assert line["n_updates"] == 37900   # freeze 400 + joint 1500 x 25
+        assert line["smoke_updates"] is None
+        for field in (
+            "config_sha256", "data_sha256", "teacher_sha256",
+            "features_sha256", "split_sha256",
+        ):
+            assert len(line[field]) == 64, (line["run_id"], field)
+    # the frozen 20261021 config carries no s4_authorized bit -> a 50k
+    # RUN refuses at the authorization gate (fail-closed; an independent
+    # 50k config/plan freeze is required before any 50k launch)
+    import yaml
+    config = yaml.safe_load(Path(CONFIG).read_text(encoding="utf-8"))
+    auth = (config.get("governance") or {}).get("authorization") or {}
+    assert "s4_authorized" not in auth

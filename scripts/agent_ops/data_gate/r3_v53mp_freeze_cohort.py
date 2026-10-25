@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""V5.3-MP cohort freeze: ranked candidate lists for the 20k build.
+"""V5.3-MP cohort freeze: ranked candidate lists for the 20k/50k builds.
 
 Consumes the S0-A qualification (``eligible_reactions.parquet``) and the
 frozen G3-P1 predictor split (parent; sha-pinned) and freezes the V5.3-MP
@@ -7,6 +7,11 @@ cohort: ranked pool candidates (train_fit side), a dev-eval candidate set
 (train_dev side), and the confirm candidate list (train_calibration side —
 ids only; confirm reactions are NEVER built/touched in this campaign until
 the final, separately-authorized confirmation stage).
+
+The pool-candidate target defaults to 26,000 (the frozen 20k build);
+``--pool-candidate-target 65000`` freezes the 50k build's cohort (same
+1.3x margin).  Ranking is deterministic and per-group, so the 65k ranked
+list is a strict prefix extension of the 26k one.
 
 Ranking is deterministic: ``sha256(f"{SEED_KEY}:{canonical_group}")``.
 
@@ -31,7 +36,13 @@ if str(REPO_ROOT) not in sys.path:
 
 SCHEMA = "v53mp_cohort_v1"
 SEED_KEY = "v53mp:cohort:20261021"
-POOL_CANDIDATE_TARGET = 26_000   # margin over 20,000 for build failures
+#: default pool candidate target: 26,000 = 1.3x margin over the 20,000
+#: pool target (the frozen 20k build).  A 50k build passes
+#: ``--pool-candidate-target 65000`` (same 1.3x margin over 50,000); the
+#: ranked train_fit candidate pool holds 112,951 distinct canonical
+#: groups (2026-10-24 census of the S0-A eligible parquet), so 65k is
+#: available without shortfall.
+POOL_CANDIDATE_TARGET = 26_000
 DEV_TARGET = 600
 CONFIRM_TARGET = 2_000
 
@@ -48,7 +59,22 @@ def _rank(key: str) -> str:
     return hashlib.sha256(f"{SEED_KEY}:{key}".encode("utf-8")).hexdigest()
 
 
-def freeze_cohort(repo: Path, s0a_dir: Path, out_dir: Path) -> dict:
+def freeze_cohort(repo: Path, s0a_dir: Path, out_dir: Path,
+                  pool_candidate_target: int = POOL_CANDIDATE_TARGET) -> dict:
+    """Freeze the ranked cohort; ``pool_candidate_target`` defaults to the
+    20k build's 26,000 (never changed by default).  A 50k build passes
+    65,000 — the same 1.3x build-margin ratio over the 50,000 pool target.
+    The ranking is per-group (``sha256(seed_key:canonical_group)``), so a
+    larger candidate target is a strict PREFIX EXTENSION of the ranked
+    list: the 26k list is the first 26,000 entries of the 65k list, and
+    the nested-prefix tier property (2k ⊂ 5k ⊂ 20k ⊂ 50k) is preserved
+    across builds by construction.
+    """
+    pool_candidate_target = int(pool_candidate_target)
+    if pool_candidate_target < 1:
+        raise ValueError(
+            "pool_candidate_target must be >= 1, got {}".format(
+                pool_candidate_target))
     repo = repo.resolve()
     s0a_dir = s0a_dir.resolve()
     out_dir = out_dir.resolve()
@@ -72,7 +98,7 @@ def freeze_cohort(repo: Path, s0a_dir: Path, out_dir: Path) -> dict:
         return sorted(members, key=lambda r: (_rank(r["canonical_group"]),
                                               r["canonical_group"]))
 
-    pool = ranked("train_fit")[:POOL_CANDIDATE_TARGET]
+    pool = ranked("train_fit")[:pool_candidate_target]
     dev = ranked("train_dev")[:DEV_TARGET]
     confirm = ranked("train_calibration")[:CONFIRM_TARGET]
 
@@ -90,7 +116,7 @@ def freeze_cohort(repo: Path, s0a_dir: Path, out_dir: Path) -> dict:
                         .relative_to(repo)),
             "sha256": sha256_file(s0a_dir / "metadata_qualification.json"),
         },
-        "targets": {"pool_candidates": POOL_CANDIDATE_TARGET,
+        "targets": {"pool_candidates": pool_candidate_target,
                     "dev": DEV_TARGET, "confirm_listed": CONFIRM_TARGET},
         "pool_candidates": [r["reaction_id"] for r in pool],
         "dev": [r["reaction_id"] for r in dev],
@@ -107,9 +133,14 @@ def freeze_cohort(repo: Path, s0a_dir: Path, out_dir: Path) -> dict:
         },
         "notes": [
             "ranking = sha256(seed_key:canonical_group) ascending",
-            "pool candidates carry build margin over the 20,000 target; the "
-            "frozen 20k pool is fixed AFTER the build (first 20,000 qualified "
-            "groups in this rank order)",
+            ("pool candidates carry build margin over the 20,000 target; "
+             "the frozen 20k pool is fixed AFTER the build (first 20,000 "
+             "qualified groups in this rank order)"
+             if pool_candidate_target == POOL_CANDIDATE_TARGET else
+             "pool candidates carry build margin over the frozen pool "
+             "target; the frozen pool is fixed AFTER the build (first "
+             "{:,} qualified groups in this rank order)".format(
+                 pool_candidate_target)),
             "confirm ids are listed ONLY; confirm reactions are not read or "
             "built in this campaign until the separately-authorized final "
             "confirmation stage",
@@ -127,9 +158,19 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser.add_argument("--repo-root", default=str(REPO_ROOT))
     parser.add_argument("--s0a", default="outputs/pesn/v53mp/s0a")
     parser.add_argument("--out", default="outputs/pesn/v53mp/cohort")
+    parser.add_argument("--pool-candidate-target", type=int,
+                        default=POOL_CANDIDATE_TARGET,
+                        help="ranked pool-candidate cap (default {} = 1.3x "
+                             "margin over the 20,000 pool target; a 50k "
+                             "build passes 65000)".format(
+                                 POOL_CANDIDATE_TARGET))
     args = parser.parse_args(argv)
+    if args.pool_candidate_target < 1:
+        parser.error("--pool-candidate-target must be >= 1, got {}".format(
+            args.pool_candidate_target))
     cohort = freeze_cohort(
-        Path(args.repo_root).resolve(), Path(args.s0a), Path(args.out))
+        Path(args.repo_root).resolve(), Path(args.s0a), Path(args.out),
+        pool_candidate_target=args.pool_candidate_target)
     print(json.dumps({
         "counts": cohort["counts"],
         "cohort_sha256": cohort["cohort_sha256"],

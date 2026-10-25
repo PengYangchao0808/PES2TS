@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
-"""V5.3-MP S0-B: authorized IRC extraction + teacher build for the 20k cohort.
+"""V5.3-MP S0-B: authorized IRC extraction + teacher build for the frozen cohort.
 
-Builds the V5.3-MP six-table dataset (schema ``r3_6table_v2``, identical
+Tier-agnostic by construction: the build order is the ``--cohort`` file's
+``pool_candidates`` (26k for the frozen 20k build; 65k for a 50k build —
+``r3_v53mp_freeze_cohort.py --pool-candidate-target 65000``); there is no
+tier cap in this script.  Builds the V5.3-MP six-table dataset (schema
+``r3_6table_v2``, identical
 layout to the 30h R3 build) directly from the quarantined B3LYP-D3/TZVP IRC
 archive, the G1 P1 mappings and the (audited) TS table — the
 ``outputs/pesn/dual_ts_v2_20261015/wp2_fit50`` JSON lineage covers only the
-50-curve cohort, so the 20k build extracts frames from the source archive
+50-curve cohort, so the cohort build extracts frames from the source archive
 through the audited, scope-checked pesn truth bridge
 (:func:`pes2ts_core.pesn.offline.data.truth_source.stream_scoped_irc_frames`
 — every reaction read is appended to ``data/manifests/truth_access_log.jsonl``

@@ -126,6 +126,45 @@ def test_slot_command_eval_vram_gate_forwarded(tmp_path: Path) -> None:
     assert meta2["eval_vram_gate_mib"] is None
 
 
+def test_orchestrators_accept_50k_tier(tmp_path: Path) -> None:
+    """--tier 50k parses on both orchestrators (plan-driven; a missing 50k
+    plan is the only later refusal — never an argparse choices error)."""
+    from scripts.campaigns import r3_v53mp_orchestrate as seq
+
+    root = tmp_path / "v53mp"
+    root.mkdir()
+    rows = [{
+        "record_type": "run",
+        "run_id": "v53mp_50k_{}_s{}".format(arm, seed),
+        "campaign_id": "PES2TS_V53MP_MOVE_PROCESS",
+        "phase": "S4", "tier": "50k", "arm": arm, "fold": 0, "seed": seed,
+        "n_updates": 37900, "smoke_updates": None,
+        "config_sha256": "0" * 64, "data_sha256": "1" * 64,
+        "teacher_sha256": "2" * 64, "features_sha256": "3" * 64,
+        "split_sha256": "4" * 64, "status": "planned",
+        "confirm": False, "variant": None,
+    } for arm in ("A", "B", "C") for seed in (17,)]
+    _write_plan(root / "run_plan_v53mp_50k.jsonl", rows)
+    progress = root / "orchestrate_50k_parallel.jsonl"
+    rc = orch.main([
+        "--tier", "50k", "--output-root", str(root),
+        "--concurrency", "3", "--dry-run",
+    ])
+    assert rc == 0
+    events = [json.loads(ln) for ln in
+              progress.read_text(encoding="utf-8").splitlines() if ln.strip()]
+    launches = [e for e in events if e["event"] == "launch"]
+    assert [e["run_id"] for e in launches] == [
+        "v53mp_50k_A_s17", "v53mp_50k_B_s17", "v53mp_50k_C_s17"]
+    # sequential orchestrator: 50k parses; the missing-plan read is the
+    # only refusal AFTER argparse
+    with pytest.raises(FileNotFoundError):
+        seq.main(["--tier", "50k", "--output-root", str(tmp_path / "none")])
+    with pytest.raises(SystemExit) as exc:
+        seq.main(["--tier", "60k"])
+    assert exc.value.code == 2
+
+
 def test_orchestrate_dry_run_eval_vram_gate(tmp_path: Path) -> None:
     """--eval-vram-gate-mib on the orchestrator: launch events carry it."""
     root = tmp_path / "v53mp"

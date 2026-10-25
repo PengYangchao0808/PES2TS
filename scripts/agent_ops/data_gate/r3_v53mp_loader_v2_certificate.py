@@ -76,7 +76,10 @@ SEED = 17
 N_EDGE = 1000
 N_UPDATES = 200
 N_FEATURE_PROBES = 1000
-TIER_20K_LIMIT = 20000
+#: default tier = the frozen 20k build (byte-identical default behaviour);
+#: ``--tier 50k`` certifies a 50k build (list-shaped pool fallback limit).
+DEFAULT_TIER = "20k"
+TIER_LIMITS = {"2k": 2000, "5k": 5000, "20k": 20000, "50k": 50000}
 
 #: certificate sampling protocol (recorded verbatim in the report)
 PROTOCOL = {
@@ -359,7 +362,34 @@ def check3_features(ds_v1: Any, ds_v2: Any,
     }
 
 
-def run_certificate(tables_dir: Path, report_dir: Path) -> dict[str, Any]:
+def _select_pool_curve_ids(split_doc: Any,
+                           tier: str = DEFAULT_TIER) -> list[str]:
+    """The frozen tier's pool curve ids (driver's _tier_pool_curve_ids rule:
+    list-ranked OR tier-mapping shapes), parameterized by ``tier``.
+    """
+    if tier not in TIER_LIMITS:
+        raise RuntimeError(
+            "unknown tier {!r} (expected one of {})".format(
+                tier, sorted(TIER_LIMITS)))
+    pool = split_doc["subsets"]["pool"]
+    if isinstance(pool, dict):
+        ids = pool.get(tier)
+        if ids is None and isinstance(pool.get("tiers"), dict):
+            ids = pool["tiers"].get(tier)
+        if not isinstance(ids, (list, tuple)):
+            raise RuntimeError(
+                "split manifest subsets.pool has no {} tier".format(tier))
+        return [str(x) for x in ids]
+    return [
+        str(e["curve_id"]) if isinstance(e, dict) else str(e)
+        for e in pool
+        if (not isinstance(e, dict))
+        or int(e.get("rank", 0)) <= TIER_LIMITS[tier]
+    ]
+
+
+def run_certificate(tables_dir: Path, report_dir: Path, *,
+                    tier: str = DEFAULT_TIER) -> dict[str, Any]:
     tables_dir = Path(tables_dir)
     report_dir = Path(report_dir)
     rng = np.random.RandomState(SEED)
@@ -412,25 +442,11 @@ def run_certificate(tables_dir: Path, report_dir: Path) -> dict[str, Any]:
     _log(f"    passed={checks['column_equality']['passed']} "
          f"rows={checks['column_equality']['n_rows_checked']}")
 
-    # pool curve ids: the frozen 20k tier of the split manifest — mirror the
-    # driver's _tier_pool_curve_ids logic (list-ranked OR tier-mapping shapes)
+    # pool curve ids: the frozen tier of the split manifest (default 20k) —
+    # the driver's _tier_pool_curve_ids logic, now tier-parameterized
     split_path = tables_dir / "split_manifest_v53mp.json"
     split_doc = json.loads(split_path.read_text(encoding="utf-8"))
-    pool = split_doc["subsets"]["pool"]
-    if isinstance(pool, dict):
-        ids = pool.get("20k")
-        if ids is None and isinstance(pool.get("tiers"), dict):
-            ids = pool["tiers"].get("20k")
-        if not isinstance(ids, (list, tuple)):
-            raise RuntimeError("split manifest subsets.pool has no 20k tier")
-        pool_curve_ids = [str(x) for x in ids]
-    else:
-        pool_curve_ids = [
-            str(e["curve_id"]) if isinstance(e, dict) else str(e)
-            for e in pool
-            if (not isinstance(e, dict))
-            or int(e.get("rank", 0)) <= TIER_20K_LIMIT
-        ]
+    pool_curve_ids = _select_pool_curve_ids(split_doc, tier=tier)
     _log("[cert] check 2: 200-update sampler positional equality …")
     checks["sampler_equality"] = check2_sampler(ds_v1, ds_v2, pool_curve_ids)
     _log(f"    passed={checks['sampler_equality']['passed']} "
@@ -458,6 +474,7 @@ def run_certificate(tables_dir: Path, report_dir: Path) -> dict[str, Any]:
         "passed": bool(passed),
         "created_at": _utc_now(),
         "tables_dir": str(tables_dir),
+        "tier": tier,
         "idx_curves_json_sha256": idx_sha,
         "protocol": PROTOCOL,
         "checks": checks,
@@ -483,8 +500,14 @@ def main(argv: list[str] | None = None) -> int:
         description="Bitwise A/B certificate: loader v2 vs loader v1 (§4.2)")
     parser.add_argument("--tables-dir", default=str(DEFAULT_TABLES_DIR))
     parser.add_argument("--report-dir", default=str(REPORT_DIR))
+    parser.add_argument("--tier", default=DEFAULT_TIER,
+                        choices=sorted(TIER_LIMITS),
+                        help="frozen tier to certify against subsets.pool "
+                             "(default {} — byte-identical default; 50k "
+                             "certifies a 50k build)".format(DEFAULT_TIER))
     args = parser.parse_args(argv)
-    verdict = run_certificate(Path(args.tables_dir), Path(args.report_dir))
+    verdict = run_certificate(Path(args.tables_dir), Path(args.report_dir),
+                              tier=args.tier)
     print(json.dumps(verdict, indent=1, sort_keys=True))
     return 0 if verdict["passed"] else 1
 

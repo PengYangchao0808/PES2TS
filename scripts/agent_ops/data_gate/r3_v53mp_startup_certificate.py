@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Startup fast-path certificate (S4 plan §7-B2 / lane I4).
 
-On the REAL 20k tables + split manifest, for seeds 17/29/43, compares the
+On the REAL tables + split manifest (tier via ``--tier``, default the
+frozen 20k build), for seeds 17/29/43, compares the
 I4 columnar startup fast paths against the ORIGINAL per-item path (the
 fast path force-disabled via the ``tr._COLUMNAR_FAST`` module flag — the
 same switch ``V53MP_DISABLE_COLUMNAR_FAST=1`` sets at import):
@@ -59,24 +60,31 @@ SPLIT_DEFAULT = "split_manifest_v53mp.json"
 R3_WINNER_CKPT = (
     "outputs/pesn/30h_campaign/r3_runs/5372d9b12807c3f0/checkpoint_best.pt")
 SEEDS = (17, 29, 43)
-TIER = "20k"
+#: default tier = the frozen 20k build (byte-identical default behaviour);
+#: ``--tier 50k`` certifies a 50k build (list-shaped pool fallback limit).
+DEFAULT_TIER = "20k"
+TIER_LIMITS = {"2k": 2000, "5k": 5000, "20k": 20000, "50k": 50000}
 
 
 def _log(msg: str) -> None:
     print(msg, file=sys.stderr, flush=True)
 
 
-def _select_pool_ids(split_doc: Any) -> list:
+def _select_pool_ids(split_doc: Any, tier: str = DEFAULT_TIER) -> list:
     """The frozen tier's pool curve ids (driver's subsets.pool rule)."""
+    if tier not in TIER_LIMITS:
+        raise SystemExit(
+            "error: SPLIT_SCHEMA: unknown tier {!r} (expected one of {}) "
+            .format(tier, sorted(TIER_LIMITS)))
     pool = split_doc.get("subsets", {}).get("pool")
     if isinstance(pool, dict):
-        ids = pool.get(TIER)
+        ids = pool.get(tier)
         if ids is None and isinstance(pool.get("tiers"), dict):
-            ids = pool["tiers"].get(TIER)
+            ids = pool["tiers"].get(tier)
         _require(bool(isinstance(ids, (list, tuple))),
-                 "SPLIT_SCHEMA", "subsets.pool has no {} tier".format(TIER))
+                 "SPLIT_SCHEMA", "subsets.pool has no {} tier".format(tier))
         return [str(x) for x in ids]
-    limit = {"2k": 2000, "5k": 5000, "20k": 20000}[TIER]
+    limit = TIER_LIMITS[tier]
     return [str(e["curve_id"]) if isinstance(e, dict) else str(e)
             for e in pool
             if (not isinstance(e, dict)) or int(e.get("rank", 0)) <= limit]
@@ -88,7 +96,8 @@ def _require(cond: bool, code: str, detail: str) -> None:
 
 
 def run_certificate(tables_dir: Path, report_dir: Path, *,
-                    r3_ckpt: Path | None = None) -> dict:
+                    r3_ckpt: Path | None = None,
+                    tier: str = DEFAULT_TIER) -> dict:
     tables_dir = Path(tables_dir)
     timings: dict[str, Any] = {}
     checks: dict[str, Any] = {}
@@ -108,7 +117,7 @@ def run_certificate(tables_dir: Path, report_dir: Path, *,
 
     split = tables_dir / SPLIT_DEFAULT
     split_doc = json.loads(split.read_text(encoding="utf-8"))
-    pool_ids = _select_pool_ids(split_doc)
+    pool_ids = _select_pool_ids(split_doc, tier=tier)
     dev_ids = [str(c) for c in
                split_doc.get("subsets", {}).get("dev", [])]
     _require(bool(pool_ids) and bool(dev_ids), "SPLIT_SCHEMA",
@@ -217,7 +226,7 @@ def run_certificate(tables_dir: Path, report_dir: Path, *,
         "passed": bool(passed),
         "created_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "tables_dir": str(tables_dir),
-        "tier": TIER,
+        "tier": tier,
         "seeds": list(SEEDS),
         "checks": checks,
         "timings": timings,
@@ -233,7 +242,7 @@ def run_certificate(tables_dir: Path, report_dir: Path, *,
     md = ["# Startup fast-path certificate {}".format(verdict["created_at"]),
           "",
           "- passed: **{}**".format(verdict["passed"]),
-          "- tables: `{}` (tier {})".format(tables_dir, TIER),
+          "- tables: `{}` (tier {})".format(tables_dir, tier),
           "- seeds: {}".format(list(SEEDS)), "",
           "| seed | train==ref | val==ref | index==ref | per-item (s) | "
           "fast (s) | speedup |", "|---|---|---|---|---|---|---|"]
@@ -259,10 +268,15 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--tables-dir", default=str(DEFAULT_TABLES_DIR))
     parser.add_argument("--report-dir", default=str(REPORT_DIR))
     parser.add_argument("--r3-ckpt", default=str(R3_WINNER_CKPT))
+    parser.add_argument("--tier", default=DEFAULT_TIER,
+                        choices=sorted(TIER_LIMITS),
+                        help="frozen tier to certify against subsets.pool "
+                             "(default {} — byte-identical default; 50k "
+                             "certifies a 50k build)".format(DEFAULT_TIER))
     args = parser.parse_args(argv)
     r3 = Path(args.r3_ckpt) if args.r3_ckpt else None
     verdict = run_certificate(Path(args.tables_dir), Path(args.report_dir),
-                              r3_ckpt=r3)
+                              r3_ckpt=r3, tier=args.tier)
     print(json.dumps(verdict, indent=1, sort_keys=True))
     return 0 if verdict["passed"] else 1
 

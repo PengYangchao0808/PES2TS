@@ -100,13 +100,13 @@ R3_WINNER_CKPT = (
 #: file sha is bound into the plan as features_sha256.
 FEATURES_MODULE_PATH = "pes2ts_core/pesn/features/key_atom_graph_v3.py"
 
-TIER_PHASE = {"2k": "S1", "5k": "S2", "20k": "S3"}
-TIER_LIMITS = {"2k": 2000, "5k": 5000, "20k": 20000}
+TIER_PHASE = {"2k": "S1", "5k": "S2", "20k": "S3", "50k": "S4"}
+TIER_LIMITS = {"2k": 2000, "5k": 5000, "20k": 20000, "50k": 50000}
 #: Geometry LRU bound passed to ``ShardedKeyAtomDatasetV3``: covers the whole
 #: tier pool plus the frozen dev margin, so a curve's shard geometry is
 #: decompressed at most once per run (measured: ~0.13 s/update of redundant
 #: npz reads at 5k with the old 512-curve default).
-GEOMETRY_CACHE_CURVES = {"2k": 3500, "5k": 6500, "20k": 26000}
+GEOMETRY_CACHE_CURVES = {"2k": 3500, "5k": 6500, "20k": 26000, "50k": 65000}
 ARMS = ("A", "B", "C")
 SEEDS_S1 = (17,)
 SEEDS_FORMAL = (17, 29, 43)
@@ -143,12 +143,21 @@ SEEDS_FORMAL = (17, 29, 43)
 #: (host memory exhaustion killed the A_s17/A_s29 driver processes mid-run;
 #: both were real recorded attempts, reconciled to ``interrupted`` and
 #: retried, so the cap is bumped by exactly that count — never silently).
-PHASE_CAPS = {"S1": 4, "S2": 10, "S3": 15}
-STAGE_AUTH_BIT = {"S1": "s1_authorized", "S2": "s2_authorized", "S3": "s3_authorized"}
+#: S4 = 15: 50k formal stage (2026-10-24 收尾方案 §4 阶段 C): 9 planned runs
+#: (3 arms x 3 seeds, SEEDS_FORMAL) + retry headroom mirroring S3.
+#: FAIL-CLOSED against the frozen 20261021 campaign config: it carries no
+#: ``s4_authorized`` bit, so every 50k launch refuses at the authorization
+#: gate until an INDEPENDENT 50k config/plan freeze adds it (never re-freeze
+#: the 20261021 yaml in place — its sha256 is bound into the frozen 2k/5k/20k
+#: plans' five-sha verification).
+PHASE_CAPS = {"S1": 4, "S2": 10, "S3": 15, "S4": 15}
+STAGE_AUTH_BIT = {"S1": "s1_authorized", "S2": "s2_authorized",
+                  "S3": "s3_authorized", "S4": "s4_authorized"}
 STAGE_GATE_ID = {
     "S1": "V53MP-S1-smoke",
     "S2": "V53MP-S2-scale",
     "S3": "V53MP-S3-formal",
+    "S4": "V53MP-S4-50k",
 }
 #: λ required per arm before launch (probe values; null => refuse)
 ARM_REQUIRED_LAMBDAS = {
@@ -200,7 +209,8 @@ def _parse_run_id(run_id: str) -> Tuple[str, str, int]:
     parts = str(run_id).split("_")
     if len(parts) != 4 or parts[0] != "v53mp":
         raise ValueError(
-            "run_id must look like v53mp_<2k|5k|20k>_<A|B|C>_s<seed>, got {!r}".format(
+            "run_id must look like "
+            "v53mp_<2k|5k|20k|50k>_<A|B|C>_s<seed>, got {!r}".format(
                 run_id
             )
         )

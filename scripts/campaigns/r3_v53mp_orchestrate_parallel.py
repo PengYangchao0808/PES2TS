@@ -369,7 +369,8 @@ def orchestrate_parallel(tier: str, output_root: Path, device: str,
 
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(prog="r3_v53mp_orchestrate_parallel")
-    p.add_argument("--tier", required=True, choices=("2k", "5k", "20k"))
+    p.add_argument("--tier", required=True,
+                   choices=("2k", "5k", "20k", "50k"))
     p.add_argument("--output-root", default="outputs/pesn/v53mp")
     p.add_argument("--device", default="cuda")
     p.add_argument("--concurrency", type=int, default=1,

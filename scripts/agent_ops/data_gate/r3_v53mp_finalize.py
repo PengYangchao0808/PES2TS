@@ -5,10 +5,15 @@ reports + the S0 gate summary.
 Runs AFTER the S0-B build (``r3_v53mp_build_tables_h5.py all``).  Steps:
 
 1. **pool freeze** — qualified pool = pool candidates whose curve built with
-   ``curve_quality.quality_status == "ok"``; the frozen 20k pool = the first
-   20,000 qualified groups in cohort rank order; tiers are nested prefixes
-   (2k ⊂ 5k ⊂ 20k).  ``split_manifest_v53mp.json`` (schema
-   ``v53mp_split_v1``) carries ``subsets.pool.tiers`` + ``subsets.dev`` +
+   ``curve_quality.quality_status == "ok"``; the frozen pool = the first
+   ``--pool-target`` qualified groups in cohort rank order (default 20,000,
+   the frozen 20k build; a 50k finalize passes 50,000); tiers are nested
+   prefixes (2k ⊂ 5k ⊂ 20k ⊂ 50k — the 50k entry is emitted only when the
+   pool reaches 50,000, so the default run still writes exactly the
+   {2k, 5k, 20k} layout).  ``split_manifest_v53mp.json`` (schema
+   ``v53mp_split_v1``) carries ``subsets.pool.tiers`` + ``subsets.dev``
+   (SHARED dev pool — identical across every tier, so the 50k tier reuses
+   the frozen dev set + dev pack) +
    ``subsets.confirm`` (ids only — confirm reactions were never read/built)
    + ``curve_folds`` for every built curve (pool/dev fold = position % 3;
    confirm listed at fold 4 — never present in the tables).
@@ -53,7 +58,16 @@ if str(REPO_ROOT) not in sys.path:
 
 SCHEMA = "v53mp_split_v1"
 POOL_TARGET = 20_000
-TIER_SIZES = {"2k": 2_000, "5k": 5_000, "20k": 20_000}
+#: nested-prefix tier sizes over the frozen pool in cohort rank order.
+#: The 50k entry is EMITTED ONLY when the frozen pool actually reaches
+#: 50,000 curves (``size <= len(frozen_pool)``), so the default 20k
+#: finalize keeps emitting exactly {2k, 5k, 20k} — byte-identical split
+#: manifests vs the pre-50k code.  A 50k finalize passes
+#: ``--pool-target 50000`` and emits all four tiers; because the ranking
+#: is per-group deterministic and the 65k cohort's ranked list is a
+#: prefix extension of the 26k one, the nested-prefix property
+#: (2k ⊂ 5k ⊂ 20k ⊂ 50k) holds ACROSS builds by construction.
+TIER_SIZES = {"2k": 2_000, "5k": 5_000, "20k": 20_000, "50k": 50_000}
 
 # pre-registered S0-D limits (plan §4.4 hard gate)
 LIMIT_STARTUP_S = 900.0
@@ -80,7 +94,23 @@ def _read_json(path: Path) -> Any:
 
 
 def freeze_pool(repo: Path, data_dir: Path, cohort_path: Path,
-                s0a_dir: Path) -> dict:
+                s0a_dir: Path, pool_target: int = POOL_TARGET,
+                tier_sizes: Optional[Dict[str, int]] = None) -> dict:
+    """Freeze the qualified pool + nested-prefix tiers into the split manifest.
+
+    ``pool_target`` (default 20,000 — the frozen 20k build) sizes the
+    frozen pool; a 50k finalize passes 50,000.  ``tier_sizes`` (default
+    :data:`TIER_SIZES`) decides which tier entries are emitted — a tier is
+    written only when its size fits the frozen pool, so the default run
+    emits exactly {2k, 5k, 20k} (byte-identical to the pre-50k manifest
+    layout, modulo timestamps).  ``pool_target`` must reach the 2k floor.
+    """
+    pool_target = int(pool_target)
+    if pool_target < min((tier_sizes or TIER_SIZES).values()):
+        raise ValueError(
+            "pool_target must be >= {} (the smallest tier), got {}".format(
+                min((tier_sizes or TIER_SIZES).values()), pool_target))
+    sizes = dict(TIER_SIZES if tier_sizes is None else tier_sizes)
     repo = repo.resolve()
     cohort_path = cohort_path.resolve()
     s0a_dir = s0a_dir.resolve()
@@ -97,8 +127,8 @@ def freeze_pool(repo: Path, data_dir: Path, cohort_path: Path,
             quality[row["curve_id"]] = row["quality_status"]
     dev_ids = [c for c in dev_candidates if c in quality]
     qualified = [c for c in pool_candidates if quality.get(c) == "ok"]
-    pool20k = qualified[:POOL_TARGET]
-    n_short = len(qualified) - len(pool20k)
+    frozen_pool = qualified[:pool_target]
+    n_short = len(qualified) - len(frozen_pool)
 
     folds: Dict[str, int] = {}
     for i, cid in enumerate([c for c in pool_candidates if c in quality]):
@@ -109,8 +139,10 @@ def freeze_pool(repo: Path, data_dir: Path, cohort_path: Path,
         folds[cid] = 4          # confirm seal fold (never in the tables)
 
     tiers = {
-        name: pool20k[:size] for name, size in TIER_SIZES.items()
+        name: frozen_pool[:size] for name, size in sizes.items()
+        if size <= len(frozen_pool)
     }
+    tier_chain = " ⊂ ".join(sorted(tiers, key=lambda n: sizes[n]))
     split_doc = {
         "schema": SCHEMA,
         "schema_version": SCHEMA,
@@ -130,15 +162,20 @@ def freeze_pool(repo: Path, data_dir: Path, cohort_path: Path,
         "curve_folds": folds,
         "counts": {
             "pool_qualified": len(qualified),
-            "pool_20k": len(pool20k),
+            # pool_20k kept verbatim for reader compat: it is the FROZEN
+            # POOL (20,000 at the default target; 50,000 for a 50k
+            # finalize).  pool_frozen carries the same number under the
+            # target-neutral name.
+            "pool_20k": len(frozen_pool),
+            "pool_frozen": len(frozen_pool),
             "pool_overflow_unqualified_or_margin": (
-                len(pool_candidates) - len(pool20k)),
+                len(pool_candidates) - len(frozen_pool)),
             "dev": len(dev_ids),
             "confirm_listed_never_built": len(confirm_ids),
         },
         "rules": [
             "tiers are nested prefixes of the frozen pool in cohort rank "
-            "order (2k ⊂ 5k ⊂ 20k)",
+            "order ({})".format(tier_chain),
             "confirm ids are listed only; confirm reactions were never read "
             "or built in this campaign stage",
             "fold: built curves carry position % 3; confirm carries 4",
@@ -166,7 +203,7 @@ def freeze_pool(repo: Path, data_dir: Path, cohort_path: Path,
     return {
         "split_doc": split_doc,
         "n_qualified": len(qualified),
-        "n_pool": len(pool20k),
+        "n_pool": len(frozen_pool),
         "n_dev": len(dev_ids),
         "shortfall_dropped": n_short,
         "quality_counts": dict(_count(quality)),
@@ -379,6 +416,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser.add_argument("--cohort",
                         default="outputs/pesn/v53mp/cohort/v53mp_cohort_v1.json")
     parser.add_argument("--s0a", default="outputs/pesn/v53mp/s0a")
+    parser.add_argument("--pool-target", type=int, default=POOL_TARGET,
+                        help="frozen pool size (default {} = the 20k build; "
+                             "a 50k finalize passes 50000 and the split "
+                             "manifest then also emits the 50k tier "
+                             "entry)".format(POOL_TARGET))
     parser.add_argument("--skip-labels", action="store_true")
     parser.add_argument("--skip-resource", action="store_true")
     args = parser.parse_args(argv)
@@ -387,17 +429,23 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     summary: Dict[str, Any] = {}
     t0 = time.time()
-    pool = freeze_pool(repo, data_dir, Path(args.cohort), Path(args.s0a))
+    try:
+        pool = freeze_pool(repo, data_dir, Path(args.cohort), Path(args.s0a),
+                           pool_target=args.pool_target)
+    except ValueError as exc:
+        print(f"FATAL: {exc}", flush=True)
+        return 2
     summary["pool_freeze"] = {
         "n_qualified": pool["n_qualified"],
         "n_pool_20k": pool["n_pool"],
+        "pool_target": int(args.pool_target),
         "n_dev": pool["n_dev"],
         "quality_counts": dict(pool["quality_counts"]),
     }
     print(json.dumps(summary["pool_freeze"], sort_keys=True), flush=True)
-    if pool["n_pool"] < POOL_TARGET:
-        print(f"FATAL: qualified pool {pool['n_qualified']} < {POOL_TARGET}",
-              flush=True)
+    if pool["n_pool"] < int(args.pool_target):
+        print(f"FATAL: qualified pool {pool['n_qualified']} < "
+              f"{int(args.pool_target)}", flush=True)
         return 2
 
     summary["shards"] = build_shards_and_manifest(data_dir)
