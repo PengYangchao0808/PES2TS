@@ -407,6 +407,66 @@ def test_run_cli_cuda_memory_fraction_passes_into_trainer_config() -> None:
 
 
 # --------------------------------------------------------------------------
+# run: --eval-vram-gate-mib / --eval-vram-gate-timeout-s CLI (parse +
+# validation + pass-through; default off = zero behaviour change)
+# --------------------------------------------------------------------------
+
+
+def test_run_cli_eval_vram_gate_defaults() -> None:
+    drv = _driver_module()
+    args = drv._build_parser().parse_args(
+        ["run", "--run-id", "v53mp_2k_A_s17"])
+    # default None / 600 => gate OFF (nvidia-smi never invoked)
+    assert args.eval_vram_gate_mib is None
+    assert args.eval_vram_gate_timeout_s == 600
+
+
+def test_run_cli_eval_vram_gate_parses_and_validates() -> None:
+    drv = _driver_module()
+    parser = drv._build_parser()
+    # valid values parse to int
+    args = parser.parse_args([
+        "run", "--run-id", "v53mp_2k_A_s17",
+        "--eval-vram-gate-mib", "6800",
+        "--eval-vram-gate-timeout-s", "120"])
+    assert args.eval_vram_gate_mib == 6800
+    assert args.eval_vram_gate_timeout_s == 120
+    # out-of-range / unparseable values exit 2 (argparse fail-closed)
+    for bad in ("0", "-1", "1.5", "nan", "abc"):
+        with pytest.raises(SystemExit) as exc:
+            parser.parse_args([
+                "run", "--run-id", "v53mp_2k_A_s17",
+                "--eval-vram-gate-mib", bad])
+        assert exc.value.code == 2, bad
+    for bad in ("-1", "1.5", "abc"):
+        with pytest.raises(SystemExit) as exc:
+            parser.parse_args([
+                "run", "--run-id", "v53mp_2k_A_s17",
+                "--eval-vram-gate-timeout-s", bad])
+        assert exc.value.code == 2, bad
+
+
+def test_run_cli_eval_vram_gate_rejects_bad_mib_subprocess() -> None:
+    # end-to-end CLI surface: refused by argparse BEFORE any ledger/GPU work
+    proc = _run([
+        "run", "--run-id", "v53mp_2k_A_s17",
+        "--eval-vram-gate-mib", "0",
+    ])
+    assert proc.returncode == 2
+    assert "eval-vram-gate-mib" in proc.stderr
+
+
+def test_run_cli_eval_vram_gate_passes_into_trainer_config() -> None:
+    """cmd_run must hand the gate args to V53MPTrainerConfig."""
+    import inspect
+
+    drv = _driver_module()
+    source = inspect.getsource(drv.cmd_run)
+    assert "eval_vram_gate_mib=args.eval_vram_gate_mib" in source
+    assert "eval_vram_gate_timeout_s=args.eval_vram_gate_timeout_s" in source
+
+
+# --------------------------------------------------------------------------
 # run: --dev-pack auto binding discovery (migration *.sha256sidecar.json)
 # --------------------------------------------------------------------------
 

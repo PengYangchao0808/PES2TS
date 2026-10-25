@@ -105,6 +105,59 @@ def test_slot_command_wraps_with_cgroup(tmp_path: Path) -> None:
     assert meta2["unit"] is None and "--feature-workers" not in argv2
 
 
+def test_slot_command_eval_vram_gate_forwarded(tmp_path: Path) -> None:
+    """--eval-vram-gate-mib/-timeout-s -> driver argv; default -> absent."""
+    out_root = tmp_path / "root"
+    argv, meta = orch._slot_command(
+        "v53mp_20k_A_s17", out_root, "cuda", 0,
+        per_run_memory_max=None, feature_workers=None,
+        eval_vram_gate_mib=6900, eval_vram_gate_timeout_s=120)
+    i = argv.index("--eval-vram-gate-mib")
+    assert argv[i + 1] == "6900"
+    j = argv.index("--eval-vram-gate-timeout-s")
+    assert argv[j + 1] == "120"
+    assert meta["eval_vram_gate_mib"] == 6900
+    # default: flags absent (argv byte-identical to the pre-gate builder)
+    argv2, meta2 = orch._slot_command(
+        "v53mp_20k_A_s17", out_root, "cuda", 0,
+        per_run_memory_max=None, feature_workers=None)
+    assert "--eval-vram-gate-mib" not in argv2
+    assert "--eval-vram-gate-timeout-s" not in argv2
+    assert meta2["eval_vram_gate_mib"] is None
+
+
+def test_orchestrate_dry_run_eval_vram_gate(tmp_path: Path) -> None:
+    """--eval-vram-gate-mib on the orchestrator: launch events carry it."""
+    root = tmp_path / "v53mp"
+    root.mkdir()
+    _write_plan(root / "run_plan_v53mp_20k.jsonl", _plan_rows(2))
+    progress = root / "orchestrate_20k_parallel.jsonl"
+    rc = orch.main([
+        "--tier", "20k", "--output-root", str(root),
+        "--concurrency", "2", "--dry-run",
+        "--eval-vram-gate-mib", "6900", "--eval-vram-gate-timeout-s", "120",
+    ])
+    assert rc == 0
+    events = [json.loads(ln) for ln in
+              progress.read_text(encoding="utf-8").splitlines() if ln.strip()]
+    launches = [e for e in events if e["event"] == "launch"]
+    assert len(launches) == 2
+    assert all(e["eval_vram_gate_mib"] == 6900 for e in launches)
+    # default off: no gate key in the launch events
+    progress2 = root / "orchestrate_20k_parallel.jsonl"
+    progress2.write_text("", encoding="utf-8")
+    rc = orch.main([
+        "--tier", "20k", "--output-root", str(root),
+        "--concurrency", "2", "--dry-run",
+    ])
+    assert rc == 0
+    events = [json.loads(ln) for ln in
+              progress2.read_text(encoding="utf-8").splitlines() if ln.strip()]
+    launches = [e for e in events if e["event"] == "launch"]
+    assert len(launches) == 2
+    assert all("eval_vram_gate_mib" not in e for e in launches)
+
+
 def test_orchestrate_dry_run_with_wrapper_and_workers(tmp_path: Path,
                                                       capsys) -> None:
     root = tmp_path / "v53mp"
@@ -541,6 +594,89 @@ def test_drill_dry_run_cuda_memory_fraction_argv(tmp_path: Path,
         for slot in phase["slots"]:
             assert "--cuda-memory-fraction" not in slot["argv"]
             assert slot["cuda_memory_fraction"] is None
+
+
+# ---------------------------------------------------------------------------
+# B4 drill: --eval-vram-gate-* passthrough (3-way staggered evals)
+# ---------------------------------------------------------------------------
+def test_eval_vram_gate_validation(tmp_path: Path) -> None:
+    assert drill._eval_vram_gate_mib_arg("6800") == 6800
+    assert drill._eval_vram_gate_mib_arg(1) == 1
+    assert drill._eval_vram_gate_timeout_arg("120") == 120
+    assert drill._eval_vram_gate_timeout_arg(0) == 0
+    for bad in ("0", "-1", "junk", "nan", "1.5"):
+        with pytest.raises(argparse.ArgumentTypeError):
+            drill._eval_vram_gate_mib_arg(bad)
+    for bad in ("-1", "junk", "1.5"):
+        with pytest.raises(argparse.ArgumentTypeError):
+            drill._eval_vram_gate_timeout_arg(bad)
+    # CLI: bad values are refused before anything is built or launched
+    with pytest.raises(SystemExit):
+        drill.main(["--eval-vram-gate-mib", "0", "--dry-run"])
+    # plan builder: fail-closed too (off-CLI callers)
+    with pytest.raises(SystemExit) as exc:
+        drill.build_phase_plan(
+            {"run_id": "v53mp_20k_A_s17", "arm": "A", "seed": 17},
+            "B4_n3", 2000, 1, tmp_path, tmp_path, tmp_path, tmp_path,
+            tmp_path, "cuda", "6G", 6, eval_vram_gate_mib=0)
+    assert "BAD_EVAL_VRAM_GATE" in str(exc.value)
+
+
+def test_drill_dry_run_eval_vram_gate_argv(tmp_path: Path,
+                                           monkeypatch) -> None:
+    """--eval-vram-gate-mib m -> every slot argv carries both gate flags;
+    default -> flags absent.  Dry-run launches nothing (Popen trapped)."""
+    plan = tmp_path / "run_plan_v53mp_20k.jsonl"
+    _write_plan(plan, _plan_rows(9))
+    cfg = REPO / "config/campaigns/pes2ts_v53mp_20261021.yaml"
+    if not cfg.is_file():
+        pytest.skip("frozen campaign config missing")
+    monkeypatch.setattr(drill.ib, "validate_bench_root",
+                        lambda *a, **k: {"five_sha": "ok"})
+
+    def _no_launch(*a, **k):
+        raise AssertionError("dry-run must not launch GPU/training")
+
+    monkeypatch.setattr(drill.subprocess, "Popen", _no_launch)
+
+    out_gate = tmp_path / "drill_gate"
+    rc = drill.main([
+        "--plan", str(plan), "--output-root", str(out_gate),
+        "--ns", "1,3", "--updates", "2000", "--config", str(cfg),
+        "--eval-vram-gate-mib", "6900", "--eval-vram-gate-timeout-s", "120",
+        "--dry-run",
+    ])
+    assert rc == 0
+    report = json.loads((out_gate / "report.json").read_text(encoding="utf-8"))
+    assert report["eval_vram_gate_mib"] == 6900
+    assert report["eval_vram_gate_timeout_s"] == 120
+    for phase in report["phases"]:
+        for slot in phase["slots"]:
+            argv = slot["argv"]
+            i = argv.index("--eval-vram-gate-mib")
+            assert argv[i + 1] == "6900"
+            j = argv.index("--eval-vram-gate-timeout-s")
+            assert argv[j + 1] == "120"
+            # driver args: AFTER the driver path (forwarded by the wrapper)
+            assert i > argv.index(str(drill.ib.RUN_DRIVER))
+            assert slot["eval_vram_gate_mib"] == 6900
+            assert slot["eval_vram_gate_timeout_s"] == 120
+
+    out_plain = tmp_path / "drill_plain_gate"
+    rc = drill.main([
+        "--plan", str(plan), "--output-root", str(out_plain),
+        "--ns", "1,3", "--updates", "2000", "--config", str(cfg),
+        "--dry-run",
+    ])
+    assert rc == 0
+    report = json.loads(
+        (out_plain / "report.json").read_text(encoding="utf-8"))
+    assert report["eval_vram_gate_mib"] is None
+    for phase in report["phases"]:
+        for slot in phase["slots"]:
+            assert "--eval-vram-gate-mib" not in slot["argv"]
+            assert "--eval-vram-gate-timeout-s" not in slot["argv"]
+            assert slot["eval_vram_gate_mib"] is None
 
 
 # ---------------------------------------------------------------------------

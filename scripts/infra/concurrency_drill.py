@@ -38,6 +38,10 @@ Verdict (plan §7-B4):
 
 ``--cuda-memory-fraction f`` (0 < f <= 1) is forwarded to every driver
 argv as ``--cuda-memory-fraction f``; default off (flag absent).
+``--eval-vram-gate-mib m`` (``>= 1``) is forwarded to every driver argv
+as ``--eval-vram-gate-mib m --eval-vram-gate-timeout-s t`` (3-way
+staggered evals; ``--eval-vram-gate-timeout-s`` defaults to 600 and is
+forwarded only when the gate is set); default off (flags absent).
 
 Phases run SEQUENTIALLY (N=1 first — it is the baseline — then 3, then
 4); the N runs inside one phase are concurrent.  ``--dry-run`` builds
@@ -115,6 +119,34 @@ def _cuda_memory_fraction_arg(value: Any) -> float:
             "cuda-memory-fraction must satisfy 0 < f <= 1, got {!r}"
             .format(value))
     return frac
+
+
+def _eval_vram_gate_mib_arg(value: Any) -> int:
+    """argparse type: whole-card eval VRAM gate threshold in MiB (>= 1)."""
+    try:
+        mib = int(value)
+    except (TypeError, ValueError):
+        raise argparse.ArgumentTypeError(
+            "eval-vram-gate-mib must be an integer >= 1, got {!r}".format(
+                value))
+    if mib < 1:
+        raise argparse.ArgumentTypeError(
+            "eval-vram-gate-mib must be >= 1, got {!r}".format(value))
+    return mib
+
+
+def _eval_vram_gate_timeout_arg(value: Any) -> int:
+    """argparse type: eval VRAM gate wait timeout in seconds (>= 0)."""
+    try:
+        seconds = int(value)
+    except (TypeError, ValueError):
+        raise argparse.ArgumentTypeError(
+            "eval-vram-gate-timeout-s must be an integer >= 0, got {!r}"
+            .format(value))
+    if seconds < 0:
+        raise argparse.ArgumentTypeError(
+            "eval-vram-gate-timeout-s must be >= 0, got {!r}".format(value))
+    return seconds
 
 
 # ---------------------------------------------------------------------------
@@ -210,12 +242,15 @@ def build_phase_plan(
     memory_max: str, feature_workers: int, slot_index: int = 0,
     thread_caps: bool = False,
     cuda_memory_fraction: Optional[float] = None,
+    eval_vram_gate_mib: Optional[int] = None,
+    eval_vram_gate_timeout_s: int = 600,
 ) -> Dict[str, Any]:
     """Build + validate one phase's N slot roots (plan/config/pin/binding).
 
     Returns a per-slot descriptor list.  Fail-closed: any driver-gate
     refusal (SystemExit from ``validate_bench_root``) propagates, as does
-    an invalid ``cuda_memory_fraction`` (must satisfy 0 < f <= 1).
+    an invalid ``cuda_memory_fraction`` (must satisfy 0 < f <= 1) or
+    ``eval_vram_gate_mib`` (must be >= 1 when set).
     """
     high = _parse_memory_high(memory_max)
     if cuda_memory_fraction is not None:
@@ -225,6 +260,14 @@ def build_phase_plan(
         except argparse.ArgumentTypeError as exc:
             raise SystemExit(
                 "error: BAD_CUDA_MEMORY_FRACTION: {}".format(exc))
+    if eval_vram_gate_mib is not None:
+        try:
+            eval_vram_gate_mib = _eval_vram_gate_mib_arg(eval_vram_gate_mib)
+            eval_vram_gate_timeout_s = _eval_vram_gate_timeout_arg(
+                eval_vram_gate_timeout_s)
+        except argparse.ArgumentTypeError as exc:
+            raise SystemExit(
+                "error: BAD_EVAL_VRAM_GATE: {}".format(exc))
     slots: List[Dict[str, Any]] = []
     from pes2ts_core.utils.hashing import sha256_file
 
@@ -273,6 +316,13 @@ def build_phase_plan(
             # forwarded to the driver (NOT re-implemented here): every slot
             # of this phase gets the same cap, argv evidence in dry-run
             argv += ["--cuda-memory-fraction", "{}".format(cuda_memory_fraction)]
+        if eval_vram_gate_mib is not None:
+            # forwarded to the driver (NOT re-implemented here): every slot
+            # of this phase gets the same staggered-eval gate, argv evidence
+            # in dry-run
+            argv += ["--eval-vram-gate-mib", str(int(eval_vram_gate_mib)),
+                     "--eval-vram-gate-timeout-s",
+                     str(int(eval_vram_gate_timeout_s))]
         slots.append({
             "slot": slot,
             "run_id": str(row["run_id"]),
@@ -287,6 +337,10 @@ def build_phase_plan(
             "memory_high": high,
             "feature_workers": int(feature_workers),
             "cuda_memory_fraction": cuda_memory_fraction,
+            "eval_vram_gate_mib": eval_vram_gate_mib,
+            "eval_vram_gate_timeout_s": (
+                int(eval_vram_gate_timeout_s)
+                if eval_vram_gate_mib is not None else None),
             "argv": argv,
         })
     return {"phase_root": str(phase_root), "slots": slots,
@@ -455,6 +509,18 @@ def run_drill(args: argparse.Namespace) -> int:
         except argparse.ArgumentTypeError as exc:
             raise SystemExit(
                 "error: BAD_CUDA_MEMORY_FRACTION: {}".format(exc))
+    eval_gate_mib: Optional[int] = getattr(
+        args, "eval_vram_gate_mib", None)
+    eval_gate_timeout_s: int = int(getattr(
+        args, "eval_vram_gate_timeout_s", 600) or 600)
+    if eval_gate_mib is not None:             # fail-closed, even off-CLI
+        try:
+            eval_gate_mib = _eval_vram_gate_mib_arg(eval_gate_mib)
+            eval_gate_timeout_s = _eval_vram_gate_timeout_arg(
+                eval_gate_timeout_s)
+        except argparse.ArgumentTypeError as exc:
+            raise SystemExit(
+                "error: BAD_EVAL_VRAM_GATE: {}".format(exc))
 
     # --- plan: build + validate every phase/slot WITHOUT launching --------
     phases: List[Dict[str, Any]] = []
@@ -473,7 +539,9 @@ def run_drill(args: argparse.Namespace) -> int:
                 feature_workers=workers_for_concurrency(n),
                 slot_index=slot,
                 thread_caps=bool(args.thread_caps),
-                cuda_memory_fraction=cuda_fraction)
+                cuda_memory_fraction=cuda_fraction,
+                eval_vram_gate_mib=eval_gate_mib,
+                eval_vram_gate_timeout_s=eval_gate_timeout_s)
             slots_meta.append(phase["slots"][0])
         phases.append({"n": n, "phase_root": str(phase_root),
                        "slots": slots_meta,
@@ -491,6 +559,8 @@ def run_drill(args: argparse.Namespace) -> int:
             "memory_max": args.memory_max,
             "feature_workers_max": feature_workers,
             "cuda_memory_fraction": cuda_fraction,
+            "eval_vram_gate_mib": eval_gate_mib,
+            "eval_vram_gate_timeout_s": eval_gate_timeout_s,
             "phases": phases,               # includes per-slot argv (evidence)
             "drill_lock": DRILL_LOCK,
         }
@@ -583,6 +653,8 @@ def run_drill(args: argparse.Namespace) -> int:
         "memory_max": args.memory_max,
         "feature_workers_max": feature_workers,
         "cuda_memory_fraction": cuda_fraction,
+        "eval_vram_gate_mib": eval_gate_mib,
+        "eval_vram_gate_timeout_s": eval_gate_timeout_s,
         "baseline_wall_s": baseline_wall,
         "phases": phase_results,
         "verdicts": phase_verdicts,
@@ -596,7 +668,9 @@ def run_drill(args: argparse.Namespace) -> int:
           "- updates: {}, memory_max: {}, feature_workers(max): {}".format(
               args.updates, args.memory_max, feature_workers),
           "- baseline (N=1) wall: {} s".format(baseline_wall),
-          "- cuda_memory_fraction: {}".format(cuda_fraction), "",
+          "- cuda_memory_fraction: {}".format(cuda_fraction),
+          "- eval_vram_gate_mib: {} (timeout {} s)".format(
+              eval_gate_mib, eval_gate_timeout_s), "",
           "| N | walls (s) | total anon (GB) | oom_kill | vram peak (MiB) | pass |",
           "|---|---|---|---|---|---|"]
     for verdict, pres in zip(phase_verdicts, phase_results):
@@ -648,6 +722,17 @@ def main(argv: Optional[List[str]] = None) -> int:
                         help="0 < f <= 1: forwarded to every slot's driver "
                              "argv as '--cuda-memory-fraction f' "
                              "(default: off — flag absent)")
+    parser.add_argument("--eval-vram-gate-mib",
+                        type=_eval_vram_gate_mib_arg, default=None,
+                        help="whole-card MiB threshold forwarded to every "
+                             "slot's driver argv as '--eval-vram-gate-mib "
+                             "mib --eval-vram-gate-timeout-s s' (3-way "
+                             "staggered evals; default: off — flags absent)")
+    parser.add_argument("--eval-vram-gate-timeout-s",
+                        type=_eval_vram_gate_timeout_arg, default=600,
+                        help="max seconds each slot's trainer waits per "
+                             "gated eval (fail-open; default 600; forwarded "
+                             "only when --eval-vram-gate-mib is set)")
     parser.add_argument("--dry-run", action="store_true",
                         help="build + validate the full plan (roots, "
                              "configs, wrappers, worker counts) without "

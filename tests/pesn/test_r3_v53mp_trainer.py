@@ -968,3 +968,158 @@ def test_smoke_metrics_carry_gpu_memory_keys(tmp_path, env, lanes_ready) -> None
     assert payload["gpu_max_memory_allocated_bytes"] == 0
     assert payload["gpu_max_memory_reserved_bytes"] == 0
     assert payload["gpu_memory_fraction_applied"] is None
+
+
+# ---------------------------------------------------------------------------
+# eval VRAM gate (3-way staggered evals): off = never touches nvidia-smi;
+# on = wait-until-under-threshold / timeout fail-open / metrics key contract
+# (CPU-only — subprocess and time are monkeypatched; no GPU required)
+# ---------------------------------------------------------------------------
+
+
+def _smi_reply(text: str):
+    class _Proc:
+        returncode = 0
+        stdout = text
+    return _Proc()
+
+
+def test_config_eval_vram_gate_validation() -> None:
+    # defaults: gate OFF, 600 s timeout (zero behaviour change)
+    cfg = V53MPTrainerConfig(arm="A", seed=17)
+    assert cfg.eval_vram_gate_mib is None
+    assert cfg.eval_vram_gate_timeout_s == 600
+    ok = V53MPTrainerConfig(arm="A", seed=17, eval_vram_gate_mib=6800,
+                            eval_vram_gate_timeout_s=120)
+    assert ok.eval_vram_gate_mib == 6800
+    assert ok.eval_vram_gate_timeout_s == 120
+    # boundary / out-of-range values are TYPED refusals
+    for bad in (0, -1):
+        with pytest.raises(V53MPTrainerError) as exc:
+            V53MPTrainerConfig(arm="A", seed=17, eval_vram_gate_mib=bad)
+        assert exc.value.code == "EVAL_VRAM_GATE", bad
+    with pytest.raises(V53MPTrainerError) as exc:
+        V53MPTrainerConfig(arm="A", seed=17, eval_vram_gate_timeout_s=-1)
+    assert exc.value.code == "EVAL_VRAM_GATE_TIMEOUT"
+
+
+def test_eval_vram_gate_off_never_calls_nvidia_smi(monkeypatch) -> None:
+    def _boom(*args, **kwargs):
+        raise AssertionError("gate off must never invoke nvidia-smi")
+
+    monkeypatch.setattr(tr.subprocess, "run", _boom)
+    cfg = V53MPTrainerConfig(arm="A", seed=17)
+    waits: list = []
+    assert tr._wait_for_eval_vram_headroom(cfg, waits) == 0.0
+    assert waits == []                       # nothing recorded while off
+
+
+def test_eval_vram_gate_waits_until_below_threshold(monkeypatch) -> None:
+    reads = ["7500\n", "7000\n", "6400\n"]   # whole-card used MiB per poll
+    seen_cmds: list = []
+    sleeps: list = []
+    clock = {"now": 100.0}
+
+    def _fake_run(cmd, **kwargs):
+        seen_cmds.append(list(cmd))
+        return _smi_reply(reads.pop(0))
+
+    monkeypatch.setattr(tr.subprocess, "run", _fake_run)
+    monkeypatch.setattr(tr.time, "monotonic", lambda: clock["now"])
+    monkeypatch.setattr(tr.time, "sleep", lambda s: (
+        sleeps.append(s), clock.__setitem__("now", clock["now"] + s)))
+    cfg = V53MPTrainerConfig(arm="A", seed=17, eval_vram_gate_mib=6800)
+    waits: list = []
+    waited = tr._wait_for_eval_vram_headroom(cfg, waits)
+    assert reads == []                       # three polls consumed
+    assert seen_cmds[0] == ["nvidia-smi", "--query-gpu=memory.used",
+                            "--format=csv,noheader,nounits"]
+    assert sleeps == [2.0, 2.0]              # poll interval between checks
+    assert waits == [waited] == [4.0]        # one entry per gated eval
+
+
+def test_eval_vram_gate_timeout_proceeds_and_records(monkeypatch) -> None:
+    sleeps: list = []
+    clock = {"now": 0.0}
+
+    def _fake_run(cmd, **kwargs):
+        return _smi_reply("7500\n")          # never drops under the gate
+
+    monkeypatch.setattr(tr.subprocess, "run", _fake_run)
+    monkeypatch.setattr(tr.time, "monotonic", lambda: clock["now"])
+    monkeypatch.setattr(tr.time, "sleep", lambda s: (
+        sleeps.append(s), clock.__setitem__("now", clock["now"] + s)))
+    cfg = V53MPTrainerConfig(arm="A", seed=17, eval_vram_gate_mib=6800,
+                             eval_vram_gate_timeout_s=6)
+    waits: list = []
+    waited = tr._wait_for_eval_vram_headroom(cfg, waits)   # must RETURN
+    assert waits == [waited] == [6.0]        # fail-open timeout, recorded
+    assert sleeps == [2.0, 2.0, 2.0]         # bounded by the timeout
+
+
+def test_eval_vram_gate_zero_timeout_single_poll(monkeypatch) -> None:
+    polls = []
+
+    def _fake_run(cmd, **kwargs):
+        polls.append(list(cmd))
+        return _smi_reply("7500\n")
+
+    monkeypatch.setattr(tr.subprocess, "run", _fake_run)
+    monkeypatch.setattr(tr.time, "monotonic", lambda: 5.0)
+    monkeypatch.setattr(
+        tr.time, "sleep",
+        lambda s: (_ for _ in ()).throw(AssertionError("must not sleep")))
+    cfg = V53MPTrainerConfig(arm="A", seed=17, eval_vram_gate_mib=6800,
+                             eval_vram_gate_timeout_s=0)
+    waits: list = []
+    assert tr._wait_for_eval_vram_headroom(cfg, waits) == 0.0
+    assert len(polls) == 1                   # one poll, then proceed
+    assert waits == [0.0]
+
+
+def test_eval_vram_gate_nvidia_smi_failure_fails_open(monkeypatch) -> None:
+    def _boom(cmd, **kwargs):
+        raise OSError("nvidia-smi: not found")
+
+    monkeypatch.setattr(tr.subprocess, "run", _boom)
+    monkeypatch.setattr(tr.time, "monotonic", lambda: 5.0)
+    cfg = V53MPTrainerConfig(arm="A", seed=17, eval_vram_gate_mib=6800)
+    waits: list = []
+    assert tr._wait_for_eval_vram_headroom(cfg, waits) == 0.0
+    assert waits == [0.0]                    # recorded, never blocked
+
+
+def test_smoke_gate_off_metrics_carry_no_waits_key(
+        tmp_path, env, lanes_ready, monkeypatch) -> None:
+    calls: list = []
+    monkeypatch.setattr(
+        tr.subprocess, "run",
+        lambda *a, **k: calls.append(a) or _smi_reply("100\n"))
+    out = tmp_path / "run_gate_off"
+    cfg = _smoke_cfg(arm="A", smoke_updates=1, val_every=1)
+    metrics = train_run_v53mp(
+        env.ds, env.labels, env.endpoint, cfg, out,
+        dev_positions=env.dev_pos, resume=False)
+    # gate OFF: no metrics key AND nvidia-smi never invoked
+    assert "eval_vram_gate_waits_s" not in metrics
+    payload = json.loads((out / "metrics.json").read_text(encoding="utf-8"))
+    assert "eval_vram_gate_waits_s" not in payload
+    assert not any("nvidia-smi" in str(a) for a in calls)
+
+
+def test_smoke_gate_on_waits_key_list_of_floats(
+        tmp_path, env, lanes_ready, monkeypatch) -> None:
+    monkeypatch.setattr(
+        tr.subprocess, "run", lambda *a, **k: _smi_reply("100\n"))
+    out = tmp_path / "run_gate_on"
+    cfg = _smoke_cfg(arm="A", smoke_updates=1, val_every=1,
+                     eval_vram_gate_mib=6800)
+    metrics = train_run_v53mp(
+        env.ds, env.labels, env.endpoint, cfg, out,
+        dev_positions=env.dev_pos, resume=False)
+    waits = metrics["eval_vram_gate_waits_s"]
+    # one entry per gated eval: inner-val at update 1 + final outer eval
+    assert isinstance(waits, list) and len(waits) == 2
+    assert all(isinstance(w, float) and w >= 0.0 for w in waits)
+    payload = json.loads((out / "metrics.json").read_text(encoding="utf-8"))
+    assert payload["eval_vram_gate_waits_s"] == waits

@@ -1257,6 +1257,8 @@ def cmd_run(args: argparse.Namespace) -> int:
                 ),
                 device=args.device,
                 cuda_memory_fraction=args.cuda_memory_fraction,
+                eval_vram_gate_mib=args.eval_vram_gate_mib,
+                eval_vram_gate_timeout_s=args.eval_vram_gate_timeout_s,
             )
             metrics = train_run_v53mp(
                 dataset, labels, endpoint_labels, trainer_config, out_dir,
@@ -1364,6 +1366,34 @@ def _parse_cuda_memory_fraction(text: str) -> float:
     return value
 
 
+def _parse_eval_vram_gate_mib(text: str) -> int:
+    """argparse type: whole-card eval VRAM gate threshold in MiB (>= 1)."""
+    try:
+        value = int(text)
+    except (TypeError, ValueError) as exc:
+        raise argparse.ArgumentTypeError(
+            "--eval-vram-gate-mib must be an integer >= 1, got {!r}".format(
+                text)) from exc
+    if value < 1:
+        raise argparse.ArgumentTypeError(
+            "--eval-vram-gate-mib must be >= 1, got {}".format(text))
+    return value
+
+
+def _parse_eval_vram_gate_timeout_s(text: str) -> int:
+    """argparse type: eval VRAM gate wait timeout in seconds (>= 0)."""
+    try:
+        value = int(text)
+    except (TypeError, ValueError) as exc:
+        raise argparse.ArgumentTypeError(
+            "--eval-vram-gate-timeout-s must be an integer >= 0, got {!r}"
+            .format(text)) from exc
+    if value < 0:
+        raise argparse.ArgumentTypeError(
+            "--eval-vram-gate-timeout-s must be >= 0, got {}".format(text))
+    return value
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="r3_v53mp_run",
@@ -1408,6 +1438,20 @@ def _build_parser() -> argparse.ArgumentParser:
                           "applied via torch.cuda.set_per_process_memory_"
                           "fraction before the model load.  Default: no cap "
                           "(zero behaviour change)")
+    run.add_argument("--eval-vram-gate-mib", type=_parse_eval_vram_gate_mib,
+                     default=None,
+                     help="whole-card used-MiB threshold the trainer waits "
+                          "for before EVERY eval (periodic inner-val + final "
+                          "outer eval; 3-way staggered evals — set ABOVE the "
+                          "steady-state whole-card usage and BELOW the eval "
+                          "peak).  Default: off (nvidia-smi never invoked, "
+                          "zero behaviour change)")
+    run.add_argument("--eval-vram-gate-timeout-s",
+                     type=_parse_eval_vram_gate_timeout_s, default=600,
+                     help="max seconds the trainer waits per gated eval "
+                          "(fail-open timeout: the eval proceeds and the "
+                          "wait is recorded in metrics "
+                          "eval_vram_gate_waits_s; default 600)")
     run.add_argument("--loader", default="v1", choices=("v1", "v2"),
                      help="v1 = ShardedKeyAtomDatasetV3 (light pickle); "
                           "v2 = ColumnarKeyAtomDatasetV3 (idx_v2 memmap; "

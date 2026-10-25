@@ -101,6 +101,14 @@ SUBPROCESS_IMPORT_ALLOWLIST: Final[tuple[str, ...]] = (
     # argv-only ACP CLI child-process discipline (claim/receipt/log/timeout,
     # idempotent recovery); truth checks still apply to it in full.
     "pes2ts_core/integration/acp/xtb_constraints_transport.py",
+    # v53mp eval VRAM gate (3-way staggered evals): the trainer spawns ONLY
+    # ``nvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits``
+    # (argv-only, never shell=True) inside a never-raising fail-open helper
+    # (_nvidia_smi_used_mib) purely as a wall-clock wait signal — no data,
+    # no truth, no code path flows through the child process.  All other
+    # dynamic-execution findings (importlib/eval/exec) and every truth check
+    # still apply to the trainer in full.
+    "pes2ts_core/pesn/offline/training/key_atom_v53mp_train_v3.py",
 )
 
 TRUTH_PATH_MARKERS: Final[tuple[str, ...]] = ("ground_truth", "truth_sources")

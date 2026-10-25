@@ -160,7 +160,10 @@ def _file_tail(path: Path, n: int = 800) -> str:
 
 def _slot_command(rid: str, output_root: Path, device: str, slot: int,
                   *, per_run_memory_max: str | None,
-                  feature_workers: int | None) -> tuple[list[str], dict]:
+                  feature_workers: int | None,
+                  eval_vram_gate_mib: int | None = None,
+                  eval_vram_gate_timeout_s: int = 600,
+                  ) -> tuple[list[str], dict]:
     """Build one slot's launch argv (+ wrapper metadata).
 
     Base: the driver ``run`` subcommand with a per-slot gpu lock.  When
@@ -169,6 +172,9 @@ def _slot_command(rid: str, output_root: Path, device: str, slot: int,
     ``CGROUP_SCOPE_UNIT`` (plan §5.1: one runaway run kills only its own
     6G scope).  ``feature_workers`` (from ``--feature-workers-mode``)
     becomes the driver's ``--feature-workers`` when not None.
+    ``eval_vram_gate_mib`` (3-way staggered evals) becomes the driver's
+    ``--eval-vram-gate-mib`` + ``--eval-vram-gate-timeout-s`` when not
+    None; default off (flags absent — argv byte-identical).
     """
     lock_path = Path(SLOT_LOCK_TEMPLATE.format(k=slot))
     argv = [sys.executable, str(RUN_DRIVER), "--output-root",
@@ -176,8 +182,13 @@ def _slot_command(rid: str, output_root: Path, device: str, slot: int,
             "--device", device, "--gpu-lock", str(lock_path)]
     if feature_workers is not None:
         argv += ["--feature-workers", str(int(feature_workers))]
+    if eval_vram_gate_mib is not None:
+        argv += ["--eval-vram-gate-mib", str(int(eval_vram_gate_mib)),
+                 "--eval-vram-gate-timeout-s",
+                 str(int(eval_vram_gate_timeout_s))]
     meta = {"gpu_lock": str(lock_path), "unit": None, "cgroup_outdir": None,
-            "memory_max": None, "memory_high": None}
+            "memory_max": None, "memory_high": None,
+            "eval_vram_gate_mib": eval_vram_gate_mib}
     if per_run_memory_max:
         high = _derive_memory_high(per_run_memory_max)
         outdir = output_root / "cgroup" / "slot{}".format(slot)
@@ -190,9 +201,39 @@ def _slot_command(rid: str, output_root: Path, device: str, slot: int,
     return argv, meta
 
 
+def _eval_vram_gate_mib_arg(value) -> int:
+    """argparse type: whole-card eval VRAM gate threshold in MiB (>= 1)."""
+    try:
+        mib = int(value)
+    except (TypeError, ValueError):
+        raise argparse.ArgumentTypeError(
+            "--eval-vram-gate-mib must be an integer >= 1, got {!r}".format(
+                value)) from None
+    if mib < 1:
+        raise argparse.ArgumentTypeError(
+            "--eval-vram-gate-mib must be >= 1, got {!r}".format(value))
+    return mib
+
+
+def _eval_vram_gate_timeout_arg(value) -> int:
+    """argparse type: eval VRAM gate wait timeout in seconds (>= 0)."""
+    try:
+        seconds = int(value)
+    except (TypeError, ValueError):
+        raise argparse.ArgumentTypeError(
+            "--eval-vram-gate-timeout-s must be an integer >= 0, got {!r}"
+            .format(value)) from None
+    if seconds < 0:
+        raise argparse.ArgumentTypeError(
+            "--eval-vram-gate-timeout-s must be >= 0, got {!r}".format(value))
+    return seconds
+
+
 def _dry_run(tier: str, output_root: Path, run_ids: list[str],
              concurrency: int, *, per_run_memory_max: str | None = None,
-             workers_mode: str = "gate") -> int:
+             workers_mode: str = "gate",
+             eval_vram_gate_mib: int | None = None,
+             eval_vram_gate_timeout_s: int = 600) -> int:
     """Emit the full launch SCHEDULE (plan order, slots round-robin).
 
     Read-only w.r.t. the ledger and the GPU: no subprocess is launched.
@@ -225,7 +266,9 @@ def _dry_run(tier: str, output_root: Path, run_ids: list[str],
         _argv, meta = _slot_command(
             rid, output_root, "cuda", slot,
             per_run_memory_max=per_run_memory_max,
-            feature_workers=feature_workers)
+            feature_workers=feature_workers,
+            eval_vram_gate_mib=eval_vram_gate_mib,
+            eval_vram_gate_timeout_s=eval_vram_gate_timeout_s)
         event_fields = {k: v for k, v in meta.items() if v is not None}
         if feature_workers is not None:
             event_fields["feature_workers"] = feature_workers
@@ -241,7 +284,9 @@ def orchestrate_parallel(tier: str, output_root: Path, device: str,
                          run_ids: list[str], concurrency: int,
                          poll_s: int = 10, *,
                          per_run_memory_max: str | None = None,
-                         workers_mode: str = "gate") -> int:
+                         workers_mode: str = "gate",
+                         eval_vram_gate_mib: int | None = None,
+                         eval_vram_gate_timeout_s: int = 600) -> int:
     if per_run_memory_max and not CGROUP_SCOPE.is_file():
         sys.stderr.write(
             "error: CGROUP_SCOPE_MISSING: {} (required by "
@@ -298,7 +343,9 @@ def orchestrate_parallel(tier: str, output_root: Path, device: str,
             argv, meta = _slot_command(
                 rid, output_root, device, slot,
                 per_run_memory_max=per_run_memory_max,
-                feature_workers=feature_workers)
+                feature_workers=feature_workers,
+                eval_vram_gate_mib=eval_vram_gate_mib,
+                eval_vram_gate_timeout_s=eval_vram_gate_timeout_s)
             env = dict(os.environ)
             if meta.get("unit"):
                 env["CGROUP_SCOPE_UNIT"] = meta["unit"]
@@ -338,6 +385,17 @@ def main(argv=None) -> int:
                         "auto = --feature-workers "
                         "workers_for_concurrency(--concurrency) per slot "
                         "(plan §4.3/B4)")
+    p.add_argument("--eval-vram-gate-mib", type=_eval_vram_gate_mib_arg,
+                   default=None,
+                   help="whole-card MiB threshold forwarded to every slot's "
+                        "driver argv as '--eval-vram-gate-mib mib "
+                        "--eval-vram-gate-timeout-s s' (3-way staggered "
+                        "evals; default off — flags absent)")
+    p.add_argument("--eval-vram-gate-timeout-s",
+                   type=_eval_vram_gate_timeout_arg, default=600,
+                   help="max seconds each slot's trainer waits per gated "
+                        "eval (fail-open; default 600; forwarded only when "
+                        "--eval-vram-gate-mib is set)")
     p.add_argument("--dry-run", action="store_true",
                    help="print/emit the launch schedule without launching")
     args = p.parse_args(argv)
@@ -361,11 +419,16 @@ def main(argv=None) -> int:
     if args.dry_run:
         return _dry_run(args.tier, output_root, run_ids, args.concurrency,
                         per_run_memory_max=args.per_run_memory_max,
-                        workers_mode=args.feature_workers_mode)
+                        workers_mode=args.feature_workers_mode,
+                        eval_vram_gate_mib=args.eval_vram_gate_mib,
+                        eval_vram_gate_timeout_s=args.eval_vram_gate_timeout_s)
     return orchestrate_parallel(args.tier, output_root, args.device, run_ids,
                                 args.concurrency, args.poll_s,
                                 per_run_memory_max=args.per_run_memory_max,
-                                workers_mode=args.feature_workers_mode)
+                                workers_mode=args.feature_workers_mode,
+                                eval_vram_gate_mib=args.eval_vram_gate_mib,
+                                eval_vram_gate_timeout_s=(
+                                    args.eval_vram_gate_timeout_s))
 
 
 if __name__ == "__main__":  # pragma: no cover

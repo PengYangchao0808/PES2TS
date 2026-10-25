@@ -63,6 +63,7 @@ from __future__ import annotations
 
 import json
 import os
+import subprocess
 import threading
 import time
 from collections import OrderedDict
@@ -203,6 +204,29 @@ class V53MPTrainerConfig:
     #: BEFORE the model load / first real allocation.  None = no cap —
     #: zero behaviour change vs the pre-cap trainer.
     cuda_memory_fraction: Optional[float] = None
+    #: whole-card eval VRAM gate (3-way staggered evals; None = OFF, the
+    #: default — zero behaviour change: ``nvidia-smi`` is NEVER invoked and
+    #: ``metrics.json`` carries NO ``eval_vram_gate_waits_s`` key).  When
+    #: set (used MiB), every eval (the periodic inner-val sweep AND the
+    #: final outer dev eval) first waits until the WHOLE CARD reports
+    #: ``<=`` this many used MiB (``nvidia-smi --query-gpu=memory.used``),
+    #: polling every 2 s, bounded by ``eval_vram_gate_timeout_s``.  The
+    #: wait is pure wall-clock: no RNG / model / optimizer state is touched
+    #: (draws stay a pure function of (seed, update)).  Anti-deadlock
+    #: semantics: waits are ALWAYS bounded by the timeout (fail-open — the
+    #: eval proceeds and the wait is recorded); with 3 concurrent runs at a
+    #: ~7.3 GiB whole-card steady state the threshold must sit ABOVE
+    #: steady-state usage and BELOW the eval peak, otherwise the gate is a
+    #: no-op (threshold too high) or waits up to the full timeout on every
+    #: eval (threshold too low).  Waits land in
+    #: ``metrics.json['eval_vram_gate_waits_s']`` (one float per gated
+    #: eval, in evaluation order; ~0.0 when the first poll was already at/
+    #: below the threshold).
+    eval_vram_gate_mib: Optional[int] = None
+    #: max seconds to wait per gated eval (default 600; timeout proceeds
+    #: fail-open and records the wait — the gate never blocks a run
+    #: permanently).
+    eval_vram_gate_timeout_s: int = 600
 
     def __post_init__(self) -> None:
         if self.arm not in ("A", "B", "C"):
@@ -279,6 +303,17 @@ class V53MPTrainerConfig:
                 "CUDA_MEMORY_FRACTION",
                 "cuda_memory_fraction must lie in (0, 1] when set, got "
                 "{}".format(self.cuda_memory_fraction))
+        if self.eval_vram_gate_mib is not None and \
+                int(self.eval_vram_gate_mib) < 1:
+            raise V53MPTrainerError(
+                "EVAL_VRAM_GATE",
+                "eval_vram_gate_mib must be >= 1 MiB when set, got "
+                "{}".format(self.eval_vram_gate_mib))
+        if int(self.eval_vram_gate_timeout_s) < 0:
+            raise V53MPTrainerError(
+                "EVAL_VRAM_GATE_TIMEOUT",
+                "eval_vram_gate_timeout_s must be >= 0, got {}".format(
+                    self.eval_vram_gate_timeout_s))
         if not (0.0 < float(self.tau_target_precision) <= 1.0):
             raise V53MPTrainerError(
                 "TAU_TARGET",
@@ -575,6 +610,82 @@ def _gpu_memory_metrics(config: V53MPTrainerConfig) -> Dict[str, Any]:
             None if config.cuda_memory_fraction is None
             else float(config.cuda_memory_fraction)),
     }
+
+
+# ---------------------------------------------------------------------------
+# eval VRAM gate (3-way staggered evals; default OFF — see
+# V53MPTrainerConfig.eval_vram_gate_mib for the full semantics)
+# ---------------------------------------------------------------------------
+
+#: Poll interval between whole-card VRAM checks while waiting at a gate.
+EVAL_VRAM_GATE_POLL_S = 2.0
+
+
+def _nvidia_smi_used_mib() -> Optional[int]:
+    """Whole-card used MiB from ``nvidia-smi`` (first GPU line); None = fail-open.
+
+    Never raises: a missing / unusable ``nvidia-smi`` (OSError, timeout,
+    non-zero exit) or an unparseable first line returns ``None`` and the
+    gate caller proceeds without waiting — a monitoring hiccup degrades to
+    the pre-gate behaviour, it never blocks a run.
+    """
+    try:
+        proc = subprocess.run(
+            ["nvidia-smi", "--query-gpu=memory.used",
+             "--format=csv,noheader,nounits"],
+            capture_output=True, text=True, check=True, timeout=30)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    for line in proc.stdout.splitlines():
+        text = line.strip()
+        if not text:
+            continue
+        try:
+            return int(float(text))
+        except ValueError:
+            return None
+    return None
+
+
+def _wait_for_eval_vram_headroom(
+    config: V53MPTrainerConfig, waits: List[float],
+) -> float:
+    """Whole-card VRAM gate in front of one eval (staggered 3-way evals).
+
+    Gate OFF (``eval_vram_gate_mib is None``, the default): returns 0.0
+    WITHOUT ever invoking ``nvidia-smi`` — zero behaviour change.
+
+    Gate ON: polls :func:`_nvidia_smi_used_mib` and sleeps
+    ``EVAL_VRAM_GATE_POLL_S`` while the whole-card reading is ABOVE the
+    threshold, until it drops to ``<=`` the threshold or
+    ``eval_vram_gate_timeout_s`` elapses.  Timeout (or an unusable
+    ``nvidia-smi``) is FAIL-OPEN: the eval proceeds and the wait is still
+    recorded — with 3 concurrent runs at a ~7.3 GiB whole-card steady
+    state, set the threshold ABOVE steady state and BELOW the eval peak;
+    the timeout bounds every wait either way (never a permanent block).
+
+    The wait is pure wall-clock: no RNG, model or optimizer state is
+    touched — draws stay a pure function of (seed, update).  The waited
+    seconds are APPENDED to ``waits`` (one entry per gated eval, in
+    evaluation order; ~0.0 when the first poll was already at/below the
+    threshold).  Returns the waited seconds.
+    """
+    if config.eval_vram_gate_mib is None:
+        return 0.0
+    threshold = int(config.eval_vram_gate_mib)
+    t0 = time.monotonic()
+    deadline = t0 + float(config.eval_vram_gate_timeout_s)
+    while True:
+        used = _nvidia_smi_used_mib()
+        if used is None or used <= threshold:
+            break
+        now = time.monotonic()
+        if now >= deadline:
+            break
+        time.sleep(min(EVAL_VRAM_GATE_POLL_S, max(deadline - now, 0.0)))
+    waited = time.monotonic() - t0
+    waits.append(waited)
+    return waited
 
 
 def load_model_v53mp(
@@ -2024,6 +2135,9 @@ def _train_run_v53mp_impl(
             "(flag file / --feature-workers); running without double buffer")
     t0 = time.time()
     last_loss: Optional[float] = None
+    #: wait seconds per gated eval (periodic inner-val + final outer eval),
+    #: in evaluation order; written to metrics ONLY when the gate is on.
+    eval_gate_waits: List[float] = []
     for update in range(start_update, effective + 1):
         if update == config.effective_freeze_updates + 1:
             _set_encoder_trainable(model, True)   # stage B: joint
@@ -2089,6 +2203,10 @@ def _train_run_v53mp_impl(
                     {"update": update, "grad_monitor": grad_row},
                     sort_keys=True) + "\n")
         if update % max(int(config.val_every), 1) == 0 or update == effective:
+            # eval VRAM gate (default OFF): wait for whole-card headroom
+            # BEFORE the inner-val sweep — pure wall-clock, numerics and
+            # (seed, update) draws untouched.
+            _wait_for_eval_vram_headroom(config, eval_gate_waits)
             val = _inner_val_loss(
                 model, dataset, val_lru, inner_val_pos, labels_v52,
                 endpoint_labels, config,
@@ -2179,6 +2297,9 @@ def _train_run_v53mp_impl(
             _prefetch_warm_lru(dev_lru, dataset, dev_pos_eval,
                                feature_prefetcher, chunk=256)
         dev_cache_obj = _CacheView(dev_cache)
+    # eval VRAM gate (default OFF): wait for whole-card headroom BEFORE the
+    # final outer dev eval — pure wall-clock, numerics untouched.
+    _wait_for_eval_vram_headroom(config, eval_gate_waits)
     metrics = evaluate_v53mp(
         model, r3_model, dataset, labels_v52, endpoint_labels,
         dev_cache_obj, dev_pos_eval, config,
@@ -2263,6 +2384,12 @@ def _train_run_v53mp_impl(
         "head_parameter_counts": model.head_parameter_counts(),
         "provenance": prov,
     })
+    # eval VRAM gate evidence (staggered 3-way evals): ONLY written when the
+    # gate is ENABLED — with the default (None) the metrics bytes stay
+    # identical to the pre-gate trainer (no key at all).
+    if config.eval_vram_gate_mib is not None:
+        metrics["eval_vram_gate_waits_s"] = [
+            float(w) for w in eval_gate_waits]
     (out / "metrics.json").write_text(
         json.dumps(metrics, indent=1, sort_keys=True) + "\n",
         encoding="utf-8")
