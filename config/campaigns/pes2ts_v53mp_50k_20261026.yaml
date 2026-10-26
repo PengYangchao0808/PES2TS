@@ -1,0 +1,158 @@
+# PES2TS V5.3-MP 战役协议（S4 50k 阶段 — 独立配置冻结）
+# 依据: ADR-0031 + docs/contracts/PES2TS_MoveProcessContract_v1.md (v1.1 增补)
+#       + docs/plans/PES2TS_V5.3-MP_大规模MOVE-PROCESS联合训练计划_v1_20261021.md
+#       + S4 收尾方案 §4 阶段 C（2026-10-24）
+# 状态: S4 50k 独立建库/正式训练；s4_authorized=true（用户 2026-10-26 授权单路执行）
+# 变更规则: 任何字段变更 = config_sha256 变更 + runplan 重建（plan-init --force）+ 重新冻结
+schema: pes2ts_v53mp_campaign_v1
+campaign_id: PES2TS_V53MP_MOVE_PROCESS
+version: 0.1.0-s4-50k   # 2026-10-26: S4 50k 独立配置冻结（单路执行；不启用 pagefile/3 路）
+governance:
+  constitution: docs/PES2TS_开发宪法_v1.md   # v2.8 增量（ADR-0031）
+  contracts:
+    - docs/contracts/PES2TS_MoveProcessContract_v1.md   # 唯一任务合同（MOVE+PROCESS）
+    - docs/contracts/PES2TS_ReactionIntent_Contract_v2.md   # intent 条款 v2
+    - docs/contracts/PES2TS_GeometryPolicyContract_v2.md    # No-Move 条款 v2
+  adrs: [ADR-0031]   # MOVE-PROCESS 统一学习合同
+  docs_gate: python scripts/agent_ops/docs_consistency.py --strict   # 每阶段前强制
+  authorization:
+    s0_authorized: true      # 计划 §12.1/§12.2：S0-A 元数据资格 + S0-B 经授权提取（逐次记录）
+    s1_authorized: true      # 2026-10-22：S0 全部门通过（S0 报告）+ S0-F 7/7 + λ 探针回填；用户授权整个 V5.3 阶段
+    s2_authorized: true      # 2026-10-22：S1 健康检查通过（三臂 ok、guard 不破、GPU 1829s<3600s cap、无 NaN）——用户授权整个 V5.3 阶段
+    s3_authorized: true      # 2026-10-22：S2 门 V53MP-S2-scale 通过（见 S2 5k 规模报告），用户授权 S3
+    s4_authorized: true      # 2026-10-26：用户授权 50k 独立建库+正式单路；不启用 pagefile，不跑 3 路
+    sealed_authorized: false
+    confirm_authorized: false
+  provenance_required:   # 每个 run record / 导出 bundle 必填，缺一拒发
+    [code_commit, data_manifest_sha256, teacher_manifest_sha256,
+     split_sha256, label_spec_sha256, config_sha256]
+
+data_contract:
+  tables_dir: /pes2ts_data/v53mp_50k_data  # S0-B 50k 独立建库输出（六表 + manifests；不覆盖 20k 树）
+  move_teacher: intent_directed_first_contact_v1   # R3 语义不变：完整曲线、两 intent、跨 TS
+  move_teacher_params: {d0_angstrom: 0.08, cap_angstrom: 0.20}
+  move_row_filter: label_status == ok     # MOVE 只用 ok 行；PROCESS 见 process_statuses
+  process_statuses: [ok, masked, terminal, conflict]   # 全四态加载；terminal 必入 PROCESS
+  endpoint_labels:
+    schema: endpoint_label_spec_v1        # 计划 §4.3 候选监督定义；须过 S0-E 才冻结
+    positive_window_angstrom: 0.10
+    negative_window_angstrom: 0.30
+    ts_hard_negative_angstrom: 0.04       # TS 帧及 TS 邻域永远负例
+    bond_edit_tolerance_angstrom: 0.30    # 目标键编辑完成判定容差
+    min_interatomic_angstrom: 0.65        # 碰撞/几何合法性下限
+    energy_window_kcal_mol: 5.0           # GFN-2 相对参考端点能量窗（仅诊断辅助，非部署判据）
+    terminal_rule: terminal ≠ endpoint；仅 d_end<=w_pos 且键编辑完成 → 正例，否则 Mask
+    degenerate_ts_rule: d_end(TS)<=w_pos → 曲线 flag 退化、相关行 Mask、含/排双口径报告
+    hard_gate: S0-E 覆盖率与硬负例不达标 → 不冻结标签、不进 S1
+  progress_q:
+    definition: 分段归一化 A=-1/TS=0/B=+1；reverse q=-q；零弧段 mask（沿用 progress_q_from_arcs_v52）
+    role: 辅助监督 + directed pairwise ordering（跨 TS 构对允许）
+    never_stop_criterion: true            # q=0 / q 阈值禁止触发 No-Move
+
+split_contract:
+  split_manifest: /pes2ts_data/v53mp_50k_data/split_manifest_v53mp.json
+  schema: v53mp_split_v1
+  subsets: [pool, dev, confirm]
+  nested_tiers: [2k, 5k, 20k, 50k]        # 2k ⊂ 5k ⊂ 20k ⊂ 50k，按 rank 嵌套于同一冻结池
+  seeds: [17, 29, 43]
+  statistics: cluster bootstrap by curve（1000 次，95% CI）
+  family_holdout: sealed                  # 反应族留出封存
+  confirm_rule: confirm 子集不得参与任何设计/标签 QC；最终评估前不触碰
+  evaluation_sets_frozen: S1/S2/S3 共用同一独立 dev/confirm（评估集不随规模更换）
+  unit: near-duplicate connected component（同 curve 全部帧/两 intent 同池）
+
+training_contract:
+  backbone: StarEGNNV3(hidden=48, n_layers=3, 55441 参数)   # 唯一共享主干
+  backbone_freeze: S1–S2 不扩容（S4 扩容另议，需 S3 通过）
+  backbone_init: outputs/pesn/30h_campaign/r3_runs/5372d9b12807c3f0/checkpoint_best.pt
+  backbone_init_note: R3 F2-bidir winner（fold0×seed17）；全部 V5.3-MP run 固定同一 init（计划 §3 不扩容）
+  heads:
+    version: pesn_key_atom_v53mp_heads_v1
+    process: ReactionProcessHead（q / endpoint / ordering，输入共享 z）
+    legacy: 旧停止头 LEGACY_TS_STOP 只读旧 checkpoint，禁止新训练/新推理
+  arms:
+    A: move-only（lambda_rank=lambda_q=lambda_endpoint=0）
+    B: A + lambda_rank*L_ranking + lambda_q*L_q
+    C: B + lambda_endpoint*L_endpoint
+  schedule:
+    staged: true                          # 冻结编码器 head warmup → 联合训练
+    freeze_encoder_updates: 400
+    joint_updates_base_2k: 1500           # 2k 基准联合步数
+    joint_updates_scaling: density_preserving_per_tier   # joint = 1500 × (tier_curves/2000)：2k=1500, 5k=3750, 20k=15000；采样密度跨 tier 恒定 → 数据规模为唯一主变量（2026-10-22 S0 后冻结；固定 1900 会让 20k 池 ~47% 曲线从未被采样）
+    lr_head: 3.0e-4
+    lr_encoder: 1.0e-4
+    optimizer: AdamW
+    weight_decay: 1.0e-4
+    grad_clip: 1.0
+    precision: fp32
+  smoke_updates: 100                      # CANDIDATE — S1 2k 冒烟步数（≤1 GPU-h 资源上限内）
+  s1_eval_max_samples: 8000               # S1 冒烟 dev 评估上限（种子化子采样；S2/S3 用完整 dev 集保证跨 tier 可比）
+  inner_val_max_samples: 8192             # 选择/τ 校准的 inner-val 上限（种子化、整个 run 固定）；5k/20k 规模下保持选择信号廉价
+  move_guard:
+    limit_pct: 2.0                        # 相对 R3 F2-bidir winner zero-shot 退化 ≤2%（硬门）
+    on_breach: scientific_failure         # 保留 run、保留记录，不删除不改写不标 invalid
+  gradient_monitoring:
+    every_updates: 100
+    track: [per-term gradient norms, pairwise cosines, encoder gradient share]
+  lambda_probe:
+    method: encoder_gradient_share_probe
+    target_share_pct: [2.0, 10.0]         # λ 按 encoder 梯度占比 2–10% 校准
+    grid_search: forbidden                # 不做网格
+    values: {lambda_rank: 0.5, lambda_q: 0.5, lambda_endpoint: 0.012385049119773344}
+    verdicts: {lambda_rank: scale_unreachable, lambda_q: target_unreachable, lambda_endpoint: calibrated}
+    probe_evidence: outputs/pesn/v53mp/v53mp_lambda_calibration.json   # 2026-10-21T22:00Z, 20 batches @ 2k inner-train, R3-winner init
+    verdict_note: "endpoint 校准达成 2.0% share；q/rank 在 λ=0.5 上限处分别达 1.4%/0.48%（scale 有限，rank 为弱项）——按探针记录在上限运行，诚实记录 verdict；若 S1 显示 rank 项实质无学习，将在报告中注明"
+    fill_rule: 探针结果回填本文件 → config_sha256 变更 → plan-init --force 重建 plan；null 时 B/C 臂拒绝启动
+  sampling: curve-balanced 8×4 stratified（start / pre-TS / post-TS / endpoint）；固定 seed；记录有效 batch
+  selection: inner-val only（单折/单 seed 不晋级；confirm 隔离）
+  tau_end:
+    calibrated_on: inner-val
+    target_precision: 0.9
+    frozen_after_calibration: true       # τ_end 校准后冻结（合同 §9）
+  training_qualification_note: "训练资格≠部署资格; No-Move 在线控制权只在独立验证后启用"
+
+budget:
+  s1_gpu_seconds_cap: 3600               # S1 ≤1 GPU-h（资源上限，不是完成保证；计划 §5）
+  s1_gpu_seconds_per_run_estimate: 1200  # CANDIDATE — S1 实测后回填（3 run 估计 3×1200=3600 s）
+  s2_s3_rule: S1 实测外推后冻结上限，逐阶段授权（计划 §10）；预算删失记 budget_censored，不改比较条件
+
+evaluation_contract:
+  arms_matrix:
+    A: [Move RMSE/zero, cosine, sign, dead]           # 主问题：数据规模能否改善基本运动能力
+    B: A 全部 + directed ordering（mean、跨 TS）      # Progress 是否帮助 MOVE
+    C: B 全部 + Endpoint AUPRC + 起点/TS 误停率       # Endpoint 监督是否带来额外价值
+    C_vs_A_B: 同评估集 Move 退化 + 完整 rollout（负迁移检查）
+  baselines:
+    endpoint: [常数 prevalence, 拓扑规则, 相同数据条件独立分类器]   # 不得用 B 作 AUPRC 基线
+    progress_q: [常数基线, 拓扑基线, 自身消融]                      # B 不与 A 比 Progress
+  frozen_sets: 共用独立 dev/confirm（S1/S2/S3 同一评估集）
+  reporting: 指标分开报告（Move 误差 / ordering / Endpoint AUPRC / 闭环成功率），不合成单一分数
+  rollout:
+    reference_normalized: B = max(40, ceil(1.5*L_key/0.08))（仅离线教师诊断）
+    autonomous: 固定预算或仅用当前合法信息（正式自主导航评价）
+    separate_reporting: true             # 两种结果不得合并成功率
+    claims: [TS_candidate, endpoint_reached]   # 禁止 verified TS / verified path 声明
+
+gates:
+  rule: 前一阶段不过即停，不跳阶段；不用 confirm/sealed 子集做任何选择
+  items:
+    - id: V53MP-S0A-metadata
+      test: 库存/元数据资格（不读原始 IRC 真值）→ metadata_qualification.json（total/eligible/excluded）
+    - id: V53MP-S0B-extract
+      test: 经 truth_guard 授权提取 + truth_access_log.jsonl 逐次记录；硬门=无未授权真值访问（非日志为空）
+    - id: V53MP-S0C-labels
+      test: endpoint_label_spec_v1 正/负/Mask 规则落地（TS 硬负例、terminal、键编辑+几何/能量双检查）
+    - id: V53MP-S0D-loader
+      test: 分片/惰性加载器资源小试（启动时间、峰值 RSS、随机访问、shard 等价性）过预注册上限
+    - id: V53MP-S0E-coverage
+      test: 覆盖率与硬负例验证（TS/起点 0% 正例；真实端点 100% 正例；退化 flag；低覆盖 family 单列）
+    - id: V53MP-S0F-readiness
+      test: 实施就绪 7/7（r3_v53mp_run.py gate-check 子命令）+ split 冻结 + manifests 齐全且 sha 校验通过
+    - id: V53MP-S1-smoke
+      test: 2k 冒烟 ≤1 GPU-h 资源上限（budget_censored 允许）+ Move guard ≤2% + s1_authorized=true
+    - id: V53MP-S2-scale
+      test: 5k 学习曲线/稳定性/资源；不因统计不显著阻断 S3
+    - id: V53MP-S3-formal
+      test: 20k 三臂主结果；3 seeds；数据规模唯一主变量；评估集冻结
+    - id: V53MP-S3-closed-loop
+      test: reference-normalized 与 autonomous 分开报告；声明限 TS_candidate/endpoint_reached

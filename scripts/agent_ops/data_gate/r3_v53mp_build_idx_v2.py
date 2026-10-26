@@ -26,6 +26,8 @@ Progress is logged to stderr; the final summary JSON is printed to stdout.
 from __future__ import annotations
 
 import argparse
+import ctypes
+import gc
 import json
 import pickle
 import subprocess
@@ -157,22 +159,6 @@ def build_idx_v2(tables_dir: Path, out_dir: Path, *,
     _require(n_rows > 0, "SOURCE_SHAPE", "light pickle has no samples")
     _log(f"    {n_rows} samples ({time.perf_counter() - t0:.1f}s)")
 
-    # --- load label cache -----------------------------------------------------
-    _log("[3/7] loading label cache …")
-    t0 = time.perf_counter()
-    lab_doc = json.loads((tables_dir / CACHE_JSON).read_text(encoding="utf-8"))
-    _require(int(lab_doc["n_samples"]) == n_rows, "SOURCE_SHAPE",
-             f"label cache n_samples {lab_doc['n_samples']} != "
-             f"light pickle {n_rows}")
-    data = np.load(tables_dir / CACHE_NPZ, allow_pickle=False)
-    lab_sids = [str(s) for s in data["sample_ids"]]
-    _require(len(lab_sids) == n_rows, "SOURCE_SHAPE",
-             "label cache row count != sample count")
-    sid_row = {sid: i for i, sid in enumerate(lab_sids)}
-    _require(len(sid_row) == n_rows, "SOURCE_SHAPE",
-             "duplicate sample_ids in label cache")
-    _log(f"    {len(lab_sids)} label rows ({time.perf_counter() - t0:.1f}s)")
-
     # --- curve table (first-appearance order == v1 samples block order) ------
     _log("[4/7] curve + intent tables …")
     curve_ids: list[str] = []
@@ -183,8 +169,6 @@ def build_idx_v2(tables_dir: Path, out_dir: Path, *,
             curve_row[cid] = len(curve_ids)
             curve_ids.append(cid)
     n_curves = len(curve_ids)
-    _require(int(lab_doc["n_curves"]) == n_curves, "SOURCE_SHAPE",
-             "label cache n_curves != light pickle curve count")
     _require(n_curves < (1 << 21), "IDX2_SHAPE",
              "curve count exceeds idx_v2 packing limit 2^21")
 
@@ -349,6 +333,40 @@ def build_idx_v2(tables_dir: Path, out_dir: Path, *,
              "action buffer shape mismatch")
     _log(f"    {n_rows} rows, {action_total} action rows "
          f"({time.perf_counter() - t0:.1f}s)")
+
+    # The light pickle holds 14.7 M Python records (~31 GB at 50k).  All
+    # per-sample columns are now built, so release it BEFORE opening the
+    # ~10 GB label cache.  Peak becomes max(pickle, labels+arrays), not the
+    # sum (the 50k host cannot hold both simultaneously without pagefile).
+    _log("[5b/7] freeing light pickle before label cache …")
+    del samples, state
+    gc.collect()
+    # CPython's pymalloc keeps freed arenas; return them to the OS so the
+    # cgroup does not count the freed 30 GB pickle against the next phase.
+    try:
+        ctypes.CDLL("libc.so.6").malloc_trim(0)
+    except Exception:
+        pass
+    gc.collect()
+    _log("    pickle freed; label cache follows")
+
+    # --- load label cache -----------------------------------------------------
+    _log("[5c/7] loading label cache …")
+    t0 = time.perf_counter()
+    lab_doc = json.loads((tables_dir / CACHE_JSON).read_text(encoding="utf-8"))
+    _require(int(lab_doc["n_samples"]) == n_rows, "SOURCE_SHAPE",
+             f"label cache n_samples {lab_doc['n_samples']} != "
+             f"light pickle {n_rows}")
+    _require(int(lab_doc["n_curves"]) == n_curves, "SOURCE_SHAPE",
+             "label cache n_curves != light pickle curve count")
+    data = np.load(tables_dir / CACHE_NPZ, allow_pickle=False)
+    lab_sids = [str(s) for s in data["sample_ids"]]
+    _require(len(lab_sids) == n_rows, "SOURCE_SHAPE",
+             "label cache row count != sample count")
+    sid_row = {sid: i for i, sid in enumerate(lab_sids)}
+    _require(len(sid_row) == n_rows, "SOURCE_SHAPE",
+             "duplicate sample_ids in label cache")
+    _log(f"    {len(lab_sids)} label rows ({time.perf_counter() - t0:.1f}s)")
 
     # --- curve-weight invariant (ORA-2 #3, same tolerance as v1) -------------
     _log("[6/7] invariants + label reorder …")
