@@ -178,17 +178,17 @@ backbone_contract:
       evaluator_parity: recompute_H2_H3_vs_V541_archive_bitwise_or_le_1e-9
       tf32_during_parity: false
       required_assets: 6 # 3 V541 E0 必做 + 3 V53MP C 必做 (资产存在后 6/6); smoke 路径禁止
-      assets: # 精确 path + SHA-256 (只读 lane 2026-10-30 核实); source_tier/training_updates = fix-5 C3 分层字段
-        - {id: V541_E0_S17, path: outputs/pesn/v541_embed_50k/runs/V541_T0R_E0_S17/checkpoint_best.pt, sha256: c1e35610d33e2350ec5987ccbced07ba7e665458e6078a7eaf2e0de9e90ca56d, required: true, source_tier: v541_e0_runs_final_37900, training_updates: 37900}
-        - {id: V541_E0_S29, path: outputs/pesn/v541_embed_50k/runs/V541_T0R_E0_S29/checkpoint_best.pt, sha256: a214d6e9c9cf4a80bbf079567d13c0a09061dcbd0b5b2f3dec4f53f9cc29e49d, required: true, source_tier: v541_e0_runs_final_37900, training_updates: 37900}
-        - {id: V541_E0_S43, path: outputs/pesn/v541_embed_50k/runs/V541_T0R_E0_S43/checkpoint_best.pt, sha256: 92412a1af295cc58c880c32bf9ee0ea653b46ef31648fc9cf1cc76a806a6f00c, required: true, source_tier: v541_e0_runs_final_37900, training_updates: 37900}
-        - {id: V53MP_C_S17, path: outputs/pesn/v53mp/v53mp_20k_C_s17/checkpoint_best.pt, sha256: 871596e61b7d2e2ed77328eaa884b848621f07533e8ffd242a98442c0aec5db3, required: true, source_tier: v53mp_20k_s3_formal_15400_auxiliary, training_updates: 15400}
-        - {id: V53MP_C_S29, path: outputs/pesn/v53mp/v53mp_20k_C_s29/checkpoint_best.pt, sha256: d456050e9ed5f231691306097e120459cd8679768da30313c837ef1307f06884, required: true, source_tier: v53mp_20k_s3_formal_15400_auxiliary, training_updates: 15400}
-        - {id: V53MP_C_S43, path: outputs/pesn/v53mp/v53mp_20k_C_s43/checkpoint_best.pt, sha256: d6b11a20c90cda353400639a2f88c54a4ba3b91fcda55a67241d8fa967f4715b, required: true, source_tier: v53mp_20k_s3_formal_15400_auxiliary, training_updates: 15400}
+      assets: # 精确 path + SHA-256 (只读 lane 2026-10-30 核实); source_tier/run_updates/checkpoint_update = fix-5 C3 + gate-0 A6 溯源字段 (run_updates=来源 run 总剂量; checkpoint_update=钉死 payload 的 best-checkpoint update; training_updates 仅为 run_updates 的单义别名, 永远不是 checkpoint update)
+        - {id: V541_E0_S17, path: outputs/pesn/v541_embed_50k/runs/V541_T0R_E0_S17/checkpoint_best.pt, sha256: c1e35610d33e2350ec5987ccbced07ba7e665458e6078a7eaf2e0de9e90ca56d, required: true, source_tier: v541_e0_runs_final_37900, run_updates: 37900, checkpoint_update: 37000, training_updates: 37900}
+        - {id: V541_E0_S29, path: outputs/pesn/v541_embed_50k/runs/V541_T0R_E0_S29/checkpoint_best.pt, sha256: a214d6e9c9cf4a80bbf079567d13c0a09061dcbd0b5b2f3dec4f53f9cc29e49d, required: true, source_tier: v541_e0_runs_final_37900, run_updates: 37900, checkpoint_update: 36400, training_updates: 37900}
+        - {id: V541_E0_S43, path: outputs/pesn/v541_embed_50k/runs/V541_T0R_E0_S43/checkpoint_best.pt, sha256: 92412a1af295cc58c880c32bf9ee0ea653b46ef31648fc9cf1cc76a806a6f00c, required: true, source_tier: v541_e0_runs_final_37900, run_updates: 37900, checkpoint_update: 37800, training_updates: 37900}
+        - {id: V53MP_C_S17, path: outputs/pesn/v53mp/v53mp_20k_C_s17/checkpoint_best.pt, sha256: 871596e61b7d2e2ed77328eaa884b848621f07533e8ffd242a98442c0aec5db3, required: true, source_tier: v53mp_20k_s3_formal_15400_auxiliary, run_updates: 15400, checkpoint_update: 15400, training_updates: 15400}
+        - {id: V53MP_C_S29, path: outputs/pesn/v53mp/v53mp_20k_C_s29/checkpoint_best.pt, sha256: d456050e9ed5f231691306097e120459cd8679768da30313c837ef1307f06884, required: true, source_tier: v53mp_20k_s3_formal_15400_auxiliary, run_updates: 15400, checkpoint_update: 15300, training_updates: 15400}
+        - {id: V53MP_C_S43, path: outputs/pesn/v53mp/v53mp_20k_C_s43/checkpoint_best.pt, sha256: d6b11a20c90cda353400639a2f88c54a4ba3b91fcda55a67241d8fa967f4715b, required: true, source_tier: v53mp_20k_s3_formal_15400_auxiliary, run_updates: 15400, checkpoint_update: 15400, training_updates: 15400}
       smoke_path_forbidden: outputs/pesn/v541_embed_50k/smoke/** 永不作为 parity 资产 (200-update smoke checkpoint); 非钉死 (non-pinned) checkpoint 同样禁止
-      asset_tier_policy: # fix-5 C3: 资产分层修正 (替代旧「必须 runs/ 37,900 final」绝对措辞)
-        v541_e0_runs_final_37900: V541 E0 S17/S29/S43 = runs/ 下 37,900-update final 主证据 (source_tier=v541_e0_runs_final_37900, training_updates=37900)
-        v53mp_20k_s3_formal_15400_auxiliary: V53MP C S17/S29/S43 = outputs/pesn/v53mp/ 下 S3 formal 20k-tier 15,400-update 辅助证据 (source_tier=v53mp_20k_s3_formal_15400_auxiliary, training_updates=15400; 非 smoke、非 37,900、不在 runs/)
+      asset_tier_policy: # fix-5 C3: 资产分层修正 (替代旧「必须 runs/ 37,900 final」绝对措辞); gate-0 A6: run_updates=run 剂量, checkpoint_update=payload best update
+        v541_e0_runs_final_37900: V541 E0 S17/S29/S43 = runs/ 下 37,900-update run 的 best inner-val checkpoint 主证据 (source_tier=v541_e0_runs_final_37900, run_updates=37900, checkpoint_update=37000/36400/37800, training_updates=37900=run_updates 别名)
+        v53mp_20k_s3_formal_15400_auxiliary: V53MP C S17/S29/S43 = outputs/pesn/v53mp/ 下 S3 formal 20k-tier 15,400-update run 的 best inner-val checkpoint 辅助证据 (source_tier=v53mp_20k_s3_formal_15400_auxiliary, run_updates=15400, checkpoint_update=15400/15300/15400, training_updates=15400=run_updates 别名; 非 smoke、非 37,900、不在 runs/)
         forbidden: [smoke_checkpoints, non_pinned_checkpoints]
     torch_compile: false # 禁止: hook/parity 失效
     backbone_active_params: 55392 # 迁移不变量 (StarEGNNV3 55441 - w_v 49)
@@ -227,7 +227,7 @@ training_contract:
     forbidden_sources_note: V541 E0 final 只用于 parity 证书与历史参照; 从它 warm-start 会给候选多 37,900 update 预训练, 与 A0 不可比
   init_policy:
     mapping: explicit_semantic_pre_registered_no_runtime_shape_heuristics # 每候选 {target: source} 表在 WP0 冻结 (init_mapping.r3_semantic_mapping) + 逐键审计 JSON
-    mapping_audit: every source key consumed exactly once; every target key loaded or fresh-listed with seed; loaded tensors torch.equal; no empty slots
+    mapping_audit: every source key consumed exactly once except the declared w_v dual-write alias (backbone.w_v <-> move_decoder.w_v, same tensor); every target key loaded or fresh-listed with seed; loaded tensors torch.equal; no empty slots # gate-0 A8: 声明 w_v 双写例外, strict audit 不得把合法 dual-write 误判为 double consumption
     process_head_anchor:
       method: fork_rng_replay # manual_seed(seed) -> StarEGNNV3() -> ReactionProcessHeadV53MP() -> state_dict
       seeds: [17, 29, 43]
@@ -251,9 +251,9 @@ training_contract:
     construction_rng: 整个模型构造包在 torch.random.fork_rng(devices=[]); 构造后 set_seed(run_seed) 再开始训练; 构造不扰动 sampler/loss 流
     reset_seed_before_training: true
     init_mapping:
-      note: R3 37 键 → 每候选语义映射表 (Oracle §3.2 配方; WP0 冻结); 所有 w_v 来自 R3 (49 params, 所有候选同值); process head 来自 deterministic anchor, 不来自 R3
+      note: R3 37 个 backbone 键 → 每候选语义映射表 (Oracle §3.2 配方; WP0 冻结); A0 = 37 键 identity (w_v 双写例外 = backbone.w_v ↔ move_decoder.w_v 同一 tensor); 联合 checkpoint 的 A0 strict-audit = 37 backbone + 6 process head = 43 joint 键 identity + w_v 双写 (pes2ts_core/pesn/models/v542/loader.py 映射全部 43 键), backbone-only (R3 warm-start) 映射保持 37 键; 所有 w_v 来自 R3 (49 params, 所有候选同值); process head 来自 deterministic anchor, 不来自 R3
       r3_semantic_mapping:
-        A0: 全部 37 键 identity 映射 (A0 = R3 结构 + adapter)
+        A0: 全部 37 个 backbone 键 identity 映射 (w_v 双写例外 backbone.w_v ↔ move_decoder.w_v; A0 = R3 结构 + adapter; 联合 checkpoint strict-audit 另含 6 个 process head 键 = 43 joint 键)
         A1: 映射 elem_emb, node_proj, z_head, message_mlp.0, message_mlp.1, node_mlp.0, node_mlp.1 (R3 同名同形); W_d 与第 2 层增量参数 fresh 零初始化
         A1-C: A1 映射集 + 第 3 层 fresh (用 A1 init stream, init_source_id=A1); W_d 第 3 层零初始化
         A2: A1 common 映射集 + 两层同形 phi_s (标量 MLP 同 message_mlp 形状); 向量通道 V/W_v/W_s fresh seeded; V_0=0; W_g 零初始化
@@ -317,13 +317,13 @@ a0_baseline:
   sanity_band_statistic: A0×3 三 seed 均值 vs V541 E0×3 三 seed 均值 (seed-mean vs seed-mean; 不是单 seed 检查点)
   sanity_band_gate: V542-A0-sanity-band # registry canonical gate (fix-5 C5); T0 A0×3 formal done 且 band pass 才注册
   sanity_band_order: T0 A0×3 formal + sanity band 必须在任何 T1 A1-A4 formal 前完成; smoke/profile/diagnostic 可先行
-  sanity_band_breach_procedure: # 冻结审计程序 (Oracle finding 16 + fix-5 C5 硬门修正; 移除旧「登记 exception 后继续」路径)
+  sanity_band_breach_procedure: # 冻结审计程序 (Oracle finding 16 + fix-5 C5 硬门修正 + gate-0 A8 按缺陷类别 bump 对应身份层; 移除旧「登记 exception 后继续」路径)
     - 1_strictly_block_all_T1_formal_candidate_launches # 带 breach 不得启动任何候选 formal run
     - 2_migration_audit: parity_certificate + process_head_anchor + r3_mapping + sampler + evaluator + code + data + initialization # 逐项迁移审计
-    - 3_if_code_data_or_init_defect_found: fix_defect_then_bump_source_tree_fingerprint_and_rerun_A0_x3_formal # 旧 A0×3 记 invalid_run, 不得混比
+    - 3_if_code_data_or_init_defect_found: fix_defect_then_bump_matching_identity_layer (code_defect=>source_tree_fingerprint; data_defect=>data_manifest_sha256; init_defect=>init_mapping_sha256; anchor_implicated=>process_head_anchor_sha256) then rerun_A0_x3_formal; old_A0x3=>invalid_run, no exception # 旧 A0×3 记 invalid_run, 不得混比
     - 4_resume_T1_only_after_V542-A0-sanity-band_pass_on_clean_A0_x3
     - 5_sanity_exception_signing_forbidden_under_breach # 不得签 exception 带 breach 继续
-  sanity_band_note: 带宽只抓迁移大 bug, 不要求与 E0 数值相同; breach = 严格阻断 T1 + 迁移审计 + (若发现代码/数据/初始化缺陷) 修复后 bump code fingerprint 并重跑 A0×3; 禁止签 exception 继续
+  sanity_band_note: 带宽只抓迁移大 bug, 不要求与 E0 数值相同; breach = 严格阻断 T1 + 迁移审计 + 按缺陷类别 bump 对应身份层 (代码缺陷=>source_tree_fingerprint; 数据缺陷=>data_manifest_sha256; 初始化缺陷=>init_mapping_sha256; anchor 牵连=>process_head_anchor_sha256) 后重跑 A0×3 formal (旧 A0×3 记 invalid_run, 不混比); 禁止签 exception 继续
 
 smoke:
   updates: 200
@@ -559,7 +559,7 @@ evaluation_contract:
 gates:
   H0: {rule: "schema/no-leak/E(3)/permutation/reverse-relabel/非关键零动作/typed-invalid/restore/有限梯度 全过", on_fail: invalid_run}
   H1: {rule: "单路、无 swap/OOM、host/VRAM/预算不超线", on_fail: resource_failure 或 budget_censored}
-  parity: {rule: "6 checkpoint 全 required (3 V541 E0 S17/29/43 主证据 = runs/ 下 37,900-update final + 3 V53MP C S17/29/43 辅助证据 = outputs/pesn/v53mp/ 下 S3 formal 20k-tier 15,400-update; path+SHA 已钉死于 backbone_contract.a0_migration.parity.assets, 6/6; smoke 与非钉死路径禁止) strict-audit load + CPU bitwise 5 输出+forward_move + >=8 真实 inner-val batch + GPU 1e-6/1e-5 hard cap (关 TF32, run-to-run 地板仅作诊断, floor>cap => GPU parity inconclusive, CPU bitwise 仍为决定证据) + q==order_score + evaluator parity", on_fail: invalid_run}
+  parity: {rule: "6 checkpoint 全 required (3 V541 E0 S17/29/43 主证据 = runs/ 下 37,900-update run 的 best inner-val checkpoint, checkpoint update 37000/36400/37800 + 3 V53MP C S17/29/43 辅助证据 = outputs/pesn/v53mp/ 下 S3 formal 20k-tier 15,400-update run 的 best inner-val checkpoint, checkpoint update 15400/15300/15400; path+SHA 已钉死于 backbone_contract.a0_migration.parity.assets, 6/6; smoke 与非钉死路径禁止) strict-audit load + CPU bitwise 5 输出+forward_move + >=8 真实 inner-val batch + GPU 1e-6/1e-5 hard cap (关 TF32, run-to-run 地板仅作诊断, floor>cap => GPU parity inconclusive, CPU bitwise 仍为决定证据) + q==order_score + evaluator parity", on_fail: invalid_run}
   H2: {rule: "每正式 seed: RMSE/zero 退化 <=2% 相对 R3 且退化 <=2% 相对同 seed matched A0; sign 绝对下降 <=0.01; dead 绝对增加 <=0.01; fixed-coverage direction 相对退化 <=2%; R3 参照必须同 evaluator/环境可重评", on_fail: scientific_failure}
   H3: {rule: "对照 matched A0 (非 R3): 路线判定用冻结括号逻辑 (evaluation_contract.route_logic) — MOVE pass = (direction_pass AND rmse_non_inferior) OR (rmse_pass AND direction_non_inferior) (direction_pass = fixed-coverage direction 相对改善 >=3% 且绝对 +0.01; rmse_pass = RMSE/zero 相对改善 >=3%; rmse_non_inferior = RMSE/zero 退化 <=2%; direction_non_inferior = direction 退化 <=2%); PROCESS pass = (auprc_pass AND q_non_inferior) OR (q_pass AND auprc_non_inferior) (auprc_pass = ΔAUPRC>=0.02; q_pass = Δq>=0.03; auprc_non_inferior = AUPRC 下降 <=0.01; q_non_inferior = q 下降 <=0.02); >=2/3 seeds 同向 + 每 seed 无 H2 breach; 三 seed seed-averaged curve-level paired bootstrap 10000 draws CI 下界 >0 (bootstrap_seed_root=20261029, 确定性子 seed 公式见 statistics); p 值 = one-sided improvement paired bootstrap (公式见 statistics.p_value_rule); Holm family 冻结: MOVE direction 与 MOVE RMSE 两 exit 各 alpha=0.025 各自对 eligible candidate 集 Holm, PROCESS 单一 family 对 2 endpoints x eligible candidates Holm, family alpha=0.025; eligible = 完成三 seed 且每 seed H2 无 breach 的 winner-eligible candidate; 冠军 = H3-qualified 集内按 evaluation_contract.final_selection_rule 冻结字典序选定; 报告未校正与校正后结果; PROCESS-only 可晋级但报告须明确 MOVE 未改善; 任何收益不豁免 H2", on_fail: no_backbone_winner}
   r3_guard_block: "R3 参照无法同 evaluator/环境重评 -> T1 阻断 (不得降级为仅 matched-A0 参照)"

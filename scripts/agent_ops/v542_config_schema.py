@@ -42,14 +42,22 @@ extended by fix-5 (C1–C5/C7) and fix-6 (C6 machine checks, 2026-10-30):
 * **route_logic parenthesized (fix-6 C2)** — MOVE/PROCESS ``pass_logic``
   strings and component thresholds are exact; the seed17 screen reuses the
   same parenthesized logic (no dangling OR).
-* **statistics exact fields (fix-6 C6)** — ``ci=percentile_95``, exact
-  pairing sentence, ``final_draws_ref=thresholds.final_bootstrap_draws``,
-  all four improvement directions, exact p numerator, CI/p same draws,
-  frame-level forbidden, Holm families/alpha/eligible/champion rule.
-* **parity asset tiers (fix-6 C3)** — 6/6 rows carry ``source_tier`` +
-  ``training_updates`` (V541 E0 = runs/ 37,900 final; V53MP C = 20k S3
-  formal 15,400); smoke and non-pinned checkpoints forbidden; GPU 1e-6/1e-5
-  hard caps, floor>cap ⇒ inconclusive, no relaxation.
+* **statistics fields (fix-6 C6; partially exact)** — ``ci=percentile_95``,
+  the pairing sentence, ``final_draws_ref=thresholds.final_bootstrap_draws``,
+  all four improvement directions, the p numerator, CI/p same draws,
+  frame-level forbidden, and the Holm families/alpha are checked exactly.
+  **Still token-level (gate-0 advisory A2 open):** ``h3_eligible_candidates``
+  (H2 / diagnostic / 三 seed / winner-eligible token presence) and
+  ``champion_rule`` (reference to ``evaluation_contract.final_selection_rule``);
+  both are scheduled for exact/structured freezing before P3/WP6.
+* **parity asset tiers (fix-6 C3; gate-0 A6)** — 6/6 rows carry
+  ``source_tier`` + ``run_updates`` (source-run training dose: V541 E0 =
+  37,900; V53MP C = 15,400) + ``checkpoint_update`` (the pinned payload's
+  best-checkpoint ``update``: 37000/36400/37800; 15400/15300/15400) with
+  ``checkpoint_update <= run_updates``; ``training_updates`` is kept ONLY
+  as an alias equal to ``run_updates`` (single run-dose meaning — never
+  the checkpoint update); smoke and non-pinned checkpoints forbidden;
+  GPU 1e-6/1e-5 hard caps, floor>cap ⇒ inconclusive, no relaxation.
 
 Typed rejections (each carries a stable ``code``; 19 codes — the
 authoritative count for docs/registry wording):
@@ -136,6 +144,7 @@ __all__ = [
     "A0_BREACH_PROCEDURE",
     "A0_JOINT_PARAMS",
     "A0_SANITY_BAND_GATE",
+    "A0_SANITY_BAND_NOTE_EXACT",
     "A0_SANITY_BAND_VALUES",
     "A5_SUPPLEMENT_MAX_RUNS",
     "A5_SUPPLEMENT_PARENT_GATE",
@@ -161,6 +170,7 @@ __all__ = [
     "GV_CAMPAIGN_ID",
     "IDENTITY_REQUIRED_FIELDS",
     "IMPROVEMENT_DIRECTIONS",
+    "INIT_MAPPING_AUDIT_EXACT",
     "INIT_SEED_RECIPE",
     "KNOWN_BACKBONES",
     "MOVE_PASS_LOGIC",
@@ -557,27 +567,61 @@ FORMAL_STAGE_ORDER: Tuple[str, ...] = (
     "T2_A5_S17_conditional_then_T3_top2_and_a5_supplement",
     "T-ATTR_A1C_A5C_conditional",
 )
-#: Breach procedure steps — step 5 forbids exception signing (no escape hatch).
+#: Breach procedure steps — step 3 names the identity layer per defect
+#: class (gate-0 A8); step 5 forbids exception signing (no escape hatch).
 A0_BREACH_PROCEDURE: Tuple[str, ...] = (
     "1_strictly_block_all_T1_formal_candidate_launches",
     "2_migration_audit: parity_certificate + process_head_anchor + r3_mapping "
     "+ sampler + evaluator + code + data + initialization",
-    "3_if_code_data_or_init_defect_found: fix_defect_then_bump_"
-    "source_tree_fingerprint_and_rerun_A0_x3_formal",
+    "3_if_code_data_or_init_defect_found: fix_defect_then_bump_matching_"
+    "identity_layer (code_defect=>source_tree_fingerprint; "
+    "data_defect=>data_manifest_sha256; init_defect=>init_mapping_sha256; "
+    "anchor_implicated=>process_head_anchor_sha256) then "
+    "rerun_A0_x3_formal; old_A0x3=>invalid_run, no exception",
     "4_resume_T1_only_after_V542-A0-sanity-band_pass_on_clean_A0_x3",
     "5_sanity_exception_signing_forbidden_under_breach",
 )
+#: gate-0 A8: the sanity-band note frozen EXACTLY — one rule, no
+#: contradiction with the breach procedure: per-defect-class identity
+#: bump (code => source_tree_fingerprint, data => data_manifest_sha256,
+#: init => init_mapping_sha256, anchor implicated =>
+#: process_head_anchor_sha256), rerun A0x3, old A0x3 => invalid_run, and
+#: sanity-exception signing stays forbidden under breach.
+A0_SANITY_BAND_NOTE_EXACT: str = (
+    "带宽只抓迁移大 bug, 不要求与 E0 数值相同; breach = 严格阻断 T1 + 迁移审计 + "
+    "按缺陷类别 bump 对应身份层 (代码缺陷=>source_tree_fingerprint; "
+    "数据缺陷=>data_manifest_sha256; 初始化缺陷=>init_mapping_sha256; "
+    "anchor 牵连=>process_head_anchor_sha256) 后重跑 A0×3 formal "
+    "(旧 A0×3 记 invalid_run, 不混比); 禁止签 exception 继续"
+)
+#: gate-0 A8: init_policy.mapping_audit frozen EXACTLY — the declared
+#: w_v dual-write alias (backbone.w_v <-> move_decoder.w_v, the same
+#: tensor object) is the single legitimate non-identity write; a strict
+#: audit must NOT treat it as double consumption.
+INIT_MAPPING_AUDIT_EXACT: str = (
+    "every source key consumed exactly once except the declared w_v "
+    "dual-write alias (backbone.w_v <-> move_decoder.w_v, same tensor); "
+    "every target key loaded or fresh-listed with seed; loaded tensors "
+    "torch.equal; no empty slots"
+)
 
 # ---------------------------------------------------------------------------
-# fix-6 C3: parity asset tiers (V541 E0 final 37,900 vs V53MP C 20k/15,400)
+# fix-6 C3 + gate-0 A6: parity asset tiers and update provenance.
+# Each row pins (tier, run_updates, checkpoint_update): run_updates is the
+# source run's total training dose (must equal the tier dose named in the
+# tier label); checkpoint_update is the pinned checkpoint_best.pt
+# payload's best-inner-val ``update`` (checkpoint_update <= run_updates).
+# The legacy ``training_updates`` field stays ONLY as an alias equal to
+# ``run_updates`` (single run-dose meaning — never the checkpoint update)
+# because the P1 parity-harness lane reads it from the config.
 # ---------------------------------------------------------------------------
-PARITY_ASSET_TIERS: Dict[str, Tuple[str, int]] = {
-    "V541_E0_S17": ("v541_e0_runs_final_37900", 37900),
-    "V541_E0_S29": ("v541_e0_runs_final_37900", 37900),
-    "V541_E0_S43": ("v541_e0_runs_final_37900", 37900),
-    "V53MP_C_S17": ("v53mp_20k_s3_formal_15400_auxiliary", 15400),
-    "V53MP_C_S29": ("v53mp_20k_s3_formal_15400_auxiliary", 15400),
-    "V53MP_C_S43": ("v53mp_20k_s3_formal_15400_auxiliary", 15400),
+PARITY_ASSET_TIERS: Dict[str, Tuple[str, int, int]] = {
+    "V541_E0_S17": ("v541_e0_runs_final_37900", 37900, 37000),
+    "V541_E0_S29": ("v541_e0_runs_final_37900", 37900, 36400),
+    "V541_E0_S43": ("v541_e0_runs_final_37900", 37900, 37800),
+    "V53MP_C_S17": ("v53mp_20k_s3_formal_15400_auxiliary", 15400, 15400),
+    "V53MP_C_S29": ("v53mp_20k_s3_formal_15400_auxiliary", 15400, 15300),
+    "V53MP_C_S43": ("v53mp_20k_s3_formal_15400_auxiliary", 15400, 15400),
 }
 PARITY_TIER_POLICY_FORBIDDEN: Tuple[str, ...] = (
     "smoke_checkpoints",
@@ -734,6 +778,11 @@ def _normalize_steps(raw: Any) -> List[str]:
     return out
 
 
+def _is_positive_int(value: Any) -> bool:
+    """True for genuine positive ints (bools, strings and floats rejected)."""
+    return isinstance(value, int) and not isinstance(value, bool) and value > 0
+
+
 # ---------------------------------------------------------------------------
 # individual checks — each returns None or raises V542SchemaError
 # ---------------------------------------------------------------------------
@@ -874,7 +923,11 @@ def _check_interface(cfg: Mapping[str, Any]) -> None:
 
     v1.1 hardening (Oracle finding 9): every interface subfield, the exact
     ``w_v`` same-tensor statement, the capture-hook spec and the six pinned
-    parity assets are enforced — no substring-only checks.
+    parity assets are enforced — no substring-only checks for THOSE items.
+    Note (gate-1 C5 correction): ``a0_migration.core_loop`` remains a
+    substring check (requires the ``verbatim`` token; ``"not verbatim"``
+    currently passes) — converting it to an exact frozen string is open
+    gate-0 advisory A2 (close before P3/WP6).
     """
     contract = cfg.get("backbone_contract")
     iface = contract.get("interface") if isinstance(contract, Mapping) else None
@@ -1168,9 +1221,11 @@ def _check_interface(cfg: Mapping[str, Any]) -> None:
                 "V542_INTERFACE",
                 f"parity asset {exp_id}: path must be exactly {exp_path!r}, "
                 f"got {apath!r} (pin the tiered asset: V541 E0 rows = runs/ "
-                "37,900-update final checkpoint; V53MP C rows = 20k S3 formal "
-                "15,400-update checkpoint; smoke/non-pinned paths are "
-                "forbidden)",
+                "37,900-update run best inner-val checkpoint (checkpoint "
+                "update 37000/36400/37800); V53MP C rows = 20k S3 formal "
+                "15,400-update checkpoint (best inner-val from a "
+                "15,400-update run; checkpoint update 15400/15300/15400); "
+                "smoke/non-pinned paths are forbidden)",
             )
         if PARITY_SMOKE_PATH_TOKEN in str(apath):
             _err(
@@ -1191,21 +1246,65 @@ def _check_interface(cfg: Mapping[str, Any]) -> None:
                 f"parity asset {exp_id}: required must be true (6/6 assets are "
                 "mandatory — no optional rows)",
             )
-        # fix-6 C3: every row carries its source tier + update count so a
-        # harness can never mistake the V53MP C 20k/15,400 asset for a
-        # 37,900 final (or substitute a non-pinned checkpoint).
-        exp_tier, exp_updates = PARITY_ASSET_TIERS[exp_id]
+        # fix-6 C3 + gate-0 A6: every row carries BOTH provenance numbers
+        # so a harness can never mistake the V53MP C 20k/15,400 asset for
+        # a 37,900-run checkpoint (or substitute a non-pinned checkpoint):
+        # run_updates = the source run's total training dose (must match
+        # the tier dose), checkpoint_update = the payload's best-checkpoint
+        # `update` (positive int, <= run_updates).  training_updates stays
+        # ONLY as an alias equal to run_updates (single run-dose meaning;
+        # never the checkpoint update — the P1 parity harness reads it).
+        exp_tier, exp_run_updates, exp_checkpoint_update = PARITY_ASSET_TIERS[
+            exp_id]
         if asset.get("source_tier") != exp_tier:
             _err(
                 "V542_INTERFACE",
                 f"parity asset {exp_id}: source_tier must be "
                 f"{exp_tier!r}, got {asset.get('source_tier')!r}",
             )
-        if asset.get("training_updates") != exp_updates:
+        run_updates = asset.get("run_updates")
+        if not _is_positive_int(run_updates):
             _err(
                 "V542_INTERFACE",
-                f"parity asset {exp_id}: training_updates must be "
-                f"{exp_updates}, got {asset.get('training_updates')!r}",
+                f"parity asset {exp_id}: run_updates must be a positive int "
+                f"(the source-run training dose), got {run_updates!r}",
+            )
+        if run_updates != exp_run_updates:
+            _err(
+                "V542_INTERFACE",
+                f"parity asset {exp_id}: run_updates must equal the "
+                f"{exp_tier!r} tier dose {exp_run_updates}, got "
+                f"{run_updates!r}",
+            )
+        checkpoint_update = asset.get("checkpoint_update")
+        if not _is_positive_int(checkpoint_update):
+            _err(
+                "V542_INTERFACE",
+                f"parity asset {exp_id}: checkpoint_update must be a "
+                f"positive int (the payload's best-checkpoint `update`), got "
+                f"{checkpoint_update!r}",
+            )
+        if checkpoint_update > run_updates:
+            _err(
+                "V542_INTERFACE",
+                f"parity asset {exp_id}: checkpoint_update "
+                f"{checkpoint_update} must be <= run_updates {run_updates} "
+                "(a best checkpoint cannot postdate its own run)",
+            )
+        if checkpoint_update != exp_checkpoint_update:
+            _err(
+                "V542_INTERFACE",
+                f"parity asset {exp_id}: checkpoint_update must be the "
+                f"pinned payload update {exp_checkpoint_update}, got "
+                f"{checkpoint_update!r}",
+            )
+        if asset.get("training_updates") != run_updates:
+            _err(
+                "V542_INTERFACE",
+                f"parity asset {exp_id}: training_updates must equal "
+                f"run_updates {run_updates} (single run-dose meaning; the "
+                "checkpoint update belongs in checkpoint_update), got "
+                f"{asset.get('training_updates')!r}",
             )
 
     tier_policy = parity.get("asset_tier_policy")
@@ -1216,18 +1315,33 @@ def _check_interface(cfg: Mapping[str, Any]) -> None:
             "(V541 E0 runs/ 37,900 main evidence + V53MP C 20k S3 formal "
             "15,400 auxiliary evidence)",
         )
-    for tier, updates in sorted(set(PARITY_ASSET_TIERS.values())):
+    # gate-0 A6: the per-tier policy text must state the run dose AND the
+    # pinned checkpoint-update triple (e.g. 37000/36400/37800).
+    tier_run = sorted({(t, u) for t, u, _c in PARITY_ASSET_TIERS.values()})
+    tier_ckpts: Dict[str, List[int]] = {}
+    for t, _u, c in PARITY_ASSET_TIERS.values():
+        tier_ckpts.setdefault(t, []).append(c)
+    for tier, run_updates in tier_run:
         if tier not in tier_policy:
             _err(
                 "V542_INTERFACE",
                 f"parity.asset_tier_policy must describe tier {tier!r}",
             )
         text = str(tier_policy.get(tier) or "")
-        if str(updates) not in text.replace(",", ""):
+        if str(run_updates) not in text.replace(",", ""):
             _err(
                 "V542_INTERFACE",
                 f"parity.asset_tier_policy.{tier} must state the "
-                f"{updates}-update count, got {text!r}",
+                f"{run_updates}-update count, got {text!r}",
+            )
+        # seed order (S17/S29/S43) as pinned in PARITY_ASSET_TIERS
+        ckpt_token = "/".join(str(c) for c in tier_ckpts[tier])
+        if ckpt_token not in text.replace(",", ""):
+            _err(
+                "V542_INTERFACE",
+                f"parity.asset_tier_policy.{tier} must state the pinned "
+                f"checkpoint updates {ckpt_token} (gate-0 A6 provenance), "
+                f"got {text!r}",
             )
     if tuple(tier_policy.get("forbidden") or ()) != \
             PARITY_TIER_POLICY_FORBIDDEN:
@@ -1389,6 +1503,17 @@ def _check_init_source(cfg: Mapping[str, Any], *, formal: bool) -> List[str]:
             "init_policy.mapping must freeze the explicit semantic mapping and "
             "forbid runtime shape heuristics",
         )
+    # gate-0 A8: the mapping-audit string is frozen EXACTLY (not by token
+    # presence) so the declared w_v dual-write alias stays a legitimate
+    # exception instead of looking like double consumption.
+    audit = str(policy.get("mapping_audit") or "")
+    if audit != INIT_MAPPING_AUDIT_EXACT:
+        _err(
+            "V542_INIT_SOURCE",
+            "init_policy.mapping_audit must be exactly the frozen audit "
+            f"string with the declared w_v dual-write alias exception "
+            f"{INIT_MAPPING_AUDIT_EXACT!r}, got {audit!r}",
+        )
     fresh = policy.get("candidate_fresh_init")
     if not isinstance(fresh, Mapping):
         _err(
@@ -1475,12 +1600,20 @@ def _check_init_source(cfg: Mapping[str, Any], *, formal: bool) -> List[str]:
         _err(
             "V542_MISSING_FIELD", "init_policy.init_mapping missing")
     note = str(init_mapping.get("note") or "")
-    if "w_v" not in note or "R3" not in note:
-        _err(
-            "V542_INIT_SOURCE",
-            "init_policy.init_mapping.note must state that every candidate's "
-            "w_v maps from R3 (49 params, identical across candidates)",
-        )
+    # gate-0 mapping-count clarification: the note must state the exact
+    # counts — 37 backbone keys identity (with the w_v dual-write alias)
+    # for the backbone-only R3 mapping, and 37 + 6 process-head keys = 43
+    # joint keys for joint-checkpoint strict audits (loader.py maps all 43).
+    for token in ("w_v", "R3", "37", "43"):
+        if token not in note:
+            _err(
+                "V542_INIT_SOURCE",
+                "init_policy.init_mapping.note must state that every "
+                "candidate's w_v maps from R3 and that A0 identity is 37 "
+                "backbone keys (w_v dual-write alias) + 6 process-head keys "
+                f"= 43 joint keys for joint checkpoints (token {token!r} "
+                f"missing), got {note!r}",
+            )
     semantic = init_mapping.get("r3_semantic_mapping")
     if not isinstance(semantic, Mapping) or set(semantic) != R3_MAPPING_CANDIDATES:
         _err(
@@ -2468,8 +2601,12 @@ def _check_statistics(cfg: Mapping[str, Any]) -> None:
 
     fix-6 C6: the structured fields themselves are asserted exactly —
     ``ci``/``pairing``/``final_draws_ref``/all four improvement directions/
-    the exact p numerator/same CI-p draws/frame-level bans/Holm families/
-    eligible set/champion rule — not merely the token presence.
+    the exact p numerator/same CI-p draws/frame-level bans/Holm families
+    — not merely the token presence.  Correction (gate-1 C5): the
+    ``h3_eligible_candidates`` eligible set and ``champion_rule`` are
+    TOKEN-presence checks, NOT exact assertions — converting them to
+    exact frozen strings is open gate-0 advisory A2 (close before
+    P3/WP6).
     """
     ec = cfg.get("evaluation_contract")
     stats = ec.get("statistics") if isinstance(ec, Mapping) else None
@@ -2929,12 +3066,16 @@ def _check_a0_sanity_band(cfg: Mapping[str, Any]) -> None:
             f"{list(A0_BREACH_PROCEDURE)} (step 5 forbids exception "
             f"signing), got {list(steps)!r}",
         )
+    # gate-0 A8: the note is frozen EXACTLY — one rule, no contradiction
+    # with the breach procedure (per-defect-class identity bump; rerun
+    # A0x3; exception signing still forbidden).
     note = str(a0.get("sanity_band_note") or "")
-    if "exception" not in note or "禁止" not in note:
+    if note != A0_SANITY_BAND_NOTE_EXACT:
         _err(
             "V542_RUN_MATRIX",
-            "a0_baseline.sanity_band_note must state 禁止签 exception — "
-            f"signing a sanity exception under breach is forbidden, got {note!r}",
+            "a0_baseline.sanity_band_note must be exactly the frozen "
+            f"per-defect identity-bump rule (bans exception signing under "
+            f"breach) {A0_SANITY_BAND_NOTE_EXACT!r}, got {note!r}",
         )
     # formal stage order: T0 first, T1 second, T-ATTR last
     rm = cfg.get("run_matrix")
@@ -2982,8 +3123,13 @@ def _check_seed17_screen(cfg: Mapping[str, Any]) -> None:
     This is a seed17 SCREEN — it is NOT a three-seed H3 pass.  The predicate
     fields, hard gates, matched-A0 dependency, H2 no-breach wording and the
     A0_S17/A0_S29/S43 completion dependencies are all machine-checked.
-    fix-6 C6 adds the exact point-effect thresholds, the reused parenthesized
+    fix-6 C6 adds point-effect thresholds, the reused parenthesized
     route logic, the A0x3 sanity-band freeze and the fewer-than-2 rule.
+    Correction (gate-1 C5): the H2 sign threshold inside
+    ``h2_no_breach`` is a TOKEN check (one ``<=0.01`` token suffices —
+    the dead guard supplies it, so a sign threshold of ``<=0.02`` slips
+    through); it is NOT an exact threshold assertion.  Exact enforcement
+    is open gate-0 advisory A2 (close before P3/WP6).
     """
     ec = cfg.get("evaluation_contract")
     pred = ec.get("seed17_screen_pass_predicate") if isinstance(ec, Mapping) else None

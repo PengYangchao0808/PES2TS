@@ -190,6 +190,8 @@
       "route_logic",
       "V542-A0-sanity-band",
       "source_tier",
+      "run_updates",
+      "checkpoint_update",
       "v541_e0_runs_final_37900",
       "v53mp_20k_s3_formal_15400_auxiliary",
       "conditional_backbones",
@@ -203,6 +205,8 @@
       "871596e61b7d2e2ed77328eaa884b848621f07533e8ffd242a98442c0aec5db3",
       "smoke_checkpoints_forbidden",
       "source_tier",
+      "run_updates",
+      "checkpoint_update",
       "training_updates",
       "15400",
       "gpu_parity_inconclusive"

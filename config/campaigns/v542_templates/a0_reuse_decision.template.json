@@ -34,11 +34,11 @@
     "breach_procedure": [
       "strictly_block_all_T1_formal_candidate_launches (no candidate formal run may start under breach)",
       "migration_audit: parity_certificate + process_head_anchor + r3_mapping + sampler + evaluator + code + data + initialization",
-      "if_code_data_or_init_defect_found: fix the defect, bump source_tree_fingerprint, rerun A0x3 formal (prior A0x3 runs become invalid_run and never mix)",
+      "if_code_data_or_init_defect_found: fix the defect then bump the matching identity layer — code defect => source_tree_fingerprint; data defect => data_manifest_sha256; init defect => init_mapping_sha256 (process_head_anchor_sha256 when the anchor is implicated) — and rerun A0x3 formal (prior A0x3 runs become invalid_run and never mix)",
       "resume_T1_only_after_V542-A0-sanity-band_pass_on_clean_A0x3",
       "sanity_exception_signing_forbidden_under_breach (不得签 exception 带 breach 继续)"
     ],
-    "note": "带宽只抓迁移大 bug, 不要求与 E0 数值相同; breach = 严格阻断 T1 + 迁移审计 + 修复后 bump fingerprint 重跑 A0×3; 禁止签 sanity exception 继续 (fix-5 C5 移除旧 exception-continue 路径)"
+    "note": "带宽只抓迁移大 bug, 不要求与 E0 数值相同; breach = 严格阻断 T1 + 迁移审计 + 按缺陷类别 bump 对应身份层 (代码=>source_tree_fingerprint; 数据=>data_manifest_sha256; 初始化=>init_mapping_sha256, anchor 牵连=>process_head_anchor_sha256) 后重跑 A0×3; 禁止签 sanity exception 继续 (fix-5 C5 移除旧 exception-continue 路径)"
   },
   "historical_nine_domains_reference": {
     "_note": "Oracle §3.6 九域 + shadow-run 记录保留, 供未来战役若重开复用时必须逐域全过并重签; 本战役不适用 (reuse_branch_implemented=false)",

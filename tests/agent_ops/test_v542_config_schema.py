@@ -1,6 +1,9 @@
 """V5.4.2 campaign schema validator tests (WP0, ADR-0033 v1.1).
 
-Dry-run scope: PyYAML + stdlib only; no torch, no data, no GPU, no network.
+Dry-run scope: PyYAML + stdlib only; no torch, no data, no GPU, no network
+(the one exception: the gate-0 A6 pinned-payload cross-check uses
+``pytest.importorskip("torch")`` and clean-skips when the pinned file or
+torch is absent).
 Covers every typed rejection the WP0 v1.1 spec requires (schema / candidate /
 budget / threshold / run matrix) plus the interface, dose-block, sampler,
 init-source, R3-init and parity-template contracts:
@@ -876,28 +879,45 @@ def test_parity_missing_asset_row_rejected(base_cfg):
 
 
 # ---------------------------------------------------------------------------
-# fix-6 C3: parity asset tiers (V541 E0 37,900 final vs V53MP C 20k/15,400)
+# fix-6 C3 + gate-0 A6: parity asset tiers and update provenance
 # ---------------------------------------------------------------------------
 def test_parity_asset_tiers_frozen_in_config(base_cfg):
     parity = base_cfg["backbone_contract"]["a0_migration"]["parity"]
     for asset in parity["assets"]:
-        tier, updates = v.PARITY_ASSET_TIERS[asset["id"]]
+        tier, run_updates, checkpoint_update = v.PARITY_ASSET_TIERS[
+            asset["id"]]
         assert asset["source_tier"] == tier, asset["id"]
-        assert asset["training_updates"] == updates, asset["id"]
+        assert asset["run_updates"] == run_updates, asset["id"]
+        assert asset["checkpoint_update"] == checkpoint_update, asset["id"]
+        # gate-0 A6: training_updates is the run-dose alias, NOT the
+        # checkpoint update
+        assert asset["training_updates"] == run_updates, asset["id"]
+        assert asset["checkpoint_update"] <= asset["run_updates"], asset["id"]
         assert asset["required"] is True
-    # V541 E0 = runs/ 37,900 final MAIN; V53MP C = 20k S3 15,400 AUXILIARY
+    # V541 E0 = best inner-val checkpoint from a 37,900-update run (MAIN);
+    # V53MP C = best inner-val checkpoint from a 20k S3 15,400-update run
     for aid in ("V541_E0_S17", "V541_E0_S29", "V541_E0_S43"):
-        tier, updates = v.PARITY_ASSET_TIERS[aid]
-        assert tier == "v541_e0_runs_final_37900" and updates == 37900
+        tier, run_updates, checkpoint_update = v.PARITY_ASSET_TIERS[aid]
+        assert tier == "v541_e0_runs_final_37900" and run_updates == 37900
+        assert checkpoint_update in (37000, 36400, 37800)
+    assert v.PARITY_ASSET_TIERS["V541_E0_S17"][2] == 37000
+    assert v.PARITY_ASSET_TIERS["V541_E0_S29"][2] == 36400
+    assert v.PARITY_ASSET_TIERS["V541_E0_S43"][2] == 37800
+    assert v.PARITY_ASSET_TIERS["V53MP_C_S17"][2] == 15400
+    assert v.PARITY_ASSET_TIERS["V53MP_C_S29"][2] == 15300
+    assert v.PARITY_ASSET_TIERS["V53MP_C_S43"][2] == 15400
     for aid in ("V53MP_C_S17", "V53MP_C_S29", "V53MP_C_S43"):
-        tier, updates = v.PARITY_ASSET_TIERS[aid]
+        tier, run_updates, checkpoint_update = v.PARITY_ASSET_TIERS[aid]
         assert tier == "v53mp_20k_s3_formal_15400_auxiliary"
-        assert updates == 15400
+        assert run_updates == 15400
+        assert checkpoint_update <= 15400
     policy = parity["asset_tier_policy"]
     assert tuple(policy["forbidden"]) == v.PARITY_TIER_POLICY_FORBIDDEN
     assert "37900" in policy["v541_e0_runs_final_37900"].replace(",", "")
+    assert "37000/36400/37800" in policy["v541_e0_runs_final_37900"]
     assert "15400" in policy["v53mp_20k_s3_formal_15400_auxiliary"].replace(
         ",", "")
+    assert "15400/15300/15400" in policy["v53mp_20k_s3_formal_15400_auxiliary"]
     assert "非钉死" in parity["smoke_path_forbidden"] or (
         "non-pinned" in parity["smoke_path_forbidden"])
 
@@ -920,7 +940,7 @@ def test_parity_asset_tier_drift_rejected(base_cfg, idx):
 
 @pytest.mark.parametrize("idx", range(6))
 def test_parity_asset_updates_drift_rejected(base_cfg, idx):
-    """training_updates is pinned per row (37,900 vs 15,400)."""
+    """training_updates (run-dose alias) is pinned per row (37,900 vs 15,400)."""
     def _bad(c, i=idx):
         c["backbone_contract"]["a0_migration"]["parity"]["assets"][i][
             "training_updates"] = 999
@@ -932,6 +952,145 @@ def test_parity_asset_updates_drift_rejected(base_cfg, idx):
         v.validate_config(cfg)
     assert exc.value.code == "V542_INTERFACE"
     assert aid in exc.value.detail and str(exp_updates) in exc.value.detail
+
+
+@pytest.mark.parametrize("idx", range(6))
+def test_parity_asset_run_updates_drift_rejected(base_cfg, idx):
+    """run_updates is pinned per row to the tier dose (gate-0 A6)."""
+    def _bad(c, i=idx):
+        c["backbone_contract"]["a0_migration"]["parity"]["assets"][i][
+            "run_updates"] = 999
+
+    cfg = _mut(base_cfg, _bad)
+    aid = cfg["backbone_contract"]["a0_migration"]["parity"]["assets"][idx]["id"]
+    exp_run = v.PARITY_ASSET_TIERS[aid][1]
+    with pytest.raises(v.V542SchemaError) as exc:
+        v.validate_config(cfg)
+    assert exc.value.code == "V542_INTERFACE"
+    assert aid in exc.value.detail and "run_updates" in exc.value.detail
+    assert str(exp_run) in exc.value.detail
+
+
+@pytest.mark.parametrize("idx", range(6))
+def test_parity_asset_checkpoint_update_drift_rejected(base_cfg, idx):
+    """checkpoint_update is pinned to the payload's actual best update."""
+    def _bad(c, i=idx):
+        c["backbone_contract"]["a0_migration"]["parity"]["assets"][i][
+            "checkpoint_update"] = 999
+
+    cfg = _mut(base_cfg, _bad)
+    aid = cfg["backbone_contract"]["a0_migration"]["parity"]["assets"][idx]["id"]
+    exp_ckpt = v.PARITY_ASSET_TIERS[aid][2]
+    with pytest.raises(v.V542SchemaError) as exc:
+        v.validate_config(cfg)
+    assert exc.value.code == "V542_INTERFACE"
+    assert aid in exc.value.detail and "checkpoint_update" in exc.value.detail
+    assert str(exp_ckpt) in exc.value.detail
+
+
+@pytest.mark.parametrize("bad_value", [0, -1, "37900", 37900.0, True, None])
+def test_parity_run_updates_must_be_positive_int(base_cfg, bad_value):
+    """gate-0 A6: run_updates must be a genuine positive int."""
+    def _bad(c):
+        c["backbone_contract"]["a0_migration"]["parity"]["assets"][0][
+            "run_updates"] = bad_value
+
+    cfg = _mut(base_cfg, _bad)
+    with pytest.raises(v.V542SchemaError) as exc:
+        v.validate_config(cfg)
+    assert exc.value.code == "V542_INTERFACE"
+    assert "run_updates must be a positive int" in exc.value.detail
+
+
+@pytest.mark.parametrize("bad_value", [0, -1, "37000", 37000.0, False, None])
+def test_parity_checkpoint_update_must_be_positive_int(base_cfg, bad_value):
+    """gate-0 A6: checkpoint_update must be a genuine positive int."""
+    def _bad(c):
+        c["backbone_contract"]["a0_migration"]["parity"]["assets"][0][
+            "checkpoint_update"] = bad_value
+
+    cfg = _mut(base_cfg, _bad)
+    with pytest.raises(v.V542SchemaError) as exc:
+        v.validate_config(cfg)
+    assert exc.value.code == "V542_INTERFACE"
+    assert "checkpoint_update must be a positive int" in exc.value.detail
+
+
+def test_parity_checkpoint_update_beyond_run_updates_rejected(base_cfg):
+    """A checkpoint update beyond the run dose is impossible (A6)."""
+    def _bad(c):
+        c["backbone_contract"]["a0_migration"]["parity"]["assets"][0][
+            "checkpoint_update"] = 37901  # > run_updates 37900
+
+    cfg = _mut(base_cfg, _bad)
+    with pytest.raises(v.V542SchemaError) as exc:
+        v.validate_config(cfg)
+    assert exc.value.code == "V542_INTERFACE"
+    assert "checkpoint_update" in exc.value.detail
+    assert "run_updates" in exc.value.detail
+
+
+def test_parity_training_updates_must_equal_run_updates(base_cfg):
+    """training_updates is only the run-dose alias — the checkpoint
+    update value there is a reject (gate-0 A6 single-meaning rule)."""
+    def _bad(c):
+        c["backbone_contract"]["a0_migration"]["parity"]["assets"][0][
+            "training_updates"] = 37000  # checkpoint update, not run dose
+
+    cfg = _mut(base_cfg, _bad)
+    with pytest.raises(v.V542SchemaError) as exc:
+        v.validate_config(cfg)
+    assert exc.value.code == "V542_INTERFACE"
+    assert "training_updates must equal run_updates" in exc.value.detail
+
+
+def test_parity_missing_run_updates_field_rejected(base_cfg):
+    def _bad(c):
+        c["backbone_contract"]["a0_migration"]["parity"]["assets"][4].pop(
+            "run_updates")
+
+    cfg = _mut(base_cfg, _bad)
+    with pytest.raises(v.V542SchemaError) as exc:
+        v.validate_config(cfg)
+    assert exc.value.code == "V542_INTERFACE"
+    assert "run_updates" in exc.value.detail
+
+
+def test_parity_missing_checkpoint_update_field_rejected(base_cfg):
+    def _bad(c):
+        c["backbone_contract"]["a0_migration"]["parity"]["assets"][4].pop(
+            "checkpoint_update")
+
+    cfg = _mut(base_cfg, _bad)
+    with pytest.raises(v.V542SchemaError) as exc:
+        v.validate_config(cfg)
+    assert exc.value.code == "V542_INTERFACE"
+    assert "checkpoint_update" in exc.value.detail
+
+
+# ---------------------------------------------------------------------------
+# gate-0 A6: pinned payload provenance (read-only; clean skip when absent)
+# ---------------------------------------------------------------------------
+@pytest.mark.parametrize("asset_id", sorted(v.PARITY_ASSET_TIERS))
+def test_pinned_payload_update_matches_checkpoint_update(base_cfg, asset_id):
+    """Read-only cross-check of the config against the actual payload.
+
+    Loads the pinned ``checkpoint_best.pt`` ONLY when the file exists
+    (clean ``pytest.skip`` when absent — the read-only lane owns those
+    bytes); hard-fails if ``payload["update"] != checkpoint_update``.
+    """
+    asset = next(
+        a for a in base_cfg["backbone_contract"]["a0_migration"]["parity"]
+        ["assets"] if a["id"] == asset_id)
+    path = REPO_ROOT / str(asset["path"])
+    if not path.is_file():
+        pytest.skip(f"pinned parity asset absent in this environment: "
+                    f"{asset['path']}")
+    torch = pytest.importorskip("torch")
+    payload = torch.load(str(path), map_location="cpu", weights_only=False)
+    assert isinstance(payload, dict)
+    assert int(payload["update"]) == int(asset["checkpoint_update"]) == \
+        v.PARITY_ASSET_TIERS[asset_id][2]
 
 
 def test_parity_missing_tier_field_rejected(base_cfg):
@@ -3070,6 +3229,84 @@ def test_init_policy_mapping_must_forbid_shape_heuristics(base_cfg):
     assert "shape" in exc.value.detail
 
 
+# ---------------------------------------------------------------------------
+# gate-0 A8: mapping_audit frozen EXACTLY with the w_v dual-write exception
+# ---------------------------------------------------------------------------
+def test_init_mapping_audit_frozen_exact(base_cfg):
+    audit = base_cfg["training_contract"]["init_policy"]["mapping_audit"]
+    assert audit == v.INIT_MAPPING_AUDIT_EXACT
+    assert "w_v dual-write alias" in audit
+    assert "backbone.w_v <-> move_decoder.w_v" in audit
+
+
+def test_init_mapping_audit_without_wv_exception_rejected(base_cfg):
+    """The OLD 'consumed exactly once' string (no alias exception) must be
+    rejected — a strict audit would otherwise flag the legitimate w_v
+    dual-write as double consumption."""
+    def _bad(c):
+        c["training_contract"]["init_policy"]["mapping_audit"] = (
+            "every source key consumed exactly once; every target key "
+            "loaded or fresh-listed with seed; loaded tensors torch.equal; "
+            "no empty slots")
+
+    cfg = _mut(base_cfg, _bad)
+    with pytest.raises(v.V542SchemaError) as exc:
+        v.validate_config(cfg)
+    assert exc.value.code == "V542_INIT_SOURCE"
+    assert "dual-write" in exc.value.detail
+
+
+def test_init_mapping_audit_token_preserving_near_miss_rejected(base_cfg):
+    """Adversarial: keep every meaningful token but reword the alias —
+    exact-match enforcement must reject it."""
+    def _bad(c):
+        c["training_contract"]["init_policy"]["mapping_audit"] = (
+            "every source key consumed exactly once except a declared w_v "
+            "dual-write alias (backbone.w_v <-> move_decoder.w_v, same "
+            "tensor); every target key loaded or fresh-listed with seed; "
+            "loaded tensors torch.equal; no empty slots")
+
+    cfg = _mut(base_cfg, _bad)
+    with pytest.raises(v.V542SchemaError) as exc:
+        v.validate_config(cfg)
+    assert exc.value.code == "V542_INIT_SOURCE"
+    assert "mapping_audit" in exc.value.detail
+
+
+def test_init_mapping_audit_typo_near_miss_rejected(base_cfg):
+    """Adversarial: same tokens, one character changed (w_v -> w)."""
+    def _bad(c):
+        c["training_contract"]["init_policy"]["mapping_audit"] = (
+            v.INIT_MAPPING_AUDIT_EXACT.replace(
+                "declared w_v dual-write", "declared w dual-write"))
+
+    cfg = _mut(base_cfg, _bad)
+    with pytest.raises(v.V542SchemaError) as exc:
+        v.validate_config(cfg)
+    assert exc.value.code == "V542_INIT_SOURCE"
+
+
+def test_init_mapping_note_states_37_plus_6_is_43(base_cfg):
+    """gate-0 mapping-count clarification: 37 backbone keys (w_v alias) +
+    6 process-head keys = 43 joint keys for joint checkpoints."""
+    note = base_cfg["training_contract"]["init_policy"]["init_mapping"][
+        "note"]
+    assert "37" in note and "43" in note and "w_v" in note
+    assert "6 process head" in note
+
+
+def test_init_mapping_note_dropping_joint_43_rejected(base_cfg):
+    def _bad(c):
+        c["training_contract"]["init_policy"]["init_mapping"]["note"] = (
+            "R3 37 键 → 每候选语义映射表; 所有 w_v 来自 R3")
+
+    cfg = _mut(base_cfg, _bad)
+    with pytest.raises(v.V542SchemaError) as exc:
+        v.validate_config(cfg)
+    assert exc.value.code == "V542_INIT_SOURCE"
+    assert "43" in exc.value.detail
+
+
 def test_init_seed_recipe_frozen(base_cfg):
     fresh = base_cfg["training_contract"]["init_policy"]["candidate_fresh_init"]
     assert fresh["seed_recipe"] == v.INIT_SEED_RECIPE
@@ -3572,6 +3809,84 @@ def test_a0_breach_note_forbids_exception(base_cfg):
     assert "禁止" in exc.value.detail
 
 
+# ---------------------------------------------------------------------------
+# gate-0 A8: breach step 3 names the identity layer per defect class
+# ---------------------------------------------------------------------------
+def test_a0_breach_step3_names_identity_layer_per_defect(base_cfg):
+    raw = base_cfg["a0_baseline"]["sanity_band_breach_procedure"][2]
+    # YAML parses the `key: value` row as a mapping — flatten like the
+    # validator's _normalize_steps does.
+    step3 = (f"{k}: {val}" for k, val in raw.items()) if isinstance(
+        raw, dict) else [str(raw)]
+    step3 = " ".join(step3)
+    for token in ("code_defect=>source_tree_fingerprint",
+                  "data_defect=>data_manifest_sha256",
+                  "init_defect=>init_mapping_sha256",
+                  "anchor_implicated=>process_head_anchor_sha256",
+                  "rerun_A0_x3_formal", "invalid_run", "no exception"):
+        assert token in step3, token
+
+
+def test_a0_breach_step3_single_layer_near_miss_rejected(base_cfg):
+    """Adversarial: the OLD source_tree_fingerprint-only step 3 (every
+    token present, but no per-defect identity layer) must be rejected."""
+    def _bad(c):
+        c["a0_baseline"]["sanity_band_breach_procedure"][2] = (
+            "3_if_code_data_or_init_defect_found: fix_defect_then_bump_"
+            "source_tree_fingerprint_and_rerun_A0_x3_formal (code/data/init "
+            "all bump source_tree_fingerprint); old_A0x3=>invalid_run, no "
+            "exception")
+
+    cfg = _mut(base_cfg, _bad)
+    with pytest.raises(v.V542SchemaError) as exc:
+        v.validate_config(cfg)
+    assert exc.value.code == "V542_RUN_MATRIX"
+    assert "sanity_band_breach_procedure" in exc.value.detail
+
+
+def test_a0_breach_step3_dropping_data_layer_rejected(base_cfg):
+    """Adversarial: token-preserving near-miss — keeps the code and init
+    layers but silently drops the data layer."""
+    def _bad(c):
+        c["a0_baseline"]["sanity_band_breach_procedure"][2] = (
+            "3_if_code_data_or_init_defect_found: fix_defect_then_bump_"
+            "matching_identity_layer (code_defect=>source_tree_fingerprint; "
+            "init_defect=>init_mapping_sha256; "
+            "anchor_implicated=>process_head_anchor_sha256) then "
+            "rerun_A0_x3_formal; old_A0x3=>invalid_run, no exception")
+
+    cfg = _mut(base_cfg, _bad)
+    with pytest.raises(v.V542SchemaError) as exc:
+        v.validate_config(cfg)
+    assert exc.value.code == "V542_RUN_MATRIX"
+
+
+def test_a0_sanity_band_note_frozen_exact(base_cfg):
+    note = base_cfg["a0_baseline"]["sanity_band_note"]
+    assert note == v.A0_SANITY_BAND_NOTE_EXACT
+    for token in ("source_tree_fingerprint", "data_manifest_sha256",
+                  "init_mapping_sha256", "process_head_anchor_sha256",
+                  "invalid_run", "禁止", "exception"):
+        assert token in note, token
+
+
+def test_a0_sanity_band_note_single_layer_near_miss_rejected(base_cfg):
+    """Adversarial: the OLD note (single bump-code-fingerprint rule) must
+    be rejected — it bumps the wrong identity layer for data/init defects."""
+    def _bad(c):
+        c["a0_baseline"]["sanity_band_note"] = (
+            "带宽只抓迁移大 bug, 不要求与 E0 数值相同; breach = 严格阻断 T1 + "
+            "迁移审计 + (若发现代码/数据/初始化缺陷) 修复后 bump code "
+            "fingerprint 并重跑 A0×3; 禁止签 exception 继续")
+
+    cfg = _mut(base_cfg, _bad)
+    with pytest.raises(v.V542SchemaError) as exc:
+        v.validate_config(cfg)
+    assert exc.value.code == "V542_RUN_MATRIX"
+    assert "sanity_band_note" in exc.value.detail
+    assert "禁止" in exc.value.detail
+
+
 def test_formal_stage_order_t0_before_t1(base_cfg):
     def _bad(c):
         order = c["run_matrix"]["formal_stage_order"]["order"]
@@ -4057,16 +4372,31 @@ def test_parity_template_rows_carry_source_tier_and_updates():
             encoding="utf-8")
     )
     for ck in parity["checkpoints"]:
-        tier, updates = v.PARITY_ASSET_TIERS[ck["id"]]
+        tier, run_updates, checkpoint_update = v.PARITY_ASSET_TIERS[ck["id"]]
         assert ck["source_tier"] == tier, ck["id"]
-        assert ck["training_updates"] == updates, ck["id"]
+        assert ck["run_updates"] == run_updates, ck["id"]
+        assert ck["checkpoint_update"] == checkpoint_update, ck["id"]
+        assert ck["training_updates"] == run_updates, ck["id"]
+        assert ck["checkpoint_update"] <= ck["run_updates"], ck["id"]
         assert ck["required"] is True
+        # gate-0 A6: the source wording names the RUN dose and the
+        # checkpoint update separately — never "final (37,900 updates)"
+        assert "final (37,900 updates)" not in ck["source"], ck["id"]
+        assert "checkpoint update" in ck["source"], ck["id"]
+    by_id = {ck["id"]: ck for ck in parity["checkpoints"]}
+    assert "best inner-val checkpoint from a 37,900-update run" in \
+        by_id["V541_E0_S17"]["source"]
+    assert "checkpoint update 37000" in by_id["V541_E0_S17"]["source"]
+    assert "checkpoint update 36400" in by_id["V541_E0_S29"]["source"]
+    assert "checkpoint update 37800" in by_id["V541_E0_S43"]["source"]
     policy = parity["asset_policy"]
     assert policy["all_six_required"] is True
     assert policy["smoke_checkpoints_forbidden"] is True
     assert policy["non_pinned_checkpoints_forbidden"] is True
     note = policy["smoke_paths_rejected_note"]
     assert "37,900" in note and "15,400" in note
+    assert "37000/36400/37800" in note
+    assert "15400/15300/15400" in note
     assert "非钉死" in note or "non-pinned" in note
 
 
@@ -4164,6 +4494,27 @@ def test_signoff_template_a0_sanity_band_block_frozen():
     assert "MUST pass before any T1" in a0["a0_sanity_band_order"]
     assert "sanity-exception signing forbidden" in a0["a0_sanity_band_breach"]
     assert "seed-mean" in a0["a0_sanity_band_statistic"]
+    # gate-0 A8: the template must name the identity layer per defect class
+    # (no source_tree_fingerprint-only rule)
+    for token in ("source_tree_fingerprint", "data_manifest_sha256",
+                  "init_mapping_sha256", "process_head_anchor_sha256"):
+        assert token in a0["a0_sanity_band_breach"], token
+
+
+def test_a0_reuse_template_breach_names_identity_layer_per_defect():
+    """gate-0 A8: the a0_reuse template mirrors the per-defect-class rule."""
+    reuse = json.loads(
+        (TPL_DIR / "a0_reuse_decision.template.json").read_text(
+            encoding="utf-8"))
+    step3 = reuse["sanity_band_vs_v541_e0"]["breach_procedure"][2]
+    for token in ("source_tree_fingerprint", "data_manifest_sha256",
+                  "init_mapping_sha256", "process_head_anchor_sha256",
+                  "invalid_run"):
+        assert token in step3, token
+    note = reuse["sanity_band_vs_v541_e0"]["note"]
+    for token in ("source_tree_fingerprint", "data_manifest_sha256",
+                  "init_mapping_sha256", "process_head_anchor_sha256"):
+        assert token in note, token
 
 
 def test_plan_document_carries_frozen_route_logic():
@@ -4191,7 +4542,8 @@ def test_adr_document_carries_frozen_route_logic():
 
 
 # ---------------------------------------------------------------------------
-# fix-6 C6: seed17 screen exact H2 / run-status / matched-A0 fields
+# fix-6 C6: seed17 screen H2 guard tokens (token-level; gate-0 advisory A2
+# still open — exact/structured freezing is scheduled before P3/WP6)
 # ---------------------------------------------------------------------------
 @pytest.mark.parametrize("tok", ["<=2%", "<=0.01", "sign", "dead",
                                  "fixed-coverage direction"])
