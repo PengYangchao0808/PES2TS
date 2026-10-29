@@ -1,0 +1,76 @@
+{
+  "schema": "pes2ts_v541_runplan_pin_v1",
+  "_template_note": "Template for outputs/pesn/v541_embed_50k/plan/runplan.pin.json (plan §3.2/§12.1). runplan.jsonl lists concrete runs; this pin freezes the preregistered run classes so diagnostic runs can never be counted in the main winner selection (§9.1).",
+  "campaign_id": "PES2TS_V541_EMBED_50K",
+  "gv_campaign_id": "V5.4.1",
+  "config_path": "config/campaigns/pes2ts_v541_embed_50k.yaml",
+  "config_sha256": null,
+  "schema_id": "pes2ts_v541_campaign_v1",
+  "objective": "unified_move_process",
+  "seed_primary": 17,
+  "seeds": [17, 29, 43],
+  "run_classes": {
+    "nominal": {
+      "description": "T1 E1/E2/E3/E4 seed17 full-schedule; later T3 top-2 x {29,43}",
+      "counts_toward_winner": true,
+      "run_ids": ["V541_E1_S17", "V541_E2_S17", "V541_E3_S17", "V541_E4_S17"]
+    },
+    "conditional": {
+      "description": "T0-R matched E0 retrain x3 (only if training comparability fails); T2 E5 (only if E1+E4 parents pass H0/H1/H2 and budget approved); T3 preregistered candidate set E1-E5 x {29,43} — only the frozen inner-val top-2 (max 2 candidates x 2 seeds = 4 runs) activates",
+      "counts_toward_winner": true,
+      "launch_requires": ["parent_gates", "budget_approval", "top2_frozen_before_seeds_29_43"],
+      "run_ids": [
+        "V541_T0R_E0_S17",
+        "V541_T0R_E0_S29",
+        "V541_T0R_E0_S43",
+        "V541_E5_S17",
+        "V541_E1_S29",
+        "V541_E1_S43",
+        "V541_E2_S29",
+        "V541_E2_S43",
+        "V541_E3_S29",
+        "V541_E3_S43",
+        "V541_E4_S29",
+        "V541_E4_S43",
+        "V541_E5_S29",
+        "V541_E5_S43"
+      ],
+      "t3_preregistration": {
+        "listed_runs": 10,
+        "candidates": ["E1", "E2", "E3", "E4", "E5"],
+        "seeds": [29, 43],
+        "activation": "activated_only_by_inner_val_top2",
+        "full_activation_count": 4,
+        "unactivated_status": "gate_skipped",
+        "unactivated_new_trainings": 0,
+        "n_core_counting": "formula_only",
+        "e5_gate_stack": "E5 T3 rows stack parent_gate AND top2 selection gate"
+      }
+    },
+    "diagnostic": {
+      "description": "T4 capacity/depth controls (E0-MLP, E0-deeper); never enters Embedding-only winner competition",
+      "counts_toward_winner": false,
+      "run_ids": ["V541_T4_E0_MLP_S17", "V541_T4_E0_DEEPER_S17"],
+      "skip_rule": "if E*=E0 with no new embedding gain -> gate_skipped(reason=no_new_embedding_gain)"
+    }
+  },
+  "core_training_count_formula": "N_core = n_T1 + I(E5) + 2*n_selected + 3*I(E0_retrain); full nominal 8-9 (11-12 with E0 retrain); T4 diagnostics counted separately. The T3 block LISTS 10 preregistered candidate runs but only max 4 activate (2 frozen candidates x seeds 29/43); unactivated runs are gate_skipped with 0 new trainings. N_core is always computed from the formula, NEVER by summing listed run rows (plan §9.1).",
+  "shared_protocol": {
+    "same_seed_shared": ["common_protocol_sha256", "batch_schedule_sha256"],
+    "may_vary": ["embedding_spec_sha256", "feature_recipe_sha256"],
+    "batch": "8 curves x 4 frames stratified start/pre-TS/post-TS/endpoint; (seed, update, salt) sampler protocol"
+  },
+  "runplan_sha256": null,
+  "sha256": null,
+  "campaign_mode": "full",
+  "budget_sha256": null,
+  "budget_policy_sha256": null,
+  "common_protocol_sha256": null,
+  "code_sha256": null,
+  "source_manifest_sha256": null,
+  "code_commit": null,
+  "environment_sha256": null,
+  "frozen_on": null,
+  "frozen_by": null,
+  "_t1_block_rule": "runplan_sha256 and code_commit must be non-null before formal T1 (§17 formal-run SHA freeze)"
+}

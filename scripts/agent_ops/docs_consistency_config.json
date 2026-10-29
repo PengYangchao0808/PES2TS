@@ -95,6 +95,33 @@
       "S2",
       "S3",
       "Move guard"
+    ],
+    "docs/design/decisions/ADR-0032-V5.4.1-Embedding接口扩展与预注册治理.md": [
+      "V5.4.1",
+      "unified_move_process",
+      "pes2ts_v541_campaign_v1",
+      "G3.P.2",
+      "2026-10-27",
+      "V541_THRESHOLD_NULL",
+      "confirm",
+      "activated_only_by_inner_val_top2",
+      "_curve_batch_positions"
+    ],
+    "docs/plans/PES2TS_V5.4.1_Embedding_50K_详细阶段实施方案_v1.0_20261027.md": [
+      "V5.4.1",
+      "unified_move_process",
+      "37,900",
+      "primary_g=G3.P.2",
+      "c2c1e5e5588ecd7109037095cd2035474722b366f953f1811cfcc0da56cfd24c"
+    ],
+    "config/campaigns/pes2ts_v541_embed_50k.yaml": [
+      "pes2ts_v541_campaign_v1",
+      "unified_move_process",
+      "V5.4.1",
+      "confirm_authorized: false",
+      "ledger_status_machine: unchanged",
+      "activated_only_by_inner_val_top2",
+      "full_activation_count: 4"
     ]
   },
   "historical_banner_marker": "ADR-0030"

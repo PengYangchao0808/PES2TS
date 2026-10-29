@@ -3,8 +3,8 @@
 # table in docs/design/PES2TS_G_V_MAPPING_v1_20261018.md is rendered from it.
 schema: pes2ts_gv_map_v1
 map_version: "2026-10-18.1"
-plan_revision: "2026-10-21.2"
-plan_revision_note: "2026-10-21 ADR-0031: V5.2/V5.2-R CLOSED (D2-G STOP; T1 not authorized; negative archived); new V5.3-MP MOVE+PROCESS campaign registered (S0 data build -> S1 2k smoke -> S2 5k -> S3 20k); old 30h V5.3 rollout renamed V5.3-ENG (executed, engineering-only); FullPathNavigationContract v1 superseded by MoveProcessContract v1; V6/V7 unchanged until V5.3-MP contract freeze."
+plan_revision: "2026-10-29.1"
+plan_revision_note: "2026-10-29 V5.4.1 EXECUTED: WP0-WP7 complete, E*=E0 retained (E1/E2 H2 sign guard, E3 sign+dead => scientific_failure; E4 cost ratio 3.6455>2.0, E5/T3/T4 => gate_skipped; T4 no_new_embedding_gain); final report docs/reports/PES2TS_V541_Embedding_50K_实施与训练报告_20261029.md; confirm never read, new_QC_calls=0. Prior: 2026-10-27 ADR-0032 registered V5.4.1 (primary_g=G3.P.2; schema pes2ts_v541_campaign_v1; objective=unified_move_process only; §11.2 thresholds signed-frozen; old V5.4 unchanged); 2026-10-21 ADR-0031 V5.2/V5.2-R CLOSED; V5.3-MP registered; 30h V5.3 rollout renamed V5.3-ENG; FullPathNavigationContract v1 superseded by MoveProcessContract v1."
 
 stages:
   G0:
@@ -346,6 +346,33 @@ campaigns:
     gates: [V5-G1, V5.4-field, V5.4-rollout, V5.4-stop]
     evidence: docs/plans/PES2TS_V5-V7_反应意图条件化与低维生长方案_v3.0_20261020.md
     gate_note: from-any-point/reverse consistency; known-B; development evidence only; formal OOF requires separate preregistered approval
+    comparison_only:
+      - pes2ts_core/pesn/models/dual_egnn.py
+      - pes2ts_core/pesn/models/dual_ts_policy.py
+  V5.4.1:
+    title: V5.4.1 Embedding-50K single-arm unified MOVE+PROCESS benchmark (executed; E*=E0 retained)
+    status: executed
+    primary_g: G3.P.2
+    supporting_g: [G3.P.1, G3.P.3, G0, G1]
+    data_dependencies: [G0, G1]
+    code_scope:
+      - config/campaigns/pes2ts_v541_embed_50k.yaml
+      - scripts/agent_ops/v541_config_schema.py
+      - tests/agent_ops/test_v541_config_schema.py
+      - pes2ts_core/pesn/models/v541/**
+      - pes2ts_core/pesn/offline/training/v541_train.py
+      - pes2ts_core/pesn/offline/training/v541_strata.py
+      - pes2ts_core/pesn/offline/training/v541_identity.py
+      - pes2ts_core/pesn/offline/training/v541_monitor.py
+      - pes2ts_core/pesn/offline/training/v541_degree_stats.py
+      - pes2ts_core/pesn/offline/evaluation/pair_ownership_v3.py
+      - pes2ts_core/pesn/offline/data/key_atom_stream_view.py
+      - scripts/campaigns/v541_*.py
+    config: config/campaigns/pes2ts_v541_embed_50k.yaml
+    data_manifest: data/manifests/v5/split_manifest.json
+    gates: [V541-WP0-prereg, V541-WP1-pair-eval, V541-WP2-parity, V541-e0-reuse-decision, V541-smoke-200, V541-H0-legality, V541-H1-resource, V541-H2-move, V541-H3-process, V541-budget-signoff, V541-formal-t1]
+    evidence: docs/reports/PES2TS_V541_Embedding_50K_实施与训练报告_20261029.md
+    gate_note: "EXECUTED 2026-10-29 (WP0-WP7 complete): T0-R matched E0 x3 (seeds 17/29/43) + E1/E2/E3 seed17 all 37,900 updates done; E1/E2 scientific_failure (H2 sign guard), E3 scientific_failure (H2 sign+dead); E4 gate_skipped (core-time ratio 3.6455>2.0 cost gate, not a resource failure); E5 gate_skipped (parent E4 cost gate); T3 gate_skipped (n_selected=0, no candidate seeds 29/43); T4 gate_skipped (no_new_embedding_gain; capacity/depth confounds UNEXCLUDED); E*=E0 retained; dev veto not applicable (no candidate dev access, no tuning, tau frozen); rollout 1152 episodes no-physics separate reporting, QC=0; E0 bundle 8-file whitelist strict-load verified; confirm never read; new_QC_calls=0; no production No-Move / verified-TS / deployment claim. Historical Cx3 = auxiliary reference only (E0 retrained after loader-certificate EVIDENCE_MISSING + sampler non-equivalence adjudication); rollout v1 loader SIGTERM attempt-1 resource_failure preserved with loader-v2 rerun. ADR-0032 / MoveProcessContract v1 semantics unchanged; V541 run outcome vocabulary kept separate from legacy ledger status machine (unchanged)"
     comparison_only:
       - pes2ts_core/pesn/models/dual_egnn.py
       - pes2ts_core/pesn/models/dual_ts_policy.py

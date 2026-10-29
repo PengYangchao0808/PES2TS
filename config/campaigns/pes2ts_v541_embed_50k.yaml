@@ -1,0 +1,372 @@
+# PES2TS V5.4.1 Embedding 50K 战役配置 — WP0 预注册冻结
+# 权威规格: docs/plans/PES2TS_V5.4.1_Embedding_50K_详细阶段实施方案_v1.0_20261027.md
+#           §3 (WP0) / §6 (WP3 特征与候选) / §7 (WP4 训练器) / §9 (WP6 运行矩阵)
+#           §11 (预注册硬门与签认) / §12 (产物账本) / §17 (启动前签认)
+# 治理:     ADR-0031 (MoveProcessContract v1 — 任务语义不变)
+#           ADR-0032 (V541 Embedding 接口扩展与预注册冻结治理)
+# 上游设计源 v1.1 SHA256: c2c1e5e5588ecd7109037095cd2035474722b366f953f1811cfcc0da56cfd24c
+# 校验:     python scripts/agent_ops/v541_config_schema.py --formal \
+#             --config config/campaigns/pes2ts_v541_embed_50k.yaml
+# 变更规则: 任何字段变更 = config_sha256 变更 + runplan 重新冻结 (runplan_pin);
+#           §11.2 阈值签认后不得按 seed17/dev 结果调整 (改值须重走签认 + 更新全部 SHA)。
+# 授权记录: 用户 2026-10-27 「完成5.4.1的代码生成和训练工作」= implementation +
+#           formal training 按既有方案授权; 实际 T1 仍须 H0/H1/smoke/预算门全过 (§17)。
+schema: pes2ts_v541_campaign_v1
+campaign_id: PES2TS_V541_EMBED_50K
+version: 0.1.0-wp0 # WP0 冻结: schema + registry + 阈值签认 (ADR-0032)
+objective: unified_move_process # 唯一外部任务名 (§3.1.4); 新配置/日志/报表/run_id 不暴露三臂矩阵
+
+gv:
+  campaign_id: V5.4.1
+  primary_g: G3.P.2
+  supporting_g: [G3.P.1, G3.P.3, G0, G1]
+  map_version: "2026-10-18.1"
+  gates:
+    - V541-WP0-prereg
+    - V541-WP1-pair-eval
+    - V541-WP2-parity
+    - V541-e0-reuse-decision
+    - V541-smoke-200
+    - V541-H0-legality
+    - V541-H1-resource
+    - V541-H2-move
+    - V541-H3-process
+    - V541-budget-signoff
+    - V541-formal-t1
+
+governance:
+  constitution: docs/PES2TS_开发宪法_v1.md
+  contracts:
+    - docs/contracts/PES2TS_MoveProcessContract_v1.md # 唯一任务合同 (MOVE+PROCESS 语义不变)
+    - docs/contracts/PES2TS_ReactionIntent_Contract_v2.md
+    - docs/contracts/PES2TS_GeometryPolicyContract_v2.md
+  adrs: [ADR-0031, ADR-0032]
+  plan: docs/plans/PES2TS_V5.4.1_Embedding_50K_详细阶段实施方案_v1.0_20261027.md
+  upstream_v1_1_sha256: c2c1e5e5588ecd7109037095cd2035474722b366f953f1811cfcc0da56cfd24c
+  docs_gate: python scripts/agent_ops/docs_consistency.py --strict
+  schema_validator: python scripts/agent_ops/v541_config_schema.py --formal --config config/campaigns/pes2ts_v541_embed_50k.yaml
+  authorization:
+    implementation_authorized: true # 用户 2026-10-27: 「完成5.4.1的代码生成和训练工作」
+    formal_training_authorized: true # 按既有方案开展 implementation + formal training; 实际 T1 仍须 t1_start_requires 全过
+    thresholds_signed_frozen: true # §11.2 建议值签认为 frozen (见 thresholds.signoff)
+    t1_start_requires: [H0, H1, V541-smoke-200, V541-budget-signoff, runplan_pin]
+    confirm_authorized: false # confirm 永封存 (schema 强制 typed rejection)
+    sealed_authorized: false
+    new_qc_calls: 0 # 本阶段 0 QC 调用 (v1.1.1 边界)
+    single_lane: true # 单路执行
+    swap_allowed: false # swap=0
+
+data_contract:
+  pool: 50K curve pool # V5.3-MP S4 独立建库只读复用; 本阶段不重建数据、不新增 QC
+  tables_dir: /pes2ts_data/v53mp_50k_data
+  move_teacher: intent_directed_first_contact_v1
+  move_teacher_params: {d0_angstrom: 0.08, cap_angstrom: 0.20}
+  process_statuses: [ok, masked, terminal, conflict]
+  provenance_required:
+    [code_commit, data_manifest_sha256, teacher_manifest_sha256, split_sha256,
+     label_spec_sha256, config_sha256, common_protocol_sha256, embedding_spec_sha256,
+     feature_recipe_sha256]
+
+split_contract:
+  split_manifest: /pes2ts_data/v53mp_50k_data/split_manifest_v53mp.json
+  subsets: [pool, dev, confirm]
+  seeds: [17, 29, 43]
+  tier: 50k
+  inner_split: 每 seed 80/20 curve-level inner-train/inner-val + 原位置索引 (§7.2)
+  inner_val_max_samples: 8192
+  confirm_rule: confirm 不读; dev 详细指标 WP1 密封至 WP7 才解封 (访问账本); canonical reaction 分组在结果可见前冻结 (§10.3)
+
+identity_contract: # 代码/共同协议/环境三层 SHA (§12.2 / §17 「formal-run code/common-protocol/runplan SHA 冻结」)
+  code:
+    method: source_tree_fingerprint # worktree dirty: 指纹而非 git commit 绑定代码
+    git_state_fn: pes2ts_core.pesn.offline.training.v541_identity.git_state # 无 subprocess 读 .git/HEAD
+    git_commit_authoritative: false # commit 只作记录, 不作为唯一代码身份
+    manifest_file: plan/source_manifest.json
+    includes:
+      - pes2ts_core
+      - config/campaigns/pes2ts_v541_embed_50k.yaml
+      - config/campaigns/v541_templates
+      - scripts/campaigns
+      - scripts/agent_ops
+      - scripts/infra
+      - requirements.txt
+      - requirements-pesn-training.txt
+      - requirements-pesn-runtime.txt
+    suffixes: [.py, .yaml, .json, .txt]
+    excludes: [__pycache__, .git, outputs, node_modules, docs_consistency_config.json]
+    note: 逐文件 SHA 覆盖训练/runner/reused-legacy-helper 全部相关源码; docs_consistency_config.json 属文档检查配置, 不参与代码身份
+  common_protocol:
+    method: numeric_protocol_sha256 # 只按数值协议计算; 候选特有字段必须排除
+    excludes: [embedding_id, feature_recipe_sha256, embedding_spec_sha256, seed, run_id, environment_sha256]
+    includes: [schema, campaign_id, objective, schedule, lambdas, batch, sampler_binding, selection, tau_end, gradient_monitoring, inner_val_max_samples, split_contract, backbone_init, data_manifest_sha256, teacher_manifest_sha256, split_sha256, label_spec_sha256, code_sha256]
+    note: common SHA 在同协议的所有候选/seed 间相同; embedding/feature SHA 按候选分别计算, 不得全候选同值
+  environment:
+    fn: pes2ts_core.pesn.offline.training.v541_identity.env_state
+    sha256_field: environment_sha256
+    record_also: [python, torch, numpy, cuda_version, platform]
+
+embedding_contract:
+  embedding_registry:
+    E0:
+      family: legacy
+      internal_view: legacy_f2
+      output: legacy
+      in_main_matrix: true
+      note: element 16d + 21->48 linear; strict-load/runner parity baseline
+    E1:
+      family: gin_e_chemical
+      internal_view: chem_union_plus_edit
+      output: residual_node_delta
+      in_main_matrix: true
+      spec: 1x GINE-chem 48ch; epsilon=0 fixed; MLP 48x48 ReLU; explicit self term; no graph self-loop
+    E2:
+      family: pna_chemical
+      internal_view: chem_union_plus_edit
+      output: residual_node_delta
+      in_main_matrix: true
+      spec: 1x PNA 48ch; aggregators [mean,max,min,std]; degree scalers [identity,amplification,attenuation]; towers=1; population variance
+    E3:
+      family: schnet_spatial
+      internal_view: legacy_spatial_subset_recomputed_rbf12
+      output: residual_node_delta
+      in_main_matrix: true
+      spec: 1x continuous-filter update 48ch; RBF12 recomputed from physical current distances; cosine envelope pi*r/4.5; F2 mask untouched
+    E4:
+      family: angle_mpnn
+      internal_view: prereg_angle_triplets
+      output: residual_node_delta
+      in_main_matrix: true
+      spec: 1x Angle-MPNN 48ch; unordered neighbor pairs; cos basis [1,c,c^2,c^3]; tie policy reject_boundary_tie_shell; <=12 neighbors/center
+    E5:
+      family: dual_stream
+      internal_view: E1_and_E4_shared_inputs
+      output: residual_node_delta
+      in_main_matrix: false
+      conditional_parent: [E1, E4]
+      spec: GINE24 + Angle24 -> concat -> fusion 48->48; conditional launch (§9.2)
+    E6:
+      family: painn_scalar
+      internal_view: legacy_spatial
+      output: residual_node_delta
+      in_main_matrix: false
+      diagnostic_only: true
+      spec: scalar-projected diagnostic only; requires separate E6 approval; not in core matrix
+  forward_view_keys: [z, pos, graph_index, key_index, is_key, degK, intent_role, edge_index, edge_attr, b_src, b_tgt, delta_b_intent, abs_delta, is_changed, cv_target_delta, signed_intent, endpoint_names]
+  forbidden_input_classes: [future_frames, ts_coords, true_progress, remaining_arc, branch_id, split_family, energy_gradient, near_ts_capped, endpoint_geometry, history_hidden_state]
+  core_consumption:
+    edge_scalar_channels: 22
+    edge_channel_order: legacy # legacy 原通道及顺序 (§5.2); 内部 chem/spatial/angle 视图只影响 delta_node
+    node_vector_consumed: false # 本阶段 core 不消费 node_vector
+    edge_adapter: false # 不引入 EdgeAdapter / 向量消费; E6 也只可声明 scalar-projected 诊断
+  residual:
+    form: h_v541 = h_legacy + alpha * W * f_phi(h_legacy, V_legal)
+    alpha0: 0.0
+    w_out_dim: 48
+    channelwise_gate: false # 主实验不用 channel-wise gate (§5.2)
+    f_phi_init_from_h_legacy: true # 节点初值取 h_legacy, 不 detach
+  feature_recipe:
+    f2_rule: F2 保持原样; E3/E4 从当前 pos 重算物理距离 RBF12; 不读取 F2 前 12 槽 (§6.6)
+    rbf12: {n_bins: 12, center_start_angstrom: 0.0, center_end_angstrom: 4.5, sigma_angstrom: 0.3}
+    chem_edge_fields: [b_src, b_tgt, delta_b_intent, abs_delta, is_changed, covalent_union, b_min, b_max]
+    chem_edge_dim: 8 # = feature_providers.CHEM_EDGE_DIM (WP3a fixture freeze, §6.6.4); validate 交叉核验
+    angle:
+      neighbor_pool: legacy 共价 source/target union + intent pair (§6.3.2; spatial-angle 扩展不进首批)
+      max_neighbors_per_center: 12
+      max_unordered_pairs_per_center: 66
+      tie_policy: reject_boundary_tie_shell
+      tie_tolerance: 1.0e-6 # = feature_providers.ANGLE_SHELL_TIE_TOL (1e-6 Å); validate 交叉核验
+      basis: [1, c, c2, c3]
+      cos_clamp: [-1.0, 1.0]
+      chirality_labels: false
+    degree_stats: # E2 PNA degree scaler 输入; runner 在 INNER-TRAIN 全集上一次性计算/缓存 (§6.6/§17)
+      fit_split: inner-train_only
+      required_for: [E2]
+      population: full_inner_train # 全部 inner-train 位置, 不抽样、不 cap
+      split: inner-train # v541_degree_stats.ALLOWED_SPLIT (dev/inner-val/confirm typed refusal)
+      seed_source: run_seed # 每个 run seed 独立 fit → 独立 cache/SHA
+      graph_view: G_chem # 仅 G_chem 边入度 (无 spatial 边、无 self-loop、无 label weight)
+      source: pes2ts_core.pesn.offline.training.v541_degree_stats.compute_degree_stats
+      schema: pes2ts_v541_degree_stats_v1
+      cache: outputs/pesn/v541_embed_50k/cache/degree_stats
+      loader: V541TrainerConfig.degree_stats_path (+ degree_stats_sha256) -> load_model_v541 strict read + set_degree_stats(mu_log, stats_sha256)
+      forbidden_fit_splits: [dev, inner-val, confirm, dev_confirm]
+      note: 只算一次并在构造后读取, 不在 forward 中重算 (§6.6)
+    cache_keys: [current geometry summary, atom mapping, intent/legal topology, unit, dtype, recipe SHA, code SHA]
+
+training_contract:
+  objective_mapping_note: 实现层内部映射旧 arm=C (仅 runner 内部); 配置/日志/报表/run_id 不暴露三臂矩阵
+  backbone: StarEGNNV3(hidden=48, n_layers=3) 固定 core + MOVE readout + ReactionProcessHead
+  backbone_init: # R3 冻结初始化 (§3/§5.4); validate 时逐字节核验路径与 SHA, 漂移=typed refusal
+    source: R3 F2-bidir winner fold0 x seed17 (V5.3-MP S4 单路参照)
+    run_id: 5372d9b12807c3f0
+    path: outputs/pesn/30h_campaign/r3_runs/5372d9b12807c3f0/checkpoint_best.pt
+    sha256: a2e46b6ad65cc18996d6c1660c5ae24c723397ca22526e52fa34e430afd0417f
+    verify_on_validate: true
+  sampler_binding: # 冻结采样器绑定 (§7.2); spec_sha256 必须等于 v541_strata.sampler_spec_sha256()
+    sampler_id: v541_curve_stratified_v1
+    spec_sha256: 0769817ef01dca3abbb1d67f5405e98138b4707e74b690240d3f9b6821b65d9e
+    strata: [start, pre_TS, post_TS, endpoint]
+    batch_curves: 8
+    frames_per_curve: 4
+    direction_balance: {forward: 2, reverse: 2}
+    mirror: {start: endpoint, endpoint: start, pre_TS: post_TS, post_TS: pre_TS}
+    ts_rule: "TS row -> pre_TS under BOTH directions (subordinate to the endpoint/start priority)"
+    path_order_rule: "ascending node_index iff endpoint_a_index <= endpoint_b_index else descending (含 endpoint_b_index 默认值 quirk, 逐字复刻 build_v52_labels)"
+    direction_rule: "forward/reverse 2+2 平衡; per (curve, update) 重抽 stratum->direction 绑定; 方向池为四分层并集; 禁止跨方向借用"
+    fallback_rule: "空分层 -> 同曲线同方向全池 seeded 回退, 计入 fallback_counts, batch 不缩水"
+    missing_direction_rule: "typed refusal SAMPLER_DIRECTION_POOL_EMPTY (silent_direction_rebalance=false)"
+    references:
+      spec: pes2ts_core/pesn/offline/training/v541_strata.py#SAMPLER_SPEC_V541
+      contract: config/campaigns/pes2ts_v541_embed_50k.yaml#training_contract.batch
+      rng: key_atom_v53mp_train_v3._update_rng(seed, update, salt) 纯函数协议
+  schedule:
+    w0_updates: 400
+    w1_updates: 37500
+    total_updates: 37900
+    param_groups:
+      legacy_core_move_readout_h_legacy: {w0: frozen, w1: joint, lr: 1.0e-4}
+      process_head: {w0: train, w1: joint, lr: 3.0e-4}
+      embedding_branch_W_alpha: {w0: train, w1: joint, lr: 1.0e-4, e0_has_no_branch: true}
+    optimizer: AdamW
+    weight_decay: 1.0e-4
+    grad_clip: 1.0
+    precision: fp32
+  lambdas: {lambda_rank: 0.5, lambda_q: 0.5, lambda_endpoint: 0.012385049119773344}
+  batch: {curves: 8, frames: 4, strata: [start, pre_TS, post_TS, endpoint], sampler: (seed, update, salt) 纯函数协议}
+  selection: {metric: inner-val total loss, val_every: 100, checkpoint_best: inner-val 最优, resume: 只从匹配 SHA 的 checkpoint_last 恢复}
+  tau_end: {calibrated_on: inner-val, target_precision: 0.9, frozen_after_calibration: true}
+  gradient_monitoring:
+    every_updates: 100
+    track: [alpha, RMS_h_legacy, RMS_alpha_W_f, branch_grad_norm, param_delta_norm, edge_and_triplet_counts, zero_neighbor_frac, move_process_grad_cos]
+
+smoke:
+  updates: 200
+  batch: [8, 4]
+  single_lane: true
+  embeddings: [E0, E1, E2, E3, E4, E5]
+  e0_smoke_seed: 17
+  kill_resume_once: true
+  artifacts_root: outputs/pesn/v541_embed_50k/smoke
+  resource: {cgroup_gib: 12, memory_high_gib: 10, swap: 0, oom_kill_max: 0}
+  rank_excluded: true # 技术 smoke 不进排名/Pareto (§8.2)
+
+run_matrix:
+  classes: [nominal, conditional, diagnostic]
+  winner_note: diagnostic 组不计入主赢家数 (§9.1); T5 冻结评估为 0 新训练, 不在本矩阵
+  t3_preregistration:
+    candidates: [E1, E2, E3, E4, E5]
+    seeds: [29, 43]
+    listed_runs: 10
+    activation: activated_only_by_inner_val_top2
+    full_activation_count: 4
+    unactivated_status: gate_skipped
+    n_core_counting: formula_only
+    e5_gate_stack: E5 runs require parent gate AND top2 selection gate (both must pass)
+    note: 预注册全部可能入选的 T3 条件 run; 实际激活满额仅 4 个 (2 候选 × 2 seed); 未激活记 gate_skipped 不计新训练; N_core 按 §9.1 公式计数, 不按 listed runs 求和
+  runs:
+    - {run_id: V541_E1_S17, stage: T1, embedding: E1, seed: 17, class: nominal, new_training: 1, winner_eligible: true}
+    - {run_id: V541_E2_S17, stage: T1, embedding: E2, seed: 17, class: nominal, new_training: 1, winner_eligible: true}
+    - {run_id: V541_E3_S17, stage: T1, embedding: E3, seed: 17, class: nominal, new_training: 1, winner_eligible: true}
+    - {run_id: V541_E4_S17, stage: T1, embedding: E4, seed: 17, class: nominal, new_training: 1, winner_eligible: true}
+    - {run_id: V541_T0R_E0_S17, stage: T0-R, embedding: E0, seed: 17, class: conditional, new_training: 1, condition: e0_retrain_if_training_comparability_fails}
+    - {run_id: V541_T0R_E0_S29, stage: T0-R, embedding: E0, seed: 29, class: conditional, new_training: 1, condition: e0_retrain_if_training_comparability_fails}
+    - {run_id: V541_T0R_E0_S43, stage: T0-R, embedding: E0, seed: 43, class: conditional, new_training: 1, condition: e0_retrain_if_training_comparability_fails}
+    - {run_id: V541_E5_S17, stage: T2, embedding: E5, seed: 17, class: conditional, new_training: 1, condition: parents_E1_E4_H0_H1_H2_pass_and_budget_approved}
+    - {run_id: V541_E1_S29, stage: T3, embedding: E1, seed: 29, class: conditional, new_training_if_activated: 1, unactivated_status: gate_skipped, winner_eligible: true, condition: activated_only_by_inner_val_top2}
+    - {run_id: V541_E1_S43, stage: T3, embedding: E1, seed: 43, class: conditional, new_training_if_activated: 1, unactivated_status: gate_skipped, winner_eligible: true, condition: activated_only_by_inner_val_top2}
+    - {run_id: V541_E2_S29, stage: T3, embedding: E2, seed: 29, class: conditional, new_training_if_activated: 1, unactivated_status: gate_skipped, winner_eligible: true, condition: activated_only_by_inner_val_top2}
+    - {run_id: V541_E2_S43, stage: T3, embedding: E2, seed: 43, class: conditional, new_training_if_activated: 1, unactivated_status: gate_skipped, winner_eligible: true, condition: activated_only_by_inner_val_top2}
+    - {run_id: V541_E3_S29, stage: T3, embedding: E3, seed: 29, class: conditional, new_training_if_activated: 1, unactivated_status: gate_skipped, winner_eligible: true, condition: activated_only_by_inner_val_top2}
+    - {run_id: V541_E3_S43, stage: T3, embedding: E3, seed: 43, class: conditional, new_training_if_activated: 1, unactivated_status: gate_skipped, winner_eligible: true, condition: activated_only_by_inner_val_top2}
+    - {run_id: V541_E4_S29, stage: T3, embedding: E4, seed: 29, class: conditional, new_training_if_activated: 1, unactivated_status: gate_skipped, winner_eligible: true, condition: activated_only_by_inner_val_top2}
+    - {run_id: V541_E4_S43, stage: T3, embedding: E4, seed: 43, class: conditional, new_training_if_activated: 1, unactivated_status: gate_skipped, winner_eligible: true, condition: activated_only_by_inner_val_top2}
+    - {run_id: V541_E5_S29, stage: T3, embedding: E5, seed: 29, class: conditional, new_training_if_activated: 1, unactivated_status: gate_skipped, winner_eligible: true, condition: activated_only_by_inner_val_top2, parent_gate: parents_E1_E4_H0_H1_H2_pass_and_budget_approved}
+    - {run_id: V541_E5_S43, stage: T3, embedding: E5, seed: 43, class: conditional, new_training_if_activated: 1, unactivated_status: gate_skipped, winner_eligible: true, condition: activated_only_by_inner_val_top2, parent_gate: parents_E1_E4_H0_H1_H2_pass_and_budget_approved}
+    - {run_id: V541_T4_E0_MLP_S17, stage: T4, embedding: E0, seed: 17, class: diagnostic, new_training: 1, winner_eligible: false, control: E0_MLP}
+    - {run_id: V541_T4_E0_DEEPER_S17, stage: T4, embedding: E0, seed: 17, class: diagnostic, new_training: 1, winner_eligible: false, control: E0_DEEPER}
+  notes: T0 matched E0 历史复用 = 0 新训练 (由 V541-e0-reuse-decision 审计决定, 不在本矩阵); T3 列出 10 个预注册候选 run, 激活满额 4 个, N_core 按 §9.1 公式而非 listed runs 计数; 若 E*=E0 且无新 Embedding 增益, T4 记 gate_skipped(no_new_embedding_gain)
+
+evaluation_contract:
+  screening_split: inner-val # 初筛/provisional H3/Pareto 只看 inner-val (§9.3)
+  dev_policy: sealed_until_wp7 # WP1 baseline-repair 密封; WP7 candidate_evaluation 另登记访问
+  confirm_policy: sealed_always
+  metrics:
+    move: [rmse_zero, sign, dead_fraction, fixed_coverage_direction]
+    process: [endpoint_auprc, q_corr, ordering]
+    compute: [params, flops, gpu_time, wall_time, cpu_feature_time, vram_host_anon]
+  statistics: {bootstrap_unit: curve, initial_draws: 1000, final_draws_ref: thresholds.final_bootstrap_draws}
+  dev_veto: H0/H2 任一失败, 或 dev 三 seed 聚合未达 inner-val 同一 H3 效应门, 或另一 PROCESS 主指标破非劣界 -> development_not_reproduced; 回退 E0, 不改选 runner-up
+  rollout:
+    mode: no-physics_pure_geometry
+    subsets: {regression: 24, large: 96, superset: dev}
+    separate_reporting: true
+    new_qc_calls: 0
+    claims: [TS_candidate, endpoint_reached]
+
+gates:
+  H0: {rule: "schema/no-leak/confirm 隔离/restore/E(3)/permutation/非关键原子动作 全过", on_fail: invalid_run}
+  H1: {rule: "单路、无 swap/OOM、host/VRAM/预算不超线", on_fail: resource_failure 或 budget_censored}
+  H2: {rule: "每正式 seed 相对修复口径 R3 参照 RMSE/zero 退化 <=2% 且相对同 seed matched E0 <=2%; 方向/dead/固定覆盖按签认容差", on_fail: scientific_failure}
+  H3: {rule: "ΔAUPRC >= +0.02 或 Δq corr >= +0.03, >=2/3 seeds 同向, 另一主指标非劣", on_fail: no_new_embedding_winner}
+  r3_guard_block: "R3 参照无法同管线重评 -> T1 阻断 (不得降级为仅 matched-E0 参照)"
+
+thresholds:
+  sign_drop_abs_max: 0.01
+  dead_fraction_increase_abs_max: 0.01
+  fixed_coverage_direction_regression_rel_max_pct: 2.0
+  other_endpoint_auprc_drop_abs_max: 0.01
+  other_q_corr_drop_abs_max: 0.02
+  gpu_parity_atol: 1.0e-06
+  gpu_parity_rtol: 1.0e-05
+  max_core_time_ratio: 2.0
+  final_bootstrap_draws: 10000
+  rollout_large_subset_curves: 96
+  signoff:
+    status: frozen
+    signed_on: "2026-10-27"
+    signed_by: user_directive_20261027
+    basis: 方案 §11.2 建议值; 用户 2026-10-27 授权「完成5.4.1的代码生成和训练工作」; 签认后不得按 seed17/dev 结果修改, 改值须重走签认并同步 config/runplan/budget SHA
+    sign_drop_abs_max: 0.01
+    dead_fraction_increase_abs_max: 0.01
+    fixed_coverage_direction_regression_rel_max_pct: 2.0
+    other_endpoint_auprc_drop_abs_max: 0.01
+    other_q_corr_drop_abs_max: 0.02
+    gpu_parity_atol: 1.0e-06
+    gpu_parity_rtol: 1.0e-05
+    max_core_time_ratio: 2.0
+    final_bootstrap_draws: 10000
+    rollout_large_subset_curves: 96
+
+cost_acceptance:
+  rule: hard_ratio
+  ratio_expression: candidate_core_time / matched_E0_core_time <= thresholds.max_core_time_ratio
+  on_exceed: 科学结果保留, 不授予升级, E0 留任 (不是 resource_failure)
+  e0_profile_note: 复用 E0 时用同环境 matched_runtime_profile (estimate, §8.3); 重训 E0 用正式实测; PNA 统计/角度构建/评估/缓存预热单列进总成本 Pareto
+
+budget:
+  single_lane: true
+  swap_max: 0
+  oom_kill_max: 0
+  host_limit_gib: 12
+  memory_high_gib: 10
+  per_candidate_core_time: # WP5 40+40 W0/W1 profile_only 实测冻结; E4>2x 不晋级
+    E0: {core_seconds: 2124.805, w1_core_ratio: 1.0, projected_wall_hours: 0.6017, approved_for_formal: true}
+    E1: {core_seconds: 2118.061, w1_core_ratio: 0.9914, projected_wall_hours: 0.6009, approved_for_formal: true}
+    E2: {core_seconds: 2197.645, w1_core_ratio: 1.0319, projected_wall_hours: 0.6231, approved_for_formal: true}
+    E3: {core_seconds: 4235.710, w1_core_ratio: 1.9967, projected_wall_hours: 1.2008, approved_for_formal: true}
+    E4: {core_seconds: 7752.429, w1_core_ratio: 3.6455, projected_wall_hours: 2.2092, approved_for_formal: false, status: gate_skipped_cost_ratio_exceeds_2}
+    E5: {core_seconds: null, w1_core_ratio: null, projected_wall_hours: null, approved_for_formal: false, status: gate_skipped_parent_E4_cost_gate_failed}
+  per_candidate_status: signed_wp5_profiling_2026_10_28
+  fixed_dose_note: 正式训练固定 37,900 updates; fixed-GPU-time 只作另报成本匹配分析 (§8.3)
+  on_breach: [resource_failure, budget_censored]
+  forbidden_workarounds: [reduce_frames, reduce_curves, shorten_updates, change_stratification, drop_process_loss, swap_seed]
+
+run_outcomes:
+  vocabulary: [done, invalid_run, scientific_failure, resource_failure, budget_censored, gate_skipped]
+  ledger_status_machine: unchanged # 旧 run_ledger status (planned/running/done/failed/killed/skipped/interrupted) 不改; V541 outcome 另记 outcome 字段
+  vocabulary_source: 方案 §7.4 run 结果与失败词表
+
+plan_outputs:
+  root: outputs/pesn/v541_embed_50k
+  subdirs: [plan, audits, smoke, profile, runs, diagnostics, reports, exports, cache]
+  run_id_namespace: V541_ # D05: V541 命名空间, 与历史 30h 计划同名 E0–E6 隔离

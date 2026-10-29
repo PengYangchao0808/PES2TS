@@ -64,6 +64,113 @@ def test_default_map_loads_and_validates():
     assert "V4.7" in gv_map.campaigns
 
 
+# ---------------------------------------------------------------------------
+# V5.4.1 (ADR-0032) — new campaign must not disturb the old V5.4 entry
+# ---------------------------------------------------------------------------
+def test_v541_registered_with_required_g_support():
+    gv_map = load_gv_map(DEFAULT_MAP_PATH)
+    validate_gv_map(gv_map)
+    entry = resolve_campaign(gv_map, "V5.4.1")
+    assert entry.status == "executed"
+    assert entry.primary_g == "G3.P.2"
+    assert set(entry.supporting_g) == {"G3.P.1", "G3.P.3", "G0", "G1"}
+    assert "G3.P.2" not in entry.supporting_g
+    assert set(entry.data_dependencies) == {"G0", "G1"}
+    assert entry.config == "config/campaigns/pes2ts_v541_embed_50k.yaml"
+    assert entry.evidence and "V541" in entry.evidence
+    # executed: evidence must be the read-only final report
+    assert "实施与训练报告_20261029" in entry.evidence
+    assert "E0" in (entry.gate_note or "") and "E*=E0" in (entry.gate_note or "")
+
+
+def test_v541_config_file_exists():
+    gv_map = load_gv_map(DEFAULT_MAP_PATH)
+    entry = resolve_campaign(gv_map, "V5.4.1")
+    assert (gv_map.path.parents[2] / entry.config).is_file()
+
+
+def test_v54_untouched_by_v541_registration():
+    gv_map = load_gv_map(DEFAULT_MAP_PATH)
+    old = resolve_campaign(gv_map, "V5.4")
+    assert old.status == "proposed"
+    assert old.primary_g == "G3.P.2"
+    assert old.config == "config/campaigns/v5_4_rollout.yaml"
+    assert "from-any-point" in (old.gate_note or "")
+    # both campaigns coexist and stay distinct
+    assert "V5.4" in gv_map.campaigns and "V5.4.1" in gv_map.campaigns
+
+
+def test_v541_gates_are_v541_namespaced():
+    gv_map = load_gv_map(DEFAULT_MAP_PATH)
+    entry = resolve_campaign(gv_map, "V5.4.1")
+    assert all(g.startswith("V541-") for g in entry.gates)
+    assert len(set(entry.gates)) == len(entry.gates)
+
+
+def test_v541_plan_revision_recorded():
+    gv_map = load_gv_map(DEFAULT_MAP_PATH)
+    assert gv_map.plan_revision == "2026-10-29.1"
+    import yaml as _yaml
+
+    doc = _yaml.safe_load(DEFAULT_MAP_PATH.read_text(encoding="utf-8"))
+    assert "V5.4.1" in doc.get("plan_revision_note", "")
+    assert "ADR-0032" in doc.get("plan_revision_note", "")
+    assert "EXECUTED" in doc.get("plan_revision_note", "")
+
+
+def test_v541_run_record_validates_against_registry():
+    gv_map = load_gv_map(DEFAULT_MAP_PATH)
+    entry = resolve_campaign(gv_map, "V5.4.1")
+    record = {
+        "gv": {
+            "map_version": gv_map.map_version,
+            "campaign_id": "V5.4.1",
+            "primary_g": entry.primary_g,
+            "supporting_g": list(entry.supporting_g),
+            "gates": list(entry.gates[:2]),
+            "code_commit": "0" * 40,
+            "config_sha256": "a" * 64,
+        }
+    }
+    validate_gv_run_record(record, gv_map)
+
+
+def test_v541_run_record_rejects_undeclared_gate():
+    gv_map = load_gv_map(DEFAULT_MAP_PATH)
+    with pytest.raises(GVMapError, match="gates not declared"):
+        validate_gv_run_record(
+            {
+                "gv": {
+                    "map_version": gv_map.map_version,
+                    "campaign_id": "V5.4.1",
+                    "primary_g": "G3.P.2",
+                    "supporting_g": ["G0"],
+                    "gates": ["V53MP-S1-smoke"],
+                }
+            },
+            gv_map,
+        )
+
+
+def test_v541_code_scope_paths_exist_for_executed():
+    """executed status enforces code_scope existence; every glob must resolve."""
+    gv_map = load_gv_map(DEFAULT_MAP_PATH)
+    entry = resolve_campaign(gv_map, "V5.4.1")
+    assert entry.status == "executed"
+    # default validate_gv_map (require_existing=None) enforces executed paths
+    validate_gv_map(gv_map)
+    root = gv_map.path.parents[2]
+    assert (root / entry.config).is_file()
+    assert (root / "scripts/agent_ops/v541_config_schema.py").is_file()
+    assert (root / "tests/agent_ops/test_v541_config_schema.py").is_file()
+    # every declared code_scope pattern must match at least one file
+    for pattern in entry.code_scope:
+        assert any(root.glob(pattern)), f"code_scope pattern matches nothing: {pattern}"
+    # evidence + data manifest exist
+    assert (root / entry.evidence).is_file()
+    assert (root / entry.data_manifest).is_file()
+
+
 def test_proposed_campaign_may_reference_planned_paths(tmp_path):
     path = _write_map(tmp_path, status="proposed")
     gv_map = load_gv_map(path)

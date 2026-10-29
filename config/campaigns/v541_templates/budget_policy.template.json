@@ -1,0 +1,214 @@
+{
+  "_t1_block_rule": "per_candidate.*.approved_for_formal must all be true for admitted candidates before formal T1; validator surfaces budget.per_candidate_core_time==null as a T1 blocker",
+  "_template_note": "Template for outputs/pesn/v541_embed_50k/plan/budget_policy.json (plan §8.3/§11.2/§17). Fixed-dose 37,900 updates is immutable; per-candidate budgets are filled from W0/W1 profile_only measurements before T1 and re-hashed into budget_policy_sha256.",
+  "activation_summary": {
+    "E4": "gate_skipped_cost_ratio_exceeds_2",
+    "E5": "gate_skipped_parent_E4_cost_gate_failed",
+    "T0R_E0": 3,
+    "T1_candidates": [
+      "E1",
+      "E2",
+      "E3"
+    ],
+    "T1_new_training": 3,
+    "T3_max_additional": 4,
+    "T4_diagnostics": "0-2 conditional"
+  },
+  "campaign_id": "PES2TS_V541_EMBED_50K",
+  "config_path": "config/campaigns/pes2ts_v541_embed_50k.yaml",
+  "config_sha256": null,
+  "cost_acceptance": {
+    "e0_accounting": "historical_accounting_cost (C×3 measured) reported separately from matched_runtime_profile (current-env profile_only estimate)",
+    "max_core_time_ratio": 2.0,
+    "on_exceed": "scientific result retained, no upgrade granted, E0 stays (not resource_failure)",
+    "rule": "hard_ratio"
+  },
+  "cost_model": {
+    "extrapolation_rule": "200 W0 updates may NOT be extrapolated to W1 joint timing; profile_only windows must label frozen-core vs unfrozen-core",
+    "formula": "T_run = 400*t_W0 + 37500*t_W1 + T_startup + T_eval + T_checkpoint",
+    "measure_w0_w1_separately": true,
+    "metrics_reported": [
+      "projected_train_gpu_hours",
+      "projected_wall_hours",
+      "fixed_37900_update_budget_seconds",
+      "fixed_gpu_time_comparison_budget",
+      "peak_vram",
+      "peak_host_anon",
+      "gpu_active_wait_split",
+      "cpu_feature_triplet_time",
+      "cache_hit_rate"
+    ]
+  },
+  "e0_retrain_decision": {
+    "decision": "retrain_e0_x3",
+    "historical_C_gpu_seconds": 9475,
+    "historical_accounting_note": "3147+3148+3180 seconds; current matched E0 uses new formal T0-R measurements, not the historical estimate"
+  },
+  "execution_policy": {
+    "concurrency": 1,
+    "forbidden_workarounds": [
+      "reduce_frames",
+      "reduce_curves",
+      "shorten_updates",
+      "change_stratification",
+      "drop_process_loss",
+      "swap_seed"
+    ],
+    "host_limit_gib": 12,
+    "memory_high_gib": 10,
+    "on_breach": [
+      "resource_failure",
+      "budget_censored"
+    ],
+    "oom_kill_max": 0,
+    "single_lane": true,
+    "swap_max": 0
+  },
+  "h1_resource_evidence": {
+    "path": "outputs/pesn/v541_embed_50k/audits/h1_resource.json",
+    "sha256": "085d18a88443b108b1a895a365aa867e7578083f9edce6a597eec4aecbb2f107"
+  },
+  "one_off_costs_listed_separately": [
+    "E2 degree histogram fit",
+    "angle triplet construction",
+    "evaluation passes",
+    "cache warm-up"
+  ],
+  "per_candidate": {
+    "E0": {
+      "approved_for_formal": true,
+      "core_seconds": 2124.805,
+      "fixed_37900_update_budget_seconds": 2165.96,
+      "fixed_gpu_time_comparison_budget": 2124.805,
+      "peak_host_anon_gib": 4.214378,
+      "peak_vram_gib": 0.198136,
+      "projected_train_gpu_hours": 0.590224,
+      "projected_wall_hours": 0.601656,
+      "status": "approved",
+      "w1_core_ratio": 1.0
+    },
+    "E1": {
+      "approved_for_formal": true,
+      "core_seconds": 2118.061,
+      "fixed_37900_update_budget_seconds": 2163.237,
+      "fixed_gpu_time_comparison_budget": 2118.061,
+      "peak_host_anon_gib": 4.286789,
+      "peak_vram_gib": 0.198584,
+      "projected_train_gpu_hours": 0.58835,
+      "projected_wall_hours": 0.600899,
+      "status": "approved",
+      "w1_core_ratio": 0.9914
+    },
+    "E2": {
+      "approved_for_formal": true,
+      "core_seconds": 2197.645,
+      "fixed_37900_update_budget_seconds": 2243.061,
+      "fixed_gpu_time_comparison_budget": 2197.645,
+      "peak_host_anon_gib": 4.349514,
+      "peak_vram_gib": 0.199019,
+      "projected_train_gpu_hours": 0.610457,
+      "projected_wall_hours": 0.623073,
+      "status": "approved",
+      "w1_core_ratio": 1.0319
+    },
+    "E3": {
+      "approved_for_formal": true,
+      "core_seconds": 4235.71,
+      "fixed_37900_update_budget_seconds": 4323.051,
+      "fixed_gpu_time_comparison_budget": 4235.71,
+      "peak_host_anon_gib": 4.286877,
+      "peak_vram_gib": 0.198541,
+      "projected_train_gpu_hours": 1.176586,
+      "projected_wall_hours": 1.200848,
+      "status": "approved_small_cost_margin",
+      "w1_core_ratio": 1.9967
+    },
+    "E4": {
+      "approved_for_formal": false,
+      "core_seconds": 7752.429,
+      "fixed_37900_update_budget_seconds": 7953.05,
+      "fixed_gpu_time_comparison_budget": 7752.429,
+      "peak_host_anon_gib": 4.289597,
+      "peak_vram_gib": 0.198845,
+      "projected_train_gpu_hours": 2.153453,
+      "projected_wall_hours": 2.209181,
+      "status": "gate_skipped_cost_ratio_exceeds_2",
+      "w1_core_ratio": 3.6455
+    },
+    "E5": {
+      "approved_for_formal": false,
+      "fixed_37900_update_budget_seconds": null,
+      "peak_host_anon_gib": null,
+      "peak_vram_gib": null,
+      "projected_wall_hours": null,
+      "reason": "parent E4 failed the preregistered 2x core-time acceptance gate",
+      "status": "gate_skipped_parent_E4_cost_gate_failed"
+    }
+  },
+  "profile_evidence": {
+    "E0": {
+      "gpu_time_basis": "core_wall_upper_bound",
+      "profile_path": "outputs/pesn/v541_embed_50k/profile/V541_E0_S17/profile.json",
+      "profile_sha256": "6a80a2ef26cd2496f10450832707256bb5bb0b480526519d73398275db9e6da3",
+      "profile_window": {
+        "w0": 40,
+        "w1": 40
+      },
+      "smoke_metrics_path": "outputs/pesn/v541_embed_50k/smoke/V541_E0_S17/metrics.json",
+      "smoke_metrics_sha256": "361d12123b58a871491082990b8aeb537bbc285aa0150091463b21b87a33a576"
+    },
+    "E1": {
+      "gpu_time_basis": "core_wall_upper_bound",
+      "profile_path": "outputs/pesn/v541_embed_50k/profile/V541_E1_S17/profile.json",
+      "profile_sha256": "7583b2ad244e5bcfd035096f5327f58d9415f20505ff79115e0af5fc6f1cef89",
+      "profile_window": {
+        "w0": 40,
+        "w1": 40
+      },
+      "smoke_metrics_path": "outputs/pesn/v541_embed_50k/smoke/V541_E1_S17/metrics.json",
+      "smoke_metrics_sha256": "14e18dcb1ae410ae7b24c1f47fb69ecdafb0172181004a206141b3a68101b56a"
+    },
+    "E2": {
+      "gpu_time_basis": "core_wall_upper_bound",
+      "profile_path": "outputs/pesn/v541_embed_50k/profile/V541_E2_S17/profile.json",
+      "profile_sha256": "c7d0fa76cf18014afde67c444303d7c790e65ecb94ae0321ec1a5daf081ae28c",
+      "profile_window": {
+        "w0": 40,
+        "w1": 40
+      },
+      "smoke_metrics_path": "outputs/pesn/v541_embed_50k/smoke/V541_E2_S17/metrics.json",
+      "smoke_metrics_sha256": "46923fce99f0950ed4852fed12cde1d40eefd7cd41e4d07b14d16260c5f79403"
+    },
+    "E3": {
+      "gpu_time_basis": "core_wall_upper_bound",
+      "profile_path": "outputs/pesn/v541_embed_50k/profile/V541_E3_S17/profile.json",
+      "profile_sha256": "e5771ca3496978092056a256f710519789f5a99097b278c482ae62a28f8ba8d7",
+      "profile_window": {
+        "w0": 40,
+        "w1": 40
+      },
+      "smoke_metrics_path": "outputs/pesn/v541_embed_50k/smoke/V541_E3_S17/metrics.json",
+      "smoke_metrics_sha256": "ab77020c844251b306122292ac727c909fa5a1bd97cebfd42918714f06ad9551"
+    },
+    "E4": {
+      "gpu_time_basis": "core_wall_upper_bound",
+      "profile_path": "outputs/pesn/v541_embed_50k/profile/V541_E4_S17/profile.json",
+      "profile_sha256": "30e421c7428e6e41a49585231a408327aa7e8bf181c692655fb22d4beabf729c",
+      "profile_window": {
+        "w0": 40,
+        "w1": 40
+      },
+      "smoke_metrics_path": "outputs/pesn/v541_embed_50k/smoke/V541_E4_S17/metrics.json",
+      "smoke_metrics_sha256": "b90362158eeea6448bee7cb45e7924f9606fb4ae9e4189d6f1b42ee223581aba"
+    }
+  },
+  "schedule": {
+    "fixed_dose_note": "正式训练始终固定 37,900 updates；fixed-GPU-time 只作另报成本匹配分析，不替代同剂量主比较",
+    "total_updates": 37900,
+    "w0_updates": 400,
+    "w1_updates": 37500
+  },
+  "schema": "pes2ts_v541_budget_policy_v1",
+  "signed_by": "v541_wp5_profile_audit",
+  "signed_on": "2026-10-28"
+}

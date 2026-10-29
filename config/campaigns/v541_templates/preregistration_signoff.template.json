@@ -1,0 +1,87 @@
+{
+  "schema": "pes2ts_v541_preregistration_signoff_v1",
+  "_template_note": "Template for outputs/pesn/v541_embed_50k/plan/preregistration_signoff.json. Copy, fill *_sha256 fields at freeze time, keep thresholds byte-identical to config/campaigns/pes2ts_v541_embed_50k.yaml thresholds block. Any threshold change requires re-signoff + config/runplan/budget SHA refresh (plan §11.2).",
+  "campaign_id": "PES2TS_V541_EMBED_50K",
+  "gv_campaign_id": "V5.4.1",
+  "config_path": "config/campaigns/pes2ts_v541_embed_50k.yaml",
+  "config_sha256": null,
+  "schema_id": "pes2ts_v541_campaign_v1",
+  "objective": "unified_move_process",
+  "plan_path": "docs/plans/PES2TS_V5.4.1_Embedding_50K_详细阶段实施方案_v1.0_20261027.md",
+  "upstream_v1_1_sha256": "c2c1e5e5588ecd7109037095cd2035474722b366f953f1811cfcc0da56cfd24c",
+  "adr": ["ADR-0031", "ADR-0032"],
+  "authorization": {
+    "user_directive_date": "2026-10-27",
+    "user_directive_text": "完成5.4.1的代码生成和训练工作",
+    "implementation_authorized": true,
+    "formal_training_authorized": true,
+    "formal_training_scope": "按既有方案开展 implementation + formal training；实际 T1 仍须 H0/H1/smoke/resource/budget gate 全过（§17）",
+    "confirm_authorized": false,
+    "sealed_authorized": false,
+    "new_qc_calls": 0,
+    "single_lane": true,
+    "swap_allowed": false
+  },
+  "thresholds_signed_frozen": {
+    "status": "frozen",
+    "signed_on": "2026-10-27",
+    "signed_by": "user_directive_20261027",
+    "sign_drop_abs_max": 0.01,
+    "dead_fraction_increase_abs_max": 0.01,
+    "fixed_coverage_direction_regression_rel_max_pct": 2.0,
+    "other_endpoint_auprc_drop_abs_max": 0.01,
+    "other_q_corr_drop_abs_max": 0.02,
+    "gpu_parity_atol": 1e-06,
+    "gpu_parity_rtol": 1e-05,
+    "max_core_time_ratio": 2.0,
+    "final_bootstrap_draws": 10000,
+    "rollout_large_subset_curves": 96,
+    "cost_acceptance_rule": "hard_ratio"
+  },
+  "gate_preregistration": {
+    "H2_move_guard_rel_max_pct": 2.0,
+    "H3_delta_auprc_abs_min": 0.02,
+    "H3_delta_q_corr_abs_min": 0.03,
+    "H3_min_seeds_same_direction": "2/3",
+    "dev_veto_rule": "H0/H2 any fail OR dev three-seed aggregate misses the inner-val H3 effect gate OR the other PROCESS primary metric breaches its non-inferiority bound -> development_not_reproduced -> conservative E0 fallback; no runner-up switch",
+    "t4_strategy": "E0-MLP replaces E0-wide as default; paired with E0-deeper; parameter/depth match rule frozen before T1; instantiated only after inner-val champion and pinned before T4 or any candidate dev access",
+    "rollout_roster_rule": "24-curve regression ⊂ 96-curve fixed ⊂ dev; curve-ID hash + label-free stratification; roster + source split SHA + rule SHA recorded; no E1-E6 predictions on these subsets before WP7",
+    "dev_veto_after_screen": "T3 preregisters all selectable candidates (E1–E5 × seeds 29/43, 10 conditional runs) BEFORE screening; only the frozen inner-val top-2 activates (max 4 runs), unactivated runs record gate_skipped with 0 new trainings, and N_core stays formula-counted per §9.1; screening rules never changed by later seeds"
+  },
+  "t3_preregistration": {
+    "listed_runs": 10,
+    "candidates": ["E1", "E2", "E3", "E4", "E5"],
+    "seeds": [29, 43],
+    "full_activation_count": 4,
+    "activation": "activated_only_by_inner_val_top2",
+    "unactivated_status": "gate_skipped",
+    "n_core_counting": "formula_only"
+  },
+  "manifest_sha_layers": [
+    "common_protocol_sha256",
+    "embedding_spec_sha256",
+    "feature_recipe_sha256",
+    "code_commit",
+    "environment_sha256",
+    "runplan_sha256",
+    "budget_policy_sha256"
+  ],
+  "runplan_sha256": null,
+  "budget_policy_sha256": null,
+  "code_commit": null,
+  "environment_sha256": null,
+  "signed_by_roles": {
+    "governance_signoff": null,
+    "training_signoff": null,
+    "evaluation_signoff": null,
+    "resource_signoff": null
+  },
+  "t1_config_ready_requires": [
+    "all thresholds non-null (validator --formal passes)",
+    "budget.per_candidate_core_time signed after W0/W1 profiling",
+    "WP1 pair-evaluator repair + R3 H2 re-evaluation evidence",
+    "WP2 E0 strict-load parity evidence",
+    "smoke 200-update single-lane pass",
+    "formal-run code/common-protocol/runplan SHA frozen"
+  ]
+}

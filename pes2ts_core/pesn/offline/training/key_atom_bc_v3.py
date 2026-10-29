@@ -67,6 +67,10 @@ from pes2ts_core.pesn.offline.data.key_atom_dataset_v3 import (
     KeyAtomDatasetV3,
     SampleRecordV3,
 )
+from pes2ts_core.pesn.offline.evaluation.pair_ownership_v3 import (
+    assign_batch_pairs,
+    merge_pair_audits,
+)
 
 __all__ = [
     "TRAINER_SCHEMA",
@@ -420,40 +424,37 @@ def evaluate_checkpoint(
     y_samples: List[np.ndarray] = []
     curve_ids: List[str] = []
     g53_samples: List[Dict[str, Any]] = []
+    pair_audits: List[Dict[str, Any]] = []
     for block in blocks:
         batch = block["batch"]
         u_all = block["u"]
         n_keys = batch["n_keys"].long().cpu().numpy()
+        n_nodes = batch["n_nodes"].long().cpu().numpy()
         key_index = batch[NODE_KEY_SET_KEY].long().cpu().numpy()
         y_all = batch["y_teacher"].cpu().numpy()
         pos_all = batch[NODE_POS_KEY].cpu().numpy()
-        ptr = np.concatenate([[0], np.cumsum(n_keys)]).astype(np.int64)
         pair_index = batch["pair_index"].long().cpu().numpy()
         pair_edit = batch["pair_edit"].cpu().numpy()
-        for g in range(len(n_keys)):
-            ks, ke = int(ptr[g]), int(ptr[g + 1])
+        # WP1a (V5.4.1 §4.1): pair_index is batch-global NODE rows — pair
+        # ownership uses the node-row pointer (n_nodes); the key-row pointer
+        # (n_keys) only slices u/y/key_index.  Shared tool, both entry points.
+        ownership = assign_batch_pairs(
+            n_nodes=n_nodes, n_keys=n_keys, key_index=key_index,
+            pair_index=pair_index, pair_edit=pair_edit)
+        pair_audits.append(ownership.audit(per_graph=False))
+        for g, gs in enumerate(ownership.graphs):
+            ks, ke = gs.key_lo, gs.key_hi
             u_g = u_all[ks:ke]
             y_g = y_all[ks:ke]
             rows_g = key_index[ks:ke]
             u_samples.append(u_g.astype(np.float64))
             y_samples.append(y_g.astype(np.float64))
             curve_ids.append(str(batch["curve_ids"][g]))
-            pairs = []
-            edits: List[float] = []
-            if pair_index.shape[1]:
-                in_frame = np.nonzero(
-                    (pair_index[0] >= ptr[g]) & (pair_index[0] < ptr[g + 1]))[0]
-                slot = {int(r): k for k, r in enumerate(rows_g)}
-                for p in in_frame:
-                    a, b = int(pair_index[0, p]), int(pair_index[1, p])
-                    if a in slot and b in slot:
-                        pairs.append((int(rows_g[slot[a]]), int(rows_g[slot[b]])))
-                        edits.append(float(pair_edit[p]))
             g53_samples.append({
                 "pos": pos_all,
                 "key_rows": [int(r) for r in rows_g],
-                "pairs": pairs,
-                "pair_edits": edits,
+                "pairs": [(int(a), int(b)) for a, b in gs.pairs],
+                "pair_edits": [float(e) for e in gs.pair_edits],
                 "u": u_g.astype(np.float64),
                 "y": y_g.astype(np.float64),
                 "group_id": str(batch["curve_ids"][g]),
@@ -542,6 +543,9 @@ def evaluate_checkpoint(
             },
         },
         "guards": guards,
+        # WP1a additive audit (V5.4.1 §4.1): pair denominators per eval —
+        # totals only, O(1); g53 sample structure above is unchanged.
+        "pair_ownership_audit": merge_pair_audits(pair_audits),
         "n_val_samples": len(u_samples),
         "n_val_curves": len(set(curve_ids)),
     }

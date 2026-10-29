@@ -1,5 +1,55 @@
 # PES2TS 文档修订台账（协同性）
 
+## 2026-10-29 增量登记：V5.4.1 执行完成收尾（只读最终报告 + 状态同步）
+
+- 新增只读最终报告 [PES2TS_V541_Embedding_50K_实施与训练报告_20261029](../reports/PES2TS_V541_Embedding_50K_实施与训练报告_20261029.md)（Executed-Frozen）：WP0–WP7 全部完成；正式 run 与成本、失败/删失全账、dev/rollout/bundle 路径与证据边界逐项列出。核心事实：T0-R E0×3（17/29/43）与 E1/E2/E3 seed17 均 37,900 updates done；E1/E2 `scientific_failure`（H2 sign guard）、E3 `scientific_failure`（H2 sign+dead）；E4 `gate_skipped`（core ratio 3.6455>2.0 成本门，非资源失败）；E5（父门）/T3（`n_selected=0`，0 补 seed）/T4（`no_new_embedding_gain`，容量/深度混杂未闭合）均 `gate_skipped`；**E\*=E0 留任**（dev mean AUPRC 0.290702 / q_corr 0.397494 / RMSE-zero 0.910039；dev veto 不适用、无调参、tau 未重算）；rollout 1,152 episodes reference/autonomous 分开（endpoint arrival 均 0.005208、TS candidate 0.055556、QC=0、非关键原子位移 0）；E0 bundle 8 文件白名单+SHA+strict-load/read-only 审计通过；confirm 从未读取、`new_QC_calls=0`、无生产 No-Move/verified TS/部署资格声明。
+- 保留的失败与修复记录（不删除、不改写）：loader WP5-CERT 单次 `EVIDENCE_MISSING`（§8.1 一轮补证不重试）→ `e0_reuse_decision.json` 判 `retrain_e0_x3`（sampler 不等价裁决保留）；rollout attempt-1 v1 light-cache loader SIGTERM 资源失败留账 + loader v2 实现修复重跑（名单/checkpoint/tau/预算不变）；formal 首次启动前 resource 配置 falsy-default 缺陷拒绝记录保留。
+- [实施方案 v1.2](PES2TS_V5.4.1_Embedding_50K_详细阶段实施方案_v1.0_20261027.md)：状态 Active-Proposed → **Executed-Frozen**，新增 §19 执行指针（阶段状态映射、§16.1 出口逐项状态、与规划假设的偏离登记、V5.4.2 交接）；§0–§18 规划正文未改写。
+- [ADR-0032](../design/decisions/ADR-0032-V5.4.1-Embedding接口扩展与预注册治理.md) v1.2：新增 §6 执行附录（决策项执行结果、§4 风险逐项裁决、E*=E0 最终裁决）；§4 原文保留并加 2026-10-29 指针注记。
+- 注册表：`V5.4.1` `proposed` → `executed`，evidence 指向最终报告，code_scope 回填实际实现路径（`pes2ts_core/pesn/models/v541/**`、`offline/training/v541_*.py`、`pair_ownership_v3.py`、`key_atom_stream_view.py`、`scripts/campaigns/v541_*.py`），`plan_revision: 2026-10-29.1`；**旧 `V5.4` 条目未动**；G–V 映射文档已 `render_gv_map.py --write` 重渲染。同步 `tests/test_gv_registry.py` 的 V5.4.1 状态/plan_revision 断言（仅测试，不改科学内容）。
+- 索引同步：`docs/README.md` 顶部新增执行完成小节（历史小节保留）；`AGENT.md` §10 与根 `README.md` 增加当前方向指针。
+- 验证（2026-10-29）：全仓 pytest **4,954 passed / 1 skipped / 11 deselected**；`python scripts/agent_ops/docs_consistency.py --strict` CLEAN（145 文件 0 violation）；`python scripts/render_gv_map.py --check` current；`validate_gv_map(load_gv_map())` 在 executed 强制路径存在下通过。
+
+## 2026-10-27 增量登记：V5.4.1 WP0 治理/预注册落地（ADR-0032）
+
+- 新增 [ADR-0032 V5.4.1 Embedding 接口扩展与预注册治理](../design/decisions/ADR-0032-V5.4.1-Embedding接口扩展与预注册治理.md)（Accepted）：MoveProcessContract v1 任务语义不变，只扩展 Embedding 残差接口；记录用户 2026-10-27「完成5.4.1的代码生成和训练工作」指令 = implementation + formal training 按既有方案授权，同时将方案 §11.2 建议阈值签认为 frozen；明确该授权**不免除** H0/H1/单路 smoke/预算签认/formal SHA 冻结门，confirm/sealed/新增 QC 恒 false/0，单路、无 swap。
+- 新增战役配置 [pes2ts_v541_embed_50k.yaml](../../config/campaigns/pes2ts_v541_embed_50k.yaml)（schema `pes2ts_v541_campaign_v1`，objective 仅 `unified_move_process`，不暴露三臂矩阵；embedding 冻结注册表 E0–E6、forward-view 白名单 17 键、core 只消费 legacy `edge_scalar[E,22]` 且 `node_vector_consumed/edge_adapter=false`）。
+- 新增独立 validator `scripts/agent_ops/v541_config_schema.py`（prereg/formal 双模式 + CLI）：缺字段、非统一 objective、未知 embedding、非法 forward key、EdgeAdapter/vector 消费、confirm/sealed/QC 授权、单路/swap、`V541_GV_MISMATCH`、run matrix/命名空间越界均 typed rejection；`--formal` 下任一 §11.2 阈值为 null 或 signoff 与 config 不镜像即 `V541_THRESHOLD_NULL` 阻断 T1（prereg 模式记入 `t1_blocked`，runner 不填默认值）。
+- 新增 WP0 模板 `config/campaigns/v541_templates/{preregistration_signoff,budget_policy,runplan_pin}.template.json`：run 三类分离（nominal/conditional/diagnostic，diagnostic 不计入主赢家）、37,900 固定剂量、W0/W1 分项测速、hard_ratio 成本规则、24⊂96⊂dev rollout 名单规则。
+- 注册表 `config/registry/g_v_map.yaml` 新增 `V5.4.1`（primary `G3.P.2`；supporting `G3.P.1/G3.P.3/G0/G1`；`plan_revision: 2026-10-27.1`，`map_version` 保持 2026-10-18.1），**旧 `V5.4` from-any-point 条目保持不动**；`python scripts/render_gv_map.py --write` 重渲染 G–V 文档。run outcome 六词表（`done/invalid_run/scientific_failure/resource_failure/budget_censored/gate_skipped`）与旧 ledger 状态机分开登记，**未修改** `run_ledger.py` 状态机。
+- 测试与门：新增 `tests/agent_ops/test_v541_config_schema.py`（54 例）、扩展 `tests/test_gv_registry.py`（V5.4.1 登记/V5.4 不变/typed rejection）；`docs_consistency_config.json` 增补 ADR-0032、V5.4.1 方案与配置的 required-file 登记。
+- 边界：本轮仅 WP0 治理产物，未改模型/训练器/评估器/旧 V5.3 文件/`outputs/` 历史记录，未启动训练/QC，未访问 dev/confirm，不宣称训练完成或候选科学收益。
+
+## 2026-10-27 增量登记：V5.4.1 WP0 run_matrix T3 预注册修正（复核响应）
+
+- 删除 `V541_T3_TOP2_S29/S43` 两个 `embedding=null` 占位（无法表达 §9.1 的「两个冻结候选各补 seeds 29/43、满额 4 次」，且 run_id 无确定 embedding 身份）。
+- 改为预注册全部可能入选的 T3 条件 run：**E1–E5 × seeds {29,43} = 10 个稳定 `V541_E#_S##`**，每个 `class=conditional`、`winner_eligible=true`、`condition=activated_only_by_inner_val_top2`、`new_training_if_activated=1`、`unactivated_status=gate_skipped`；仅 inner-val top-2 冻结后激活，**实际激活满额仅 4 个**；`N_core` 按 §9.1 公式计数，不按 listed runs 求和（config `run_matrix.t3_preregistration` + pin/signoff 模板同步声明 `n_core_counting: formula_only`）。
+- **E5 门叠加**：E5 的 T3 行在选择门之上必须带 `parent_gate=parents_E1_E4_H0_H1_H2_pass_and_budget_approved`（两门皆过才激活）；E1–E4 行禁止携带 `parent_gate`，validator 均 typed rejection。
+- validator 新增 `_check_t3_preregistration`（预注册集必须恰为 10 个 E1–E5×{29,43}、`listed_runs=10`、`full_activation_count=4`、`activation/unactivated_status/n_core_counting` 固定值），并在通用 run 检查中拒绝 `TOP2` 占位 token 与任何 `embedding=null` 的 run。
+- **WP5 待裁决事实（已核实）记入 ADR-0032 §4**：旧 V53MP `_curve_batch_positions`（`key_atom_v53mp_train_v3.py:883-926`，v52 同源 `key_atom_v52_train_v3.py:424`）实际按 `(curve_id, direction)` 分池 8×4 采样，**无** `start/pre_TS/post_TS/endpoint` 分层实现，而 V53MP 与 V541 冻结 config 均声明该分层。不得静默把旧采样当等价；V541 runner 必须实现/证明配置所声明的共同 sampler，WP5 确认不成立则触发 §8.1 E0×3 重训分支。**未改** config `strata`、方案文件、训练剂量、阈值。
+- 同步 `runplan_pin/preregistration_signoff` 模板、ADR-0032（v1.1 变更记录）、`docs_consistency_config.json` required 子串（`activated_only_by_inner_val_top2`、`full_activation_count: 4`、`_curve_batch_positions`）、docs/README 索引与本台账。
+
+## 2026-10-27 增量登记：V5.4.1 零新增 QC 边界澄清 v1.1.1
+
+- 明确 V5.4.1 的 50K 训练、E0 重评/条件重训、冒烟、离线评估与 rollout 均为既有数据/模型上的研究计算，`new_QC_calls=0`；不调用 ACP/xTB/ORCA/DFT，不新增能量/梯度、OptTS、频率或 IRC。
+- `reference_normalized` 与 `autonomous` rollout 都固定为 no-physics/pure-geometry；autonomous 仅指固定预算下模型自主展开，不代表真实物理闭环。真实 OptTS/Freq/IRC 属后续单独授权范围，不是 V5.4.1 出口。
+- 仅做边界澄清，主候选、训练剂量、run 矩阵和授权状态不变；docs 索引同步，未启动训练/QC、未读取 confirm。
+
+## 2026-10-27 增量登记：V5.4.1 分子 GNN 调研细化 v1.1
+
+- 按用户要求检索原论文与官方实现，将选型依据、F2/RBF mask 纠偏、E1–E5 最小规格、非零 gate 验收、梯度可达性、缓存及统计分组规则写回原方案；内容 v1.1，文件名保持 v1.0，docs 索引同步。
+- 主矩阵/训练剂量/任务合同/授权状态保持；T4 建议优先 MLP 与深度对照，E5 结构提前至 T1 前预注册。未启动训练、未修改模型代码或读取 confirm；保留工作区原有改动。
+- 验证：文档一致性检查扫描 144 文件、0 violation；方案章节/代码围栏/行尾空白检查通过。
+
+## 2026-10-27 增量登记：V5.4.1 Embedding 50K 详细实施方案 v1.0
+
+- 新增 [V5.4.1 Embedding 50K 详细阶段实施方案 v1.0](PES2TS_V5.4.1_Embedding_50K_详细阶段实施方案_v1.0_20261027.md)（Active-Proposed）：依据用户提供的 V5.4.1 单臂双功能头设计冻结候选 v1.1（来源文件 SHA256 `c2c1e5e5588ecd7109037095cd2035474722b366f953f1811cfcc0da56cfd24c`），细化 WP0–WP7、T0–T5、E0 可比性审计、单路 smoke/profiling、三 seed 配对评估、容量诊断和 Embedding 冻结交接。
+- 归属 V5.4 / G3.P.2，评估与 bundle 交付延伸至 G3.P.3；不新增 G 阶段，不等待旧 V5.4 from-any-point 入口作为前置，后续 ADR/registry/config/schema 实施登记列入 WP0。
+- 冲突裁决：历史 C×3 的修复后重评与是否重训分开；评估器修复只触发 re-evaluation，训练可比性失败或证据缺失才触发 matched E0×3。旧绝对 sign 不作正式基线，confirm 继续封存。
+- 当前仓库核查：无 V5.4.1 模型/config/runner/tests；V5.3-MP 训练栈可复用，pair_index 评估缺陷未修，loader-v2 50K 训练路径位级证书仍为 SKIP，故 E0 复用状态为 `unknown`。
+- 同步 `docs/README.md`；经独立读者复核后补明 dev 密封访问、R3 同口径参照、E0 成本口径、run 数公式和有界补证规则。`python scripts/agent_ops/docs_consistency.py --strict` 扫描 144 文件、0 violation；`git diff --check` 通过。
+- 本轮仅新增规划与索引，不修改业务代码、历史报告、模型/数据、生产默认或授权位，不启动训练/QC，不访问 confirm。
+
 ## 2026-10-22 增量登记：V5.3-MP S1 2k 冒烟完成（S1 PASS）
 
 - 新增报告：[V5.3-MP S1 2k 冒烟报告 20261022](../reports/PES2TS_V53MP_S1_2k冒烟报告_20261022.md)（write-once）——三臂 ok、Move guard 全过、GPU 1,829s≤3,600s 上限；ordering/endpoint 处冒烟冻结段的随机水平（与 V5.2-R D1 负结果一致）；λ 探针 endpoint calibrated / q target_unreachable / rank scale_unreachable（上限运行并记录）。
@@ -96,7 +146,7 @@
 > 取代关系：本文持续登记；2026-10-05 当前学习主线按 ADR-0010 更新，旧日期记录保留
 > 上游依赖：[开发宪法](../PES2TS_开发宪法_v1.md)、[阶段定义](PES2TS_阶段定义_G0-G3.md)
 > 下游消费者：文档索引、执行投影、各阶段开发与审计
-> 当前版本：v3.21 @ 2026-10-21（V5.3-MP 计划 v1.1：S0-A/B 真值访问、20k 目标、分片惰性加载、Endpoint 标签算法、三臂评估、S2→S3 放宽、闭环双预算、实施就绪门；MoveProcessContract §10.1 增补；V5.2/V5.2-R 关闭；宪法 v2.9；V5.3-ENG / V5.3-MP 命名）
+> 当前版本：v3.25 @ 2026-10-29（V5.4.1 执行完成收尾：只读最终报告 + 方案 v1.2 Executed-Frozen + ADR-0032 §6 执行附录 + registry executed；v3.24 WP0 run_matrix T3 修正；旧 V5.3-MP 记录保留）
 
 ---
 

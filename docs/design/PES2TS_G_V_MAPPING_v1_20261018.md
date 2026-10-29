@@ -2,7 +2,7 @@
 
 > 状态：权威（机器可读源：`config/registry/g_v_map.yaml`）
 > 映射版本：`2026-10-18.1`
-> 计划修订：`2026-10-21.2`
+> 计划修订：`2026-10-29.1`
 > 生成命令：`python scripts/render_gv_map.py --write`
 > 校验命令：`python scripts/render_gv_map.py --check`
 
@@ -33,6 +33,7 @@
 | V5.3-ENG | S | S |  |  |  | S | P | S |  |  |  |  |  |
 | V5.3-MP | S | S |  |  | S | S | P | S |  |  |  |  |  |
 | V5.4 | S | S |  |  |  | S | P | S |  |  |  |  |  |
+| V5.4.1 | S | S |  |  |  | S | P | S |  |  |  |  |  |
 | V5_SPRINT | S | S |  |  | P | S | S | S |  |  |  |  |  |
 | V5_1A_SPRINT | S | S |  |  | S | S | P | S |  |  |  |  |  |
 | V6.0 | D | D |  |  |  |  |  | S |  | P |  |  |  |
@@ -61,6 +62,7 @@
 | V5.3-ENG | executed | G3.P.2 | G3.P.1, G3.P.3, G0, G1 | `config/campaigns/pes2ts_30h_20261020.yaml` | `data/manifests/v5/split_manifest.json` | G4-Rollout |
 | V5.3-MP | proposed | G3.P.2 | G3.P.0, G3.P.1, G3.P.3, G0, G1 | `config/campaigns/pes2ts_v53mp_20261021.yaml` | `data/manifests/v5/split_manifest.json` | V53MP-S0-data, V53MP-S1-smoke, V53MP-S2-scale, V53MP-S3-formal, V53MP-S3-closed-loop |
 | V5.4 | proposed | G3.P.2 | G3.P.1, G3.P.3, G0, G1 | `config/campaigns/v5_4_rollout.yaml` | `data/manifests/v5/split_manifest.json` | V5-G1, V5.4-field, V5.4-rollout, V5.4-stop |
+| V5.4.1 | executed | G3.P.2 | G3.P.1, G3.P.3, G0, G1 | `config/campaigns/pes2ts_v541_embed_50k.yaml` | `data/manifests/v5/split_manifest.json` | V541-WP0-prereg, V541-WP1-pair-eval, V541-WP2-parity, V541-e0-reuse-decision, V541-smoke-200, V541-H0-legality, V541-H1-resource, V541-H2-move, V541-H3-process, V541-budget-signoff, V541-formal-t1 |
 | V5_SPRINT | executed | G3.P.0 | G3.P.1, G3.P.2, G3.P.3, G0, G1 | `config/campaigns/v5_sprint.yaml` | `data/manifests/v5/split_manifest.json` | V5-G1, V5-G2, V5-G3, V5-G4 |
 | V5_1A_SPRINT | executed | G3.P.2 | G3.P.0, G3.P.1, G3.P.3, G0, G1 | `config/campaigns/v5_1_sprint.yaml` | `data/manifests/v5/split_manifest.json` | V5-G1, V5-G2, V5-G3, V5-G4 |
 | V6.0 | archived | G3.2 | G3.P.3 | `config/campaigns/v6_0_data.yaml` | `data/manifests/v6/split_manifest.json` | V6-OOF, V6-leakage |
