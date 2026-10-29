@@ -1,0 +1,73 @@
+{
+  "schema": "pes2ts_v542_parity_certificate_v1",
+  "_template_note": "Template for outputs/pesn/v542_backbone_50k/audits/parity_certificate.json (Oracle §1.5). Forward-migration certificate ONLY — it does NOT prove training comparability and is NOT evidence for E0 reuse (that is the separate a0_reuse_decision record). 6 checkpoints ALL REQUIRED with source_tier/training_updates pinned per row (fix-5 C3): 3 V541 E0 (S17/S29/S43, MAIN evidence = runs/ 37,900-update final, source_tier=v541_e0_runs_final_37900) + 3 V53MP C (S17/S29/S43, AUXILIARY evidence = outputs/pesn/v53mp/ S3 formal 20k-tier 15,400-update checkpoint, source_tier=v53mp_20k_s3_formal_15400_auxiliary — NOT 37,900, NOT under runs/, NOT smoke); smoke and non-pinned checkpoints are FORBIDDEN; assets located + SHA-pinned by the read-only lane 2026-10-30 (6/6 required). PASS is decided by CPU bitwise equality; max_abs_diff is recorded but not decisive.",
+  "campaign_id": "PES2TS_V542_BACKBONE_50K",
+  "config_path": "config/campaigns/pes2ts_v542_backbone_50k.yaml",
+  "config_sha256": null,
+  "code_sha256": null,
+  "environment_sha256": null,
+  "source_manifest_sha256": null,
+  "certificate_type": "forward_and_evaluator_migration_only",
+  "not_evidence_for": ["e0_reuse", "training_comparability", "h2_h3_baseline_substitution"],
+  "asset_policy": {
+    "all_six_required": true,
+    "smoke_checkpoints_forbidden": true,
+    "non_pinned_checkpoints_forbidden": true,
+    "smoke_paths_rejected_note": "outputs/pesn/v541_embed_50k/smoke/** 路径 (200-update smoke checkpoint) 永不作为 parity 资产; 资产分层 (fix-5 C3, 取代旧「必须 runs/ 37,900 final」绝对措辞): V541 E0 主证据 = runs/ 下 37,900-update final checkpoint (source_tier=v541_e0_runs_final_37900, training_updates=37900); V53MP C 辅助证据 = outputs/pesn/v53mp/ 下 S3 formal 20k-tier 15,400-update checkpoint (source_tier=v53mp_20k_s3_formal_15400_auxiliary, training_updates=15400; 非 37,900、不在 runs/、非 smoke); smoke 与非钉死 (non-pinned) checkpoint 一律禁止",
+    "asset_located_on": "2026-10-30",
+    "asset_locator": "read_only_lane"
+  },
+  "load_audit": {
+    "rule": "strict-audit mapping: read file SHA-256 + payload['model']; apply frozen w_v mapping; missing/unexpected/shape_mismatch/dtype_mismatch ALL empty; assert backbone.w_v.weight is move_decoder.w_v.weight (same tensor); load_state_dict(strict=True); per-key torch.equal(source, target) after load",
+    "strict_false_forbidden": true,
+    "silent_key_filtering_forbidden": true,
+    "record": ["source_sha256", "mapping_table_sha256", "target_key_set", "audit_json_path"]
+  },
+  "checkpoints": [
+    { "id": "V541_E0_S17", "source": "V541 T0R E0 seed17 final (37,900 updates)", "source_tier": "v541_e0_runs_final_37900", "training_updates": 37900, "required": true, "path": "outputs/pesn/v541_embed_50k/runs/V541_T0R_E0_S17/checkpoint_best.pt", "sha256": "c1e35610d33e2350ec5987ccbced07ba7e665458e6078a7eaf2e0de9e90ca56d", "forbidden_path_note": "NOT outputs/pesn/v541_embed_50k/smoke/V541_E0_S17/checkpoint_best.pt", "cpu_bitwise": null, "real_batch_bitwise": null, "gpu_tolerance": null, "max_abs_diff": { "u": null, "z": null, "q": null, "endpoint_logit": null, "order_score": null, "forward_move_u": null, "forward_move_z": null }, "status": "pending" },
+    { "id": "V541_E0_S29", "source": "V541 T0R E0 seed29 final (37,900 updates)", "source_tier": "v541_e0_runs_final_37900", "training_updates": 37900, "required": true, "path": "outputs/pesn/v541_embed_50k/runs/V541_T0R_E0_S29/checkpoint_best.pt", "sha256": "a214d6e9c9cf4a80bbf079567d13c0a09061dcbd0b5b2f3dec4f53f9cc29e49d", "cpu_bitwise": null, "real_batch_bitwise": null, "gpu_tolerance": null, "max_abs_diff": { "u": null, "z": null, "q": null, "endpoint_logit": null, "order_score": null, "forward_move_u": null, "forward_move_z": null }, "status": "pending" },
+    { "id": "V541_E0_S43", "source": "V541 T0R E0 seed43 final (37,900 updates)", "source_tier": "v541_e0_runs_final_37900", "training_updates": 37900, "required": true, "path": "outputs/pesn/v541_embed_50k/runs/V541_T0R_E0_S43/checkpoint_best.pt", "sha256": "92412a1af295cc58c880c32bf9ee0ea653b46ef31648fc9cf1cc76a806a6f00c", "cpu_bitwise": null, "real_batch_bitwise": null, "gpu_tolerance": null, "max_abs_diff": { "u": null, "z": null, "q": null, "endpoint_logit": null, "order_score": null, "forward_move_u": null, "forward_move_z": null }, "status": "pending" },
+    { "id": "V53MP_C_S17", "source": "V53MP arm-C seed17 (S3 formal 20k-tier, 15,400 updates; auxiliary evidence)", "source_tier": "v53mp_20k_s3_formal_15400_auxiliary", "training_updates": 15400, "required": true, "path": "outputs/pesn/v53mp/v53mp_20k_C_s17/checkpoint_best.pt", "sha256": "871596e61b7d2e2ed77328eaa884b848621f07533e8ffd242a98442c0aec5db3", "cpu_bitwise": null, "real_batch_bitwise": null, "gpu_tolerance": null, "status": "pending" },
+    { "id": "V53MP_C_S29", "source": "V53MP arm-C seed29 (S3 formal 20k-tier, 15,400 updates; auxiliary evidence)", "source_tier": "v53mp_20k_s3_formal_15400_auxiliary", "training_updates": 15400, "required": true, "path": "outputs/pesn/v53mp/v53mp_20k_C_s29/checkpoint_best.pt", "sha256": "d456050e9ed5f231691306097e120459cd8679768da30313c837ef1307f06884", "cpu_bitwise": null, "real_batch_bitwise": null, "gpu_tolerance": null, "status": "pending" },
+    { "id": "V53MP_C_S43", "source": "V53MP arm-C seed43 (S3 formal 20k-tier, 15,400 updates; auxiliary evidence)", "source_tier": "v53mp_20k_s3_formal_15400_auxiliary", "training_updates": 15400, "required": true, "path": "outputs/pesn/v53mp/v53mp_20k_C_s43/checkpoint_best.pt", "sha256": "d6b11a20c90cda353400639a2f88c54a4ba3b91fcda55a67241d8fa967f4715b", "cpu_bitwise": null, "real_batch_bitwise": null, "gpu_tolerance": null, "status": "pending" }
+  ],
+  "checkpoint_count": 6,
+  "required_count": 6,
+  "fixture_parity": {
+    "outputs": ["u", "z", "q", "endpoint_logit", "order_score"],
+    "forward_move_outputs": ["u", "z"],
+    "cpu": { "torch_num_threads": 1, "model_eval": true, "dtype": "fp32", "torch_equal_required": true, "record_max_abs_diff": true }
+  },
+  "real_batch_parity": {
+    "min_inner_val_batches": 8,
+    "coverage": ["start", "pre_TS", "post_TS", "endpoint", "forward", "reverse", "small_graph", "large_graph", "isolated_atom", "zero_in_degree_node"],
+    "rule": "same CPU bitwise on real inner-val batches; fixture pass + real-batch fail => data-dependent boundary bug (empty edges, degK=0, key without in-edges) must be diagnosed, never waived"
+  },
+  "gpu_tolerance": {
+    "atol": 1e-06,
+    "rtol": 1e-05,
+    "atol_ref": "thresholds.gpu_parity_atol",
+    "rtol_ref": "thresholds.gpu_parity_rtol",
+    "hard_caps_note": "atol=1e-6 / rtol=1e-5 是硬上限 (hard caps); 任何 run-to-run 地板规则都不得放宽该容差 (no tolerance relaxation)",
+    "same_gpu": true,
+    "tf32_disabled": true,
+    "legacy_floor_rule": "run legacy twice first to measure the run-to-run floor; the floor is DIAGNOSTIC ONLY — GPU pass/fail is decided solely by the hard caps (max_abs_diff <= atol AND rel_diff <= rtol); if the measured run-to-run floor exceeds the hard cap => GPU parity is INCONCLUSIVE and cannot count as pass evidence; CPU bitwise equality remains the decisive evidence; tolerances are NEVER relaxed either way",
+    "floor_gt_cap_means": "gpu_parity_inconclusive; cpu_bitwise_still_decisive; no_tolerance_relaxation",
+    "legacy_floor_max_abs": null
+  },
+  "evaluator_parity": {
+    "rule": "load E0 checkpoint into V542 A0; recompute H2/H3 inner-val metrics with the V542 evaluator; require bitwise equality or <=1e-9 vs V541 archived metrics (evaluator is deterministic)",
+    "tolerance": 1e-09,
+    "metrics": ["rmse_zero", "sign", "dead_fraction", "fixed_coverage_direction", "endpoint_auprc", "q_corr"],
+    "passed": null
+  },
+  "assertions": {
+    "q_equals_order_score": null,
+    "edge_msg_aligns_input_edge_order": null,
+    "w_v_shared_tensor_torch_equal": null,
+    "torch_compile_disabled": true
+  },
+  "overall_status": "pending",
+  "signed_by": null,
+  "signed_on": null
+}

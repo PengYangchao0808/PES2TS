@@ -109,13 +109,59 @@ def test_v541_gates_are_v541_namespaced():
 
 def test_v541_plan_revision_recorded():
     gv_map = load_gv_map(DEFAULT_MAP_PATH)
-    assert gv_map.plan_revision == "2026-10-29.1"
+    # fix-6: registry plan_revision moved to 2026-10-30.1 (V5.4.2 WP0
+    # condition closure); the V5.4.1 historical note must still be present.
+    assert gv_map.plan_revision == "2026-10-30.1"
     import yaml as _yaml
 
     doc = _yaml.safe_load(DEFAULT_MAP_PATH.read_text(encoding="utf-8"))
-    assert "V5.4.1" in doc.get("plan_revision_note", "")
-    assert "ADR-0032" in doc.get("plan_revision_note", "")
-    assert "EXECUTED" in doc.get("plan_revision_note", "")
+    note = doc.get("plan_revision_note", "")
+    # V541 historical entries survive the revision (provenance unchanged)
+    assert "V5.4.1" in note
+    assert "ADR-0032" in note
+    assert "EXECUTED" in note
+    # the current revision is the V5.4.2 fix-5/fix-6 closure
+    assert "V5.4.2" in note
+    assert "final_selection_rule" in note
+    assert "route_logic" in note
+    assert "V542-A0-sanity-band" in note
+
+
+def test_v542_registered_as_proposed_with_fix6_gates():
+    gv_map = load_gv_map(DEFAULT_MAP_PATH)
+    validate_gv_map(gv_map)
+    entry = resolve_campaign(gv_map, "V5.4.2")
+    # WP0 must stay proposed — never an execution-state claim
+    assert entry.status == "proposed"
+    assert entry.primary_g == "G3.P.2"
+    assert set(entry.supporting_g) == {"G3.P.1", "G3.P.3", "G0", "G1"}
+    # the A0 sanity band is a canonical registry gate (fix-5 C5 / fix-6)
+    assert "V542-A0-sanity-band" in entry.gates
+    assert entry.gates.index("V542-A0-sanity-band") < entry.gates.index(
+        "V542-H0-legality")
+    assert len(set(entry.gates)) == len(entry.gates)
+    # fix-6 hardening: gate_note carries the machine-frozen contracts
+    gate_note = entry.gate_note or ""
+    for token in (
+        "final_selection_rule",
+        "route_logic",
+        "V542-A0-sanity-band",
+        "15,400",
+        "37,900",
+        "main_session_owner",
+        "oracle_reviewer",
+    ):
+        assert token in gate_note, token
+    assert "status proposed" in gate_note or "status: proposed" in gate_note
+    # config + schema + tests + templates are the declared code scope
+    for pattern in (
+        "config/campaigns/pes2ts_v542_backbone_50k.yaml",
+        "scripts/agent_ops/v542_config_schema.py",
+        "tests/agent_ops/test_v542_config_schema.py",
+    ):
+        assert pattern in entry.code_scope, pattern
+    assert entry.config == "config/campaigns/pes2ts_v542_backbone_50k.yaml"
+    assert entry.evidence and "V5.4.2" in entry.evidence
 
 
 def test_v541_run_record_validates_against_registry():

@@ -1,0 +1,659 @@
+# PES2TS V5.4.2 Backbone 50K 战役配置 — WP0 预注册冻结
+# 权威规格: docs/plans/PES2TS_V5.4.2_Backbone_50K_详细阶段实施方案_v1.0_20261029.md
+#           §4 (统一接口) / §5 (A0 迁移与 parity) / §6 (候选 A1–A5) / §7 (共同初始化)
+#           §8 (smoke/profile/diagnostic) / §9 (正式矩阵与选择) / §10 (H2/H3 与统计)
+#           §11 (成本门) / §12 (A1-C/A5-C 归因诊断) / §16 (启动前签认)
+# 治理:     ADR-0031 (MoveProcessContract v1 — 任务语义不变)
+#           ADR-0032 (V5.4.1 — Embedding 接口扩展; E0 基线与评估身份上游)
+#           ADR-0033 (V5.4.2 — Backbone 接口与预注册治理)
+# 上游设计源: .slim/deepwork/v542-backbone-20261029/oracle-architecture.md (Oracle WP0 建议, 2026-10-29)
+# 校验:     python scripts/agent_ops/v542_config_schema.py --formal \
+#             --config config/campaigns/pes2ts_v542_backbone_50k.yaml
+#           (WP0 状态: budget 未回填 => --formal typed-block V542_BUDGET_NULL; prereg 模式通过)
+# 变更规则: 任何字段变更 = config_sha256 变更 + runplan 重新冻结 (runplan_pin);
+#           阈值签认后不得按 seed17/dev 结果调整 (改值须重走签认 + 更新全部 SHA)。
+# 授权记录: 用户 2026-10-29 「请完成5.4.2阶段代码修改与训练工作」= implementation +
+#           gated formal training 按本方案授权; 实际正式 run 仍须
+#           H0/H1/smoke/profile/runplan/预算门全过 (§16); confirm/sealed 恒封存。
+schema: pes2ts_v542_campaign_v1
+campaign_id: PES2TS_V542_BACKBONE_50K
+version: 0.1.2-wp0 # WP0 冻结: schema + registry + 阈值签认 + A0 重训决策 (ADR-0033); 0.1.2 = fix-5 条件收口 (C1-C5/C7, 2026-10-30, ADR-0033 v1.2)
+objective: unified_move_process # 唯一外部任务名; 不暴露多臂矩阵
+
+gv:
+  campaign_id: V5.4.2
+  primary_g: G3.P.2
+  supporting_g: [G3.P.1, G3.P.3, G0, G1]
+  map_version: "2026-10-18.1"
+  gates:
+    - V542-WP0-prereg
+    - V542-WP1-interface-parity
+    - V542-WP2-candidates
+    - V542-smoke-200
+    - V542-profile
+    - V542-diagnostic-2000
+    - V542-A0-sanity-band
+    - V542-H0-legality
+    - V542-H1-resource
+    - V542-H2-move
+    - V542-H3-backbone
+    - V542-budget-signoff
+    - V542-formal
+
+governance:
+  constitution: docs/PES2TS_开发宪法_v1.md
+  contracts:
+    - docs/contracts/PES2TS_MoveProcessContract_v1.md # 唯一任务合同 (MOVE+PROCESS 语义不变)
+    - docs/contracts/PES2TS_ReactionIntent_Contract_v2.md
+    - docs/contracts/PES2TS_GeometryPolicyContract_v2.md
+  adrs: [ADR-0031, ADR-0032, ADR-0033]
+  plan: docs/plans/PES2TS_V5.4.2_Backbone_50K_详细阶段实施方案_v1.0_20261029.md
+  oracle_design_source: .slim/deepwork/v542-backbone-20261029/oracle-architecture.md
+  oracle_design_source_sha256: 4f13bfbd26d4acf17572641e30453000d65243599519c269473f07d6678ccccb # WP0 冻结: 设计源逐字节身份
+  docs_gate: python scripts/agent_ops/docs_consistency.py --strict
+  schema_validator: python scripts/agent_ops/v542_config_schema.py --formal --config config/campaigns/pes2ts_v542_backbone_50k.yaml
+  authorization:
+    implementation_authorized: true # 用户 2026-10-29: 「请完成5.4.2阶段代码修改与训练工作」
+    formal_training_authorized: true # gated formal training; 实际 run 仍须 t1_start_requires 全过
+    thresholds_signed_frozen: true # Oracle 建议阈值按用户 2026-10-29 指令签认为 frozen (见 thresholds.signoff)
+    t1_start_requires: [V542-H0-legality, V542-H1-resource, V542-WP1-interface-parity, V542-WP2-candidates, V542-smoke-200, V542-profile, V542-diagnostic-2000, V542-A0-sanity-band, V542-budget-signoff, runplan_pin_record]
+    t1_start_requires_note: 前 9 项为 registry (g_v_map.yaml) canonical gate IDs (含 V542-A0-sanity-band = T0 A0×3 formal 完成且 sanity band 通过, 是 T1 硬前置, fix-5 C5); runplan_pin_record 是 record requirement (outputs/pesn/v542_backbone_50k/plan/runpin 实例必须存在且 SHA 冻结), 不是 gate alias
+    confirm_authorized: false # confirm 永封存 (schema 强制 typed rejection)
+    sealed_authorized: false
+    new_qc_calls: 0 # 本阶段 0 QC 调用
+    single_lane: true # 单路执行
+    swap_allowed: false # swap=0
+
+data_contract:
+  pool: 50K curve pool # V5.3-MP S4 冻结池只读复用; 本阶段不重建数据、不新增 QC
+  tables_dir: /pes2ts_data/v53mp_50k_data
+  move_teacher: intent_directed_first_contact_v1
+  move_teacher_params: {d0_angstrom: 0.08, cap_angstrom: 0.20}
+  process_statuses: [ok, masked, terminal, conflict]
+  provenance_required:
+    [code_commit, data_manifest_sha256, teacher_manifest_sha256, split_sha256,
+     label_spec_sha256, config_sha256, common_protocol_sha256, backbone_spec_sha256,
+     feature_recipe_sha256]
+
+split_contract:
+  split_manifest: /pes2ts_data/v53mp_50k_data/split_manifest_v53mp.json
+  subsets: [pool, dev, confirm]
+  seeds: [17, 29, 43]
+  tier: 50k
+  inner_split: 每 seed 80/20 curve-level inner-train/inner-val + 原位置索引 (继承 V541 §7.2)
+  inner_val_max_samples: 8192
+  confirm_rule: confirm 不读; dev 仅最终冻结的少数模型在 backbone 冻结后评估一次 (访问账本); tau 不在 dev 重校
+
+identity_contract: # 代码/共同协议/环境/初始化/统计五层 SHA
+  run_identity_required:
+    - source_manifest_sha256 # 冻结的 source manifest (取代 code_commit 作为代码身份; 见 code.git_commit_authoritative=false)
+    - config_sha256
+    - common_protocol_sha256
+    - environment_sha256
+    - backbone_spec_sha256
+    - init_mapping_sha256 # 每候选 {target: source} 语义映射表 + fresh seed 列表的 SHA
+    - process_head_anchor_sha256 # deterministic anchor 重放记录 (算法+种子+state_dict 摘要)
+    - statistics_contract_sha256 # 本 config statistics 块 (seed/p-value/Holm family) 的 SHA
+    - bootstrap_seed_root
+    - plan_sha256
+    - oracle_design_source_sha256
+    - runplan_sha256
+    - budget_policy_sha256
+    - sampler_spec_sha256
+  run_identity_optional:
+    - code_commit # 记录用 (git_commit_authoritative=false; dirty worktree 下可为 null, 不作身份)
+  code:
+    method: source_tree_fingerprint # worktree dirty: 指纹而非 git commit 绑定代码
+    git_state_fn: pes2ts_core.pesn.offline.training.v541_identity.git_state # 继承 helper; WP3 包进 v542_identity
+    git_commit_authoritative: false # commit 只作记录, 不作为唯一代码身份
+    manifest_file: plan/source_manifest.json
+    includes:
+      - pes2ts_core
+      - config/campaigns/pes2ts_v542_backbone_50k.yaml
+      - config/campaigns/v542_templates
+      - scripts/campaigns
+      - scripts/agent_ops
+      - scripts/infra
+      - requirements.txt
+      - requirements-pesn-training.txt
+      - requirements-pesn-runtime.txt
+    suffixes: [.py, .yaml, .json, .txt]
+    excludes: [__pycache__, .git, outputs, node_modules, docs_consistency_config.json]
+  common_protocol:
+    method: numeric_protocol_sha256 # 只按数值协议计算; 候选特有字段必须排除
+    excludes: [backbone_id, backbone_spec_sha256, seed, run_id, environment_sha256]
+    includes: [schema, campaign_id, objective, schedule, lambdas, batch, sampler_binding, selection, tau_end, inner_val_max_samples, split_contract, backbone_init, data_manifest_sha256, teacher_manifest_sha256, split_sha256, label_spec_sha256, code_sha256]
+    note: common SHA 在同协议的所有候选/seed 间相同; backbone/构造 SHA 按候选分别计算, 不得全候选同值
+  environment:
+    fn: pes2ts_core.pesn.offline.training.v541_identity.env_state # 继承 helper; WP3 包进 v542_identity
+    sha256_field: environment_sha256
+    record_also: [python, torch, numpy, cuda_version, platform]
+    wp3_note: WP3 将 env_state 包装为 v542_identity 并重新冻结; 切换 fn 路径须重 pin runplan, 不得静默变更
+
+backbone_contract:
+  interface:
+    backbone_output_class: BackboneOutput
+    backbone_output_fields: [z, edge_msg] # 只有两个功能字段 (Oracle §1.1)
+    z: {shape: [G, 64], dtype: fp32, tanh_saturated: true, order: batch_graph_index}
+    edge_msg: {shape: [E, 48], dtype: fp32, last_layer: true, autograd: true, order: input_edge_index_columns}
+    node_h_in_interface: false # 诊断用单独 hook, 不进接口
+    u_in_interface: false # u 由统一 Decoder 产生, 不进 BackboneOutput
+    wrapper_checks: shape_and_isfinite_in_V542Model_forward # dataclass 不做全量 isfinite
+  move_decoder:
+    class: DirectMoveDecoder
+    trainable_params: 49 # 唯一参数 w_v = Linear(48,1)
+    only_parameter: w_v
+    a_ref_angstrom: 0.08
+    a_ref_learnable: false # 教师动作尺度, 禁止可学习化
+    inputs: [edge_msg, pos, edge_index, key_index, degK] # 5 张量, 不接整个 batch (结构上禁读监督键)
+    output_order: key_index_order
+    non_key_policy: structural_zero_rows
+    reads_supervision_keys: false
+    forbidden: [absolute_coordinates, centroid, orientation, edge_mlp_recompute]
+  process_head:
+    class: ReactionProcessHeadV53MP
+    params: 2178 # progress_head 2113 + endpoint_head 65
+    reads: [z]
+    reads_edge_msg: false
+    order_score_is_q: true
+    outputs: [q, endpoint_logit, order_score]
+    external_output_keys: [u, z, q, endpoint_logit, order_score] # trainer/eval 依赖的 5 键
+    forward_move_keys: [u, z]
+    new_external_keys_forbidden: true
+  a0_migration:
+    backbone_class: A0LegacyBackbone
+    subclass_of: StarEGNNV3
+    core_loop: super().forward verbatim # 不改 legacy 源文件
+    capture: message_mlp[-1] forward hook, exactly once, finally-removed, no detach
+    w_v_sharing: backbone.w_v is move_decoder.w_v (same tensor object)
+    state_dict_aliases: [backbone.w_v, move_decoder.w_v]
+    alias_assertion: torch_equal_on_save_and_load
+    mapping: explicit_strict_audit # missing/unexpected/shape/dtype 全空; strict=True only
+    parity:
+      cpu: bitwise # torch.set_num_threads(1), eval, fp32
+      gpu_atol: 1.0e-06
+      gpu_rtol: 1.0e-05
+      real_data_min_inner_val_batches: 8
+      q_equals_order_score: true
+      evaluator_parity: recompute_H2_H3_vs_V541_archive_bitwise_or_le_1e-9
+      tf32_during_parity: false
+      required_assets: 6 # 3 V541 E0 必做 + 3 V53MP C 必做 (资产存在后 6/6); smoke 路径禁止
+      assets: # 精确 path + SHA-256 (只读 lane 2026-10-30 核实); source_tier/training_updates = fix-5 C3 分层字段
+        - {id: V541_E0_S17, path: outputs/pesn/v541_embed_50k/runs/V541_T0R_E0_S17/checkpoint_best.pt, sha256: c1e35610d33e2350ec5987ccbced07ba7e665458e6078a7eaf2e0de9e90ca56d, required: true, source_tier: v541_e0_runs_final_37900, training_updates: 37900}
+        - {id: V541_E0_S29, path: outputs/pesn/v541_embed_50k/runs/V541_T0R_E0_S29/checkpoint_best.pt, sha256: a214d6e9c9cf4a80bbf079567d13c0a09061dcbd0b5b2f3dec4f53f9cc29e49d, required: true, source_tier: v541_e0_runs_final_37900, training_updates: 37900}
+        - {id: V541_E0_S43, path: outputs/pesn/v541_embed_50k/runs/V541_T0R_E0_S43/checkpoint_best.pt, sha256: 92412a1af295cc58c880c32bf9ee0ea653b46ef31648fc9cf1cc76a806a6f00c, required: true, source_tier: v541_e0_runs_final_37900, training_updates: 37900}
+        - {id: V53MP_C_S17, path: outputs/pesn/v53mp/v53mp_20k_C_s17/checkpoint_best.pt, sha256: 871596e61b7d2e2ed77328eaa884b848621f07533e8ffd242a98442c0aec5db3, required: true, source_tier: v53mp_20k_s3_formal_15400_auxiliary, training_updates: 15400}
+        - {id: V53MP_C_S29, path: outputs/pesn/v53mp/v53mp_20k_C_s29/checkpoint_best.pt, sha256: d456050e9ed5f231691306097e120459cd8679768da30313c837ef1307f06884, required: true, source_tier: v53mp_20k_s3_formal_15400_auxiliary, training_updates: 15400}
+        - {id: V53MP_C_S43, path: outputs/pesn/v53mp/v53mp_20k_C_s43/checkpoint_best.pt, sha256: d6b11a20c90cda353400639a2f88c54a4ba3b91fcda55a67241d8fa967f4715b, required: true, source_tier: v53mp_20k_s3_formal_15400_auxiliary, training_updates: 15400}
+      smoke_path_forbidden: outputs/pesn/v541_embed_50k/smoke/** 永不作为 parity 资产 (200-update smoke checkpoint); 非钉死 (non-pinned) checkpoint 同样禁止
+      asset_tier_policy: # fix-5 C3: 资产分层修正 (替代旧「必须 runs/ 37,900 final」绝对措辞)
+        v541_e0_runs_final_37900: V541 E0 S17/S29/S43 = runs/ 下 37,900-update final 主证据 (source_tier=v541_e0_runs_final_37900, training_updates=37900)
+        v53mp_20k_s3_formal_15400_auxiliary: V53MP C S17/S29/S43 = outputs/pesn/v53mp/ 下 S3 formal 20k-tier 15,400-update 辅助证据 (source_tier=v53mp_20k_s3_formal_15400_auxiliary, training_updates=15400; 非 smoke、非 37,900、不在 runs/)
+        forbidden: [smoke_checkpoints, non_pinned_checkpoints]
+    torch_compile: false # 禁止: hook/parity 失效
+    backbone_active_params: 55392 # 迁移不变量 (StarEGNNV3 55441 - w_v 49)
+    joint_params: 57619 # 55392 + 49 + 2178 迁移不变量
+  param_budget:
+    backbone_active_max: 70000
+    decoder_params: 49
+    process_params: 2178
+    joint_max: 72227
+    construction_assertion: sum(p.numel()) checked at build; n_parameters reports active backbone (excl shared w_v); joint reported separately
+  candidates:
+    A0: {family: legacy_star_3l_adapter, hidden: 48, layers: 3, vector_channels: 0, backbone_active: 55392, joint: 57619, estimated: false, in_main_matrix: true, winner_eligible_baseline: true, note: "R3 warm-start 的 3L Star + adapter; 迁移不变量"}
+    A1: {family: geoegnn_lite_2l, hidden: 48, layers: 2, vector_channels: 0, distance_injection: zero_init_W_d_12_to_48_rbf12, backbone_active: 41232, estimated: true, in_main_matrix: true, note: "Star 同形消息 + 零初始化距离项; init 时 == R3 warm-start 2L Star"}
+    A2: {family: painn_lite_single_frame_v32, hidden: 48, layers: 2, vector_channels: 32, graph_cond_injection: zero_init_W_g_5_to_48, edge_msg_recompute: phi_s_on_final_s, backbone_active: 54896, estimated: true, in_main_matrix: true, note: "新单帧标量-向量; 不复用 dual-* 代码; edge_msg 经 s^L 重算使向量通道作用于 MOVE"}
+    A3: {family: egnn_reaction_query_2x24, hidden: 48, layers: 2, vector_channels: 0, query: {heads: 2, head_dim: 24, w_o_init: zero, baseline: A1}, backbone_active: 53328, estimated: true, in_main_matrix: true, note: "= A1 + 最后层 per-edge query attention; init 时 == A1"}
+    A4: {family: sparse_geometry_transformer_4x12, hidden: 48, layers: 2, heads: 4, head_dim: 12, reaction_token: true, edge_readout: star_shaped_mlp_118_48_48, graph_cond_injection: zero_init_W_g_5_to_48, backbone_active: 55840, estimated: true, in_main_matrix: true, note: "稀疏边 attention + 每图 reaction token + edge readout; 成本风险最高, 早 profile"}
+    A5: {family: graph_gru_shared_cell, hidden: 48, iterations: 4, cells: 1, graph_cond_injection: zero_init_W_g_5_to_48, backbone_active: 31584, estimated: true, in_main_matrix: true, capacity_caveat: true, note: "共享 GRUCell T=4; 31.6k 容量低于 A0, 机制检验非容量匹配冠军"}
+    A1-C: {family: geoegnn_lite_3l, hidden: 48, layers: 3, vector_channels: 0, backbone_active: 57264, estimated: true, diagnostic_only: true, winner_eligible: false, init_source_id: A1, note: "A1 + 第 3 层 fresh (第 3 层用 A1 init stream: init_source_id=A1, 层序第 3 层 fresh), W_d 零初始化; 深度归因对照"}
+    A5-C: {family: graph_gru_2cell_alternating, hidden: 48, iterations: 4, cells: 2, backbone_active: 53712, estimated: true, diagnostic_only: true, winner_eligible: false, init_source_id: A5, note: "2 个交替 GRUCell T=4 hidden48; 第一 cell 用 A5 init stream (init_source_id=A5), 第二 cell fresh 亦用 A5 init stream; full-dose 归因诊断, 非 winner"}
+  candidate_common_widths: {hidden: 48, z: 64, edge_msg: 48, node_input: 21} # 接口的一部分, 候选不得改
+  estimated_params_note: A1–A5/A1-C/A5-C 参数量为设计估算 (estimated=true); 实现构造后由断言给出精确值并回填 registry, 估算不得用作实现前 exact 断言
+  forward_view_keys: [z, pos, graph_index, key_index, is_key, degK, intent_role, edge_index, edge_attr, b_src, b_tgt, delta_b_intent, abs_delta, is_changed, cv_target_delta, signed_intent, endpoint_names]
+  forbidden_input_classes: [future_frames, ts_coords, true_progress, remaining_arc, branch_id, split_family, energy_gradient, near_ts_capped, endpoint_geometry, history_hidden_state]
+  e3_and_invariance_checks: [translation, rotation_reflection_O3, edge_permutation, node_permutation, non_key_zero_action, reverse_relabel_harness, typed_invalid, restore_resume, finite_gradients]
+  forbidden_architectures: [vector_channel_layernorm_or_relu, cross_product, absolute_coord_in_attention_logits, learnable_global_frame, node_index_as_feature, dense_N2_attention, adaptive_halting, coordinate_update_backbone]
+
+training_contract:
+  backbone: 统一 BackboneOutput 接口 + DirectMoveDecoder(49) + ReactionProcessHeadV53MP(2178); 候选 = A0–A5 whitelist
+  backbone_init: # R3 冻结初始化 (唯一合法 warm-start 源); validate 时逐字节核验, 漂移=typed refusal
+    source: R3 F2-bidir winner fold0 x seed17 (V5.3-MP S4 单路参照)
+    run_id: 5372d9b12807c3f0
+    path: outputs/pesn/30h_campaign/r3_runs/5372d9b12807c3f0/checkpoint_best.pt
+    sha256: a2e46b6ad65cc18996d6c1660c5ae24c723397ca22526e52fa34e430afd0417f
+    verify_on_validate: true
+    forbidden_sources: [V541_E0_final, any_checkpoint_trained_beyond_R3]
+    forbidden_sources_note: V541 E0 final 只用于 parity 证书与历史参照; 从它 warm-start 会给候选多 37,900 update 预训练, 与 A0 不可比
+  init_policy:
+    mapping: explicit_semantic_pre_registered_no_runtime_shape_heuristics # 每候选 {target: source} 表在 WP0 冻结 (init_mapping.r3_semantic_mapping) + 逐键审计 JSON
+    mapping_audit: every source key consumed exactly once; every target key loaded or fresh-listed with seed; loaded tensors torch.equal; no empty slots
+    process_head_anchor:
+      method: fork_rng_replay # manual_seed(seed) -> StarEGNNV3() -> ReactionProcessHeadV53MP() -> state_dict
+      seeds: [17, 29, 43]
+      artifact: plan/init_anchor_seed{17,29,43} (algorithm + SHA 记入 run identity; 二进制 .pt 可选)
+      included_in_run_identity: true
+      excludes_w_v: true # w_v 从 R3 映射, 所有候选同值
+    candidate_fresh_init:
+      method: fork_rng + manual_seed(seed_init)
+      seed_recipe: seed_init = int(sha256("v542-init|{run_seed}|{init_source_id}").digest()[:8], "big") % 2147483647
+      seed_recipe_algorithm: sha256_hexdigest[:16]_as_big_endian_int_mod_2147483647
+      init_source_id_default: candidate_id # 默认 init_source_id = candidate_id
+      init_source_id_overrides: {A1-C: A1, A5-C: A5} # A1-C 第 3 层与 A5-C cell 用对应主候选 init stream
+      then: load R3 mapped tensors over the fresh init (覆盖); R3 来源的 w_v 所有候选同值
+    construction_order: # 冻结构造顺序 (fresh 模块先建, R3 映射覆盖, anchor 加载 process head, 最后 set_seed)
+      - 1_fresh_backbone_modules_seeded_by_seed_init
+      - 2_load_R3_mapped_tensors_over_fresh_init_per_init_mapping
+      - 3_zero_init_special_parameters_per_candidate_spec # A1 W_d; A2 V0/W_g/phi_u_phi_g output; A3 W_o; A4 output proj; A5 W_g
+      - 4_direct_move_decoder_with_shared_w_v_from_R3
+      - 5_process_head_from_deterministic_anchor_replay
+      - 6_set_seed(run_seed)_before_training
+    construction_rng: 整个模型构造包在 torch.random.fork_rng(devices=[]); 构造后 set_seed(run_seed) 再开始训练; 构造不扰动 sampler/loss 流
+    reset_seed_before_training: true
+    init_mapping:
+      note: R3 37 键 → 每候选语义映射表 (Oracle §3.2 配方; WP0 冻结); 所有 w_v 来自 R3 (49 params, 所有候选同值); process head 来自 deterministic anchor, 不来自 R3
+      r3_semantic_mapping:
+        A0: 全部 37 键 identity 映射 (A0 = R3 结构 + adapter)
+        A1: 映射 elem_emb, node_proj, z_head, message_mlp.0, message_mlp.1, node_mlp.0, node_mlp.1 (R3 同名同形); W_d 与第 2 层增量参数 fresh 零初始化
+        A1-C: A1 映射集 + 第 3 层 fresh (用 A1 init stream, init_source_id=A1); W_d 第 3 层零初始化
+        A2: A1 common 映射集 + 两层同形 phi_s (标量 MLP 同 message_mlp 形状); 向量通道 V/W_v/W_s fresh seeded; V_0=0; W_g 零初始化
+        A3: A1 common 映射集; query attention (W_q/W_k/W_v/W_o 2x24) fresh seeded, W_o 零初始化
+        A4: A1 common 映射集 + edge_readout = R3 message_mlp.2 (同形 48→48); attention/token fresh seeded, 输出投影零初始化
+        A5: A1 common 映射集 + shared msg MLP = R3 message_mlp.0; GRUCell/W_g fresh seeded, W_g 零初始化
+        A5-C: A5 映射集; 第二 GRUCell fresh 用 A5 init stream (init_source_id=A5)
+    per_candidate_zero_init:
+      A1: W_d(12→48) 零初始化
+      A1-C: 第 1-2 层同 A1 (W_d 零初始化); 第 3 层 fresh 参数用 A1 init stream (init_source_id=A1) 且第 3 层 W_d 同样零初始化
+      A2: {V_0: 0, W_s_W_v: default_seeded, phi_u_phi_g_final_output: zero_init, W_g: zero}
+      A3: W_o 零初始化
+      A4: attention 输出投影零初始化
+      A5: W_g 零初始化
+      A5-C: 第一 cell 沿用 A5 映射参数 (W_g 零初始化同 A5); 第二 cell fresh 用 A5 init stream (init_source_id=A5), 其 W_g 同样零初始化
+      note: A2 V_0=0 与 phi_u/phi_g 输出零初始化为 WP0 冻结选择 (Oracle §2.2/§3.2「若用必须在 WP0 固定」); A1-C/A5-C 行为 fix-5 C7 补全 (第三层 W_d / 第二 cell init)
+    param_groups:
+      method: by_id # 禁止沿用 V541 名字前缀分类器 (move_decoder.* 会触发 PARAM_GROUP_UNCLASSIFIED)
+      core: {members: [backbone, move_decoder], lr: 1.0e-4}
+      head: {members: [process_head], lr: 3.0e-4}
+      w0: core frozen, head live
+      w1: all joint
+      assertions: [every unique param in exactly one group, no duplicate id, unique 49 w_v params]
+  sampler_binding: # 冻结采样器绑定 = V541 共同 sampler (spec_sha256 必须等于 live v541_strata)
+    sampler_id: v541_curve_stratified_v1
+    spec_sha256: 0769817ef01dca3abbb1d67f5405e98138b4707e74b690240d3f9b6821b65d9e
+    strata: [start, pre_TS, post_TS, endpoint]
+    batch_curves: 8
+    frames_per_curve: 4
+    direction_balance: {forward: 2, reverse: 2}
+    mirror: {start: endpoint, endpoint: start, pre_TS: post_TS, post_TS: pre_TS}
+    references:
+      spec: pes2ts_core/pesn/offline/training/v541_strata.py#SAMPLER_SPEC_V541
+      rng: key_atom_v53mp_train_v3._update_rng(seed, update, salt) 纯函数协议
+  schedule:
+    w0_updates: 400
+    w1_updates: 37500
+    total_updates: 37900
+    param_groups_note: 按 id 分组见 init_policy.param_groups; move_decoder lr 与 core 相同
+    optimizer: AdamW
+    weight_decay: 1.0e-4
+    grad_clip: 1.0
+    precision: fp32
+    torch_compile: false
+  lambdas: {lambda_rank: 0.5, lambda_q: 0.5, lambda_endpoint: 0.012385049119773344}
+  batch: {curves: 8, frames: 4, strata: [start, pre_TS, post_TS, endpoint], sampler: (seed, update, salt) 纯函数协议}
+  selection: {metric: inner-val total loss, val_every: 100, checkpoint_best: inner-val 最优, resume: 只从匹配 SHA 的 checkpoint_last 恢复, h3_metric_selection_forbidden: true}
+  tau_end: {calibrated_on: inner-val, target_precision: 0.9, frozen_after_calibration: true, dev_recalibration_forbidden: true}
+
+a0_baseline:
+  decision: retrain_a0_x3 # 默认且实际选择 (ADR-0033 §2.5); 决策记录模板 a0_reuse_decision.template.json
+  decision_record_template: config/campaigns/v542_templates/a0_reuse_decision.template.json
+  decision_record_instance: outputs/pesn/v542_backbone_50k/plan/a0_reuse_decision.json
+  decision_record_instance_required: true # 模板≠实例; T1 前 instance 必须存在且 decision=retrain_a0_x3 (模板注明 instance required before formal)
+  reason_codes: [new_interface_contract, construction_rng_isolation, param_group_by_id, evaluation_identity_change]
+  reason_note: 新接口/构造 RNG/param-group/评估身份使 V541 E0 训练复用不可直接签认; 不实现 shadow-run/reuse 分支
+  v541_e0_role: parity_and_historical_reference_only # E0×3 仅 parity 证书 + 历史参照, 不作 H2/H3 对照
+  shadow_run_required: false
+  runs: [V542_A0_S17, V542_A0_S29, V542_A0_S43]
+  sanity_band_vs_v541_e0: {rmse_zero_rel_max_pct: 2.0, auprc_abs_max: 0.01, q_corr_abs_max: 0.01, on_breach: block_T1_and_migration_audit}
+  sanity_band_statistic: A0×3 三 seed 均值 vs V541 E0×3 三 seed 均值 (seed-mean vs seed-mean; 不是单 seed 检查点)
+  sanity_band_gate: V542-A0-sanity-band # registry canonical gate (fix-5 C5); T0 A0×3 formal done 且 band pass 才注册
+  sanity_band_order: T0 A0×3 formal + sanity band 必须在任何 T1 A1-A4 formal 前完成; smoke/profile/diagnostic 可先行
+  sanity_band_breach_procedure: # 冻结审计程序 (Oracle finding 16 + fix-5 C5 硬门修正; 移除旧「登记 exception 后继续」路径)
+    - 1_strictly_block_all_T1_formal_candidate_launches # 带 breach 不得启动任何候选 formal run
+    - 2_migration_audit: parity_certificate + process_head_anchor + r3_mapping + sampler + evaluator + code + data + initialization # 逐项迁移审计
+    - 3_if_code_data_or_init_defect_found: fix_defect_then_bump_source_tree_fingerprint_and_rerun_A0_x3_formal # 旧 A0×3 记 invalid_run, 不得混比
+    - 4_resume_T1_only_after_V542-A0-sanity-band_pass_on_clean_A0_x3
+    - 5_sanity_exception_signing_forbidden_under_breach # 不得签 exception 带 breach 继续
+  sanity_band_note: 带宽只抓迁移大 bug, 不要求与 E0 数值相同; breach = 严格阻断 T1 + 迁移审计 + (若发现代码/数据/初始化缺陷) 修复后 bump code fingerprint 并重跑 A0×3; 禁止签 exception 继续
+
+smoke:
+  updates: 200
+  batch: [8, 4]
+  single_lane: true
+  backbones: [A0, A1, A2, A3, A4, A5]
+  conditional_backbones: [A1-C, A5-C] # A1-C/A5-C 激活前须各自单独 conditional smoke 200 (不属主 smoke 矩阵, 单独记录)
+  smoke_seed: 17
+  kill_resume_once: true
+  artifacts_root: outputs/pesn/v542_backbone_50k/smoke
+  resource: {cgroup_gib: 12, memory_high_gib: 10, swap: 0, oom_kill_max: 0}
+  rank_excluded: true # 技术 smoke 不进排名
+
+profile:
+  window: {w0_updates: 40, w1_updates: 40}
+  warmup_updates: 20
+  environment: same_as_formal # 同环境; 分母必须是 V542 A0 实测, 禁用 V541 存档 per_candidate_core_time
+  backbones: [A0, A1, A2, A3, A4, A5]
+  conditional_backbones: [A1-C, A5-C] # A1-C/A5-C 为 full-dose 诊断, 激活前须 40+40 profile + cost gate + 预算记录
+  denominator: V542_A0_same_environment_core_time
+  forbidden_denominator: v541_archived_per_candidate_core_time
+  report: [core_time, wall_time, peak_vram, host_rss, per_edge_flops]
+  artifacts_root: outputs/pesn/v542_backbone_50k/profile
+  rank_excluded: true
+
+diagnostic:
+  seed: 17
+  updates: 2000
+  w0_updates: 400
+  w1_updates: 1600
+  backbones: [A0, A1, A2, A3, A4, A5]
+  a0_reference: V542_DIAG_A0_S17 # 同剂量 A0@2000 对照, 没有它诊断系统性偏向全部淘汰
+  rank_excluded: true
+  elimination_only: true
+  elimination_rules:
+    - H0_or_H1_any_failure
+    - non_finite_loss_or_gradient_NaN_Inf
+    - best_inner_val_total_loss_drop_lt_5pct_vs_initial_diagnostic_eval
+    - dead_fraction_gt_A0_at_2000_plus_0.20
+    - rmse_zero_rel_degradation_gt_10pct_vs_A0_at_2000
+  forbids_full_dose_h3_effect_gates: true # 2,000 步不得套用 3% H3 效应量
+  note: 诊断只做工程粗筛 (是否学习/是否破硬门/是否超预算); 其余一律进入 full-dose; 诊断指标只写 diagnostic, 不进 winner 选择
+
+run_matrix:
+  classes: [nominal, conditional, diagnostic]
+  formal_stage_order: # fix-5 C5: WP5 formal 执行顺序冻结
+    order:
+      - T0_V542_A0_S17_S29_S43_formal_plus_V542-A0-sanity-band # 必须最先完成 (T1 硬前置)
+      - T1_A1-A4_S17_formal # 需 V542-A0-sanity-band pass + diagnostic/cost gates
+      - T2_A5_S17_conditional_then_T3_top2_and_a5_supplement # WP6
+      - T-ATTR_A1C_A5C_conditional # 选择结果确定后
+    note: smoke/profile/diagnostic 可在 T0 前先行 (技术测量, 不属 formal); 不得带 sanity breach 启动任何候选 formal run
+  winner_note: diagnostic 组永不计入主赢家 (§9.1); A0 为 matched 基线不参与冠军竞争; winner 资格逐 run 判定 (winner_eligible 字段), nominal class 整体不自动计入; 最终 Backbone* 由 evaluation_contract.final_selection_rule 在 H3-qualified 集内选定
+  top2_preregistration: # top2 只属于 A1-A4 (Oracle finding 1 拆分)
+    candidates: [A1, A2, A3, A4]
+    seeds: [29, 43]
+    listed_runs: 8
+    activation: activated_only_by_inner_val_top2
+    top2_max_runs: 4 # 最多 2 候选 x seeds 29/43 = 4 runs (取代旧 full_activation_count)
+    a5_supplement_max_runs: 2 # A5 补充单独计 (见 a5_supplement), 不属 top2
+    t3_max_runs: 6 # top2(<=4) + A5 supplement(<=2) 合计 T3 上限
+    unactivated_status: gate_skipped
+    n_core_counting: formula_only
+    seed17_screen_pass_ref: evaluation_contract.seed17_screen_pass_predicate
+    eligibility: 仅 A1-A4 且满足 seed17_screen_pass predicate; 按冻结 screen score 排序; 最多 2 个; 可少于 2 个; 不替补
+    freeze_requires: A0_S17 complete (V542_A0_S17 run done 且指标有限, H2 matched 对照就绪) + A0×3 sanity band pass (V542-A0-sanity-band; T0 A0×3 必须先于任何 T1 formal)
+    note: 预注册 A1-A4 x seeds 29/43 共 8 个条件 run; 实际激活 <=4 (<=2 候选 x 2 seed); 未激活记 gate_skipped 计 0 新训练; N_core 按公式计数, 不按 listed runs 求和; A5 不在 top2, 其 T3 行走 a5_supplement 分支
+  a5_supplement: # A5 T3 补充, 与 top2 完全拆分 (最多 2 runs)
+    runs: [V542_A5_S29, V542_A5_S43]
+    a5_supplement_max_runs: 2
+    condition: a5_full_dose_complete_and_seed17_screen_pass # A5 full-dose 已完成 + A5 seed17_screen_pass
+    parent_gate: a5_full_dose_complete_and_seed17_screen_pass
+    screen_predicate_ref: evaluation_contract.seed17_screen_pass_predicate # seed17 筛选 predicate, 不是三 seed H3 声明
+    note: A5 seed17 full-dose run (V542_A5_S17) done 且 seed17_screen_pass 后才激活; 最多 2 runs (seed 29/43); 不占 top2 名额
+  a5_activation:
+    smoke_profile_diagnostic_first: true
+    launch_requires: [diagnostic_gate, cost_gate, H0_legality, H1_resource]
+    full_dose_condition: no_A1_A4_h3_qualified_candidate_after_top2_seeds # A1-A4 top2 三 seed 最终 H3 无人合格后激活
+    diagnostic_survival_required: true # A5 不得被自身诊断淘汰 (elimination_rules 全不触发)
+    else_status: gate_skipped
+    no_discretion: true # 不允许「A1–A4 有一个过了还想看 A5」; 也不允许 A5 smoke 好提前 full dose
+  a1c_activation:
+    condition: a1_in_top2_supplement_set_OR_a1_selected_as_backbone
+    not_only_top_ranked: true # 进 top2 补种集或被选 Backbone* 即激活
+    dose: 400+37500
+    seed: 17
+    winner_eligible: false
+    activation_requires: [H0_fixture, smoke_200_conditional, profile_40_40, cost_gate, budget_record] # full-dose 诊断激活前置
+    if_not_activated: gate_skipped_a1_not_in_top2_and_not_selected; 负结果归因未解决; 不加入 C2
+    skip_reason: a1_not_in_top2_and_not_selected
+  a5c_activation:
+    condition: a5_selected_backbone # 仅 A5 被选为 Backbone* 时激活
+    winner_eligible: false
+    activation_requires: [H0_fixture, smoke_200_conditional, profile_40_40, cost_gate, budget_record]
+    if_not_activated: gate_skipped_a5_not_selected_backbone
+    skip_reason: a5_not_selected_backbone
+    capacity_caveat_rule: 若 A5 H3 合格但未被选为 Backbone*, 记 capacity caveat unresolved, 不跑 A5-C (不事后补跑)
+  runs:
+    - {run_id: V542_A0_S17, stage: T0, backbone: A0, seed: 17, class: nominal, new_training: 1, winner_eligible: false, role: matched_baseline_retrain, dose: formal}
+    - {run_id: V542_A0_S29, stage: T0, backbone: A0, seed: 29, class: nominal, new_training: 1, winner_eligible: false, role: matched_baseline_retrain, dose: formal}
+    - {run_id: V542_A0_S43, stage: T0, backbone: A0, seed: 43, class: nominal, new_training: 1, winner_eligible: false, role: matched_baseline_retrain, dose: formal}
+    - {run_id: V542_A1_S17, stage: T1, backbone: A1, seed: 17, class: nominal, new_training: 1, winner_eligible: true, dose: formal, launch_requires: [diagnostic_gate, cost_gate]}
+    - {run_id: V542_A2_S17, stage: T1, backbone: A2, seed: 17, class: nominal, new_training: 1, winner_eligible: true, dose: formal, launch_requires: [diagnostic_gate, cost_gate]}
+    - {run_id: V542_A3_S17, stage: T1, backbone: A3, seed: 17, class: nominal, new_training: 1, winner_eligible: true, dose: formal, launch_requires: [diagnostic_gate, cost_gate]}
+    - {run_id: V542_A4_S17, stage: T1, backbone: A4, seed: 17, class: nominal, new_training: 1, winner_eligible: true, dose: formal, launch_requires: [diagnostic_gate, cost_gate]}
+    - {run_id: V542_A5_S17, stage: T2, backbone: A5, seed: 17, class: conditional, new_training_if_activated: 1, unactivated_status: gate_skipped, winner_eligible: true, dose: formal, condition: no_A1_A4_h3_qualified_candidate_after_top2_seeds, launch_requires: [diagnostic_gate, cost_gate, H0_legality, H1_resource]}
+    - {run_id: V542_A1_S29, stage: T3, backbone: A1, seed: 29, class: conditional, new_training_if_activated: 1, unactivated_status: gate_skipped, winner_eligible: true, dose: formal, condition: activated_only_by_inner_val_top2}
+    - {run_id: V542_A1_S43, stage: T3, backbone: A1, seed: 43, class: conditional, new_training_if_activated: 1, unactivated_status: gate_skipped, winner_eligible: true, dose: formal, condition: activated_only_by_inner_val_top2}
+    - {run_id: V542_A2_S29, stage: T3, backbone: A2, seed: 29, class: conditional, new_training_if_activated: 1, unactivated_status: gate_skipped, winner_eligible: true, dose: formal, condition: activated_only_by_inner_val_top2}
+    - {run_id: V542_A2_S43, stage: T3, backbone: A2, seed: 43, class: conditional, new_training_if_activated: 1, unactivated_status: gate_skipped, winner_eligible: true, dose: formal, condition: activated_only_by_inner_val_top2}
+    - {run_id: V542_A3_S29, stage: T3, backbone: A3, seed: 29, class: conditional, new_training_if_activated: 1, unactivated_status: gate_skipped, winner_eligible: true, dose: formal, condition: activated_only_by_inner_val_top2}
+    - {run_id: V542_A3_S43, stage: T3, backbone: A3, seed: 43, class: conditional, new_training_if_activated: 1, unactivated_status: gate_skipped, winner_eligible: true, dose: formal, condition: activated_only_by_inner_val_top2}
+    - {run_id: V542_A4_S29, stage: T3, backbone: A4, seed: 29, class: conditional, new_training_if_activated: 1, unactivated_status: gate_skipped, winner_eligible: true, dose: formal, condition: activated_only_by_inner_val_top2}
+    - {run_id: V542_A4_S43, stage: T3, backbone: A4, seed: 43, class: conditional, new_training_if_activated: 1, unactivated_status: gate_skipped, winner_eligible: true, dose: formal, condition: activated_only_by_inner_val_top2}
+    - {run_id: V542_A5_S29, stage: T3, backbone: A5, seed: 29, class: conditional, new_training_if_activated: 1, unactivated_status: gate_skipped, winner_eligible: true, dose: formal, condition: a5_full_dose_complete_and_seed17_screen_pass, parent_gate: a5_full_dose_complete_and_seed17_screen_pass}
+    - {run_id: V542_A5_S43, stage: T3, backbone: A5, seed: 43, class: conditional, new_training_if_activated: 1, unactivated_status: gate_skipped, winner_eligible: true, dose: formal, condition: a5_full_dose_complete_and_seed17_screen_pass, parent_gate: a5_full_dose_complete_and_seed17_screen_pass}
+    - {run_id: V542_DIAG_A0_S17, stage: T-DIAG, backbone: A0, seed: 17, class: diagnostic, new_training: 1, winner_eligible: false, dose: diagnostic_2000, role: matched_dose_reference}
+    - {run_id: V542_DIAG_A1_S17, stage: T-DIAG, backbone: A1, seed: 17, class: diagnostic, new_training: 1, winner_eligible: false, dose: diagnostic_2000}
+    - {run_id: V542_DIAG_A2_S17, stage: T-DIAG, backbone: A2, seed: 17, class: diagnostic, new_training: 1, winner_eligible: false, dose: diagnostic_2000}
+    - {run_id: V542_DIAG_A3_S17, stage: T-DIAG, backbone: A3, seed: 17, class: diagnostic, new_training: 1, winner_eligible: false, dose: diagnostic_2000}
+    - {run_id: V542_DIAG_A4_S17, stage: T-DIAG, backbone: A4, seed: 17, class: diagnostic, new_training: 1, winner_eligible: false, dose: diagnostic_2000}
+    - {run_id: V542_DIAG_A5_S17, stage: T-DIAG, backbone: A5, seed: 17, class: diagnostic, new_training: 1, winner_eligible: false, dose: diagnostic_2000}
+    - {run_id: V542_A1C_S17, stage: T-ATTR, backbone: A1-C, seed: 17, class: diagnostic, new_training_if_activated: 1, unactivated_status: gate_skipped, winner_eligible: false, dose: formal, condition: a1_in_top2_supplement_set_OR_a1_selected_as_backbone, activation_requires: [H0_fixture, smoke_200_conditional, profile_40_40, cost_gate, budget_record], skip_reason: a1_not_in_top2_and_not_selected}
+    - {run_id: V542_A5C_S17, stage: T-ATTR, backbone: A5-C, seed: 17, class: diagnostic, new_training_if_activated: 1, unactivated_status: gate_skipped, winner_eligible: false, dose: formal, condition: a5_selected_backbone, activation_requires: [H0_fixture, smoke_200_conditional, profile_40_40, cost_gate, budget_record], skip_reason: a5_not_selected_backbone}
+  notes: A0×3 为 matched 重训基线 (a0_reuse_decision=retrain_a0_x3); T3 列出 8 个 A1-A4 top2 预注册条件 run (激活 <=4) + 2 个 A5 supplement 条件 run (激活 <=2, 条件=a5_full_dose_complete_and_seed17_screen_pass); N_core = 3 + n_T1_seed17(<=4) + I(A5_full_dose) + n_diag2000(=6) + 2*n_top2_selected(<=2 candidates) + 2*I(A5_supplement) + I(A1C_activated) + I(A5C_activated), 按公式计数 (新训练 run 计数; smoke/profile 是技术测量不进 N_core); V541 E0×3 不在本矩阵 (仅 parity/历史参照)
+
+evaluation_contract:
+  screening_split: inner-val # 初筛/选择只看 inner-val
+  selection_score: "max(direction_rel/0.03, rmse_rel_improve/0.03, delta_auprc/0.02, delta_q/0.03)"
+  selection_score_use: selection_only_never_for_checkpoint_or_reporting
+  selection_tie_break: [inner-val total loss, core_time]
+  checkpoint_rule: 始终仅按 inner-val total loss; 禁止按 H3 指标在多个 checkpoint 中挑选
+  dev_policy: frozen_final_models_only # backbone 冻结后仅最终冻结的少数模型评估一次; 不用于选择/调参
+  confirm_policy: sealed_always
+  tau_policy: calibrated_once_on_inner-val; never_recalibrated_on_dev
+  metrics:
+    move: [rmse_zero, sign, dead_fraction, fixed_coverage_direction]
+    process: [endpoint_auprc, q_corr, ordering]
+    compute: [params, flops, gpu_time, wall_time, vram_host_anon]
+  statistics:
+    bootstrap_seed_root: 20261029
+    bootstrap_subseed_formula: int(sha256(f"v542|{root}|{seed}|{endpoint}").hexdigest()[:16], 16) % 2147483647
+    bootstrap_subseed_note: 每 endpoint/seed 用确定性子 seed; root = bootstrap_seed_root; endpoint ∈ {move_direction, move_rmse, process_auprc, process_q}
+    bootstrap_unit: curve_reaction_cluster
+    pairing: same cluster same frame set; both models share resample indices
+    initial_draws: 1000
+    final_draws: 10000
+    final_draws_ref: thresholds.final_bootstrap_draws
+    ci: percentile_95
+    ci_and_p_same_draws: true # CI 与 p 用同一组 paired cluster bootstrap draws
+    frame_level_bootstrap_forbidden: true
+    undefined_cluster_rule: both models drop the cluster; report dropped count; no imputation
+    p_value_rule:
+      type: one_sided_improvement_paired_cluster_bootstrap
+      improvement_direction:
+        direction: candidate_minus_a0
+        endpoint_auprc: candidate_minus_a0
+        q_corr: candidate_minus_a0
+        rmse_zero: a0_minus_candidate
+      formula: "p = (1 + #{seed-averaged paired bootstrap improvement <= 0}) / (10001)"
+      draws: 10000 # 同 CI 的一组 draws; 分母 = 1 + 10000
+      frame_level_p_forbidden: true
+    holm_family:
+      move_direction_exit: {alpha: 0.025, correction: holm, scope: eligible_candidate_set_within_exit}
+      move_rmse_exit: {alpha: 0.025, correction: holm, scope: eligible_candidate_set_within_exit}
+      process_route: {alpha: 0.025, correction: holm, scope: 2_endpoints_x_eligible_candidates, family: single_process_family}
+      bonferroni_note: MOVE 两出口各 alpha=0.025 即出口间 Bonferroni; 各出口内对 eligible candidate 集做 Holm
+    h3_eligible_candidates: 完成三 seed 且每 seed H2 无 breach 的 winner-eligible candidate (A5 仅当三 seed 完成); diagnostic variants (A1-C/A5-C/A0) 不入
+    champion_rule: 冠军须 adjusted p < 对应 alpha 且效应/非劣条件成立 (qualification); 多个 H3-qualified 候选间的最终选择按 evaluation_contract.final_selection_rule 冻结字典序执行; 报告须同时给未校正与校正后结果
+    seed_aggregation_note: 见 seed_aggregation; 本块冻结统计合同 (statistics_contract_sha256 进 run identity); final_selection_rule 完整 block 一并纳入 statistics/final-selection SHA 与 run identity
+  route_logic: # fix-5 C2: 结构化显式括号逻辑 (取代任何「或」后条件悬空的散文)
+    note: H3 判定与 seed17_screen_pass 显式复用同一括号逻辑; 非劣条件只约束所在支, 不得只作用于后一半
+    move_route:
+      pass_logic: "(direction_pass AND rmse_non_inferior) OR (rmse_pass AND direction_non_inferior)"
+      direction_pass: fixed_coverage_direction 相对改善 >=3% 且绝对改善 >=0.01
+      rmse_pass: rmse_zero 相对改善 >=3%
+      rmse_non_inferior: rmse_zero 退化 <=2%
+      direction_non_inferior: fixed_coverage_direction 退化 <=2%
+    process_route:
+      pass_logic: "(auprc_pass AND q_non_inferior) OR (q_pass AND auprc_non_inferior)"
+      auprc_pass: endpoint_auprc delta >= 0.02
+      q_pass: q_corr delta >= 0.03
+      auprc_non_inferior: endpoint_auprc 下降 <=0.01
+      q_non_inferior: q_corr 下降 <=0.02
+    seed17_screen_reuses_same_parenthesized_logic: true
+  final_selection_rule: # fix-5 C1: 最终 Backbone* 选择规则 (WP0 冻结; 不用 dev)
+    definition_name: final_selection_rule
+    eligible: H3-qualified 候选 only (完成三 seed 且每 seed H2 无 breach 且 adjusted p < 对应 alpha 且效应/非劣条件成立)
+    excluded: [A0_matched_baseline, diagnostic_variants_A1-C_A5-C] # A0/diagnostic 不参加选择; 无 H3-qualified 候选则 A0 留任
+    single_candidate_rule: 恰 1 个 H3-qualified 候选则该候选即 Backbone*
+    no_candidate_rule: 0 个 H3-qualified 候选则 A0 留任 (no_backbone_winner, §12 负结果写法)
+    dev_used: false # 不使用 dev; dev 仅最终冻结后评估一次, 永不参与选择
+    report_all_qualified: true # 报告须列出全部 H3-qualified 候选
+    tie_break_order: # 冻结字典序 (多候选时依次判定, 命中即停)
+      - 1_route_priority_MOVE_qualified_before_PROCESS_only
+      - 2_min_holm_adjusted_p_on_qualifying_confirmatory_endpoint
+      - 3_max_effect_margin_on_qualifying_endpoint
+      - 4_min_core_time_ratio
+      - 5_min_active_backbone_params
+      - 6_min_inner_val_total_loss
+      - 7_min_candidate_id_lexicographic
+    effect_margin_definition:
+      move_direction: min(relative_effect/0.03, absolute_effect/0.01)
+      move_rmse: relative_improvement/0.03
+      process_auprc: delta/0.02
+      process_q: delta/0.03
+    rule_block_in_statistics_sha: true # 完整 rule block 进 statistics/final-selection SHA 与 run identity
+    a5_c_activation_uses_selected_candidate_only: true # A5-C activation 仅用被选中的 candidate (a5_selected_backbone)
+  seed_aggregation:
+    min_seeds_same_direction: 2
+    total_seeds: 3
+    per_seed_h2_breach_forbidden: true
+    pooled: per-draw seed-averaged paired difference; 95% CI lower bound > 0
+    threshold_on: seed_averaged_point_estimate # 不用最好 seed
+  seed17_screen_pass_predicate: # 冻结筛选 predicate (Oracle finding 2); 这是 seed17 筛选, 不是三 seed H3 声明
+    definition_name: seed17_screen_pass
+    scope: 仅用于 top2 eligibility 与 A5 supplement 激活; 不构成 H3 合格声明
+    run_status: run done 且全部预注册指标有限 (无 NaN/Inf)
+    hard_gates_all_pass: [H0_legality, H1_resource, diagnostic_gate, cost_gate] # cost_gate = core_time_ratio <= 2.0
+    matched_a0_dependency: matched A0_S17 已完成 (V542_A0_S17 done 且指标有限)
+    h2_no_breach: seed17 H2 全部 guard 无 breach (RMSE/zero 相对 R3 与 matched A0 退化 <=2%; sign 下降 <=0.01; dead 增加 <=0.01; fixed-coverage direction 退化 <=2%)
+    point_effect_requirement:
+      rule: 至少一路 point effect 达标 (seed17 point estimate, 非三 seed bootstrap); 显式复用 evaluation_contract.route_logic 的同一括号逻辑
+      process_route: "(auprc_pass AND q_non_inferior) OR (q_pass AND auprc_non_inferior); auprc_pass = delta_auprc >= 0.02; q_pass = delta_q >= 0.03; auprc_non_inferior = AUPRC 下降 <=0.01; q_non_inferior = q 下降 <=0.02"
+      move_route: "(direction_pass AND rmse_non_inferior) OR (rmse_pass AND direction_non_inferior); direction_pass = direction 相对 >=3% 且绝对 >=0.01; rmse_pass = rmse_zero 相对改善 >=3%; rmse_non_inferior = rmse_zero 退化 <=2%; direction_non_inferior = direction 退化 <=2%"
+      dangling_or_condition_forbidden: true # 「或」后条件不得悬空: 非劣条件属于所在支, 两支各自括号闭合
+    ranking: 满足 predicate 的 A1-A4 按冻结 screen score 排序, tie = inner-val total loss 再 core-time; 最多 2 个; 可少于 2; 不替补
+    top2_freeze_requires: A0_S17 complete + A0×3 sanity band pass (V542-A0-sanity-band; A0×3 seed 均值 vs V541 E0×3 seed 均值在带宽内; T0 必须先于任何 T1 formal)
+    h3_final_requires: matched A0 对应 seed (S29/S43) complete
+  no_selection_leakage: 同一 inner-val manifest/SHA、同一 evaluator SHA、同一 selection rule、所有 seed 全报、append-only 决策账本
+  rollout: {in_scope: false, note: "V5.4.2 止于 inner-val 选择 + 冻结统计; 无生产 No-Move / verified TS / 部署资格声明"}
+
+gates:
+  H0: {rule: "schema/no-leak/E(3)/permutation/reverse-relabel/非关键零动作/typed-invalid/restore/有限梯度 全过", on_fail: invalid_run}
+  H1: {rule: "单路、无 swap/OOM、host/VRAM/预算不超线", on_fail: resource_failure 或 budget_censored}
+  parity: {rule: "6 checkpoint 全 required (3 V541 E0 S17/29/43 主证据 = runs/ 下 37,900-update final + 3 V53MP C S17/29/43 辅助证据 = outputs/pesn/v53mp/ 下 S3 formal 20k-tier 15,400-update; path+SHA 已钉死于 backbone_contract.a0_migration.parity.assets, 6/6; smoke 与非钉死路径禁止) strict-audit load + CPU bitwise 5 输出+forward_move + >=8 真实 inner-val batch + GPU 1e-6/1e-5 hard cap (关 TF32, run-to-run 地板仅作诊断, floor>cap => GPU parity inconclusive, CPU bitwise 仍为决定证据) + q==order_score + evaluator parity", on_fail: invalid_run}
+  H2: {rule: "每正式 seed: RMSE/zero 退化 <=2% 相对 R3 且退化 <=2% 相对同 seed matched A0; sign 绝对下降 <=0.01; dead 绝对增加 <=0.01; fixed-coverage direction 相对退化 <=2%; R3 参照必须同 evaluator/环境可重评", on_fail: scientific_failure}
+  H3: {rule: "对照 matched A0 (非 R3): 路线判定用冻结括号逻辑 (evaluation_contract.route_logic) — MOVE pass = (direction_pass AND rmse_non_inferior) OR (rmse_pass AND direction_non_inferior) (direction_pass = fixed-coverage direction 相对改善 >=3% 且绝对 +0.01; rmse_pass = RMSE/zero 相对改善 >=3%; rmse_non_inferior = RMSE/zero 退化 <=2%; direction_non_inferior = direction 退化 <=2%); PROCESS pass = (auprc_pass AND q_non_inferior) OR (q_pass AND auprc_non_inferior) (auprc_pass = ΔAUPRC>=0.02; q_pass = Δq>=0.03; auprc_non_inferior = AUPRC 下降 <=0.01; q_non_inferior = q 下降 <=0.02); >=2/3 seeds 同向 + 每 seed 无 H2 breach; 三 seed seed-averaged curve-level paired bootstrap 10000 draws CI 下界 >0 (bootstrap_seed_root=20261029, 确定性子 seed 公式见 statistics); p 值 = one-sided improvement paired bootstrap (公式见 statistics.p_value_rule); Holm family 冻结: MOVE direction 与 MOVE RMSE 两 exit 各 alpha=0.025 各自对 eligible candidate 集 Holm, PROCESS 单一 family 对 2 endpoints x eligible candidates Holm, family alpha=0.025; eligible = 完成三 seed 且每 seed H2 无 breach 的 winner-eligible candidate; 冠军 = H3-qualified 集内按 evaluation_contract.final_selection_rule 冻结字典序选定; 报告未校正与校正后结果; PROCESS-only 可晋级但报告须明确 MOVE 未改善; 任何收益不豁免 H2", on_fail: no_backbone_winner}
+  r3_guard_block: "R3 参照无法同 evaluator/环境重评 -> T1 阻断 (不得降级为仅 matched-A0 参照)"
+
+thresholds:
+  sign_drop_abs_max: 0.01
+  dead_fraction_increase_abs_max: 0.01
+  fixed_coverage_direction_regression_rel_max_pct: 2.0
+  rmse_zero_regression_rel_max_pct: 2.0
+  other_endpoint_auprc_drop_abs_max: 0.01
+  other_q_corr_drop_abs_max: 0.02
+  h3_move_direction_rel_min_pct: 3.0
+  h3_move_direction_abs_min: 0.01
+  h3_move_rmse_rel_min_pct: 3.0
+  h3_process_delta_auprc_abs_min: 0.02
+  h3_process_delta_q_corr_abs_min: 0.03
+  move_exit_alpha_each: 0.025
+  diagnostic_loss_drop_min_pct: 5.0
+  diagnostic_dead_fraction_margin_vs_a0: 0.20
+  diagnostic_rmse_zero_rel_max_pct: 10.0
+  gpu_parity_atol: 1.0e-06
+  gpu_parity_rtol: 1.0e-05
+  max_core_time_ratio: 2.0
+  final_bootstrap_draws: 10000
+  bootstrap_seed_root: 20261029
+  top2_max_runs: 4
+  a5_supplement_max_runs: 2
+  t3_max_runs: 6
+  backbone_active_max: 70000
+  a0_backbone_active: 55392
+  a0_joint_params: 57619
+  move_decoder_params: 49
+  process_head_params: 2178
+  signoff:
+    status: frozen
+    signed_on: "2026-10-29"
+    signed_by: user_directive_20261029
+    basis: Oracle WP0 建议阈值; 用户 2026-10-29 授权「请完成5.4.2阶段代码修改与训练工作」; 签认后不得按 seed17/dev 结果修改, 改值须重走签认并同步 config/runplan/budget SHA
+    sign_drop_abs_max: 0.01
+    dead_fraction_increase_abs_max: 0.01
+    fixed_coverage_direction_regression_rel_max_pct: 2.0
+    rmse_zero_regression_rel_max_pct: 2.0
+    other_endpoint_auprc_drop_abs_max: 0.01
+    other_q_corr_drop_abs_max: 0.02
+    h3_move_direction_rel_min_pct: 3.0
+    h3_move_direction_abs_min: 0.01
+    h3_move_rmse_rel_min_pct: 3.0
+    h3_process_delta_auprc_abs_min: 0.02
+    h3_process_delta_q_corr_abs_min: 0.03
+    move_exit_alpha_each: 0.025
+    diagnostic_loss_drop_min_pct: 5.0
+    diagnostic_dead_fraction_margin_vs_a0: 0.20
+    diagnostic_rmse_zero_rel_max_pct: 10.0
+    gpu_parity_atol: 1.0e-06
+    gpu_parity_rtol: 1.0e-05
+    max_core_time_ratio: 2.0
+    final_bootstrap_draws: 10000
+    bootstrap_seed_root: 20261029
+    top2_max_runs: 4
+    a5_supplement_max_runs: 2
+    t3_max_runs: 6
+    backbone_active_max: 70000
+    a0_backbone_active: 55392
+    a0_joint_params: 57619
+    move_decoder_params: 49
+    process_head_params: 2178
+
+cost_acceptance:
+  rule: hard_ratio
+  ratio_expression: candidate_core_time / v542_a0_same_env_core_time <= thresholds.max_core_time_ratio
+  denominator: V542 A0 同环境 profile (40 W0 + 40 W1) 实测
+  forbidden_denominator: V541 存档 per_candidate_core_time (旧代码/旧 hook 环境)
+  on_exceed: 科学结果保留, 不授予晋级, 记 gate_skipped_cost_ratio_exceeds_2 (不是 resource_failure)
+  fixed_gpu_time_note: fixed-GPU-time 只作另报成本匹配分析, 不替代 fixed-dose 主分析
+
+budget:
+  single_lane: true
+  swap_max: 0
+  oom_kill_max: 0
+  host_limit_gib: 12
+  memory_high_gib: 10
+  per_candidate_core_time: null # WP0: profile 前保持 null; --formal typed-block V542_BUDGET_NULL, prereg 模式记 t1_blocked
+  per_candidate_status: pending_wp3_profiling
+  fixed_dose_note: 正式训练固定 37,900 updates; fixed-GPU-time 只作另报
+  on_breach: [resource_failure, budget_censored]
+  forbidden_workarounds: [reduce_frames, reduce_layers, reduce_updates, reduce_curves, change_stratification, drop_process_loss, swap_seed]
+  forbidden_workarounds_note: 成本超限不得通过减帧/层/更新等事后绕行「修」成本 (那是事后改架构); 超限=不晋级, 科学结果保留
+
+run_outcomes:
+  vocabulary: [done, invalid_run, scientific_failure, resource_failure, budget_censored, gate_skipped]
+  ledger_status_machine: unchanged # 旧 run_ledger status 不改; V542 outcome 另记 outcome 字段; append-only, 旧 ledger 不改
+  vocabulary_source: 继承 V541 §7.4 六词表
+
+plan_outputs:
+  root: outputs/pesn/v542_backbone_50k
+  subdirs: [plan, audits, smoke, profile, runs, diagnostics, reports, exports, cache]
+  run_id_namespace: V542_

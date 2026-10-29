@@ -1,0 +1,69 @@
+{
+  "schema": "pes2ts_v542_budget_policy_v1",
+  "_template_note": "Template for outputs/pesn/v542_backbone_50k/plan/budget_policy.json (plan §11 / ADR-0033). WP0 ships PRE-PROFILE: per_candidate entries are null with status pending_wp3_profiling; the prereg validator passes (t1_blocked only) while --formal is the typed block V542_BUDGET_NULL. Fill each entry from the same-env V542 40+40 profile_only measurement BEFORE formal T1 and re-hash into budget_policy_sha256. Fixed-dose 37,900 updates is immutable. A1-C/A5-C are full-dose diagnostics and require their own profile/cost/budget entries before activation.",
+  "_t1_block_rule": "per_candidate.*.approved_for_formal must all be true for admitted candidates before formal T1; validator refuses --formal while budget.per_candidate_core_time is null (V542_BUDGET_NULL)",
+  "campaign_id": "PES2TS_V542_BACKBONE_50K",
+  "config_path": "config/campaigns/pes2ts_v542_backbone_50k.yaml",
+  "config_sha256": null,
+  "activation_summary": {
+    "A0_retrain": 3,
+    "A1_A4_seed17": 4,
+    "A5_full_dose": "conditional: only when no A1-A4 H3-qualified candidate after top2 seeds (else gate_skipped); launch_requires diagnostic/cost/H0/H1 gates",
+    "top2_max_runs": 4,
+    "a5_supplement_max_runs": 2,
+    "t3_max_runs": 6,
+    "top2_note": "top2 belongs to A1-A4 ONLY (max 2 candidates x seeds 29/43 = 4 runs); A5 T3 rows are a separate a5_supplement branch (max 2 runs) gated by a5_full_dose_complete_and_seed17_screen_pass",
+    "A1C_attribution": "conditional full-dose diagnostic: A1 enters top-2 supplement set OR is selected as Backbone*; requires H0 fixture + conditional smoke 200 + 40+40 profile + cost gate + budget record",
+    "A5C_attribution": "conditional full-dose diagnostic: A5 SELECTED as Backbone* only; same H0/smoke/profile/cost/budget prerequisites; if A5 H3-qualified but not selected => capacity_caveat_unresolved, do NOT run",
+    "diagnostic_2000": "V542_DIAG_A0_S17 (matched-dose reference) + V542_DIAG_A1-A5_S17 — unconditional engineering screens"
+  },
+  "cost_acceptance": {
+    "max_core_time_ratio": 2.0,
+    "rule": "hard_ratio",
+    "ratio_expression": "candidate_core_time / v542_a0_same_env_core_time <= thresholds.max_core_time_ratio",
+    "denominator": "same V542 environment, same batch, same 40 W0 + 40 W1 profile measured A0",
+    "forbidden_denominator": "v541_archived_per_candidate_core_time (old code / old hook environment)",
+    "on_exceed": "gate_skipped_cost_ratio_exceeds_2 — scientific result retained, no promotion, A0 stays (NOT resource_failure); no layer/head/frame reduction to 'fix' cost"
+  },
+  "cost_model": {
+    "formula": "T_run = 400*t_W0 + 37500*t_W1 + T_startup + T_eval + T_checkpoint",
+    "measure_w0_w1_separately": true,
+    "extrapolation_rule": "200 W0 updates may NOT be extrapolated to W1 joint timing; profile windows label frozen-core vs unfrozen-core",
+    "profile_window": { "w0_updates": 40, "w1_updates": 40, "warmup_updates": 20 },
+    "metrics_reported": ["core_time", "wall_time", "peak_vram", "host_rss", "per_edge_flops", "projected_wall_hours"],
+    "profile_code_sha_in_run_identity": true
+  },
+  "execution_policy": {
+    "concurrency": 1,
+    "single_lane": true,
+    "swap_max": 0,
+    "oom_kill_max": 0,
+    "host_limit_gib": 12,
+    "memory_high_gib": 10,
+    "on_breach": ["resource_failure", "budget_censored"],
+    "forbidden_workarounds": ["reduce_frames", "reduce_layers", "reduce_updates", "reduce_curves", "change_stratification", "drop_process_loss", "swap_seed"]
+  },
+  "per_candidate": {
+    "A0": { "approved_for_formal": null, "core_seconds": null, "w1_core_ratio": null, "projected_wall_hours": null, "status": "pending_wp3_profiling", "role": "matched_baseline_retrain / cost denominator" },
+    "A1": { "approved_for_formal": null, "core_seconds": null, "w1_core_ratio": null, "projected_wall_hours": null, "status": "pending_wp3_profiling" },
+    "A2": { "approved_for_formal": null, "core_seconds": null, "w1_core_ratio": null, "projected_wall_hours": null, "status": "pending_wp3_profiling" },
+    "A3": { "approved_for_formal": null, "core_seconds": null, "w1_core_ratio": null, "projected_wall_hours": null, "status": "pending_wp3_profiling" },
+    "A4": { "approved_for_formal": null, "core_seconds": null, "w1_core_ratio": null, "projected_wall_hours": null, "status": "pending_wp3_profiling", "cost_risk": "highest — early profile decides gate_skipped_cost_ratio_exceeds_2" },
+    "A5": { "approved_for_formal": null, "core_seconds": null, "w1_core_ratio": null, "projected_wall_hours": null, "status": "pending_wp3_profiling", "activation": "conditional on no A1-A4 H3-qualified candidate" },
+    "A1-C": { "approved_for_formal": null, "core_seconds": null, "w1_core_ratio": null, "projected_wall_hours": null, "status": "pending_wp3_profiling", "role": "full-dose attribution diagnostic (37,900 updates); requires H0 fixture + conditional smoke 200 + 40+40 profile + cost gate before activation", "winner_eligible": false },
+    "A5-C": { "approved_for_formal": null, "core_seconds": null, "w1_core_ratio": null, "projected_wall_hours": null, "status": "pending_wp3_profiling", "role": "full-dose capacity-caveat diagnostic (37,900 updates); requires H0 fixture + conditional smoke 200 + 40+40 profile + cost gate before activation", "winner_eligible": false }
+  },
+  "per_candidate_status": "pending_wp3_profiling",
+  "schedule": {
+    "smoke_updates": 200,
+    "diagnostic_updates": 2000,
+    "diagnostic_split": { "w0": 400, "w1": 1600 },
+    "total_updates": 37900,
+    "w0_updates": 400,
+    "w1_updates": 37500,
+    "fixed_dose_note": "正式训练始终固定 37,900 updates；fixed-GPU-time 只作另报成本匹配分析，不替代同剂量主比较"
+  },
+  "n_core_note": "N_core counts NEW TRAINING runs via the frozen formula (runplan_pin.core_training_count_formula); smoke/profile are technical measurements excluded from N_core; top2 ceiling 4 + a5_supplement ceiling 2",
+  "signed_by": null,
+  "signed_on": null
+}

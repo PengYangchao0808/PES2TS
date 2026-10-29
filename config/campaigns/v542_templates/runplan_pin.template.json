@@ -1,0 +1,131 @@
+{
+  "schema": "pes2ts_v542_runplan_pin_v1",
+  "_template_note": "Template for outputs/pesn/v542_backbone_50k/plan/runplan.pin.json (plan §9 / ADR-0033). runplan.jsonl lists concrete runs; this pin freezes the preregistered run classes so diagnostic/attribution runs can never enter the main winner selection and A5/A1-C/A5-C stay conditional. run_ids must match config/campaigns/pes2ts_v542_backbone_50k.yaml run_matrix exactly. T3 is split: top2 (A1-A4 only, max 4 runs) + a5_supplement (A5 only, max 2 runs, parent gate a5_full_dose_complete_and_seed17_screen_pass).",
+  "campaign_id": "PES2TS_V542_BACKBONE_50K",
+  "gv_campaign_id": "V5.4.2",
+  "config_path": "config/campaigns/pes2ts_v542_backbone_50k.yaml",
+  "config_sha256": null,
+  "schema_id": "pes2ts_v542_campaign_v1",
+  "objective": "unified_move_process",
+  "seed_primary": 17,
+  "seeds": [17, 29, 43],
+  "run_classes": {
+    "nominal": {
+      "description": "T0 matched A0 retrain x3 (baseline, winner_eligible=false per run row, role=matched_baseline_retrain) — T0 A0x3 formal + V542-A0-sanity-band PASS MUST complete before any T1 formal run — + T1 A1-A4 seed17 full dose (400+37,500) after diagnostic/cost gates",
+      "counts_toward_winner": "per_run_row",
+      "counts_toward_winner_note": "winner eligibility is judged PER RUN via the run row's winner_eligible flag; the nominal class flag is NOT a blanket winner-counting claim (A0 rows are winner_eligible=false)",
+      "run_ids": ["V542_A0_S17", "V542_A0_S29", "V542_A0_S43", "V542_A1_S17", "V542_A2_S17", "V542_A3_S17", "V542_A4_S17"]
+    },
+    "conditional": {
+      "description": "T2 A5 seed17 full dose (only when no A1-A4 H3-qualified candidate after top2 seeds; launch_requires diagnostic/cost/H0/H1); T3 top-2 preregistered A1-A4 x {29,43} — only the frozen inner-val top-2 (max 2x2=4 runs) activates under the seed17_screen_pass predicate; A5 T3 rows are a SEPARATE a5_supplement branch (max 2 runs) gated by a5_full_dose_complete_and_seed17_screen_pass",
+      "counts_toward_winner": "per_run_row",
+      "launch_requires": ["T0 A0x3 formal + V542-A0-sanity-band pass BEFORE any T1 formal", "top2_frozen_before_seeds_29_43 (requires A0_S17 complete + V542-A0-sanity-band pass)", "a5_supplement_parent_gate_for_A5_rows", "budget_approval", "parity_gate_pass"],
+      "run_ids": [
+        "V542_A5_S17",
+        "V542_A1_S29", "V542_A1_S43",
+        "V542_A2_S29", "V542_A2_S43",
+        "V542_A3_S29", "V542_A3_S43",
+        "V542_A4_S29", "V542_A4_S43",
+        "V542_A5_S29", "V542_A5_S43"
+      ],
+      "top2_preregistration": {
+        "candidates": ["A1", "A2", "A3", "A4"],
+        "seeds": [29, 43],
+        "listed_runs": 8,
+        "activation": "activated_only_by_inner_val_top2",
+        "top2_max_runs": 4,
+        "eligibility": "A1-A4 only, must satisfy seed17_screen_pass predicate, ranked by frozen screen score, max 2 candidates, may be fewer, NO substitution",
+        "freeze_requires": "A0_S17 complete + A0x3 sanity band pass (V542-A0-sanity-band; A0x3 seed-mean vs V541 E0x3 seed-mean within band)",
+        "unactivated_status": "gate_skipped",
+        "unactivated_new_trainings": 0,
+        "n_core_counting": "formula_only"
+      },
+      "a5_supplement": {
+        "runs": ["V542_A5_S29", "V542_A5_S43"],
+        "a5_supplement_max_runs": 2,
+        "condition": "a5_full_dose_complete_and_seed17_screen_pass",
+        "parent_gate": "a5_full_dose_complete_and_seed17_screen_pass",
+        "screen_predicate_ref": "evaluation_contract.seed17_screen_pass_predicate",
+        "note": "seed17 SCREEN predicate, NOT a three-seed H3 claim; A5 full-dose run complete AND seed17_screen_pass"
+      }
+    },
+    "diagnostic": {
+      "description": "Unconditional 2,000-update engineering screens (V542_DIAG_A0_S17 matched-dose reference + V542_DIAG_A1-A5_S17) and attribution controls A1-C/A5-C; never enters winner competition; diagnostic metrics never carry full-dose H3 effect gates",
+      "counts_toward_winner": false,
+      "run_ids": [
+        "V542_DIAG_A0_S17",
+        "V542_DIAG_A1_S17", "V542_DIAG_A2_S17", "V542_DIAG_A3_S17", "V542_DIAG_A4_S17",
+        "V542_DIAG_A5_S17",
+        "V542_A1C_S17", "V542_A5C_S17"
+      ],
+      "activation_requires": ["H0_fixture", "smoke_200_conditional", "profile_40_40", "cost_gate", "budget_record"],
+      "skip_rules": {
+        "V542_A1C_S17": "gate_skipped(a1_not_in_top2_and_not_selected) — 归因未解决写明, 不加入 C2",
+        "V542_A5C_S17": "gate_skipped(a5_not_selected_backbone) — A5-C activates only when A5 is SELECTED as Backbone*; if A5 is H3-qualified but not selected, record capacity_caveat_unresolved and do NOT run"
+      }
+    }
+  },
+  "core_training_count_formula": "N_core = 3 + n_T1_seed17(<=4) + I(A5_full_dose) + n_diag2000(=6) + 2*n_top2_selected(<=2 candidates) + 2*I(A5_supplement) + I(A1C_activated) + I(A5C_activated). This counts NEW TRAINING runs only; smoke/profile are technical measurements and do NOT enter N_core. top2 max = 4 runs (2 A1-A4 candidates x seeds 29/43); a5_supplement max = 2 runs; combined T3 ceiling = 6. N_core is always computed from the formula, NEVER by summing listed run rows.",
+  "statistics_contract": {
+    "bootstrap_seed_root": 20261029,
+    "bootstrap_subseed_formula": "int(sha256(f\"v542|{root}|{seed}|{endpoint}\").hexdigest()[:16], 16) % 2147483647",
+    "final_draws": 10000,
+    "p_value_rule": "one-sided improvement paired cluster bootstrap: p = (1 + #{seed-averaged paired bootstrap improvement <= 0}) / (10001); CI and p share the same draws; frame-level forbidden",
+    "holm_families": "MOVE direction exit alpha=0.025 Holm over eligible candidates; MOVE RMSE exit alpha=0.025 Holm over eligible candidates; PROCESS single family alpha=0.025 Holm over 2 endpoints x eligible candidates",
+    "h3_eligible": "winner-eligible candidates with all three seeds complete and no per-seed H2 breach (A5 only when three-seed complete); diagnostic variants excluded",
+    "route_logic_ref": "evaluation_contract.route_logic — MOVE pass = (direction_pass AND rmse_non_inferior) OR (rmse_pass AND direction_non_inferior); PROCESS pass = (auprc_pass AND q_non_inferior) OR (q_pass AND auprc_non_inferior); seed17 screen reuses the same parenthesized logic"
+  },
+  "bootstrap_seed_root": 20261029,
+  "final_selection_rule": {
+    "definition_name": "final_selection_rule",
+    "eligible": "H3-qualified candidates only (three seeds complete, per-seed H2 clean, adjusted p < corresponding alpha with effect/non-inferiority conditions)",
+    "excluded": ["A0_matched_baseline", "diagnostic_variants_A1-C_A5-C"],
+    "no_candidate_rule": "0 H3-qualified candidates => A0 retained (no_backbone_winner)",
+    "single_candidate_rule": "exactly 1 H3-qualified candidate => that candidate is Backbone*",
+    "dev_used": false,
+    "report_all_qualified": true,
+    "tie_break_order": [
+      "1_route_priority_MOVE_qualified_before_PROCESS_only",
+      "2_min_holm_adjusted_p_on_qualifying_confirmatory_endpoint",
+      "3_max_effect_margin_on_qualifying_endpoint",
+      "4_min_core_time_ratio",
+      "5_min_active_backbone_params",
+      "6_min_inner_val_total_loss",
+      "7_min_candidate_id_lexicographic"
+    ],
+    "effect_margin_definition": {
+      "move_direction": "min(relative_effect/0.03, absolute_effect/0.01)",
+      "move_rmse": "relative_improvement/0.03",
+      "process_auprc": "delta/0.02",
+      "process_q": "delta/0.03"
+    },
+    "rule_block_in_statistics_sha": true,
+    "a5_c_activation_uses_selected_candidate_only": true,
+    "route_logic_ref": "evaluation_contract.route_logic"
+  },
+  "shared_protocol": {
+    "same_seed_shared": ["common_protocol_sha256", "sampler_spec_sha256"],
+    "may_vary": ["backbone_spec_sha256", "backbone_id"],
+    "batch": "8 curves x 4 frames stratified start/pre-TS/post-TS/endpoint; (seed, update, salt) sampler protocol",
+    "sampler_spec_sha256": "0769817ef01dca3abbb1d67f5405e98138b4707e74b690240d3f9b6821b65d9e"
+  },
+  "runplan_sha256": null,
+  "sha256": null,
+  "campaign_mode": "full",
+  "budget_sha256": null,
+  "budget_policy_sha256": null,
+  "common_protocol_sha256": null,
+  "code_sha256": null,
+  "source_manifest_sha256": null,
+  "code_commit": null,
+  "code_commit_note": "optional record only (git_commit_authoritative=false); NOT part of the T1 block rule",
+  "environment_sha256": null,
+  "init_mapping_sha256": null,
+  "process_head_anchor_sha256": null,
+  "statistics_contract_sha256": null,
+  "plan_sha256": null,
+  "oracle_design_source_sha256": "4f13bfbd26d4acf17572641e30453000d65243599519c269473f07d6678ccccb",
+  "frozen_on": null,
+  "frozen_by": null,
+  "_t1_block_rule": "runplan_sha256 AND source_manifest_sha256 must be non-null before formal T1 (formal-run SHA freeze); code_commit is optional because git_commit_authoritative=false"
+}
