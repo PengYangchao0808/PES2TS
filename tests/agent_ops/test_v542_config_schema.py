@@ -36,6 +36,31 @@ init-source, R3-init and parity-template contracts:
   ``gru_cell_bias`` (A5 ``[true]``=14,112; A5-C ``[true, false]`` second
   cell bias-free=13,824) exact record, incl. token-preserving
   near-miss rejections and the frozen totals unchanged,
+* gate-0 A5 closure (P3 lane D): the two T1 record requirements
+  (``a0_reuse_decision_record`` + ``preregistration_signoff_record``)
+  are machine-checked governance records — prereg surfaces missing/
+  drifted instances as ``t1_blocked`` reasons (WP0 absence by design),
+  ``--formal`` typed-rejects (``V542_RECORD_MISSING`` /
+  ``V542_RECORD_MISMATCH``) with canonical-file-byte SHA rules,
+* gate-3 B2/C2 closure (P3 remediation lane R2): the record gate
+  mirrors the frozen config — wrong ``config_path``, empty/drifted
+  ``signed_by_roles``, wrong role bindings, Oracle-as-signatory,
+  ``schema`` drift, thresholds encoding drift (4 vs 4.0) are typed
+  ``V542_RECORD_MISMATCH``; each record declares ``record_sha256``
+  verified against the identity module's ``canonical_bytes`` digest
+  (missing ⇒ ``V542_RECORD_MISSING``, wrong/stale ⇒
+  ``V542_RECORD_MISMATCH``); ``runplan_pin_record`` stays
+  WP5-runner-verified (the validator never reads the pin instance),
+* gate-3 C4/A1 closure (P3 remediation lane R2): the budget formal
+  gate requires a mapping covering every backbone with a finite
+  POSITIVE core time — list/string/bool/null-entry/zero/negative/
+  NaN/inf/partial/extra-key tables are typed ``V542_BUDGET_INVALID``
+  (null/empty stays ``V542_BUDGET_NULL``; prereg never requires
+  numbers),
+* gate-0 A2 closure (P3 lane D): final-selection eligibility/single/
+  no-candidate, ``h3_eligible_candidates``, ``champion_rule``, seed17
+  H2 sign threshold and ``core_loop`` are exact/structured — every
+  token-preserving near-miss from the Oracle probe tables is rejected,
 * the five WP0 templates parse and mirror the frozen config.
 """
 
@@ -91,6 +116,102 @@ def _fill_budget(c: dict, include_attr: bool = True) -> None:
     c["budget"]["per_candidate_status"] = "signed_v542_profile"
 
 
+def _record_canonical_sha(payload: dict) -> str:
+    """The frozen record digest (gate-3 C2): sha256 of the identity
+    module's ``canonical_bytes`` over the payload WITHOUT the
+    ``record_sha256`` field."""
+    import hashlib
+
+    from pes2ts_core.pesn.models.v542.identity import canonical_bytes
+
+    body = {k: v for k, v in payload.items() if k != "record_sha256"}
+    return hashlib.sha256(canonical_bytes(body)).hexdigest()
+
+
+def _seal_record(payload: dict) -> dict:
+    """Fill + return the payload with a valid ``record_sha256``."""
+    payload["record_sha256"] = _record_canonical_sha(payload)
+    return payload
+
+
+def _write_valid_records(root: Path, cfg: dict | None = None) -> None:
+    """Write the two machine-checked record instances under *root*.
+
+    gate-0 A5 + gate-3 B2/C2 test seam: instances live at the frozen
+    plan-dir paths relative to the injected ``record_root``, mirror the
+    frozen config (config_path/campaign_id/schema/roles/thresholds) and
+    carry a valid canonical ``record_sha256``.
+    """
+    if cfg is None:
+        cfg = yaml.safe_load(CONFIG.read_text(encoding="utf-8"))
+    plan = Path(root) / "outputs" / "pesn" / "v542_backbone_50k" / "plan"
+    plan.mkdir(parents=True, exist_ok=True)
+    decision = _seal_record({
+        "schema": v.A0_DECISION_SCHEMA_ID,
+        "campaign_id": cfg["campaign_id"],
+        "gv_campaign_id": cfg["gv"]["campaign_id"],
+        "config_path": v.CAMPAIGN_CONFIG_REL,
+        "config_sha256": "0" * 64,
+        "decision": "retrain_a0_x3",
+        "signed_by": "main_session_owner",
+        "runs": list(cfg["a0_baseline"]["runs"]),
+    })
+    (plan / "a0_reuse_decision.json").write_text(
+        json.dumps(decision, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    signed = {"status": "frozen"}
+    signed.update(
+        {key: cfg["thresholds"][key] for key in v.FORMAL_THRESHOLDS})
+    signoff = _seal_record({
+        "schema": v.SIGNOFF_RECORD_SCHEMA_ID,
+        "campaign_id": cfg["campaign_id"],
+        "gv_campaign_id": cfg["gv"]["campaign_id"],
+        "config_path": v.CAMPAIGN_CONFIG_REL,
+        "config_sha256": "0" * 64,
+        "schema_id": cfg["schema"],
+        "thresholds_signed_frozen": signed,
+        "signed_by_roles": {
+            "authorization": "user_directive_20261029",
+            "governance_owner": "main_session_gate0_remediation",
+            "statistics_owner": "main_session_owner",
+            "governance_signoff": "main_session_gate0_remediation",
+            "parity_signoff": None,
+            "training_signoff": None,
+            "evaluation_signoff": "main_session_owner",
+            "resource_signoff": None,
+            "oracle_reviewer": "oracle_gate0_reviewer",
+            "formal_launch_note": (
+                "WP0 authoring complete; formal signoff pending owner "
+                "re-affirm; reviewer NOT signatory — oracle_gate0_reviewer"),
+        },
+    })
+    (plan / "preregistration_signoff.json").write_text(
+        json.dumps(signoff, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+
+
+def _mutate_record(root: Path, name: str, fn, *, seal: bool = True) -> dict:
+    """Load a written record instance, mutate it and write it back.
+
+    With ``seal=True`` (default) the payload is RE-SEALED so the
+    mutation alone — not a stale SHA — triggers the rejection; with
+    ``seal=False`` the declared ``record_sha256`` is left untouched (for
+    SHA-drift probes).
+    """
+    path = (Path(root) / "outputs" / "pesn" / "v542_backbone_50k" / "plan"
+            / name)
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    fn(payload)
+    if seal:
+        payload = _seal_record(payload)
+    path.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8")
+    return payload
+
+
 def _top2_ids() -> set:
     return {
         f"V542_{cid}_S{seed}" for cid in ("A1", "A2", "A3", "A4")
@@ -113,13 +234,19 @@ def _run_by_id(cfg: dict, run_id: str) -> dict:
 # happy paths
 # ---------------------------------------------------------------------------
 def test_frozen_config_validates_prereg_with_budget_blocker(base_cfg):
-    """WP0 ships pre-profile: prereg passes, only the budget blocks T1."""
+    """WP0 ships pre-profile: prereg passes; budget + 2 records block T1."""
     report = v.validate_config(base_cfg, formal=False)
     assert report["ok"] and report["mode"] == "prereg"
     assert report["null_thresholds"] == []
     assert report["t1_config_ready"] is False
-    assert len(report["t1_blocked"]) == 1
-    assert "per_candidate_core_time" in report["t1_blocked"][0]
+    # gate-0 A5: the two governance record instances are intentionally
+    # absent at WP0 and surface as t1_blocked reasons, alongside the
+    # pre-profile budget null — prereg stays green (no typed rejection).
+    assert len(report["t1_blocked"]) == 3
+    joined = " ".join(report["t1_blocked"])
+    assert "per_candidate_core_time" in joined
+    assert "a0_reuse_decision_record" in joined
+    assert "preregistration_signoff_record" in joined
     # V5.4.2 is registered in g_v_map.yaml — the registry is NOT a blocker
     assert not any("g_v_map" in r for r in report["t1_blocked"])
 
@@ -132,14 +259,18 @@ def test_repo_config_formal_is_typed_budget_block(base_cfg):
     assert "per_candidate_core_time" in exc.value.detail
 
 
-def test_filled_budget_formal_passes_completely(base_cfg):
-    """With a signed budget table the formal gate is fully config-ready."""
+def test_filled_budget_formal_passes_completely(base_cfg, tmp_path):
+    """Signed budget + valid record instances = formal fully config-ready."""
     cfg = _mut(base_cfg, _fill_budget)
-    formal = v.validate_config(cfg, formal=True)
+    # the two machine-checked record instances must exist and mirror the
+    # config (gate-0 A5); write them under a tmp record root
+    _write_valid_records(tmp_path)
+    formal = v.validate_config(cfg, formal=True, record_root=tmp_path)
     assert formal["ok"] and formal["mode"] == "formal"
     assert formal["null_thresholds"] == []
     assert formal["t1_blocked"] == []
     assert formal["t1_config_ready"] is True
+    assert "governance_records" in formal["checks"]
 
 
 def test_cli_exit_zero_on_repo_config():
@@ -175,10 +306,13 @@ def test_cli_json_report_is_parseable():
 
 
 def test_typed_rejection_codes_authoritative_count():
-    """The module defines the authoritative 19 typed rejection codes."""
-    assert len(v.TYPED_REJECTIONS) == 19
-    assert len(set(v.TYPED_REJECTIONS)) == 19
+    """The module defines the authoritative 22 typed rejection codes."""
+    assert len(v.TYPED_REJECTIONS) == 22
+    assert len(set(v.TYPED_REJECTIONS)) == 22
     assert all(code.startswith("V542_") for code in v.TYPED_REJECTIONS)
+    assert "V542_RECORD_MISSING" in v.TYPED_REJECTIONS
+    assert "V542_RECORD_MISMATCH" in v.TYPED_REJECTIONS
+    assert "V542_BUDGET_INVALID" in v.TYPED_REJECTIONS
 
 
 # ---------------------------------------------------------------------------
@@ -1520,8 +1654,174 @@ def test_filled_budget_requires_attribution_entries(base_cfg):
     cfg = _mut(base_cfg, lambda c: _fill_budget(c, include_attr=False))
     with pytest.raises(v.V542SchemaError) as exc:
         v.validate_config(cfg, formal=True)
-    assert exc.value.code == "V542_BUDGET_NULL"
+    assert exc.value.code == "V542_BUDGET_INVALID"
     assert "A1-C" in exc.value.detail and "A5-C" in exc.value.detail
+
+
+# ---------------------------------------------------------------------------
+# gate-3 C4/A1 (2026-10-30, P3 remediation lane R2): the budget formal
+# gate is closed — a filled table must be a mapping covering every
+# KNOWN_BACKBONES entry with a finite POSITIVE core time.  Oracle gate-3
+# probes (list/zeros/neg/nan used to PASS --formal) are now typed
+# V542_BUDGET_INVALID rejections; only null/empty keeps V542_BUDGET_NULL.
+# ---------------------------------------------------------------------------
+def _budget_table(cfg: dict) -> dict:
+    return cfg["budget"]["per_candidate_core_time"]
+
+
+def _full_budget_ids() -> list:
+    return ["A0", "A1", "A2", "A3", "A4", "A5", "A1-C", "A5-C"]
+
+
+def test_formal_empty_list_budget_is_typed_null(base_cfg):
+    """[] is an empty (unsigned) table => V542_BUDGET_NULL, not INVALID."""
+    def _bad(c):
+        c["budget"]["per_candidate_core_time"] = []
+
+    cfg = _mut(base_cfg, _bad)
+    with pytest.raises(v.V542SchemaError) as exc:
+        v.validate_config(cfg, formal=True)
+    assert exc.value.code == "V542_BUDGET_NULL"
+
+
+def test_formal_empty_mapping_budget_is_typed_null(base_cfg):
+    def _bad(c):
+        c["budget"]["per_candidate_core_time"] = {}
+
+    cfg = _mut(base_cfg, _bad)
+    with pytest.raises(v.V542SchemaError) as exc:
+        v.validate_config(cfg, formal=True)
+    assert exc.value.code == "V542_BUDGET_NULL"
+
+
+@pytest.mark.parametrize("bad_table", ["3600", 3600, ["A0"], True])
+def test_formal_non_mapping_budget_typed_invalid(base_cfg, bad_table):
+    """A string/number/list/bool table is not a signed budget table."""
+    def _bad(c, table=bad_table):
+        c["budget"]["per_candidate_core_time"] = table
+
+    cfg = _mut(base_cfg, _bad)
+    with pytest.raises(v.V542SchemaError) as exc:
+        v.validate_config(cfg, formal=True)
+    assert exc.value.code == "V542_BUDGET_INVALID"
+
+
+def test_formal_all_null_budget_entries_typed_invalid(base_cfg):
+    """Full key coverage but every value null = malformed (gate-3 C4)."""
+    def _bad(c):
+        c["budget"]["per_candidate_core_time"] = {
+            cid: None for cid in _full_budget_ids()}
+
+    cfg = _mut(base_cfg, _bad)
+    with pytest.raises(v.V542SchemaError) as exc:
+        v.validate_config(cfg, formal=True)
+    assert exc.value.code == "V542_BUDGET_INVALID"
+
+
+@pytest.mark.parametrize("bad_value", [0, 0.0, -1, -2500.5])
+def test_formal_non_positive_budget_typed_invalid(base_cfg, bad_value):
+    """Zero and negative core times are typed rejections (gate-3 C4)."""
+    def _bad(c, value=bad_value):
+        c["budget"]["per_candidate_core_time"] = {
+            cid: {"core_seconds": value, "status": "approved"}
+            for cid in _full_budget_ids()}
+
+    cfg = _mut(base_cfg, _bad)
+    with pytest.raises(v.V542SchemaError) as exc:
+        v.validate_config(cfg, formal=True)
+    assert exc.value.code == "V542_BUDGET_INVALID"
+    assert "finite POSITIVE" in exc.value.detail
+
+
+@pytest.mark.parametrize("bad_value", [float("nan"), float("inf"),
+                                       float("-inf")])
+def test_formal_non_finite_budget_typed_invalid(base_cfg, bad_value):
+    """NaN/inf core times are typed rejections (gate-3 C4)."""
+    def _bad(c, value=bad_value):
+        c["budget"]["per_candidate_core_time"] = {
+            cid: value for cid in _full_budget_ids()}
+
+    cfg = _mut(base_cfg, _bad)
+    with pytest.raises(v.V542SchemaError) as exc:
+        v.validate_config(cfg, formal=True)
+    assert exc.value.code == "V542_BUDGET_INVALID"
+
+
+@pytest.mark.parametrize("bad_value", [True, False, "3600", None])
+def test_formal_bool_str_null_entry_typed_invalid(base_cfg, bad_value):
+    """bool/string/null entries are typed rejections (gate-3 C4)."""
+    def _bad(c, value=bad_value):
+        c["budget"]["per_candidate_core_time"] = {
+            cid: value for cid in _full_budget_ids()}
+
+    cfg = _mut(base_cfg, _bad)
+    with pytest.raises(v.V542SchemaError) as exc:
+        v.validate_config(cfg, formal=True)
+    assert exc.value.code == "V542_BUDGET_INVALID"
+
+
+def test_formal_partial_budget_table_typed_invalid(base_cfg):
+    """Partial key coverage = V542_BUDGET_INVALID (distinct from NULL)."""
+    def _bad(c):
+        c["budget"]["per_candidate_core_time"] = {
+            cid: {"core_seconds": 2000.0} for cid in ("A0", "A1")}
+
+    cfg = _mut(base_cfg, _bad)
+    with pytest.raises(v.V542SchemaError) as exc:
+        v.validate_config(cfg, formal=True)
+    assert exc.value.code == "V542_BUDGET_INVALID"
+    assert "A5-C" in exc.value.detail
+
+
+def test_formal_extra_key_budget_table_typed_invalid(base_cfg):
+    """Extra candidate keys = V542_BUDGET_INVALID (gate-3 C4)."""
+    def _bad(c):
+        _fill_budget(c)
+        table = _budget_table(c)
+        table["A9-rogue"] = {"core_seconds": 2000.0}
+
+    cfg = _mut(base_cfg, _bad)
+    with pytest.raises(v.V542SchemaError) as exc:
+        v.validate_config(cfg, formal=True)
+    assert exc.value.code == "V542_BUDGET_INVALID"
+    assert "A9-rogue" in exc.value.detail
+
+
+def test_formal_bare_number_budget_entries_accepted(base_cfg, tmp_path):
+    """A candidate -> bare finite positive number IS a valid core-time
+    entry (the spec requires a finite positive numeric value per entry;
+    only list/string/None/zero/negative/NaN/bool/partial/extra-key
+    tables are rejected)."""
+    def _table(c):
+        c["budget"]["per_candidate_core_time"] = {
+            cid: 2000.0 for cid in _full_budget_ids()}
+
+    cfg = _mut(base_cfg, _table)
+    _write_valid_records(tmp_path, cfg)
+    formal = v.validate_config(cfg, formal=True, record_root=tmp_path)
+    assert formal["ok"] and formal["t1_blocked"] == []
+
+
+def test_prereg_budget_shape_not_required(base_cfg):
+    """prereg never requires numbers: malformed tables stay green (the
+    formal gate is where the shape is enforced)."""
+    def _bad(c):
+        c["budget"]["per_candidate_core_time"] = {
+            cid: None for cid in _full_budget_ids()}
+
+    cfg = _mut(base_cfg, _bad)
+    report = v.validate_config(cfg, formal=False)
+    assert report["ok"] is True
+    assert report["null_thresholds"] == []
+
+
+def test_correct_budget_table_formal_passes(base_cfg, tmp_path):
+    """A well-formed signed table + valid records = formal config-ready."""
+    cfg = _mut(base_cfg, _fill_budget)
+    _write_valid_records(tmp_path, cfg)
+    formal = v.validate_config(cfg, formal=True, record_root=tmp_path)
+    assert formal["ok"] and formal["t1_config_ready"] is True
+    assert formal["t1_blocked"] == []
 
 
 def test_h2_rule_must_keep_degradation_word(base_cfg):
@@ -2395,8 +2695,15 @@ def test_statistics_contract_frozen_in_config(base_cfg):
         assert holm[exit_name]["scope"] == "eligible_candidate_set_within_exit"
     assert holm["process_route"]["alpha"] == 0.025
     assert holm["process_route"]["family"] == "single_process_family"
-    assert "diagnostic" in stats["h3_eligible_candidates"]
-    assert "adjusted p" in stats["champion_rule"]
+    assert tuple(stats["h3_eligible_candidates"]["criteria"]) == (
+        v.H3_ELIGIBLE_CRITERIA)
+    assert stats["h3_eligible_candidates"]["a5_rule"] == v.H3_ELIGIBLE_A5_RULE
+    assert tuple(stats["h3_eligible_candidates"]["excluded"]) == (
+        v.H3_ELIGIBLE_EXCLUDED)
+    assert stats["champion_rule"]["requires"] == v.CHAMPION_REQUIRES
+    assert stats["champion_rule"]["selection_ref"] == (
+        v.CHAMPION_SELECTION_REF)
+    assert stats["champion_rule"]["report"] == v.CHAMPION_REPORT
     agg = base_cfg["evaluation_contract"]["seed_aggregation"]
     assert agg["min_seeds_same_direction"] == 2
     assert agg["total_seeds"] == 3
@@ -2567,26 +2874,76 @@ def test_statistics_missing_holm_family_rejected(base_cfg):
 
 def test_statistics_eligible_excludes_diagnostic_variants(base_cfg):
     def _bad(c):
-        c["evaluation_contract"]["statistics"]["h3_eligible_candidates"] = (
-            "winner-eligible candidates with three seeds complete")
+        c["evaluation_contract"]["statistics"]["h3_eligible_candidates"][
+            "excluded"] = ["A0_matched_baseline"]
 
     cfg = _mut(base_cfg, _bad)
     with pytest.raises(v.V542SchemaError) as exc:
         v.validate_config(cfg)
     assert exc.value.code == "V542_RUN_MATRIX"
-    assert "diagnostic" in exc.value.detail
+    assert "diagnostic_variants_A1-C_A5-C" in exc.value.detail
+
+
+def test_statistics_eligible_free_string_form_rejected(base_cfg):
+    """gate-0 A2: the old free-string eligibility form is no longer valid."""
+    def _bad(c):
+        c["evaluation_contract"]["statistics"]["h3_eligible_candidates"] = (
+            "H2 diagnostic 三 seed winner-eligible; NOT three seed")
+
+    cfg = _mut(base_cfg, _bad)
+    with pytest.raises(v.V542SchemaError) as exc:
+        v.validate_config(cfg)
+    assert exc.value.code == "V542_MISSING_FIELD"
+    assert "h3_eligible_candidates" in exc.value.detail
+
+
+def test_statistics_eligible_criteria_mismatch_rejected(base_cfg):
+    def _bad(c):
+        c["evaluation_contract"]["statistics"]["h3_eligible_candidates"][
+            "criteria"] = ["completed_three_seeds", "winner_eligible"]
+
+    cfg = _mut(base_cfg, _bad)
+    with pytest.raises(v.V542SchemaError) as exc:
+        v.validate_config(cfg)
+    assert exc.value.code == "V542_RUN_MATRIX"
+    assert "per_seed_h2_no_breach" in exc.value.detail
+
+
+def test_statistics_eligible_a5_rule_frozen(base_cfg):
+    def _bad(c):
+        c["evaluation_contract"]["statistics"]["h3_eligible_candidates"][
+            "a5_rule"] = "a5_eligible_on_seed17_only"
+
+    cfg = _mut(base_cfg, _bad)
+    with pytest.raises(v.V542SchemaError) as exc:
+        v.validate_config(cfg)
+    assert exc.value.code == "V542_RUN_MATRIX"
+    assert "a5_only_when_three_seeds_complete" in exc.value.detail
 
 
 def test_champion_rule_requires_adjusted_p(base_cfg):
     def _bad(c):
-        c["evaluation_contract"]["statistics"]["champion_rule"] = (
-            "冠军须效应/非劣条件成立")
+        c["evaluation_contract"]["statistics"]["champion_rule"]["requires"] = (
+            "effect_non_inferiority_conditions_only")
 
     cfg = _mut(base_cfg, _bad)
     with pytest.raises(v.V542SchemaError) as exc:
         v.validate_config(cfg)
     assert exc.value.code == "V542_RUN_MATRIX"
-    assert "adjusted p" in exc.value.detail
+    assert "holm_adjusted_p_below_alpha" in exc.value.detail
+
+
+def test_champion_rule_free_prose_form_rejected(base_cfg):
+    """gate-0 A2: the old token-checked champion prose is no longer valid."""
+    def _bad(c):
+        c["evaluation_contract"]["statistics"]["champion_rule"] = (
+            "冠军须 adjusted p < 对应 alpha 且效应/非劣条件成立 (qualification)")
+
+    cfg = _mut(base_cfg, _bad)
+    with pytest.raises(v.V542SchemaError) as exc:
+        v.validate_config(cfg)
+    assert exc.value.code == "V542_MISSING_FIELD"
+    assert "champion_rule" in exc.value.detail
 
 
 def test_min_seeds_same_direction_must_be_numeric(base_cfg):
@@ -2705,8 +3062,8 @@ def test_statistics_p_formula_numerator_exact(base_cfg):
 
 def test_statistics_champion_rule_references_final_selection(base_cfg):
     def _bad(c):
-        c["evaluation_contract"]["statistics"]["champion_rule"] = (
-            "冠军须 adjusted p < 对应 alpha 且效应/非劣条件成立")
+        c["evaluation_contract"]["statistics"]["champion_rule"][
+            "selection_ref"] = "evaluation_contract.seed_aggregation"
 
     cfg = _mut(base_cfg, _bad)
     with pytest.raises(v.V542SchemaError) as exc:
@@ -2717,27 +3074,26 @@ def test_statistics_champion_rule_references_final_selection(base_cfg):
 
 def test_statistics_champion_rule_requires_uncorrected_report(base_cfg):
     def _bad(c):
-        c["evaluation_contract"]["statistics"]["champion_rule"] = (
-            "冠军须 adjusted p < 对应 alpha 且效应/非劣条件成立; "
-            "多候选按 evaluation_contract.final_selection_rule 选定")
+        c["evaluation_contract"]["statistics"]["champion_rule"]["report"] = (
+            "holm_adjusted_only")
 
     cfg = _mut(base_cfg, _bad)
     with pytest.raises(v.V542SchemaError) as exc:
         v.validate_config(cfg)
     assert exc.value.code == "V542_RUN_MATRIX"
-    assert "未校正" in exc.value.detail
+    assert "uncorrected_and_holm_adjusted" in exc.value.detail
 
 
 def test_statistics_eligible_requires_winner_eligible(base_cfg):
     def _bad(c):
-        c["evaluation_contract"]["statistics"]["h3_eligible_candidates"] = (
-            "完成三 seed 且每 seed H2 无 breach 的候选; diagnostic 不入")
+        elig = c["evaluation_contract"]["statistics"]["h3_eligible_candidates"]
+        elig["criteria"] = ["completed_three_seeds", "per_seed_h2_no_breach"]
 
     cfg = _mut(base_cfg, _bad)
     with pytest.raises(v.V542SchemaError) as exc:
         v.validate_config(cfg)
     assert exc.value.code == "V542_RUN_MATRIX"
-    assert "winner-eligible" in exc.value.detail
+    assert "winner_eligible" in exc.value.detail
 
 
 def test_statistics_contract_exact_values_in_config(base_cfg):
@@ -3843,12 +4199,18 @@ def test_t1_start_requires_must_keep_h0_h1_diagnostic_gates(base_cfg):
 
 
 def test_t1_start_requires_exact_frozen_order(base_cfg):
-    """fix-6: the canonical set is frozen EXACTLY, order included."""
+    """fix-6 + gate-0 A5: the canonical set is frozen EXACTLY, order included.
+
+    9 registry gates + 3 record requirements (runplan_pin_record +
+    a0_reuse_decision_record + preregistration_signoff_record).
+    """
     requires = base_cfg["governance"]["authorization"]["t1_start_requires"]
     assert tuple(requires) == v.T1_START_REQUIRES
-    assert len(requires) == 10  # 9 registry gates + 1 record requirement
+    assert len(requires) == 12  # 9 registry gates + 3 record requirements
     assert tuple(r for r in requires if r not in v.T1_RECORD_WHITELIST) == (
         v.T1_CANONICAL_GATES)
+    assert tuple(r for r in requires if r in v.T1_RECORD_WHITELIST) == (
+        v.T1_RECORD_REQUIREMENTS)
 
 
 def test_t1_start_requires_a0_sanity_band_present(base_cfg):
@@ -4425,10 +4787,10 @@ def test_threshold_block_exactly_28_signed_keys(base_cfg):
     assert signed == set(v.FORMAL_THRESHOLDS)
 
 
-def test_typed_rejection_code_count_is_nineteen():
-    """19 codes = the docstring table = the authoritative docs count."""
-    assert len(v.TYPED_REJECTIONS) == 19
-    assert len(set(v.TYPED_REJECTIONS)) == 19
+def test_typed_rejection_code_count_is_twentytwo():
+    """22 codes = the docstring table = the authoritative docs count."""
+    assert len(v.TYPED_REJECTIONS) == 22
+    assert len(set(v.TYPED_REJECTIONS)) == 22
     import inspect
     import re
 
@@ -4447,16 +4809,19 @@ def test_typed_rejection_code_count_is_nineteen():
 
 
 def test_module_docstring_counts_are_current():
-    """The docstring must state the current 19-code contract + fix-6 scope."""
+    """The docstring must state the current 22-code contract + fix-6 scope."""
     import inspect
 
     doc = inspect.getdoc(v)
-    assert "19 codes" in doc
+    assert "22 codes" in doc
     assert "fix-6" in doc
     assert "final_selection_rule" in doc
     assert "route_logic" in doc
     assert "V542-A0-sanity-band" in doc or "A0 sanity band" in doc
     assert "ADR-0033 v1.2" in doc
+    # gate-0 A5/A2 closure is recorded in the module contract
+    assert "V542_RECORD_MISSING" in doc
+    assert "governance_records" in doc
 
 
 def test_module_docstring_check_list_matches_runtime(base_cfg):
@@ -4476,11 +4841,15 @@ def test_validate_config_reports_new_fix6_checks(base_cfg):
     report = v.validate_config(base_cfg, formal=False)
     checks = report["checks"]
     for name in ("route_logic", "final_selection", "seed17_screen",
-                 "a0_sanity_band", "statistics"):
+                 "a0_sanity_band", "statistics", "governance_records"):
         assert name in checks, name
-    # still exactly one blocker: the pre-profile budget
-    assert len(report["t1_blocked"]) == 1
-    assert "per_candidate_core_time" in report["t1_blocked"][0]
+    # WP0 blockers: the pre-profile budget + the two gate-0 A5 record
+    # instances (intentionally absent until T1)
+    assert len(report["t1_blocked"]) == 3
+    joined = " ".join(report["t1_blocked"])
+    assert "per_candidate_core_time" in joined
+    assert "a0_reuse_decision_record" in joined
+    assert "preregistration_signoff_record" in joined
 
 
 # ---------------------------------------------------------------------------
@@ -4688,12 +5057,19 @@ def test_adr_document_carries_frozen_route_logic():
 
 
 # ---------------------------------------------------------------------------
-# fix-6 C6: seed17 screen H2 guard tokens (token-level; gate-0 advisory A2
-# still open — exact/structured freezing is scheduled before P3/WP6)
+# gate-0 A2 CLOSED (2026-10-30, P3 lane D): seed17 screen H2 guard is an
+# EXACT frozen string + a structured numeric threshold block
 # ---------------------------------------------------------------------------
+def test_seed17_h2_no_breach_exact_frozen_in_config(base_cfg):
+    pred = base_cfg["evaluation_contract"]["seed17_screen_pass_predicate"]
+    assert pred["h2_no_breach"] == v.H2_NO_BREACH_EXACT
+    assert dict(pred["h2_no_breach_thresholds"]) == v.H2_NO_BREACH_THRESHOLDS
+
+
 @pytest.mark.parametrize("tok", ["<=2%", "<=0.01", "sign", "dead",
                                  "fixed-coverage direction"])
 def test_seed17_h2_guard_tokens_frozen(base_cfg, tok):
+    """Every frozen guard token is part of the EXACT string (not presence)."""
     def _bad(c, token=tok):
         text = c["evaluation_contract"]["seed17_screen_pass_predicate"][
             "h2_no_breach"]
@@ -4704,7 +5080,66 @@ def test_seed17_h2_guard_tokens_frozen(base_cfg, tok):
     with pytest.raises(v.V542SchemaError) as exc:
         v.validate_config(cfg)
     assert exc.value.code == "V542_RUN_MATRIX"
-    assert repr(tok) in exc.value.detail
+    assert "h2_no_breach" in exc.value.detail
+    assert v.H2_NO_BREACH_EXACT in exc.value.detail
+
+
+def test_seed17_h2_sign_threshold_near_miss_rejected(base_cfg):
+    """Oracle §2.2 near-miss: sign <=0.02 while dead still supplies <=0.01."""
+    def _bad(c):
+        pred = c["evaluation_contract"]["seed17_screen_pass_predicate"]
+        pred["h2_no_breach"] = pred["h2_no_breach"].replace(
+            "sign 下降 <=0.01", "sign 下降 <=0.02")
+
+    cfg = _mut(base_cfg, _bad)
+    with pytest.raises(v.V542SchemaError) as exc:
+        v.validate_config(cfg)
+    assert exc.value.code == "V542_RUN_MATRIX"
+    assert "h2_no_breach" in exc.value.detail
+
+
+@pytest.mark.parametrize(
+    "key,value",
+    [("sign_abs_drop_max", 0.02), ("dead_abs_increase_max", 0.02),
+     ("rmse_zero_rel_degradation_max", 0.10),
+     ("fixed_coverage_rel_degradation_max", 0.05)])
+def test_seed17_h2_structured_threshold_drift_rejected(
+        base_cfg, key, value):
+    def _bad(c, k=key, v_=value):
+        c["evaluation_contract"]["seed17_screen_pass_predicate"][
+            "h2_no_breach_thresholds"][k] = v_
+
+    cfg = _mut(base_cfg, _bad)
+    with pytest.raises(v.V542SchemaError) as exc:
+        v.validate_config(cfg)
+    assert exc.value.code == "V542_RUN_MATRIX"
+    assert key in exc.value.detail
+
+
+def test_seed17_h2_structured_block_missing_rejected(base_cfg):
+    def _bad(c):
+        c["evaluation_contract"]["seed17_screen_pass_predicate"].pop(
+            "h2_no_breach_thresholds")
+
+    cfg = _mut(base_cfg, _bad)
+    with pytest.raises(v.V542SchemaError) as exc:
+        v.validate_config(cfg)
+    assert exc.value.code == "V542_MISSING_FIELD"
+    assert "h2_no_breach_thresholds" in exc.value.detail
+
+
+def test_seed17_h2_thresholds_must_mirror_signed_thresholds(base_cfg):
+    """Structured H2 thresholds must equal thresholds.* (100x for pct)."""
+    def _bad(c):
+        c["thresholds"]["sign_drop_abs_max"] = 0.02
+        c["thresholds"]["signoff"]["sign_drop_abs_max"] = 0.02
+
+    cfg = _mut(base_cfg, _bad)
+    with pytest.raises(v.V542SchemaError) as exc:
+        v.validate_config(cfg)
+    assert exc.value.code == "V542_RUN_MATRIX"
+    assert "sign_abs_drop_max" in exc.value.detail
+    assert "sign_drop_abs_max" in exc.value.detail
 
 
 def test_seed17_run_status_requires_finite_metrics(base_cfg):
@@ -4750,3 +5185,609 @@ def test_seed17_predicate_ref_shared_by_top2_and_a5(base_cfg):
     assert sup["screen_predicate_ref"] == ref
     assert sup["condition"] == "a5_full_dose_complete_and_seed17_screen_pass"
     assert sup["parent_gate"] == sup["condition"]
+
+
+# ---------------------------------------------------------------------------
+# gate-0 A5 closure (2026-10-30, P3 lane D): T1 record gates are
+# machine-checked governance records
+# ---------------------------------------------------------------------------
+def test_t1_start_requires_includes_two_new_record_requirements(base_cfg):
+    requires = base_cfg["governance"]["authorization"]["t1_start_requires"]
+    assert "a0_reuse_decision_record" in requires
+    assert "preregistration_signoff_record" in requires
+    # the 9 canonical registry gate IDs are unchanged
+    assert v.T1_CANONICAL_GATES == (
+        "V542-H0-legality", "V542-H1-resource", "V542-WP1-interface-parity",
+        "V542-WP2-candidates", "V542-smoke-200", "V542-profile",
+        "V542-diagnostic-2000", "V542-A0-sanity-band", "V542-budget-signoff")
+    assert v.T1_RECORD_REQUIREMENTS == (
+        "runplan_pin_record", "a0_reuse_decision_record",
+        "preregistration_signoff_record")
+
+
+@pytest.mark.parametrize(
+    "record", ["a0_reuse_decision_record", "preregistration_signoff_record"])
+def test_t1_start_requires_dropping_new_record_rejected(base_cfg, record):
+    def _bad(c, rid=record):
+        c["governance"]["authorization"]["t1_start_requires"] = [
+            f for f in c["governance"]["authorization"]["t1_start_requires"]
+            if f != rid]
+
+    cfg = _mut(base_cfg, _bad)
+    with pytest.raises(v.V542SchemaError) as exc:
+        v.validate_config(cfg)
+    assert exc.value.code == "V542_RUN_MATRIX"
+    assert record in exc.value.detail
+
+
+@pytest.mark.parametrize(
+    "alias",
+    ["a0_reuse_decision", "preregistration_signoff", "record_a0_reuse_decision"],
+)
+def test_t1_start_requires_record_aliases_rejected(base_cfg, alias):
+    """Record requirements are exact IDs — aliases are not whitelisted."""
+    def _bad(c, entry=alias):
+        req = c["governance"]["authorization"]["t1_start_requires"]
+        req[req.index("a0_reuse_decision_record")] = entry
+
+    cfg = _mut(base_cfg, _bad)
+    with pytest.raises(v.V542SchemaError) as exc:
+        v.validate_config(cfg)
+    assert exc.value.code == "V542_RUN_MATRIX"
+    assert alias in exc.value.detail
+
+
+def test_governance_records_block_frozen_in_config(base_cfg):
+    records = base_cfg["governance"]["records"]
+    assert set(records) == set(v.GOVERNANCE_RECORDS)
+    for rid, spec in v.GOVERNANCE_RECORDS.items():
+        entry = records[rid]
+        assert entry["template"] == spec["template"], rid
+        assert entry["instance"] == spec["instance"], rid
+        assert entry["sha_rule"] == v.RECORD_SHA_RULE == (
+            "sha256_of_canonical_file_bytes"), rid
+        assert tuple(entry["required_fields"]) == tuple(
+            spec["required_fields"]), rid
+
+
+def test_governance_records_block_missing_rejected(base_cfg):
+    def _bad(c):
+        c["governance"].pop("records")
+
+    cfg = _mut(base_cfg, _bad)
+    with pytest.raises(v.V542SchemaError) as exc:
+        v.validate_config(cfg)
+    assert exc.value.code == "V542_MISSING_FIELD"
+    assert "governance.records" in exc.value.detail
+
+
+def test_governance_records_missing_entry_rejected(base_cfg):
+    def _bad(c):
+        c["governance"]["records"].pop("a0_reuse_decision_record")
+
+    cfg = _mut(base_cfg, _bad)
+    with pytest.raises(v.V542SchemaError) as exc:
+        v.validate_config(cfg)
+    assert exc.value.code == "V542_MISSING_FIELD"
+    assert "a0_reuse_decision_record" in exc.value.detail
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [("instance", "outputs/pesn/v542_backbone_50k/plan/a0_decision.json"),
+     ("template", "config/campaigns/v542_templates/other.template.json"),
+     ("sha_rule", "sha256_of_reencoded_json")],
+)
+def test_governance_records_spec_drift_rejected(base_cfg, field, value):
+    def _bad(c, f=field, v_=value):
+        c["governance"]["records"]["a0_reuse_decision_record"][f] = v_
+
+    cfg = _mut(base_cfg, _bad)
+    with pytest.raises(v.V542SchemaError) as exc:
+        v.validate_config(cfg)
+    assert exc.value.code == "V542_RECORD_MISMATCH"
+    assert field in exc.value.detail
+
+
+def test_prereg_missing_records_are_blockers_not_rejections(
+        base_cfg, tmp_path):
+    """WP0 absence stays by design: t1_blocked reasons, never a raise."""
+    report = v.validate_config(base_cfg, formal=False, record_root=tmp_path)
+    assert report["ok"] is True
+    reasons = [r for r in report["t1_blocked"] if "record " in r]
+    assert len(reasons) == 2
+    assert any("a0_reuse_decision_record" in r for r in reasons)
+    assert any("preregistration_signoff_record" in r for r in reasons)
+
+
+def test_prereg_record_blocker_cleared_when_instance_valid(
+        base_cfg, tmp_path):
+    _write_valid_records(tmp_path)
+    report = v.validate_config(base_cfg, formal=False, record_root=tmp_path)
+    assert report["ok"] is True
+    assert not any("record " in r for r in report["t1_blocked"])
+    # the pre-profile budget remains the only blocker
+    assert len(report["t1_blocked"]) == 1
+    assert "per_candidate_core_time" in report["t1_blocked"][0]
+
+
+def test_formal_missing_record_instances_typed_rejection(base_cfg, tmp_path):
+    """--formal with missing record instances = typed V542_RECORD_MISSING."""
+    cfg = _mut(base_cfg, _fill_budget)
+    with pytest.raises(v.V542SchemaError) as exc:
+        v.validate_config(cfg, formal=True, record_root=tmp_path)
+    assert exc.value.code == "V542_RECORD_MISSING"
+    assert "a0_reuse_decision_record" in exc.value.detail
+    assert "preregistration_signoff_record" in exc.value.detail
+
+
+def test_formal_unreadable_record_typed_rejection(base_cfg, tmp_path):
+    cfg = _mut(base_cfg, _fill_budget)
+    _write_valid_records(tmp_path, cfg)
+    plan = tmp_path / "outputs" / "pesn" / "v542_backbone_50k" / "plan"
+    (plan / "a0_reuse_decision.json").write_text(
+        "{not json", encoding="utf-8")
+    with pytest.raises(v.V542SchemaError) as exc:
+        v.validate_config(cfg, formal=True, record_root=tmp_path)
+    assert exc.value.code == "V542_RECORD_MISSING"
+    assert "unreadable" in exc.value.detail
+
+
+def test_formal_none_required_field_typed_rejection(base_cfg, tmp_path):
+    cfg = _mut(base_cfg, _fill_budget)
+    _write_valid_records(tmp_path, cfg)
+    _mutate_record(
+        tmp_path, "a0_reuse_decision.json",
+        lambda p: p.__setitem__("signed_by", None))
+    with pytest.raises(v.V542SchemaError) as exc:
+        v.validate_config(cfg, formal=True, record_root=tmp_path)
+    assert exc.value.code == "V542_RECORD_MISSING"
+    assert "signed_by" in exc.value.detail
+
+
+def test_formal_decision_drift_typed_mismatch(base_cfg, tmp_path):
+    """instance decision != retrain_a0_x3 = typed V542_RECORD_MISMATCH."""
+    cfg = _mut(base_cfg, _fill_budget)
+    _write_valid_records(tmp_path, cfg)
+    _mutate_record(
+        tmp_path, "a0_reuse_decision.json",
+        lambda p: p.__setitem__("decision", "reuse_e0_x3"))
+    with pytest.raises(v.V542SchemaError) as exc:
+        v.validate_config(cfg, formal=True, record_root=tmp_path)
+    assert exc.value.code == "V542_RECORD_MISMATCH"
+    assert "retrain_a0_x3" in exc.value.detail
+
+
+def test_formal_signoff_threshold_drift_typed_mismatch(base_cfg, tmp_path):
+    """signoff thresholds that drift from config = typed mismatch."""
+    cfg = _mut(base_cfg, _fill_budget)
+    _write_valid_records(tmp_path, cfg)
+
+    def _drift(p):
+        p["thresholds_signed_frozen"]["sign_drop_abs_max"] = 0.02
+
+    _mutate_record(tmp_path, "preregistration_signoff.json", _drift)
+    with pytest.raises(v.V542SchemaError) as exc:
+        v.validate_config(cfg, formal=True, record_root=tmp_path)
+    assert exc.value.code == "V542_RECORD_MISMATCH"
+    assert "sign_drop_abs_max" in exc.value.detail
+
+
+def test_formal_decision_runs_must_mirror_config(base_cfg, tmp_path):
+    cfg = _mut(base_cfg, _fill_budget)
+    _write_valid_records(tmp_path, cfg)
+    _mutate_record(
+        tmp_path, "a0_reuse_decision.json",
+        lambda p: p.__setitem__("runs", ["V542_A0_S17"]))
+    with pytest.raises(v.V542SchemaError) as exc:
+        v.validate_config(cfg, formal=True, record_root=tmp_path)
+    assert exc.value.code == "V542_RECORD_MISMATCH"
+    assert "runs" in exc.value.detail
+
+
+# ---------------------------------------------------------------------------
+# gate-3 B2/C2 (2026-10-30, P3 remediation lane R2): the record gate must
+# mirror the frozen config and verify the declared SHA.  Oracle gate-3
+# probes (wrong config_path / empty signed_by_roles used to PASS --formal
+# with a valid budget) are now typed rejections.
+# ---------------------------------------------------------------------------
+@pytest.mark.parametrize(
+    "record_name",
+    ["a0_reuse_decision.json", "preregistration_signoff.json"])
+def test_formal_wrong_config_path_typed_mismatch(base_cfg, tmp_path,
+                                                 record_name):
+    """Oracle gate-3 B2 probe: config_path=WRONG.yaml used to pass."""
+    cfg = _mut(base_cfg, _fill_budget)
+    _write_valid_records(tmp_path, cfg)
+    _mutate_record(
+        tmp_path, record_name,
+        lambda p: p.__setitem__(
+            "config_path", "config/campaigns/WRONG.yaml"))
+    with pytest.raises(v.V542SchemaError) as exc:
+        v.validate_config(cfg, formal=True, record_root=tmp_path)
+    assert exc.value.code == "V542_RECORD_MISMATCH"
+    assert "config_path" in exc.value.detail
+    assert v.CAMPAIGN_CONFIG_REL in exc.value.detail
+
+
+def test_formal_empty_signed_by_roles_typed_mismatch(base_cfg, tmp_path):
+    """Oracle gate-3 B2 probe: signed_by_roles={} used to pass."""
+    cfg = _mut(base_cfg, _fill_budget)
+    _write_valid_records(tmp_path, cfg)
+    _mutate_record(
+        tmp_path, "preregistration_signoff.json",
+        lambda p: p.__setitem__("signed_by_roles", {}))
+    with pytest.raises(v.V542SchemaError) as exc:
+        v.validate_config(cfg, formal=True, record_root=tmp_path)
+    assert exc.value.code == "V542_RECORD_MISMATCH"
+    assert "signed_by_roles" in exc.value.detail
+
+
+def test_formal_wrong_role_set_typed_mismatch(base_cfg, tmp_path):
+    """A role set missing/extra vs the frozen keys = typed mismatch."""
+    cfg = _mut(base_cfg, _fill_budget)
+    _write_valid_records(tmp_path, cfg)
+
+    def _drift(p):
+        roles = p["signed_by_roles"]
+        roles.pop("oracle_reviewer")
+        roles["rogue_role"] = "attacker"
+
+    _mutate_record(tmp_path, "preregistration_signoff.json", _drift)
+    with pytest.raises(v.V542SchemaError) as exc:
+        v.validate_config(cfg, formal=True, record_root=tmp_path)
+    assert exc.value.code == "V542_RECORD_MISMATCH"
+    assert "oracle_reviewer" in exc.value.detail
+    assert "rogue_role" in exc.value.detail
+
+
+def test_formal_wrong_role_binding_typed_mismatch(base_cfg, tmp_path):
+    """statistics_owner must be main_session_owner — drift = mismatch."""
+    cfg = _mut(base_cfg, _fill_budget)
+    _write_valid_records(tmp_path, cfg)
+    _mutate_record(
+        tmp_path, "preregistration_signoff.json",
+        lambda p: p["signed_by_roles"].__setitem__(
+            "statistics_owner", "oracle_gate0_reviewer"))
+    with pytest.raises(v.V542SchemaError) as exc:
+        v.validate_config(cfg, formal=True, record_root=tmp_path)
+    assert exc.value.code == "V542_RECORD_MISMATCH"
+    assert "statistics_owner" in exc.value.detail
+
+
+def test_formal_oracle_as_signatory_typed_mismatch(base_cfg, tmp_path):
+    """No signatory role may name the Oracle (fix-6 C4, now instance-checked)."""
+    cfg = _mut(base_cfg, _fill_budget)
+    _write_valid_records(tmp_path, cfg)
+    _mutate_record(
+        tmp_path, "preregistration_signoff.json",
+        lambda p: p["signed_by_roles"].__setitem__(
+            "training_signoff", "oracle_gate0_reviewer"))
+    with pytest.raises(v.V542SchemaError) as exc:
+        v.validate_config(cfg, formal=True, record_root=tmp_path)
+    assert exc.value.code == "V542_RECORD_MISMATCH"
+    assert "training_signoff" in exc.value.detail
+
+
+@pytest.mark.parametrize(
+    "record_name,schema_field",
+    [("a0_reuse_decision.json", "pes2ts_v542_a0_reuse_decision_v2"),
+     ("preregistration_signoff.json", "pes2ts_v542_preregistration_signoff_v2")])
+def test_formal_record_schema_drift_typed_mismatch(
+        base_cfg, tmp_path, record_name, schema_field):
+    """record `schema` must equal the template schema id (gate-3 B2)."""
+    cfg = _mut(base_cfg, _fill_budget)
+    _write_valid_records(tmp_path, cfg)
+    _mutate_record(
+        tmp_path, record_name,
+        lambda p: p.__setitem__("schema", schema_field))
+    with pytest.raises(v.V542SchemaError) as exc:
+        v.validate_config(cfg, formal=True, record_root=tmp_path)
+    assert exc.value.code == "V542_RECORD_MISMATCH"
+    assert "schema" in exc.value.detail
+
+
+def test_formal_missing_record_sha_typed_missing(base_cfg, tmp_path):
+    """A record without record_sha256 = V542_RECORD_MISSING (gate-3 C2)."""
+    cfg = _mut(base_cfg, _fill_budget)
+    _write_valid_records(tmp_path, cfg)
+    _mutate_record(
+        tmp_path, "a0_reuse_decision.json",
+        lambda p: p.pop("record_sha256"), seal=False)
+    with pytest.raises(v.V542SchemaError) as exc:
+        v.validate_config(cfg, formal=True, record_root=tmp_path)
+    assert exc.value.code == "V542_RECORD_MISSING"
+    assert "record_sha256" in exc.value.detail
+
+
+def test_formal_incorrect_record_sha_typed_mismatch(base_cfg, tmp_path):
+    """A declared digest that does not match the canonical digest =
+    V542_RECORD_MISMATCH (gate-3 C2)."""
+    cfg = _mut(base_cfg, _fill_budget)
+    _write_valid_records(tmp_path, cfg)
+    _mutate_record(
+        tmp_path, "a0_reuse_decision.json",
+        lambda p: p.__setitem__("record_sha256", "0" * 64), seal=False)
+    with pytest.raises(v.V542SchemaError) as exc:
+        v.validate_config(cfg, formal=True, record_root=tmp_path)
+    assert exc.value.code == "V542_RECORD_MISMATCH"
+    assert "record_sha256" in exc.value.detail
+
+
+def test_record_sha_uses_identity_canonical_recipe(base_cfg, tmp_path):
+    """The digest the validator checks = identity.canonical_sha256 of the
+    payload without record_sha256 — no second recipe exists (gate-3 C2)."""
+    import hashlib
+
+    from pes2ts_core.pesn.models.v542.identity import (
+        canonical_bytes,
+        canonical_sha256,
+    )
+
+    _write_valid_records(tmp_path, base_cfg)
+    plan = tmp_path / "outputs" / "pesn" / "v542_backbone_50k" / "plan"
+    payload = json.loads(
+        (plan / "a0_reuse_decision.json").read_text(encoding="utf-8"))
+    body = {k: v_ for k, v_ in payload.items() if k != "record_sha256"}
+    assert payload["record_sha256"] == canonical_sha256(body)
+    assert payload["record_sha256"] == hashlib.sha256(
+        canonical_bytes(body)).hexdigest()
+    assert payload["record_sha256"] == v._record_canonical_sha256(payload)
+
+
+def test_formal_record_tamper_after_signing_detected(base_cfg, tmp_path):
+    """Modify a field after signing WITHOUT updating record_sha256 — the
+    stale digest is caught (Oracle gate-3 near-miss)."""
+    cfg = _mut(base_cfg, _fill_budget)
+    _write_valid_records(tmp_path, cfg)
+    plan = tmp_path / "outputs" / "pesn" / "v542_backbone_50k" / "plan"
+    path = plan / "a0_reuse_decision.json"
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    payload["signed_by"] = "attacker"  # tamper, digest stays stale
+    path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+    with pytest.raises(v.V542SchemaError) as exc:
+        v.validate_config(cfg, formal=True, record_root=tmp_path)
+    assert exc.value.code == "V542_RECORD_MISMATCH"
+    assert "record_sha256" in exc.value.detail
+
+
+def test_formal_threshold_encoding_drift_typed_mismatch(base_cfg, tmp_path):
+    """4 vs 4.0 passes `==` but not canonical-byte equality (gate-3 B2)."""
+    cfg = _mut(base_cfg, _fill_budget)
+    _write_valid_records(tmp_path, cfg)
+
+    def _drift(p):
+        p["thresholds_signed_frozen"]["top2_max_runs"] = 4.0
+
+    _mutate_record(tmp_path, "preregistration_signoff.json", _drift)
+    with pytest.raises(v.V542SchemaError) as exc:
+        v.validate_config(cfg, formal=True, record_root=tmp_path)
+    assert exc.value.code == "V542_RECORD_MISMATCH"
+    assert "top2_max_runs" in exc.value.detail
+
+
+def test_prereg_record_mirror_drift_is_blocker_not_rejection(
+        base_cfg, tmp_path):
+    """At prereg, config_path drift stays a t1_blocked reason (WP0 green)."""
+    _write_valid_records(tmp_path, base_cfg)
+    _mutate_record(
+        tmp_path, "a0_reuse_decision.json",
+        lambda p: p.__setitem__(
+            "config_path", "config/campaigns/WRONG.yaml"))
+    report = v.validate_config(base_cfg, formal=False, record_root=tmp_path)
+    assert report["ok"] is True
+    assert any("a0_reuse_decision_record" in r and "config_path" in r
+               for r in report["t1_blocked"])
+
+
+def test_prereg_empty_roles_is_blocker_not_rejection(base_cfg, tmp_path):
+    _write_valid_records(tmp_path, base_cfg)
+    _mutate_record(
+        tmp_path, "preregistration_signoff.json",
+        lambda p: p.__setitem__("signed_by_roles", {}))
+    report = v.validate_config(base_cfg, formal=False, record_root=tmp_path)
+    assert report["ok"] is True
+    assert any("preregistration_signoff_record" in r and
+               "signed_by_roles" in r for r in report["t1_blocked"])
+
+
+def test_runplan_pin_is_runner_verified_not_validator(base_cfg, tmp_path):
+    """runplan_pin_record is WP5-runner-verified: the validator must NOT
+    read the pin instance even when it exists (gate-3 B2 clarification)."""
+    cfg = _mut(base_cfg, _fill_budget)
+    _write_valid_records(tmp_path, cfg)
+    plan = tmp_path / "outputs" / "pesn" / "v542_backbone_50k" / "plan"
+    (plan / "runplan.pin.json").write_text(
+        json.dumps({"schema": "pes2ts_v542_runplan_pin_v1",
+                    "config_path": "config/campaigns/WRONG.yaml"}),
+        encoding="utf-8")
+    formal = v.validate_config(cfg, formal=True, record_root=tmp_path)
+    assert formal["ok"] and formal["t1_blocked"] == []
+    assert v.GOVERNANCE_RECORDS["runplan_pin_record"][
+        "machine_checked"] is False
+    assert "WP5" in v.GOVERNANCE_RECORDS["runplan_pin_record"]["verified_by"]
+
+
+def test_governance_records_required_fields_include_schema_and_sha(base_cfg):
+    """gate-3 B2/C2: the frozen spec requires schema + record_sha256."""
+    for rid in ("a0_reuse_decision_record",
+                "preregistration_signoff_record"):
+        fields = v.GOVERNANCE_RECORDS[rid]["required_fields"]
+        assert "schema" in fields, rid
+        assert "record_sha256" in fields, rid
+        assert "config_path" in fields, rid
+    cfg_fields = base_cfg["governance"]["records"][
+        "a0_reuse_decision_record"]["required_fields"]
+    assert tuple(cfg_fields) == tuple(
+        v.GOVERNANCE_RECORDS["a0_reuse_decision_record"]["required_fields"])
+
+
+def test_prereg_mismatched_record_is_blocker_not_rejection(
+        base_cfg, tmp_path):
+    _write_valid_records(tmp_path, base_cfg)
+    _mutate_record(
+        tmp_path, "a0_reuse_decision.json",
+        lambda p: p.__setitem__("decision", "reuse_e0_x3"))
+    report = v.validate_config(base_cfg, formal=False, record_root=tmp_path)
+    assert report["ok"] is True
+    assert any("a0_reuse_decision_record" in r and "retrain_a0_x3" in r
+               for r in report["t1_blocked"])
+
+
+def test_record_sha_rule_is_canonical_file_bytes():
+    for rid, spec in v.GOVERNANCE_RECORDS.items():
+        assert spec["sha_rule"] == v.RECORD_SHA_RULE, rid
+    assert v.RECORD_SHA_RULE == "sha256_of_canonical_file_bytes"
+
+
+def test_signoff_template_t1_record_requirements_mirror_config(base_cfg):
+    signoff = _signoff_template()
+    records = signoff["t1_record_requirements"]
+    cfg_records = base_cfg["governance"]["records"]
+    for rid in ("runplan_pin_record", "a0_reuse_decision_record",
+                "preregistration_signoff_record"):
+        assert records[rid]["template"] == cfg_records[rid]["template"], rid
+        assert records[rid]["instance"] == cfg_records[rid]["instance"], rid
+    ready = " ".join(signoff["t1_config_ready_requires"])
+    assert "a0_reuse_decision.json" in ready
+    assert "preregistration_signoff.json" in ready
+
+
+def test_runplan_pin_final_selection_mirrors_structured_fields(base_cfg):
+    pin = json.loads(
+        (TPL_DIR / "runplan_pin.template.json").read_text(encoding="utf-8")
+    )
+    rule = pin["final_selection_rule"]
+    cfg_rule = base_cfg["evaluation_contract"]["final_selection_rule"]
+    assert rule["eligible_condition"] == cfg_rule["eligible_condition"]
+    assert rule["single_candidate_rule_id"] == cfg_rule[
+        "single_candidate_rule_id"]
+    assert rule["no_candidate_rule_id"] == cfg_rule["no_candidate_rule_id"]
+
+
+# ---------------------------------------------------------------------------
+# gate-0 A2 closure (2026-10-30, P3 lane D): adversarial token-preserving
+# near-misses from Oracle gate-0-final §1 probe table / gate-1 §2.2 are now
+# typed rejections (they all used to PASS prereg)
+# ---------------------------------------------------------------------------
+def test_a2_eligible_not_h3_qualified_near_miss_rejected(base_cfg):
+    """'NOT H3-qualified; all candidates' used to pass the substring check."""
+    def _bad(c):
+        c["evaluation_contract"]["final_selection_rule"]["eligible"] = (
+            "NOT H3-qualified; all candidates")
+
+    cfg = _mut(base_cfg, _bad)
+    with pytest.raises(v.V542SchemaError) as exc:
+        v.validate_config(cfg)
+    assert exc.value.code == "V542_RUN_MATRIX"
+    assert "eligible" in exc.value.detail
+
+
+def test_a2_eligible_condition_drift_rejected(base_cfg):
+    def _bad(c):
+        c["evaluation_contract"]["final_selection_rule"][
+            "eligible_condition"] = "ALL_CANDIDATES"
+
+    cfg = _mut(base_cfg, _bad)
+    with pytest.raises(v.V542SchemaError) as exc:
+        v.validate_config(cfg)
+    assert exc.value.code == "V542_RUN_MATRIX"
+    assert "eligible_condition" in exc.value.detail
+    assert "H3_QUALIFIED_ONLY" in exc.value.detail
+
+
+def test_a2_single_candidate_near_miss_rejected(base_cfg):
+    """'1 个候选时不选 Backbone' used to pass the token check."""
+    def _bad(c):
+        c["evaluation_contract"]["final_selection_rule"][
+            "single_candidate_rule"] = "1 个候选时不选 Backbone"
+
+    cfg = _mut(base_cfg, _bad)
+    with pytest.raises(v.V542SchemaError) as exc:
+        v.validate_config(cfg)
+    assert exc.value.code == "V542_RUN_MATRIX"
+    assert "single_candidate_rule" in exc.value.detail
+
+
+def test_a2_no_candidate_near_miss_rejected(base_cfg):
+    """'0 个候选则 A0 no_backbone_winner but rerun' used to pass."""
+    def _bad(c):
+        c["evaluation_contract"]["final_selection_rule"][
+            "no_candidate_rule"] = (
+            "0 个候选则 A0 no_backbone_winner but rerun")
+
+    cfg = _mut(base_cfg, _bad)
+    with pytest.raises(v.V542SchemaError) as exc:
+        v.validate_config(cfg)
+    assert exc.value.code == "V542_RUN_MATRIX"
+    assert "no_candidate_rule" in exc.value.detail
+
+
+@pytest.mark.parametrize(
+    "field", ["single_candidate_rule_id", "no_candidate_rule_id"])
+def test_a2_structured_branch_ids_frozen(base_cfg, field):
+    def _bad(c, f=field):
+        c["evaluation_contract"]["final_selection_rule"][f] = "drifted_id"
+
+    cfg = _mut(base_cfg, _bad)
+    with pytest.raises(v.V542SchemaError) as exc:
+        v.validate_config(cfg)
+    assert exc.value.code == "V542_RUN_MATRIX"
+    assert field in exc.value.detail
+
+
+def test_a2_final_selection_structured_fields_frozen_in_config(base_cfg):
+    rule = base_cfg["evaluation_contract"]["final_selection_rule"]
+    assert rule["eligible"] == v.FINAL_SELECTION_ELIGIBLE_EXACT
+    assert rule["eligible_condition"] == v.FINAL_SELECTION_ELIGIBLE_CONDITION
+    assert rule["single_candidate_rule"] == v.FINAL_SELECTION_SINGLE_RULE_EXACT
+    assert rule["single_candidate_rule_id"] == v.FINAL_SELECTION_SINGLE_RULE_ID
+    assert rule["no_candidate_rule"] == (
+        v.FINAL_SELECTION_NO_CANDIDATE_RULE_EXACT)
+    assert rule["no_candidate_rule_id"] == (
+        v.FINAL_SELECTION_NO_CANDIDATE_RULE_ID)
+    assert rule["dev_used"] is False
+    assert rule["report_all_qualified"] is True
+
+
+def test_a2_core_loop_not_verbatim_near_miss_rejected(base_cfg):
+    """'not verbatim; rewritten forward' used to pass the substring check."""
+    def _bad(c):
+        c["backbone_contract"]["a0_migration"]["core_loop"] = (
+            "not verbatim; rewritten forward")
+
+    cfg = _mut(base_cfg, _bad)
+    with pytest.raises(v.V542SchemaError) as exc:
+        v.validate_config(cfg)
+    assert exc.value.code == "V542_INTERFACE"
+    assert v.A0_CORE_LOOP in exc.value.detail
+
+
+def test_a2_core_loop_frozen_enum_in_config(base_cfg):
+    core_loop = base_cfg["backbone_contract"]["a0_migration"]["core_loop"]
+    assert core_loop == v.A0_CORE_LOOP == "super().forward_verbatim"
+
+
+def test_a2_h3_eligible_token_soup_string_rejected(base_cfg):
+    """'H2 diagnostic 三 seed winner-eligible; NOT three seed' rejected."""
+    def _bad(c):
+        c["evaluation_contract"]["statistics"]["h3_eligible_candidates"] = (
+            "H2 diagnostic 三 seed winner-eligible; NOT three seed")
+
+    cfg = _mut(base_cfg, _bad)
+    with pytest.raises(v.V542SchemaError) as exc:
+        v.validate_config(cfg)
+    assert exc.value.code == "V542_MISSING_FIELD"
+    assert "h3_eligible_candidates" in exc.value.detail
+
+
+def test_a2_h2_sign_threshold_structured_near_miss_rejected(base_cfg):
+    def _bad(c):
+        c["evaluation_contract"]["seed17_screen_pass_predicate"][
+            "h2_no_breach_thresholds"]["sign_abs_drop_max"] = 0.02
+
+    cfg = _mut(base_cfg, _bad)
+    with pytest.raises(v.V542SchemaError) as exc:
+        v.validate_config(cfg)
+    assert exc.value.code == "V542_RUN_MATRIX"
+    assert "sign_abs_drop_max" in exc.value.detail

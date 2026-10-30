@@ -429,7 +429,9 @@ def test_load_audit_record_covers_template_record_fields(tmp_path) -> None:
     assert record["ok"] is True and record["strict"] is True
     assert record["source_path"] == "synthetic/checkpoint.pt"
     assert record["source_sha256"] == sha256_file(doctor)
-    assert str(record["mapping_table_sha256"]).startswith("LOCAL_PLACEHOLDER:")
+    # gate-0 A3: the mapping digest is now canonical (64-hex, no placeholder)
+    digest = str(record["mapping_table_sha256"])
+    assert len(digest) == 64 and not digest.startswith("LOCAL_PLACEHOLDER:")
     assert record["n_source_keys"] == 43
     assert record["n_mapped_targets"] == 45
     assert set(record["dual_write_aliases"]) == {

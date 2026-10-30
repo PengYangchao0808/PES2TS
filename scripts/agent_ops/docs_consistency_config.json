@@ -150,7 +150,14 @@
       "source_tier",
       "w_g_bias",
       "gru_cell_bias",
-      "Ruling 2"
+      "Ruling 2",
+      "V542_RECORD_MISSING",
+      "V542_RECORD_MISMATCH",
+      "a0_reuse_decision_record",
+      "preregistration_signoff_record",
+      "H3_QUALIFIED_ONLY",
+      "V542_BUDGET_INVALID",
+      "record_sha256"
     ],
     "docs/plans/PES2TS_V5.4.2_Backbone_50K_详细阶段实施方案_v1.0_20261029.md": [
       "V5.4.2",
@@ -203,7 +210,16 @@
       "4f13bfbd26d4acf17572641e30453000d65243599519c269473f07d6678ccccb",
       "871596e61b7d2e2ed77328eaa884b848621f07533e8ffd242a98442c0aec5db3",
       "w_g_bias",
-      "gru_cell_bias"
+      "gru_cell_bias",
+      "a0_reuse_decision_record",
+      "preregistration_signoff_record",
+      "H3_QUALIFIED_ONLY",
+      "h2_no_breach_thresholds",
+      "super().forward_verbatim",
+      "V542_RECORD_MISSING",
+      "V542_RECORD_MISMATCH",
+      "V542_BUDGET_INVALID",
+      "record_sha256"
     ],
     "config/campaigns/v542_templates/parity_certificate.template.json": [
       "checkpoint_count",
@@ -227,7 +243,9 @@
       "bootstrap_seed_root",
       "final_selection_rule",
       "route_logic",
-      "V542-A0-sanity-band"
+      "V542-A0-sanity-band",
+      "runplan_pin_record",
+      "H3_QUALIFIED_ONLY"
     ],
     "config/campaigns/v542_templates/preregistration_signoff.template.json": [
       "seed17_screen_pass",
@@ -239,13 +257,22 @@
       "final_selection_rule",
       "route_logic",
       "V542-A0-sanity-band",
-      "all 28 signed keys"
+      "all 28 signed keys",
+      "t1_record_requirements",
+      "a0_reuse_decision_record",
+      "preregistration_signoff_record",
+      "record_sha256",
+      "canonical_bytes"
     ],
     "config/campaigns/v542_templates/a0_reuse_decision.template.json": [
       "instance_required_before_formal",
       "retrain_a0_x3",
       "sanity_exception",
-      "V542-A0-sanity-band"
+      "V542-A0-sanity-band",
+      "a0_reuse_decision_record",
+      "V542_RECORD_MISMATCH",
+      "record_sha256",
+      "canonical_bytes"
     ]
   },
   "historical_banner_marker": "ADR-0030"

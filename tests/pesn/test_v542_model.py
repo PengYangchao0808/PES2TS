@@ -478,7 +478,9 @@ def test_strict_load_passes_with_w_v_dual_write() -> None:
     assert audit["n_source_keys"] == 43
     assert audit["n_mapped_targets"] == 45
     assert len(audit["torch_equal_verified"]) == 45
-    assert str(audit["mapping_table_sha256"]).startswith("LOCAL_PLACEHOLDER:")
+    # gate-0 A3: the mapping digest is now canonical (64-hex, no placeholder)
+    digest = str(audit["mapping_table_sha256"])
+    assert len(digest) == 64 and not digest.startswith("LOCAL_PLACEHOLDER:")
     assert v542.backbone.w_v is v542.move_decoder.w_v
     # post-load: the shared tensors equal the source values
     src = payload["model"]

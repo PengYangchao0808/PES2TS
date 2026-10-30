@@ -19,10 +19,12 @@ Audit contract (config ``a0_migration.mapping: explicit_strict_audit``):
 * the audit does NOT reject the declared ``w_v`` dual-write (it is part
   of the frozen mapping table);
 * the return value is an auditable JSON-able record.  The
-  ``mapping_table_sha256`` field is a PLACEHOLDER — the canonical SHA
-  recipe for mapping tables is a separate advisory lane; this module
-  does not invent a global convention (it records a local, clearly
-  labelled digest of the table only).
+  ``mapping_table_sha256`` field is the CANONICAL digest of the mapping
+  table (gate-0 advisory A3 closed): the table is canonicalized with
+  :func:`pes2ts_core.pesn.models.v542.identity.canonical_sha256` (compact
+  sorted JSON, UTF-8) — the SAME recipe every other V5.4.2 identity field
+  uses, so the digest is reproducible everywhere and no longer a local
+  placeholder.
 
 RNG discipline (gate-1 C4): building the frozen mapping table
 constructs a throwaway ``KeyAtomV53MPModel`` which WOULD consume the
@@ -37,14 +39,13 @@ training RNG stream (asserted by
 
 from __future__ import annotations
 
-import hashlib
-import json
 from typing import Final, Mapping, Sequence
 
 import torch
 import torch.nn as nn
 
 from pes2ts_core.pesn.models.key_atom_heads_v3 import KeyAtomV53MPModel
+from pes2ts_core.pesn.models.v542.identity import canonical_sha256
 from pes2ts_core.pesn.models.v542.interfaces import V542LoadError
 
 #: Frozen A0 dual-write alias: the single ``w_v`` source entries map to
@@ -83,12 +84,17 @@ def a0_mapping_table() -> dict[str, list[str]]:
 
 
 def _mapping_table_digest(table: Mapping[str, Sequence[str]]) -> str:
-    """LOCAL digest of the mapping table (placeholder for the canonical
-    SHA recipe — a separate advisory lane owns that convention)."""
-    payload = json.dumps({k: list(v) for k, v in sorted(table.items())},
-                         sort_keys=True, separators=(",", ":"))
-    return "LOCAL_PLACEHOLDER:" + hashlib.sha256(
-        payload.encode("utf-8")).hexdigest()
+    """Canonical digest of the mapping table (gate-0 advisory A3).
+
+    The table is normalized to ``{source: [targets...]}`` and hashed with
+    the ONE frozen V5.4.2 recipe
+    :func:`pes2ts_core.pesn.models.v542.identity.canonical_sha256`
+    (compact JSON, ``sort_keys=True``, UTF-8, SHA-256 hex) — identical
+    semantics to the previous local digest (sorted-table compact JSON) but
+    with no local placeholder prefix, so the value is reproducible from
+    the table alone anywhere in the campaign.
+    """
+    return canonical_sha256({k: list(v) for k, v in table.items()})
 
 
 def _extract_state_dict(payload: object) -> Mapping[str, torch.Tensor]:
@@ -126,7 +132,7 @@ def load_a0_strict(
         {"schema": ..., "ok": True, "missing": [], "unexpected": [],
          "shape_mismatch": [], "dtype_mismatch": [],
          "dual_write_aliases": {"backbone.w_v.*": "move_decoder.w_v.*"},
-         "mapping_table": {...}, "mapping_table_sha256": "<placeholder>",
+         "mapping_table": {...}, "mapping_table_sha256": "<canonical hex>",
          "loaded_keys": [...], "torch_equal_verified": [...],
          "strict": True}
 

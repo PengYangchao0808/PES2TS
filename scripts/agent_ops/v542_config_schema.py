@@ -8,8 +8,9 @@ module only reads the V542 yaml plus the frozen G–V registry and the
 forward-view whitelist contract.
 
 Frozen v1.1 contract highlights (Oracle gate-0 remediation, 2026-10-30),
-extended by fix-5 (C1–C5/C7), fix-6 (C6 machine checks, 2026-10-30) and
-the gate-2 Ruling 2 W_g/GRU-bias recording (2026-10-30):
+extended by fix-5 (C1–C5/C7), fix-6 (C6 machine checks, 2026-10-30), the
+gate-2 Ruling 2 W_g/GRU-bias recording (2026-10-30) and the P3 lane-D
+gate-0 A5/A2 closure (2026-10-30):
 
 * **exact 26-run matrix** — A0×3 matched baseline, A1–A4 seed17×4, A5
   seed17 conditional full-dose, top-2 preregistration A1–A4 × {29,43} = 8
@@ -29,28 +30,59 @@ the gate-2 Ruling 2 W_g/GRU-bias recording (2026-10-30):
   substring checks), sha256 seed recipe, construction order, per-candidate
   mapping tables, A1-C/A5-C ``init_source_id`` overrides.
 * **identity/start** — ``source_manifest_sha256`` required, ``code_commit``
-  optional, canonical ``t1_start_requires`` gate IDs + ``runplan_pin_record``,
-  A0 reuse decision INSTANCE required before T1.
+  optional, canonical ``t1_start_requires`` gate IDs + three record
+  requirements (``runplan_pin_record``, ``a0_reuse_decision_record``,
+  ``preregistration_signoff_record`` — gate-0 A5); A0 reuse decision
+  INSTANCE required before T1; ``governance.records`` freezes each
+  record's template/instance/required-fields/SHA rule and the validator
+  reads the two governance record instances (prereg: ``t1_blocked``
+  reason; ``--formal``: typed ``V542_RECORD_MISSING``/
+  ``V542_RECORD_MISMATCH`` — gate-0 A5 closed).  Gate-3 B2/C2 (P3
+  remediation lane R2, 2026-10-30): each machine-checked record must
+  MIRROR the frozen config — ``config_path`` equals the campaign config
+  path, ``campaign_id``/``gv_campaign_id``/``schema`` (template schema
+  id) match, the A0 record keeps ``decision=retrain_a0_x3`` and its
+  ``runs`` mirror ``a0_baseline.runs``, the signoff ``signed_by_roles``
+  is exactly the frozen role-key set with the required bindings
+  (``statistics_owner``/``evaluation_signoff`` = ``main_session_owner``,
+  ``oracle_reviewer`` = ``oracle_gate0_reviewer``; an empty mapping is a
+  typed rejection), the signoff thresholds block is BYTE-equal to the
+  config thresholds (canonical-JSON comparison, int/float encoding drift
+  included), and each record declares ``record_sha256`` = SHA-256 of the
+  canonical record bytes (the identity module's ``canonical_bytes``
+  recipe — compact sorted-key JSON, UTF-8, never escaped; the digest
+  covers the record payload with the ``record_sha256`` field itself
+  excluded) — a missing digest is ``V542_RECORD_MISSING``, a wrong
+  digest is ``V542_RECORD_MISMATCH``.  ``runplan_pin_record`` stays
+  runner-verified at the WP5 runplan freeze; the validator records the
+  requirement only and never reads the pin instance at WP0.
 * **A0 sanity band is a hard T1/top2 precondition (fix-6 C5/C6)** —
   ``V542-A0-sanity-band`` sits in ``t1_start_requires`` AND in the top2
   freeze; ``run_matrix.formal_stage_order`` pins T0 A0×3 before any T1
   formal; a breach strictly blocks T1 (no exception signing).
-* **final_selection_rule frozen (fix-6 C1)** — H3-qualified only, A0 and
-  diagnostic variants excluded, 0 → A0 retained, 1 → that candidate, many →
-  the exact 7-step lexicographic tuple, ``dev_used=false``, report all
-  qualified, rule block inside the statistics SHA, A5-C uses the selected
-  candidate only.
+* **final_selection_rule frozen (fix-6 C1; gate-0 A2 structured)** —
+  H3-qualified only, A0 and diagnostic variants excluded, 0 → A0 retained,
+  1 → that candidate, many → the exact 7-step lexicographic tuple,
+  ``dev_used=false``, report all qualified, rule block inside the statistics
+  SHA, A5-C uses the selected candidate only; the eligibility pool and the
+  single/no-candidate branches additionally carry machine-checked
+  structured fields (``eligible_condition=H3_QUALIFIED_ONLY``,
+  ``single_candidate_rule_id``, ``no_candidate_rule_id``) and the prose
+  rows are frozen EXACTLY (token-preserving near-misses such as
+  ``"NOT H3-qualified; all candidates"`` are rejected).
 * **route_logic parenthesized (fix-6 C2)** — MOVE/PROCESS ``pass_logic``
   strings and component thresholds are exact; the seed17 screen reuses the
   same parenthesized logic (no dangling OR).
-* **statistics fields (fix-6 C6; partially exact)** — ``ci=percentile_95``,
+* **statistics fields (fix-6 C6 + gate-0 A2 closure)** — ``ci=percentile_95``,
   the pairing sentence, ``final_draws_ref=thresholds.final_bootstrap_draws``,
   all four improvement directions, the p numerator, CI/p same draws,
   frame-level forbidden, and the Holm families/alpha are checked exactly.
-  **Still token-level (gate-0 advisory A2 open):** ``h3_eligible_candidates``
-  (H2 / diagnostic / 三 seed / winner-eligible token presence) and
-  ``champion_rule`` (reference to ``evaluation_contract.final_selection_rule``);
-  both are scheduled for exact/structured freezing before P3/WP6.
+  ``h3_eligible_candidates`` is now a STRUCTURED block (criteria =
+  completed_three_seeds + per-seed H2 no-breach + winner-eligible; A5 only
+  when three seeds complete; A0/diagnostic variants excluded) and
+  ``champion_rule`` is a structured block whose ``selection_ref`` must be
+  exactly ``evaluation_contract.final_selection_rule`` — the token-only
+  checks are gone (gate-0 advisory A2 closed).
 * **parity asset tiers (fix-6 C3; gate-0 A6)** — 6/6 rows carry
   ``source_tier`` + ``run_updates`` (source-run training dose: V541 E0 =
   37,900; V53MP C = 15,400) + ``checkpoint_update`` (the pinned payload's
@@ -75,7 +107,7 @@ the gate-2 Ruling 2 W_g/GRU-bias recording (2026-10-30):
   ``V542_PARAM_BUDGET``; candidates WITHOUT a ``W_g`` injection or GRU
   cells (A0/A1/A1-C/A3) must not carry the fields at all.
 
-Typed rejections (each carries a stable ``code``; 19 codes — the
+Typed rejections (each carries a stable ``code``; 22 codes — the
 authoritative count for docs/registry wording):
 
 ==========================  ==========================================================
@@ -95,7 +127,10 @@ code                          rejection
 ``V542_CONFIRM``              confirm/sealed/QC authorization not false/0
 ``V542_RESOURCE``             single-lane / swap / OOM guards violated
 ``V542_THRESHOLD_NULL``       a signed threshold is null while ``--formal`` requested
-``V542_BUDGET_NULL``          ``--formal`` with budget.per_candidate_core_time still null
+``V542_BUDGET_NULL``          ``--formal`` with budget.per_candidate_core_time still null/empty
+``V542_BUDGET_INVALID``       ``--formal`` with a malformed budget table (non-mapping, partial/extra keys, or per-candidate entries that are not finite positive numbers — gate-3 C4/A1)
+``V542_RECORD_MISSING``       ``--formal`` with a required governance record instance absent/unreadable/None (gate-0 A5; includes a missing ``record_sha256`` — gate-3 C2)
+``V542_RECORD_MISMATCH``      a governance record instance (or its config mirror) disagrees with the frozen config — wrong ``config_path``/roles/decision/schema/thresholds or a ``record_sha256`` that does not match the canonical digest (gate-0 A5 + gate-3 B2/C2)
 ``V542_GV_MISMATCH``          ``gv`` block disagrees with ``config/registry/g_v_map.yaml``
 ``V542_RUN_MATRIX``           run id / class / seed / activation outside preregistered shape
 ``V542_SAMPLER_DRIFT``        ``sampler_binding`` != the live ``v541_strata`` spec
@@ -104,14 +139,27 @@ code                          rejection
 
 Modes
 -----
-* ``prereg`` (default) — structural validation; a null budget is reported as
-  a ``t1_blocked`` reason (WP0 state: budget filled only after the same-env
-  A0 profile; the runner never fills defaults).
-* ``formal`` — additionally requires every signed threshold to be non-null
-  AND the budget table to be signed (typed ``V542_BUDGET_NULL`` rejection
-  while it is still null), i.e. the gate a formal launch must pass.
+* ``prereg`` (default) — structural validation; a null budget or a missing
+  governance record instance is reported as a ``t1_blocked`` reason (WP0
+  state: the A0 decision and preregistration-signoff instances are
+  intentionally absent until T1; the budget is filled only after the
+  same-env A0 profile; the runner never fills defaults).  Budget TABLE
+  shape (mapping coverage / finite positive values) is not required at
+  prereg.
+* ``formal`` — additionally requires every signed threshold to be non-null,
+  a WELL-FORMED signed budget table (null/empty ⇒ ``V542_BUDGET_NULL``;
+  malformed — list/string/partial/extra keys/non-finite/non-positive
+  entries ⇒ ``V542_BUDGET_INVALID``; gate-3 C4/A1) AND both
+  machine-checked governance record instances
+  (``a0_reuse_decision_record`` with ``decision=retrain_a0_x3`` and
+  ``preregistration_signoff_record`` mirroring the signed thresholds;
+  missing/unreadable/None ⇒ ``V542_RECORD_MISSING``, content drift ⇒
+  ``V542_RECORD_MISMATCH``; each record declares ``record_sha256`` =
+  SHA-256 of the canonical record bytes via the identity module's
+  ``canonical_bytes`` recipe — gate-3 B2/C2), i.e. the gate a formal
+  launch must pass.
 
-``validate_config`` runs these named checks in order (26 checks with the
+``validate_config`` runs these named checks in order (27 checks with the
 G–V cross-check enabled — keep this list current):
 
 ``schema``, ``objective``, ``required_fields``, ``backbone_registry``,
@@ -120,7 +168,8 @@ G–V cross-check enabled — keep this list current):
 ``selection_tau``, ``gv_registry``, ``identity_start``, ``run_matrix``,
 ``top2_preregistration``, ``activation_branches``, ``statistics``,
 ``route_logic``, ``final_selection``, ``seed17_screen``,
-``a0_sanity_band``, ``run_outcomes``, ``cost_acceptance``, ``thresholds``.
+``a0_sanity_band``, ``run_outcomes``, ``cost_acceptance``, ``thresholds``,
+``governance_records``.
 
 CLI::
 
@@ -134,6 +183,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 import re
 import sys
 from pathlib import Path
@@ -158,16 +208,22 @@ from pes2ts_core.pesn.contracts.key_atom_v3 import (  # noqa: E402
 __all__ = [
     "A0_ACTIVE_PARAMS",
     "A0_BREACH_PROCEDURE",
+    "A0_CORE_LOOP",
     "A0_JOINT_PARAMS",
     "A0_SANITY_BAND_GATE",
     "A0_SANITY_BAND_NOTE_EXACT",
     "A0_SANITY_BAND_VALUES",
+    "A0_DECISION_SCHEMA_ID",
     "A5_SUPPLEMENT_MAX_RUNS",
     "A5_SUPPLEMENT_PARENT_GATE",
     "BACKBONE_ACTIVE_MAX",
     "BIAS_FIELD_CANDIDATES",
     "BOOTSTRAP_SEED_ROOT",
+    "CAMPAIGN_CONFIG_REL",
     "CAMPAIGN_ID",
+    "CHAMPION_REPORT",
+    "CHAMPION_REQUIRES",
+    "CHAMPION_SELECTION_REF",
     "CI_METHOD",
     "CONSTRUCTION_ORDER",
     "DECODER_PARAMS",
@@ -177,15 +233,27 @@ __all__ = [
     "FINAL_DRAWS",
     "FINAL_DRAWS_REF",
     "FINAL_EFFECT_MARGIN",
+    "FINAL_SELECTION_ELIGIBLE_CONDITION",
+    "FINAL_SELECTION_ELIGIBLE_EXACT",
     "FINAL_SELECTION_EXCLUDED",
     "FINAL_SELECTION_NAME",
+    "FINAL_SELECTION_NO_CANDIDATE_RULE_EXACT",
+    "FINAL_SELECTION_NO_CANDIDATE_RULE_ID",
+    "FINAL_SELECTION_SINGLE_RULE_EXACT",
+    "FINAL_SELECTION_SINGLE_RULE_ID",
     "FINAL_SELECTION_TIE_BREAK",
     "FORMAL_STAGE_ORDER",
     "FORMAL_THRESHOLDS",
+    "GOVERNANCE_RECORDS",
     "GPU_ATOL",
     "GPU_RTOL",
     "GRU_CELL_BIAS",
     "GV_CAMPAIGN_ID",
+    "H2_NO_BREACH_EXACT",
+    "H2_NO_BREACH_THRESHOLDS",
+    "H3_ELIGIBLE_A5_RULE",
+    "H3_ELIGIBLE_CRITERIA",
+    "H3_ELIGIBLE_EXCLUDED",
     "IDENTITY_REQUIRED_FIELDS",
     "IMPROVEMENT_DIRECTIONS",
     "INIT_MAPPING_AUDIT_EXACT",
@@ -202,10 +270,17 @@ __all__ = [
     "PROCESS_PASS_LOGIC",
     "R3_REL_PATH",
     "R3_SHA256",
+    "RECORD_SHA_FIELD",
+    "RECORD_SHA_RULE",
     "REQUIRED_FIELDS",
     "ROUTE_COMPONENTS",
     "SCHEMA_ID",
+    "SIGNATORY_ROLES_NO_ORACLE",
+    "SIGNOFF_RECORD_SCHEMA_ID",
+    "SIGNOFF_REQUIRED_ROLES",
+    "SIGNOFF_ROLE_KEYS",
     "T1_CANONICAL_GATES",
+    "T1_RECORD_REQUIREMENTS",
     "T1_RECORD_WHITELIST",
     "T1_START_REQUIRES",
     "T3_MAX_RUNS",
@@ -233,7 +308,7 @@ BACKBONE_ACTIVE_MAX = 70000
 Z_DIM = 64
 EDGE_MSG_DIM = 48
 
-#: The 19 typed rejection codes above — the authoritative count for docs.
+#: The 22 typed rejection codes above — the authoritative count for docs.
 TYPED_REJECTIONS: Tuple[str, ...] = (
     "V542_CONFIG_MISSING",
     "V542_SCHEMA",
@@ -250,6 +325,9 @@ TYPED_REJECTIONS: Tuple[str, ...] = (
     "V542_RESOURCE",
     "V542_THRESHOLD_NULL",
     "V542_BUDGET_NULL",
+    "V542_BUDGET_INVALID",
+    "V542_RECORD_MISSING",
+    "V542_RECORD_MISMATCH",
     "V542_GV_MISMATCH",
     "V542_RUN_MATRIX",
     "V542_SAMPLER_DRIFT",
@@ -539,6 +617,32 @@ IMPROVEMENT_DIRECTIONS: Dict[str, str] = {
 }
 
 # ---------------------------------------------------------------------------
+# gate-0 A2 closure: structured statistics eligibility + champion rule.
+# ``h3_eligible_candidates`` replaces the old free string; ``champion_rule``
+# replaces the old token-checked prose with an exact structured reference.
+# ---------------------------------------------------------------------------
+#: Frozen eligibility criteria — all three must hold (AND, exact order).
+H3_ELIGIBLE_CRITERIA: Tuple[str, ...] = (
+    "completed_three_seeds",
+    "per_seed_h2_no_breach",
+    "winner_eligible",
+)
+#: A5 enters the eligible set ONLY when its three seeds are complete.
+H3_ELIGIBLE_A5_RULE = "a5_only_when_three_seeds_complete"
+#: Excluded set — identical values to the final-selection exclusion list
+#: (FINAL_SELECTION_EXCLUDED, defined below; kept independent of order).
+H3_ELIGIBLE_EXCLUDED: Tuple[str, ...] = (
+    "A0_matched_baseline",
+    "diagnostic_variants_A1-C_A5-C",
+)
+#: Structured champion rule (qualification vs selection stay separate).
+CHAMPION_REQUIRES = (
+    "holm_adjusted_p_below_alpha_and_effect_non_inferiority_conditions"
+)
+CHAMPION_SELECTION_REF = "evaluation_contract.final_selection_rule"
+CHAMPION_REPORT = "uncorrected_and_holm_adjusted"
+
+# ---------------------------------------------------------------------------
 # fix-6 C1: frozen final_selection_rule (ADR-0033 v1.2 §2.5; Oracle finding 1)
 # ---------------------------------------------------------------------------
 FINAL_SELECTION_NAME = "final_selection_rule"
@@ -562,6 +666,29 @@ FINAL_EFFECT_MARGIN: Dict[str, str] = {
     "process_auprc": "delta/0.02",
     "process_q": "delta/0.03",
 }
+
+# ---------------------------------------------------------------------------
+# gate-0 A2 closure (2026-10-30, P3 lane D): token-only checks converted to
+# exact frozen strings + structured machine fields.  The prose rows stay for
+# humans but are now frozen EXACTLY (token-preserving near-misses such as
+# "NOT H3-qualified; all candidates" are typed rejections); the structured
+# fields are the machine-consumable contract.
+# ---------------------------------------------------------------------------
+#: Exact frozen prose rows (config mirrors these byte-for-byte).
+FINAL_SELECTION_ELIGIBLE_EXACT = (
+    "H3-qualified 候选 only (完成三 seed 且每 seed H2 无 breach 且 adjusted p < "
+    "对应 alpha 且效应/非劣条件成立)"
+)
+FINAL_SELECTION_SINGLE_RULE_EXACT = "恰 1 个 H3-qualified 候选则该候选即 Backbone*"
+FINAL_SELECTION_NO_CANDIDATE_RULE_EXACT = (
+    "0 个 H3-qualified 候选则 A0 留任 (no_backbone_winner, §12 负结果写法)"
+)
+#: Structured eligibility/branch references (exact enums).
+FINAL_SELECTION_ELIGIBLE_CONDITION = "H3_QUALIFIED_ONLY"
+FINAL_SELECTION_SINGLE_RULE_ID = "one_h3_qualified_candidate_is_backbone"
+FINAL_SELECTION_NO_CANDIDATE_RULE_ID = (
+    "zero_h3_qualified_candidates_a0_retained_no_backbone_winner"
+)
 
 # ---------------------------------------------------------------------------
 # fix-6 C2: frozen parenthesized route logic (ADR-0033 v1.2 §2.5; finding 2)
@@ -589,6 +716,25 @@ ROUTE_COMPONENTS: Dict[str, Dict[str, str]] = {
         "auprc_non_inferior": "endpoint_auprc 下降 <=0.01",
         "q_non_inferior": "q_corr 下降 <=0.02",
     },
+}
+
+# ---------------------------------------------------------------------------
+# gate-0 A2 closure: the seed17 H2 no-breach guard is frozen EXACTLY (prose)
+# plus a structured numeric threshold block — changing the sign threshold in
+# the prose to <=0.02 (while the dead guard still supplies the <=0.01 token)
+# or drifting a structured value is now a typed rejection.
+# ---------------------------------------------------------------------------
+H2_NO_BREACH_EXACT = (
+    "seed17 H2 全部 guard 无 breach (RMSE/zero 相对 R3 与 matched A0 退化 <=2%; "
+    "sign 下降 <=0.01; dead 增加 <=0.01; fixed-coverage direction 退化 <=2%)"
+)
+#: Structured H2 guard thresholds (absolute for sign/dead; relative for
+#: RMSE/zero and fixed-coverage direction) — values mirror thresholds.*.
+H2_NO_BREACH_THRESHOLDS: Dict[str, float] = {
+    "sign_abs_drop_max": 0.01,
+    "dead_abs_increase_max": 0.01,
+    "rmse_zero_rel_degradation_max": 0.02,
+    "fixed_coverage_rel_degradation_max": 0.02,
 }
 
 # ---------------------------------------------------------------------------
@@ -700,6 +846,9 @@ R3_MAPPING_CANDIDATES = frozenset(
 A0_CAPTURE_SPEC = (
     "message_mlp[-1] forward hook, exactly once, finally-removed, no detach"
 )
+#: gate-0 A2 closure: the core-loop declaration is a frozen ENUM — the old
+#: substring check accepted "not verbatim"; only this exact value passes.
+A0_CORE_LOOP = "super().forward_verbatim"
 W_V_SHARING_SPEC = "backbone.w_v is move_decoder.w_v (same tensor object)"
 STATE_DICT_ALIASES = ("backbone.w_v", "move_decoder.w_v")
 DECODER_INPUTS = ("edge_msg", "pos", "edge_index", "key_index", "degK")
@@ -742,9 +891,20 @@ T1_START_REQUIRES: Tuple[str, ...] = (
     "V542-A0-sanity-band",
     "V542-budget-signoff",
     "runplan_pin_record",
+    "a0_reuse_decision_record",
+    "preregistration_signoff_record",
 )
-#: Record requirements (not registry gates) allowed in t1_start_requires.
-T1_RECORD_WHITELIST = frozenset({"runplan_pin_record"})
+#: Record requirements (not registry gates) allowed in t1_start_requires —
+#: gate-0 A5 adds the A0 decision and preregistration-signoff instances.
+T1_RECORD_WHITELIST = frozenset({
+    "runplan_pin_record",
+    "a0_reuse_decision_record",
+    "preregistration_signoff_record",
+})
+#: The record requirements in frozen order (subset of T1_START_REQUIRES).
+T1_RECORD_REQUIREMENTS: Tuple[str, ...] = tuple(
+    r for r in T1_START_REQUIRES if r in T1_RECORD_WHITELIST
+)
 #: Canonical registry gate IDs (every non-record entry must resolve here).
 T1_CANONICAL_GATES: Tuple[str, ...] = tuple(
     g for g in T1_START_REQUIRES if g not in T1_RECORD_WHITELIST
@@ -755,6 +915,140 @@ A0_DECISION_TEMPLATE = (
 A0_DECISION_INSTANCE = (
     "outputs/pesn/v542_backbone_50k/plan/a0_reuse_decision.json"
 )
+
+# ---------------------------------------------------------------------------
+# gate-0 A5 closure (2026-10-30, P3 lane D): the T1 record requirements are
+# machine-checked governance records.  ``governance.records`` in the config
+# must mirror this frozen spec (template path, instance path under the
+# campaign plan dir, required fields, SHA rule).  The two governance
+# records (A0 decision + preregistration signoff) are read by the
+# validator: missing/unreadable at prereg = t1_blocked reason (WP0 stays
+# green); at --formal = typed V542_RECORD_MISSING rejection; content that
+# does not mirror the config (decision != retrain_a0_x3, signoff
+# thresholds drift, wrong config_path/roles/schema, record_sha256 drift)
+# = typed V542_RECORD_MISMATCH.  The runplan pin instance is generated by
+# the runner at the WP5 runplan freeze, so it is described here but
+# verified by the runner, NOT by this WP0 validator (same as before the
+# A5 closure).
+#
+# gate-3 B2/C2 hardening (2026-10-30, P3 remediation lane R2): the
+# validator now (a) requires each machine-checked record to MIRROR the
+# frozen spec — ``config_path`` equals the campaign config path,
+# ``campaign_id``/``gv_campaign_id`` match, ``schema`` equals the
+# template schema id, the signoff ``signed_by_roles`` is exactly the
+# frozen role-key set with the required bindings
+# (statistics/evaluation = main_session_owner, oracle_reviewer =
+# oracle_gate0_reviewer — an empty mapping is a typed rejection), the
+# A0 record keeps decision=retrain_a0_x3, and the signoff thresholds
+# block is byte-equal to the config thresholds (canonical-JSON
+# comparison catches int/float encoding drift the per-key == missed);
+# and (b) VERIFIES each record's declared ``record_sha256`` against the
+# canonical digest computed with the identity module's ONE recipe
+# (``canonical_bytes`` imported read-only from
+# ``pes2ts_core.pesn.models.v542.identity`` — compact sorted-key JSON,
+# UTF-8, never escaped; the digest covers the record payload with the
+# ``record_sha256`` field itself excluded).  A missing digest is
+# V542_RECORD_MISSING; a wrong digest is V542_RECORD_MISMATCH.
+# ---------------------------------------------------------------------------
+RECORD_SHA_RULE = "sha256_of_canonical_file_bytes"
+#: The record field carrying the declared canonical digest (gate-3 C2).
+RECORD_SHA_FIELD = "record_sha256"
+#: Repo-relative campaign config path every record must mirror.
+CAMPAIGN_CONFIG_REL = "config/campaigns/pes2ts_v542_backbone_50k.yaml"
+#: Template schema ids each record instance must restate in ``schema``.
+A0_DECISION_SCHEMA_ID = "pes2ts_v542_a0_reuse_decision_v1"
+SIGNOFF_RECORD_SCHEMA_ID = "pes2ts_v542_preregistration_signoff_v1"
+#: Frozen signoff role bindings (gate-3 B2): required roles and their
+#: exact signers.  ``oracle_gate0_reviewer`` is the REVIEWER, never a
+#: signatory; parity/training/resource stay pending (null) until the
+#: WP1-WP4 evidence exists.
+SIGNOFF_REQUIRED_ROLES: Dict[str, str] = {
+    "statistics_owner": "main_session_owner",
+    "evaluation_signoff": "main_session_owner",
+    "oracle_reviewer": "oracle_gate0_reviewer",
+}
+#: The exact frozen role-key set of a signoff ``signed_by_roles``
+#: instance — missing keys, extra keys and an empty mapping are all
+#: typed rejections (gate-3 B2 closed the ``signed_by_roles = {}`` hole).
+SIGNOFF_ROLE_KEYS = frozenset({
+    "authorization", "governance_owner", "statistics_owner",
+    "governance_signoff", "parity_signoff", "training_signoff",
+    "evaluation_signoff", "resource_signoff", "oracle_reviewer",
+    "formal_launch_note",
+})
+#: Roles that must never name the Oracle as signer (fix-6 C4 invariant,
+#: now machine-checked on instances too).
+SIGNATORY_ROLES_NO_ORACLE = frozenset({
+    "authorization", "governance_owner", "statistics_owner",
+    "governance_signoff", "parity_signoff", "training_signoff",
+    "evaluation_signoff", "resource_signoff",
+})
+PREREG_SIGNOFF_TEMPLATE = (
+    "config/campaigns/v542_templates/preregistration_signoff.template.json"
+)
+PREREG_SIGNOFF_INSTANCE = (
+    "outputs/pesn/v542_backbone_50k/plan/preregistration_signoff.json"
+)
+RUNPLAN_PIN_TEMPLATE = (
+    "config/campaigns/v542_templates/runplan_pin.template.json"
+)
+RUNPLAN_PIN_INSTANCE = (
+    "outputs/pesn/v542_backbone_50k/plan/runplan.pin.json"
+)
+#: record id -> frozen spec.  ``machine_checked`` records are read by
+#: ``_check_governance_records`` at prereg (blocker) and formal (typed).
+GOVERNANCE_RECORDS: Dict[str, Dict[str, Any]] = {
+    "runplan_pin_record": {
+        "template": RUNPLAN_PIN_TEMPLATE,
+        "instance": RUNPLAN_PIN_INSTANCE,
+        "required_fields": (
+            "campaign_id", "config_path", "schema_id", "seeds",
+            "runplan_sha256", "frozen_on", "frozen_by",
+        ),
+        "sha_rule": RECORD_SHA_RULE,
+        "machine_checked": False,
+        "verified_by": "runner_at_runplan_pin (WP5 freeze); validator records "
+                       "the requirement only — the WP0 --formal gate never "
+                       "reads the pin instance",
+    },
+    "a0_reuse_decision_record": {
+        "template": A0_DECISION_TEMPLATE,
+        "instance": A0_DECISION_INSTANCE,
+        "required_fields": (
+            "campaign_id", "config_path", "schema", "decision", "signed_by",
+            "runs", RECORD_SHA_FIELD,
+        ),
+        "sha_rule": RECORD_SHA_RULE,
+        "machine_checked": True,
+        "expected": {
+            "decision": A0_DECISION,
+            "campaign_id": CAMPAIGN_ID,
+            "config_path": CAMPAIGN_CONFIG_REL,
+            "schema": A0_DECISION_SCHEMA_ID,
+        },
+        "mirrors": {"runs": "a0_baseline.runs"},
+    },
+    "preregistration_signoff_record": {
+        "template": PREREG_SIGNOFF_TEMPLATE,
+        "instance": PREREG_SIGNOFF_INSTANCE,
+        "required_fields": (
+            "campaign_id", "config_path", "schema", "schema_id",
+            "gv_campaign_id", "thresholds_signed_frozen", "signed_by_roles",
+            RECORD_SHA_FIELD,
+        ),
+        "sha_rule": RECORD_SHA_RULE,
+        "machine_checked": True,
+        "expected": {
+            "campaign_id": CAMPAIGN_ID,
+            "schema_id": SCHEMA_ID,
+            "gv_campaign_id": GV_CAMPAIGN_ID,
+            "config_path": CAMPAIGN_CONFIG_REL,
+            "schema": SIGNOFF_RECORD_SCHEMA_ID,
+        },
+        "threshold_mirror": "thresholds_signed_frozen",
+        "signoff_roles": True,
+    },
+}
 
 _DEFAULT_CONFIG = (
     PROJECT_ROOT / "config" / "campaigns" / "pes2ts_v542_backbone_50k.yaml"
@@ -800,6 +1094,45 @@ def _sha256_of_file(path: Path) -> str:
         for chunk in iter(lambda: handle.read(1 << 20), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def _canonical_json_bytes(obj: Any) -> bytes:
+    """The identity module's canonical JSON bytes (read-only import).
+
+    Single source of truth for the frozen recipe (compact sorted-key
+    JSON, ``ensure_ascii=False``, UTF-8); used for byte-equal mirror
+    comparisons (gate-3 B2) and by :func:`_record_canonical_sha256`.
+    """
+    try:
+        from pes2ts_core.pesn.models.v542.identity import canonical_bytes
+    except Exception as exc:  # noqa: BLE001 - fail-closed on ANY import error
+        _err(
+            "V542_RECORD_MISMATCH",
+            "cannot import the canonical JSON recipe from "
+            "pes2ts_core.pesn.models.v542.identity; refusing to compare "
+            f"bytes against a recipe it cannot see ({exc})",
+        )
+    try:
+        return canonical_bytes(obj)
+    except Exception as exc:  # noqa: BLE001 - typed serialize refusal
+        _err(
+            "V542_RECORD_MISMATCH",
+            f"payload is not canonically JSON-serializable: {exc}",
+        )
+
+
+def _record_canonical_sha256(payload: Mapping[str, Any]) -> str:
+    """Canonical record digest — the identity module's ONE recipe (gate-3 C2).
+
+    sha256 of ``canonical_bytes(body)`` where ``body`` is the record
+    payload with the ``record_sha256`` field itself excluded (a digest
+    cannot cover its own declaration).  The recipe is imported READ-ONLY
+    from ``pes2ts_core.pesn.models.v542.identity`` — never re-declared
+    here — so a record digest is byte-identical to what the run-identity
+    layer would compute for the same payload.
+    """
+    body = {k: v for k, v in payload.items() if k != RECORD_SHA_FIELD}
+    return hashlib.sha256(_canonical_json_bytes(body)).hexdigest()
 
 
 def _err(code: str, detail: str) -> None:
@@ -1030,11 +1363,10 @@ def _check_interface(cfg: Mapping[str, Any]) -> None:
 
     v1.1 hardening (Oracle finding 9): every interface subfield, the exact
     ``w_v`` same-tensor statement, the capture-hook spec and the six pinned
-    parity assets are enforced — no substring-only checks for THOSE items.
-    Note (gate-1 C5 correction): ``a0_migration.core_loop`` remains a
-    substring check (requires the ``verbatim`` token; ``"not verbatim"``
-    currently passes) — converting it to an exact frozen string is open
-    gate-0 advisory A2 (close before P3/WP6).
+    parity assets are enforced.  gate-0 A2 closure (2026-10-30): the
+    ``a0_migration.core_loop`` declaration is no longer a substring check —
+    it must equal the frozen enum ``super().forward_verbatim`` exactly, so
+    ``"not verbatim"``-style near-misses are typed rejections.
     """
     contract = cfg.get("backbone_contract")
     iface = contract.get("interface") if isinstance(contract, Mapping) else None
@@ -1212,10 +1544,15 @@ def _check_interface(cfg: Mapping[str, Any]) -> None:
             "A0 must be a StarEGNNV3 subclass adapter (no legacy edits), got "
             f"{a0.get('subclass_of')!r}",
         )
-    if "verbatim" not in str(a0.get("core_loop") or ""):
+    # gate-0 A2 closure: exact frozen enum — the old substring check
+    # accepted "not verbatim"; only super().forward_verbatim passes.
+    if a0.get("core_loop") != A0_CORE_LOOP:
         _err(
             "V542_INTERFACE",
-            "a0_migration.core_loop must keep super().forward verbatim",
+            "a0_migration.core_loop must be exactly the frozen enum "
+            f"{A0_CORE_LOOP!r} (super().forward verbatim — no legacy edits; "
+            f"gate-0 A2), got {a0.get('core_loop')!r} — substring "
+            "near-misses such as 'not verbatim' are rejected",
         )
     if a0.get("capture") != A0_CAPTURE_SPEC:
         _err(
@@ -2709,11 +3046,11 @@ def _check_statistics(cfg: Mapping[str, Any]) -> None:
     fix-6 C6: the structured fields themselves are asserted exactly —
     ``ci``/``pairing``/``final_draws_ref``/all four improvement directions/
     the exact p numerator/same CI-p draws/frame-level bans/Holm families
-    — not merely the token presence.  Correction (gate-1 C5): the
-    ``h3_eligible_candidates`` eligible set and ``champion_rule`` are
-    TOKEN-presence checks, NOT exact assertions — converting them to
-    exact frozen strings is open gate-0 advisory A2 (close before
-    P3/WP6).
+    — not merely the token presence.  gate-0 A2 closure (2026-10-30): the
+    ``h3_eligible_candidates`` eligible set and ``champion_rule`` are no
+    longer token checks — they are STRUCTURED blocks asserted exactly
+    (criteria/a5_rule/excluded; requires/selection_ref/report), so the
+    Oracle's token-preserving near-misses are typed rejections.
     """
     ec = cfg.get("evaluation_contract")
     stats = ec.get("statistics") if isinstance(ec, Mapping) else None
@@ -2851,36 +3188,69 @@ def _check_statistics(cfg: Mapping[str, Any]) -> None:
             "family=single_process_family (ONE Holm family alpha=0.025 over "
             f"2 endpoints x eligible candidates), got {proc!r}",
         )
-    eligible = str(stats.get("h3_eligible_candidates") or "")
-    if "H2" not in eligible or "diagnostic" not in eligible or \
-            "三 seed" not in eligible or "winner-eligible" not in eligible:
+    # gate-0 A2 closure: structured eligibility + champion rule (exact).
+    eligible = stats.get("h3_eligible_candidates")
+    if not isinstance(eligible, Mapping):
         _err(
-            "V542_RUN_MATRIX",
-            "statistics.h3_eligible_candidates must require three-seed "
-            "completion + per-seed H2 no-breach + winner-eligible status and "
-            f"exclude diagnostic variants (A1-C/A5-C/A0), got {eligible!r}",
+            "V542_MISSING_FIELD",
+            "statistics.h3_eligible_candidates must be the frozen STRUCTURED "
+            "block (criteria/a5_rule/excluded; gate-0 A2: the old free-string "
+            f"forms are rejected), got {eligible!r}",
         )
-    champ = str(stats.get("champion_rule") or "")
-    if "adjusted p" not in champ:
+    got_criteria = tuple(eligible.get("criteria") or ())
+    if got_criteria != H3_ELIGIBLE_CRITERIA:
         _err(
             "V542_RUN_MATRIX",
-            "statistics.champion_rule must require adjusted p < alpha plus the "
-            f"effect/non-inferiority conditions, got "
-            f"{stats.get('champion_rule')!r}",
+            "statistics.h3_eligible_candidates.criteria must be exactly "
+            f"{list(H3_ELIGIBLE_CRITERIA)} (completed three seeds AND "
+            "per-seed H2 no-breach AND winner-eligible), got "
+            f"{list(got_criteria)!r}",
         )
-    if FINAL_SELECTION_NAME not in champ:
+    if eligible.get("a5_rule") != H3_ELIGIBLE_A5_RULE:
         _err(
             "V542_RUN_MATRIX",
-            f"statistics.champion_rule must route the final choice through "
-            f"evaluation_contract.{FINAL_SELECTION_NAME} (qualification is "
-            f"not selection), got {stats.get('champion_rule')!r}",
+            "statistics.h3_eligible_candidates.a5_rule must be "
+            f"{H3_ELIGIBLE_A5_RULE!r} (A5 enters the eligible set only when "
+            f"three seeds are complete), got {eligible.get('a5_rule')!r}",
         )
-    if "未校正" not in champ and "uncorrected" not in champ.lower():
+    got_excluded = tuple(eligible.get("excluded") or ())
+    if got_excluded != H3_ELIGIBLE_EXCLUDED:
         _err(
             "V542_RUN_MATRIX",
-            "statistics.champion_rule must require reporting both uncorrected "
-            "(未校正) and Holm-adjusted results, got "
-            f"{stats.get('champion_rule')!r}",
+            "statistics.h3_eligible_candidates.excluded must be exactly "
+            f"{list(H3_ELIGIBLE_EXCLUDED)} (A0 baseline + diagnostic "
+            f"variants A1-C/A5-C never enter), got {list(got_excluded)!r}",
+        )
+    champ = stats.get("champion_rule")
+    if not isinstance(champ, Mapping):
+        _err(
+            "V542_MISSING_FIELD",
+            "statistics.champion_rule must be the frozen STRUCTURED block "
+            "(requires/selection_ref/report; gate-0 A2: the old token-checked "
+            f"prose forms are rejected), got {champ!r}",
+        )
+    if champ.get("requires") != CHAMPION_REQUIRES:
+        _err(
+            "V542_RUN_MATRIX",
+            "statistics.champion_rule.requires must be exactly "
+            f"{CHAMPION_REQUIRES!r} (Holm-adjusted p < alpha plus the "
+            f"effect/non-inferiority conditions = qualification), got "
+            f"{champ.get('requires')!r}",
+        )
+    if champ.get("selection_ref") != CHAMPION_SELECTION_REF:
+        _err(
+            "V542_RUN_MATRIX",
+            "statistics.champion_rule.selection_ref must be exactly "
+            f"{CHAMPION_SELECTION_REF!r} (qualification is not selection — "
+            f"the final choice routes through the frozen rule), got "
+            f"{champ.get('selection_ref')!r}",
+        )
+    if champ.get("report") != CHAMPION_REPORT:
+        _err(
+            "V542_RUN_MATRIX",
+            "statistics.champion_rule.report must be exactly "
+            f"{CHAMPION_REPORT!r} (both uncorrected and Holm-adjusted "
+            f"results are reported), got {champ.get('report')!r}",
         )
     agg = ec.get("seed_aggregation") if isinstance(ec, Mapping) else None
     if not isinstance(agg, Mapping):
@@ -3014,6 +3384,11 @@ def _check_final_selection(cfg: Mapping[str, Any]) -> None:
     1 -> that candidate; many -> the exact 7-step lexicographic tuple;
     ``dev_used=false``; report every qualified candidate; the rule block
     rides in the statistics SHA; A5-C uses the selected candidate only.
+    gate-0 A2 closure (2026-10-30): the eligibility pool and the
+    single/no-candidate branches carry structured fields asserted exactly
+    (``eligible_condition``/``single_candidate_rule_id``/
+    ``no_candidate_rule_id``) and the prose rows are frozen EXACTLY — the
+    Oracle's token-preserving near-misses are typed rejections.
     """
     ec = cfg.get("evaluation_contract")
     rule = ec.get("final_selection_rule") if isinstance(ec, Mapping) else None
@@ -3029,12 +3404,21 @@ def _check_final_selection(cfg: Mapping[str, Any]) -> None:
             f"final_selection_rule.definition_name must be "
             f"{FINAL_SELECTION_NAME!r}, got {rule.get('definition_name')!r}",
         )
-    eligible = str(rule.get("eligible") or "")
-    if "H3-qualified" not in eligible:
+    eligible = rule.get("eligible")
+    if eligible != FINAL_SELECTION_ELIGIBLE_EXACT:
         _err(
             "V542_RUN_MATRIX",
-            "final_selection_rule.eligible must restrict the pool to "
-            f"H3-qualified candidates only, got {eligible!r}",
+            "final_selection_rule.eligible must be EXACTLY the frozen "
+            f"H3-qualified-only pool statement {FINAL_SELECTION_ELIGIBLE_EXACT!r} "
+            f"(gate-0 A2: token-preserving near-misses such as 'NOT "
+            f"H3-qualified; all candidates' are rejected), got {eligible!r}",
+        )
+    if rule.get("eligible_condition") != FINAL_SELECTION_ELIGIBLE_CONDITION:
+        _err(
+            "V542_RUN_MATRIX",
+            "final_selection_rule.eligible_condition must be exactly "
+            f"{FINAL_SELECTION_ELIGIBLE_CONDITION!r} (structured pool enum; "
+            f"gate-0 A2), got {rule.get('eligible_condition')!r}",
         )
     if tuple(rule.get("excluded") or ()) != FINAL_SELECTION_EXCLUDED:
         _err(
@@ -3043,21 +3427,36 @@ def _check_final_selection(cfg: Mapping[str, Any]) -> None:
             f"{list(FINAL_SELECTION_EXCLUDED)} (A0 baseline + diagnostic "
             f"variants never compete), got {rule.get('excluded')!r}",
         )
-    single = str(rule.get("single_candidate_rule") or "")
-    if "1" not in single or "Backbone" not in single:
+    single = rule.get("single_candidate_rule")
+    if single != FINAL_SELECTION_SINGLE_RULE_EXACT:
         _err(
             "V542_RUN_MATRIX",
-            "final_selection_rule.single_candidate_rule must state that exactly "
-            f"one H3-qualified candidate becomes Backbone*, got {single!r}",
+            "final_selection_rule.single_candidate_rule must be EXACTLY "
+            f"{FINAL_SELECTION_SINGLE_RULE_EXACT!r} (gate-0 A2: near-misses "
+            f"such as '1 个候选时不选 Backbone' are rejected), got {single!r}",
         )
-    none_rule = str(rule.get("no_candidate_rule") or "")
-    if "0" not in none_rule or "A0" not in none_rule or \
-            "no_backbone_winner" not in none_rule:
+    if rule.get("single_candidate_rule_id") != FINAL_SELECTION_SINGLE_RULE_ID:
         _err(
             "V542_RUN_MATRIX",
-            "final_selection_rule.no_candidate_rule must state that zero "
-            "H3-qualified candidates leave A0 in place with outcome "
-            f"no_backbone_winner, got {none_rule!r}",
+            "final_selection_rule.single_candidate_rule_id must be exactly "
+            f"{FINAL_SELECTION_SINGLE_RULE_ID!r} (structured branch enum; "
+            f"gate-0 A2), got {rule.get('single_candidate_rule_id')!r}",
+        )
+    none_rule = rule.get("no_candidate_rule")
+    if none_rule != FINAL_SELECTION_NO_CANDIDATE_RULE_EXACT:
+        _err(
+            "V542_RUN_MATRIX",
+            "final_selection_rule.no_candidate_rule must be EXACTLY "
+            f"{FINAL_SELECTION_NO_CANDIDATE_RULE_EXACT!r} (gate-0 A2: "
+            "near-misses such as '0 个候选则 A0 no_backbone_winner but "
+            f"rerun' are rejected), got {none_rule!r}",
+        )
+    if rule.get("no_candidate_rule_id") != FINAL_SELECTION_NO_CANDIDATE_RULE_ID:
+        _err(
+            "V542_RUN_MATRIX",
+            "final_selection_rule.no_candidate_rule_id must be exactly "
+            f"{FINAL_SELECTION_NO_CANDIDATE_RULE_ID!r} (structured branch "
+            f"enum; gate-0 A2), got {rule.get('no_candidate_rule_id')!r}",
         )
     if rule.get("dev_used") is not False:
         _err(
@@ -3111,15 +3510,17 @@ def _check_final_selection(cfg: Mapping[str, Any]) -> None:
             f"{A5C_ACTIVATION!r} (selected candidate only), got "
             f"{a5c.get('condition')!r}",
         )
-    # champion_rule must hand the final choice to this rule
+    # champion_rule must hand the final choice to this rule (exact
+    # structured reference since gate-0 A2 — no token checks remain).
     stats = ec.get("statistics") if isinstance(ec, Mapping) else None
-    champ = str(stats.get("champion_rule") or "") if isinstance(stats, Mapping) \
-        else ""
-    if FINAL_SELECTION_NAME not in champ:
+    champ = stats.get("champion_rule") if isinstance(stats, Mapping) else None
+    if not isinstance(champ, Mapping) or \
+            champ.get("selection_ref") != CHAMPION_SELECTION_REF:
         _err(
             "V542_RUN_MATRIX",
-            f"statistics.champion_rule must reference "
-            f"evaluation_contract.{FINAL_SELECTION_NAME}, got {champ!r}",
+            f"statistics.champion_rule.selection_ref must be exactly "
+            f"{CHAMPION_SELECTION_REF!r} (qualification is not selection), "
+            f"got {champ!r}",
         )
 
 
@@ -3232,11 +3633,11 @@ def _check_seed17_screen(cfg: Mapping[str, Any]) -> None:
     A0_S17/A0_S29/S43 completion dependencies are all machine-checked.
     fix-6 C6 adds point-effect thresholds, the reused parenthesized
     route logic, the A0x3 sanity-band freeze and the fewer-than-2 rule.
-    Correction (gate-1 C5): the H2 sign threshold inside
-    ``h2_no_breach`` is a TOKEN check (one ``<=0.01`` token suffices —
-    the dead guard supplies it, so a sign threshold of ``<=0.02`` slips
-    through); it is NOT an exact threshold assertion.  Exact enforcement
-    is open gate-0 advisory A2 (close before P3/WP6).
+    gate-0 A2 closure (2026-10-30): the ``h2_no_breach`` guard is frozen
+    EXACTLY (prose) plus a structured numeric threshold block — changing
+    the sign threshold to ``<=0.02`` (the old token check accepted it
+    because the dead guard supplied the ``<=0.01`` token) or drifting a
+    structured value is now a typed rejection.
     """
     ec = cfg.get("evaluation_contract")
     pred = ec.get("seed17_screen_pass_predicate") if isinstance(ec, Mapping) else None
@@ -3274,22 +3675,57 @@ def _check_seed17_screen(cfg: Mapping[str, Any]) -> None:
             "the matched V542_A0_S17 run to be complete with finite metrics, "
             f"got {matched!r}",
         )
-    h2 = str(pred.get("h2_no_breach") or "")
-    if "H2" not in h2 or "退化" not in h2:
+    # gate-0 A2 closure: the H2 prose is frozen EXACTLY (the direction
+    # word and all four guards ride in the frozen string) and the four
+    # guard thresholds additionally live in a structured numeric block
+    # asserted exactly against the frozen values / signed thresholds.
+    h2 = pred.get("h2_no_breach")
+    if h2 != H2_NO_BREACH_EXACT:
         _err(
             "V542_RUN_MATRIX",
-            "seed17_screen_pass_predicate.h2_no_breach must restate the H2 "
-            f"guards with the degradation (退化) direction word, got {h2!r}",
+            "seed17_screen_pass_predicate.h2_no_breach must be EXACTLY the "
+            f"frozen guard statement {H2_NO_BREACH_EXACT!r} (degradation "
+            "(退化) direction word + sign <=0.01 + dead <=0.01 + "
+            "fixed-coverage direction <=2% + RMSE/zero <=2%; gate-0 A2: "
+            f"token-preserving near-misses such as sign <=0.02 are "
+            f"rejected), got {h2!r}",
         )
-    # fix-6 C6: the four H2 guard thresholds are frozen numbers
-    for tok in ("<=2%", "<=0.01", "sign", "dead", "fixed-coverage direction"):
-        if tok not in h2:
+    h2t = pred.get("h2_no_breach_thresholds")
+    if not isinstance(h2t, Mapping):
+        _err(
+            "V542_MISSING_FIELD",
+            "seed17_screen_pass_predicate.h2_no_breach_thresholds must be "
+            "the frozen STRUCTURED numeric block "
+            f"{H2_NO_BREACH_THRESHOLDS} (gate-0 A2), got {h2t!r}",
+        )
+    for key, want in H2_NO_BREACH_THRESHOLDS.items():
+        got = h2t.get(key)
+        if got != want:
             _err(
                 "V542_RUN_MATRIX",
-                f"seed17_screen_pass_predicate.h2_no_breach must carry the "
-                f"frozen H2 guard token {tok!r} (degradation <=2%, sign "
-                f"<=0.01, dead <=0.01, direction <=2%), got {h2!r}",
+                "seed17_screen_pass_predicate.h2_no_breach_thresholds."
+                f"{key} must be exactly {want} (frozen H2 guard value; "
+                f"gate-0 A2), got {got!r}",
             )
+    # the structured block must mirror the signed threshold values
+    th = cfg.get("thresholds")
+    if isinstance(th, Mapping):
+        for h2_key, th_key, scale in (
+                ("sign_abs_drop_max", "sign_drop_abs_max", 1.0),
+                ("dead_abs_increase_max", "dead_fraction_increase_abs_max", 1.0),
+                ("rmse_zero_rel_degradation_max",
+                 "rmse_zero_regression_rel_max_pct", 100.0),
+                ("fixed_coverage_rel_degradation_max",
+                 "fixed_coverage_direction_regression_rel_max_pct", 100.0)):
+            th_val = th.get(th_key)
+            if th_val is not None and H2_NO_BREACH_THRESHOLDS[h2_key] != \
+                    th_val / scale:
+                _err(
+                    "V542_RUN_MATRIX",
+                    "seed17_screen_pass_predicate.h2_no_breach_thresholds."
+                    f"{h2_key} ({H2_NO_BREACH_THRESHOLDS[h2_key]}) must mirror "
+                    f"thresholds.{th_key} ({th_val!r})",
+                )
     run_status = str(pred.get("run_status") or "")
     if "done" not in run_status or "有限" not in run_status:
         _err(
@@ -3471,6 +3907,233 @@ def _check_identity_start(cfg: Mapping[str, Any]) -> None:
     # validate_config once the table is filled.
 
 
+def _check_governance_records(
+    cfg: Mapping[str, Any],
+    *,
+    formal: bool,
+    record_root: Optional[Path] = None,
+) -> List[str]:
+    """gate-0 A5 closure + gate-3 B2/C2 hardening: machine-checked records.
+
+    ``governance.records`` must mirror the frozen ``GOVERNANCE_RECORDS``
+    specs exactly (template path, instance path under the campaign plan
+    dir, required fields, SHA rule).  The two machine-checked instances
+    (A0 reuse decision + preregistration signoff) are then read and must
+    MIRROR the frozen config:
+
+    * ``config_path`` equals the campaign config path, ``campaign_id`` /
+      ``gv_campaign_id`` match, ``schema`` equals the template schema id;
+    * the A0 record keeps ``decision=retrain_a0_x3`` and its ``runs``
+      mirror ``a0_baseline.runs``;
+    * the signoff ``signed_by_roles`` is exactly the frozen role-key set
+      with the required bindings (statistics/evaluation =
+      ``main_session_owner``, ``oracle_reviewer`` =
+      ``oracle_gate0_reviewer``; an empty mapping is a typed rejection);
+    * the signoff thresholds block is byte-equal to the config
+      thresholds (canonical-JSON comparison — an int/float encoding
+      drift such as ``4`` vs ``4.0`` is a mismatch even though ``==``);
+    * ``record_sha256`` equals the canonical digest computed with the
+      identity module's ``canonical_bytes`` recipe (gate-3 C2; missing
+      digest = missing, wrong digest = mismatch).
+
+    Mode behaviour:
+
+    * prereg — a missing/unreadable/None/mismatched instance becomes a
+      ``t1_blocked`` reason (WP0 stays green: the instances are
+      intentionally absent until T1);
+    * ``--formal`` — the same problems are typed rejections:
+      ``V542_RECORD_MISSING`` (absent / unreadable / not a mapping /
+      required field missing-or-None) or ``V542_RECORD_MISMATCH``.
+
+    ``record_root`` is a test seam overriding the root used to resolve
+    instance paths (defaults to PROJECT_ROOT).
+    """
+    gov = cfg.get("governance")
+    records_block = gov.get("records") if isinstance(gov, Mapping) else None
+    if not isinstance(records_block, Mapping):
+        _err(
+            "V542_MISSING_FIELD",
+            "governance.records must declare the frozen record specs "
+            f"{sorted(GOVERNANCE_RECORDS)} (gate-0 A5: template/instance/"
+            "required_fields/sha_rule per record)",
+        )
+    missing = sorted(set(GOVERNANCE_RECORDS) - set(records_block))
+    if missing:
+        _err(
+            "V542_MISSING_FIELD",
+            f"governance.records is missing record(s) {missing} — every "
+            "t1_start_requires record requirement must be described",
+        )
+    extra = sorted(set(records_block) - set(GOVERNANCE_RECORDS))
+    if extra:
+        _err(
+            "V542_RECORD_MISMATCH",
+            f"governance.records carries unknown record(s) {extra}; the "
+            f"frozen record set is {sorted(GOVERNANCE_RECORDS)}",
+        )
+    for rid, spec in GOVERNANCE_RECORDS.items():
+        entry = records_block.get(rid)
+        if not isinstance(entry, Mapping):
+            _err(
+                "V542_MISSING_FIELD",
+                f"governance.records.{rid} must be a mapping with the "
+                "frozen template/instance/required_fields/sha_rule",
+            )
+        for field, want in (
+                ("template", spec["template"]),
+                ("instance", spec["instance"]),
+                ("sha_rule", spec["sha_rule"])):
+            if entry.get(field) != want:
+                _err(
+                    "V542_RECORD_MISMATCH",
+                    f"governance.records.{rid}.{field} must be exactly "
+                    f"{want!r} (frozen record spec; gate-0 A5), got "
+                    f"{entry.get(field)!r}",
+                )
+        if tuple(entry.get("required_fields") or ()) != tuple(
+                spec["required_fields"]):
+            _err(
+                "V542_RECORD_MISMATCH",
+                f"governance.records.{rid}.required_fields must be exactly "
+                f"{list(spec['required_fields'])}, got "
+                f"{list(entry.get('required_fields') or ())!r}",
+            )
+
+    root = Path(record_root) if record_root is not None else PROJECT_ROOT
+    th = cfg.get("thresholds")
+    problems_missing: List[str] = []
+    problems_mismatch: List[str] = []
+    for rid, spec in GOVERNANCE_RECORDS.items():
+        if not spec.get("machine_checked"):
+            continue  # runplan pin instance is verified at the WP5 freeze
+        rel = str(spec["instance"])
+        target = Path(rel)
+        if not target.is_absolute():
+            target = root / target
+        label = f"record {rid} ({rel})"
+        if not target.is_file():
+            problems_missing.append(
+                f"{label}: instance missing — required before formal T1 "
+                "(gate-0 A5; the template is NOT the record)")
+            continue
+        try:
+            payload = json.loads(
+                target.read_bytes().decode("utf-8"))
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+            problems_missing.append(f"{label}: instance unreadable ({exc})")
+            continue
+        if not isinstance(payload, Mapping):
+            problems_missing.append(
+                f"{label}: instance is not a JSON mapping "
+                f"({type(payload).__name__})")
+            continue
+        for field in spec["required_fields"]:
+            if payload.get(field) is None:
+                problems_missing.append(
+                    f"{label}: required field {field!r} missing/None")
+        for field, want in (spec.get("expected") or {}).items():
+            if payload.get(field) != want:
+                problems_mismatch.append(
+                    f"{label}: {field} must be {want!r} (frozen config "
+                    f"value; gate-0 A5 / gate-3 B2), got {payload.get(field)!r}")
+        for field, cfg_ref in (spec.get("mirrors") or {}).items():
+            node: Any = cfg
+            for part in str(cfg_ref).split("."):
+                node = node.get(part) if isinstance(node, Mapping) else None
+            got = payload.get(field)
+            if list(got or ()) != list(node or ()):
+                problems_mismatch.append(
+                    f"{label}: {field} must mirror config {cfg_ref} "
+                    f"{list(node or ())!r}, got {list(got or ())!r}")
+        if spec.get("signoff_roles"):
+            # gate-3 B2: exact frozen role-key set + required bindings —
+            # an empty mapping or a drifted role set is a typed rejection.
+            roles = payload.get("signed_by_roles")
+            if not isinstance(roles, Mapping):
+                problems_mismatch.append(
+                    f"{label}: signed_by_roles must be a mapping mirroring "
+                    f"the frozen role set {sorted(SIGNOFF_ROLE_KEYS)}, got "
+                    f"{roles!r}")
+            else:
+                got_keys = set(roles)
+                want_keys = set(SIGNOFF_ROLE_KEYS)
+                if got_keys != want_keys:
+                    missing_roles = sorted(want_keys - got_keys)
+                    extra_roles = sorted(got_keys - want_keys)
+                    problems_mismatch.append(
+                        f"{label}: signed_by_roles must be exactly the "
+                        f"frozen role set {sorted(SIGNOFF_ROLE_KEYS)} "
+                        f"(missing={missing_roles} extra={extra_roles}; an "
+                        "empty mapping is a rejection — gate-3 B2)")
+                for role, want_signer in SIGNOFF_REQUIRED_ROLES.items():
+                    if roles.get(role) != want_signer:
+                        problems_mismatch.append(
+                            f"{label}: signed_by_roles.{role} must be "
+                            f"{want_signer!r} (frozen binding; gate-3 B2), "
+                            f"got {roles.get(role)!r}")
+                for role in sorted(SIGNATORY_ROLES_NO_ORACLE & got_keys):
+                    value = str(roles.get(role) or "").lower()
+                    if "oracle" in value:
+                        problems_mismatch.append(
+                            f"{label}: signed_by_roles.{role} must never "
+                            f"attribute a signatory role to the Oracle "
+                            f"(got {roles.get(role)!r}; fix-6 C4 / gate-3 B2)")
+        tmirror = spec.get("threshold_mirror")
+        if tmirror:
+            signed = payload.get(tmirror)
+            if not isinstance(signed, Mapping):
+                problems_missing.append(
+                    f"{label}: {tmirror} must be a mapping mirroring the "
+                    "signed thresholds block")
+            else:
+                if signed.get("status") != "frozen":
+                    problems_mismatch.append(
+                        f"{label}: {tmirror}.status must be 'frozen', got "
+                        f"{signed.get('status')!r}")
+                if isinstance(th, Mapping):
+                    for key in FORMAL_THRESHOLDS:
+                        cfg_val = th.get(key)
+                        if cfg_val is not None and signed.get(key) != cfg_val:
+                            problems_mismatch.append(
+                                f"{label}: {tmirror}.{key} "
+                                f"({signed.get(key)!r}) != thresholds.{key} "
+                                f"({cfg_val!r}) — the signed record must "
+                                "mirror the config thresholds "
+                                "(gate-0 A5 mismatch)")
+                    # gate-3 B2: byte-equal (canonical JSON) — catches
+                    # int/float encoding drift the per-key == misses.
+                    cfg_block = {k: th.get(k) for k in FORMAL_THRESHOLDS}
+                    signed_block = {k: signed.get(k) for k in FORMAL_THRESHOLDS}
+                    if _canonical_json_bytes(
+                            cfg_block) != _canonical_json_bytes(signed_block):
+                        drifted = [
+                            k for k in FORMAL_THRESHOLDS
+                            if _canonical_json_bytes(th.get(k))
+                            != _canonical_json_bytes(signed.get(k))]
+                        problems_mismatch.append(
+                            f"{label}: {tmirror} thresholds block is not "
+                            "byte-equal to the config thresholds block "
+                            f"(canonical-JSON drift on {drifted}; gate-3 B2)")
+        # gate-3 C2: verify the declared record_sha256 against the
+        # canonical digest (identity canonical_bytes recipe).
+        declared_sha = payload.get(RECORD_SHA_FIELD)
+        if declared_sha is not None:
+            actual_sha = _record_canonical_sha256(payload)
+            if declared_sha != actual_sha:
+                problems_mismatch.append(
+                    f"{label}: {RECORD_SHA_FIELD} {declared_sha!r} != "
+                    f"canonical digest {actual_sha!r} (sha256 of "
+                    "canonical_bytes over the record payload excluding "
+                    f"{RECORD_SHA_FIELD}; gate-3 C2)")
+    if formal:
+        if problems_missing:
+            _err("V542_RECORD_MISSING", "; ".join(problems_missing))
+        if problems_mismatch:
+            _err("V542_RECORD_MISMATCH", "; ".join(problems_mismatch))
+        return []
+    return problems_missing + problems_mismatch
+
+
 def _check_thresholds(cfg: Mapping[str, Any], *, formal: bool) -> List[str]:
     th = cfg.get("thresholds")
     if not isinstance(th, Mapping):
@@ -3631,6 +4294,82 @@ def _check_cost_acceptance(cfg: Mapping[str, Any]) -> None:
         )
 
 
+def _check_budget_table(
+    cfg: Mapping[str, Any], *, formal: bool
+) -> List[str]:
+    """gate-3 C4/A1: ``budget.per_candidate_core_time`` formal-gate hardening.
+
+    The committed WP0 config keeps the table null (pre-profile); that
+    state is a ``t1_blocked`` reason at prereg and a typed
+    ``V542_BUDGET_NULL`` rejection at ``--formal``.  Once filled, the
+    table must be a mapping covering EVERY ``KNOWN_BACKBONES`` entry
+    (incl. the A1-C/A5-C full-dose diagnostics) with a finite POSITIVE
+    core time — a bare number or a mapping with a finite positive
+    ``core_seconds``.  Malformed tables (non-empty list/string/other
+    non-mapping, partial coverage, extra candidate keys, null/zero/
+    negative/NaN/bool values) are typed ``V542_BUDGET_INVALID``
+    rejections.  Numeric value checks run at ``--formal`` only — prereg
+    never requires numbers (the runner must never fill defaults, and the
+    pre-profile state must stay green modulo ``t1_blocked``).
+    """
+    budget = cfg.get("budget")
+    if not isinstance(budget, Mapping):
+        return []  # budget block absence is caught by required_fields
+    table = budget.get("per_candidate_core_time")
+    if table is None or table == {} or table == []:
+        if formal:
+            _err(
+                "V542_BUDGET_NULL",
+                "formal gate: budget.per_candidate_core_time is still null — "
+                "the same-env A0 profile must be measured and the budget signed "
+                "before any formal run (prereg mode reports this as t1_blocked; "
+                "the runner must never fill defaults)",
+            )
+        return [
+            "budget.per_candidate_core_time null: same-env 40+40 W0/W1 profile "
+            "signoff required before formal launch"
+        ]
+    if not isinstance(table, Mapping):
+        _err(
+            "V542_BUDGET_INVALID",
+            "budget.per_candidate_core_time must be a mapping covering every "
+            f"backbone {sorted(KNOWN_BACKBONES)} (a bare "
+            f"{type(table).__name__} is not a signed budget table)",
+        )
+    extra = sorted(set(table) - KNOWN_BACKBONES)
+    if extra:
+        _err(
+            "V542_BUDGET_INVALID",
+            "budget.per_candidate_core_time carries unknown candidate(s) "
+            f"{extra}; the frozen backbone set is {sorted(KNOWN_BACKBONES)}",
+        )
+    missing_budget = sorted(KNOWN_BACKBONES - set(table))
+    if missing_budget:
+        _err(
+            "V542_BUDGET_INVALID",
+            "budget.per_candidate_core_time must cover every backbone "
+            f"(incl. the A1-C/A5-C full-dose diagnostics); missing "
+            f"{missing_budget}",
+        )
+    if formal:
+        for cid in sorted(table):
+            entry = table[cid]
+            value = entry.get("core_seconds") if isinstance(
+                entry, Mapping) else entry
+            if isinstance(value, bool) or not isinstance(
+                    value, (int, float)) or not math.isfinite(value) \
+                    or value <= 0:
+                _err(
+                    "V542_BUDGET_INVALID",
+                    f"budget.per_candidate_core_time.{cid} must carry a "
+                    "finite POSITIVE core time (a number, or a mapping with a "
+                    f"finite positive core_seconds); got {entry!r} — zero, "
+                    "negative, NaN, inf, bool and null values are typed "
+                    "rejections (gate-3 C4/A1)",
+                )
+    return []
+
+
 # ---------------------------------------------------------------------------
 # public API
 # ---------------------------------------------------------------------------
@@ -3639,10 +4378,13 @@ def validate_config(
     *,
     formal: bool = False,
     check_gv: bool = True,
+    record_root: Optional[Path] = None,
 ) -> Dict[str, Any]:
     """Run every check; return a machine-readable report.
 
     Raises :class:`V542SchemaError` on the first typed rejection.
+    ``record_root`` is a test seam for ``_check_governance_records``
+    (defaults to PROJECT_ROOT when None).
     """
     checks: List[str] = []
 
@@ -3707,33 +4449,16 @@ def validate_config(
         t1_blocked.append(
             f"unsigned threshold(s) {null_thresholds} block the launch"
         )
-    budget = cfg.get("budget")
-    if isinstance(budget, Mapping):
-        table = budget.get("per_candidate_core_time")
-        if table is None:
-            if formal:
-                _err(
-                    "V542_BUDGET_NULL",
-                    "formal gate: budget.per_candidate_core_time is still null — "
-                    "the same-env A0 profile must be measured and the budget signed "
-                    "before any formal run (prereg mode reports this as t1_blocked; "
-                    "the runner must never fill defaults)",
-                )
-            t1_blocked.append(
-                "budget.per_candidate_core_time null: same-env 40+40 W0/W1 profile "
-                "signoff required before formal launch"
-            )
-        elif isinstance(table, Mapping):
-            # v1.1: the attribution diagnostics are full-dose runs and need
-            # their own budget entries before they can activate.
-            missing_budget = sorted(KNOWN_BACKBONES - set(table))
-            if missing_budget:
-                _err(
-                    "V542_BUDGET_NULL",
-                    "budget.per_candidate_core_time must cover every backbone "
-                    f"(incl. the A1-C/A5-C full-dose diagnostics); missing "
-                    f"{missing_budget}",
-                )
+    budget_blocked = _check_budget_table(cfg, formal=formal)
+    t1_blocked.extend(budget_blocked)
+
+    # gate-0 A5: the T1 record requirements are machine-checked governance
+    # records — prereg reports missing/drifted instances as t1_blocked
+    # reasons (WP0 stays green); --formal typed-rejects them.
+    record_blocked = _check_governance_records(
+        cfg, formal=formal, record_root=record_root)
+    checks.append("governance_records")
+    t1_blocked.extend(record_blocked)
 
     return {
         "ok": True,
@@ -3764,7 +4489,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "--formal",
         action="store_true",
         help="formal gate: require non-null signed thresholds AND a signed "
-        "budget table (V542_BUDGET_NULL typed rejection while null)",
+        "budget table (null => V542_BUDGET_NULL; malformed table => "
+        "V542_BUDGET_INVALID; gate-3 C4/A1) AND the machine-checked "
+        "governance record instances mirrored + record_sha256 verified "
+        "(V542_RECORD_MISSING / V542_RECORD_MISMATCH typed rejections; "
+        "gate-0 A5 + gate-3 B2/C2)",
     )
     parser.add_argument("--json", action="store_true", help="print report as JSON")
     parser.add_argument(

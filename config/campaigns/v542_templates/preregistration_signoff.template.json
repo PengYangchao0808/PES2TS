@@ -1,10 +1,12 @@
 {
   "schema": "pes2ts_v542_preregistration_signoff_v1",
-  "_template_note": "Template for outputs/pesn/v542_backbone_50k/plan/preregistration_signoff.json. Copy, fill *_sha256 fields at freeze time, keep thresholds byte-identical to config/campaigns/pes2ts_v542_backbone_50k.yaml thresholds block (all 28 signed keys, including bootstrap_seed_root/top2_max_runs/a5_supplement_max_runs/t3_max_runs). Any threshold change requires re-signoff + config/runplan/budget SHA refresh (ADR-0033 §6 rule 1). fix-5 2026-10-30 (C4): WP0 authoring complete; formal signoff pending owner re-affirm; reviewer (oracle_reviewer) is NOT a signatory; statistics/evaluation signoff belongs to main_session_owner, not the Oracle.",
+  "_template_note": "Template for outputs/pesn/v542_backbone_50k/plan/preregistration_signoff.json. Copy, fill *_sha256 fields at freeze time, keep thresholds byte-identical to config/campaigns/pes2ts_v542_backbone_50k.yaml thresholds block (all 28 signed keys, including bootstrap_seed_root/top2_max_runs/a5_supplement_max_runs/t3_max_runs). Any threshold change requires re-signoff + config/runplan/budget SHA refresh (ADR-0033 §6 rule 1). fix-5 2026-10-30 (C4): WP0 authoring complete; formal signoff pending owner re-affirm; reviewer (oracle_reviewer) is NOT a signatory; statistics/evaluation signoff belongs to main_session_owner, not the Oracle. gate-0 A5 2026-10-30 (P3 lane D): this template is the TEMPLATE of the t1_start_requires record requirement preregistration_signoff_record — the INSTANCE at outputs/pesn/v542_backbone_50k/plan/preregistration_signoff.json is machine-checked by the schema validator (prereg: t1_blocked reason; --formal: typed V542_RECORD_MISSING / V542_RECORD_MISMATCH on threshold drift). gate-3 B2/C2 2026-10-30 (P3 remediation lane R2): the validator now ALSO requires the instance to mirror the frozen config — config_path must equal config/campaigns/pes2ts_v542_backbone_50k.yaml, campaign_id/gv_campaign_id/schema must equal PES2TS_V542_BACKBONE_50K / V5.4.2 / pes2ts_v542_preregistration_signoff_v1, signed_by_roles must be EXACTLY the frozen role-key set (statistics_owner/evaluation_signoff = main_session_owner, oracle_reviewer = oracle_gate0_reviewer; an empty mapping is a typed rejection), the thresholds_signed_frozen block must be byte-equal to the config thresholds (canonical-JSON comparison), and the declared record_sha256 must equal sha256(canonical_bytes(instance payload without record_sha256)) via the identity module's ONE recipe (pes2ts_core.pesn.models.v542.identity.canonical_bytes); a missing digest is V542_RECORD_MISSING, a wrong digest is V542_RECORD_MISMATCH. The sibling runplan_pin_record is verified by the WP5 runner at the runplan freeze, NOT by this validator at WP0.",
   "campaign_id": "PES2TS_V542_BACKBONE_50K",
   "gv_campaign_id": "V5.4.2",
   "config_path": "config/campaigns/pes2ts_v542_backbone_50k.yaml",
   "config_sha256": null,
+  "record_sha256": null,
+  "record_sha256_note": "fill at freeze time: sha256 of canonical_bytes(instance JSON payload with record_sha256 removed) — compact sorted-key JSON, UTF-8, ensure_ascii=false (identity module recipe); validator verifies at --formal (gate-3 C2)",
   "schema_id": "pes2ts_v542_campaign_v1",
   "objective": "unified_move_process",
   "adr": ["ADR-0031", "ADR-0032", "ADR-0033"],
@@ -142,11 +144,34 @@
     "oracle_reviewer": "oracle_gate0_reviewer",
     "formal_launch_note": "WP0 authoring complete; formal signoff pending owner re-affirm (主会话 owner 在 WP1-WP4 证据就绪后签认 statistics/evaluation/parity/training/resource 并 re-affirm); reviewer (oracle_gate0_reviewer) is NOT signatory — Oracle 只做 review 不做签认; WP0 治理/统计语义作者工作已由 fix-5 记录完成"
   },
+  "t1_record_requirements": {
+    "_note": "gate-0 A5 (2026-10-30, P3 lane D) + gate-3 B2/C2 (P3 remediation lane R2): the three t1_start_requires record requirements; config governance.records is the frozen spec mirror (template/instance/required_fields/sha_rule = sha256_of_canonical_file_bytes over the identity canonical_bytes recipe). runplan_pin_record is verified by the WP5 runner at the runplan freeze (WP0 validator --formal never reads the pin instance); the other two records are validator-checked at --formal with config-mirror + record_sha256 verification.",
+    "runplan_pin_record": {
+      "template": "config/campaigns/v542_templates/runplan_pin.template.json",
+      "instance": "outputs/pesn/v542_backbone_50k/plan/runplan.pin.json",
+      "verified_by": "runner_at_runplan_pin (WP5 freeze; NOT the WP0 validator)"
+    },
+    "a0_reuse_decision_record": {
+      "template": "config/campaigns/v542_templates/a0_reuse_decision.template.json",
+      "instance": "outputs/pesn/v542_backbone_50k/plan/a0_reuse_decision.json",
+      "expected_decision": "retrain_a0_x3",
+      "config_mirror": "config_path/campaign_id/schema must mirror the frozen config; record_sha256 = canonical digest (gate-3 B2/C2)",
+      "verified_by": "schema_validator (prereg t1_blocked; --formal typed V542_RECORD_MISSING/V542_RECORD_MISMATCH)"
+    },
+    "preregistration_signoff_record": {
+      "template": "config/campaigns/v542_templates/preregistration_signoff.template.json",
+      "instance": "outputs/pesn/v542_backbone_50k/plan/preregistration_signoff.json",
+      "threshold_mirror": "thresholds_signed_frozen (28 signed keys byte-identical to config thresholds; canonical-JSON byte equality enforced)",
+      "config_mirror": "config_path/campaign_id/gv_campaign_id/schema + frozen signed_by_roles set must mirror the frozen config; record_sha256 = canonical digest (gate-3 B2/C2)",
+      "verified_by": "schema_validator (prereg t1_blocked; --formal typed V542_RECORD_MISSING/V542_RECORD_MISMATCH)"
+    }
+  },
   "t1_config_ready_requires": [
     "all 28 thresholds non-null (validator --formal passes thresholds)",
     "budget.per_candidate_core_time signed after same-env V542 A0 40+40 profile (null => --formal typed block V542_BUDGET_NULL)",
     "6-checkpoint (ALL required, tiered V541 E0 final + V53MP C 20k/15,400) forward/real-batch/GPU-floor/evaluator parity evidence",
-    "A0 reuse decision INSTANCE pinned at outputs/pesn/v542_backbone_50k/plan/a0_reuse_decision.json (retrain_a0_x3); template is NOT sufficient",
+    "A0 reuse decision INSTANCE pinned at outputs/pesn/v542_backbone_50k/plan/a0_reuse_decision.json (retrain_a0_x3); template is NOT sufficient; machine-checked by the validator (gate-0 A5)",
+    "preregistration signoff INSTANCE pinned at outputs/pesn/v542_backbone_50k/plan/preregistration_signoff.json (thresholds mirror config); template is NOT sufficient; machine-checked by the validator (gate-0 A5)",
     "T0 A0x3 formal complete + A0 sanity band PASS registered as V542-A0-sanity-band BEFORE any T1 A1-A4 formal (breach strictly blocks T1; no exception signing)",
     "smoke 200-update single-lane pass + profile + diagnostic gate",
     "formal-run code/common-protocol/runplan/source-manifest SHA frozen (code_commit optional)"

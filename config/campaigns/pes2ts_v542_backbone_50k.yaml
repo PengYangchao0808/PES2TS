@@ -56,13 +56,39 @@ governance:
     implementation_authorized: true # 用户 2026-10-29: 「请完成5.4.2阶段代码修改与训练工作」
     formal_training_authorized: true # gated formal training; 实际 run 仍须 t1_start_requires 全过
     thresholds_signed_frozen: true # Oracle 建议阈值按用户 2026-10-29 指令签认为 frozen (见 thresholds.signoff)
-    t1_start_requires: [V542-H0-legality, V542-H1-resource, V542-WP1-interface-parity, V542-WP2-candidates, V542-smoke-200, V542-profile, V542-diagnostic-2000, V542-A0-sanity-band, V542-budget-signoff, runplan_pin_record]
-    t1_start_requires_note: 前 9 项为 registry (g_v_map.yaml) canonical gate IDs (含 V542-A0-sanity-band = T0 A0×3 formal 完成且 sanity band 通过, 是 T1 硬前置, fix-5 C5); runplan_pin_record 是 record requirement (outputs/pesn/v542_backbone_50k/plan/runpin 实例必须存在且 SHA 冻结), 不是 gate alias
+    t1_start_requires: [V542-H0-legality, V542-H1-resource, V542-WP1-interface-parity, V542-WP2-candidates, V542-smoke-200, V542-profile, V542-diagnostic-2000, V542-A0-sanity-band, V542-budget-signoff, runplan_pin_record, a0_reuse_decision_record, preregistration_signoff_record]
+    t1_start_requires_note: 前 9 项为 registry (g_v_map.yaml) canonical gate IDs (含 V542-A0-sanity-band = T0 A0×3 formal 完成且 sanity band 通过, 是 T1 硬前置, fix-5 C5); 后 3 项为 record requirements (outputs/pesn/v542_backbone_50k/plan 下实例必须存在且按 governance.records 冻结的 SHA 规则记录), 不是 gate alias (gate-0 A5 — a0_reuse_decision_record + preregistration_signoff_record 由 validator 机器核验, prereg 缺失记 t1_blocked, --formal 缺失/不可读/内容漂移 (含 config_path/角色集/schema/阈值 byte-equality/record_sha256 漂移, gate-3 B2/C2) typed-reject V542_RECORD_MISSING/V542_RECORD_MISMATCH; runplan_pin_record 由 WP5 runner 在 runplan 冻结时核验, WP0 validator 不读实例)
     confirm_authorized: false # confirm 永封存 (schema 强制 typed rejection)
     sealed_authorized: false
     new_qc_calls: 0 # 本阶段 0 QC 调用
     single_lane: true # 单路执行
     swap_allowed: false # swap=0
+  records: # gate-0 A5 + gate-3 B2/C2: T1 record requirements 冻结 spec (validator _check_governance_records 逐项镜像校验); SHA 规则 = canonical bytes (identity canonical_bytes 配方: compact sorted-key JSON, UTF-8) 的 sha256, 实例携带 record_sha256 并被 validator 核验; runplan_pin_record 由 WP5 runner 在 runplan 冻结时核验 (WP0 validator 不读实例), 两条 governance records 由 validator 在 --formal 机器核验
+    runplan_pin_record:
+      template: config/campaigns/v542_templates/runplan_pin.template.json
+      instance: outputs/pesn/v542_backbone_50k/plan/runplan.pin.json
+      required_fields: [campaign_id, config_path, schema_id, seeds, runplan_sha256, frozen_on, frozen_by]
+      sha_rule: sha256_of_canonical_file_bytes
+      verified_by: runner_at_runplan_pin (WP5 freeze; validator 记录 requirement, 实例由 runner 在 runplan 冻结时生成并核验 — WP0 --formal 门不读 pin 实例)
+    a0_reuse_decision_record:
+      template: config/campaigns/v542_templates/a0_reuse_decision.template.json
+      instance: outputs/pesn/v542_backbone_50k/plan/a0_reuse_decision.json # = a0_baseline.decision_record_instance; WP0 缺席为设计内, T1 前必须生成
+      required_fields: [campaign_id, config_path, schema, decision, signed_by, runs, record_sha256]
+      sha_rule: sha256_of_canonical_file_bytes
+      expected: {decision: retrain_a0_x3, campaign_id: PES2TS_V542_BACKBONE_50K, config_path: config/campaigns/pes2ts_v542_backbone_50k.yaml, schema: pes2ts_v542_a0_reuse_decision_v1} # 实例必须镜像冻结 config: decision 漂移/config_path 漂移/schema 漂移 = V542_RECORD_MISMATCH (gate-3 B2)
+      mirrors: {runs: a0_baseline.runs}
+      record_sha256_note: 实例声明 record_sha256 = sha256(canonical_bytes(实例去掉 record_sha256 字段)) — 缺失 = V542_RECORD_MISMATCH 的 missing 分支 (V542_RECORD_MISSING), 错误 digest = V542_RECORD_MISMATCH (gate-3 C2)
+      verified_by: schema_validator (prereg=t1_blocked reason; --formal=typed V542_RECORD_MISSING/V542_RECORD_MISMATCH)
+    preregistration_signoff_record:
+      template: config/campaigns/v542_templates/preregistration_signoff.template.json
+      instance: outputs/pesn/v542_backbone_50k/plan/preregistration_signoff.json
+      required_fields: [campaign_id, config_path, schema, schema_id, gv_campaign_id, thresholds_signed_frozen, signed_by_roles, record_sha256]
+      sha_rule: sha256_of_canonical_file_bytes
+      expected: {campaign_id: PES2TS_V542_BACKBONE_50K, schema_id: pes2ts_v542_campaign_v1, gv_campaign_id: V5.4.2, config_path: config/campaigns/pes2ts_v542_backbone_50k.yaml, schema: pes2ts_v542_preregistration_signoff_v1} # 实例必须镜像冻结 config (gate-3 B2)
+      threshold_mirror: thresholds_signed_frozen # 28 签认阈值必须逐值镜像 config thresholds 且 canonical bytes 相等 (int/float 编码漂移也拒绝), 漂移 = V542_RECORD_MISMATCH
+      signoff_roles: true # signed_by_roles 必须是冻结角色键集 (statistics_owner/evaluation_signoff=main_session_owner, oracle_reviewer=oracle_gate0_reviewer; 空 mapping = V542_RECORD_MISMATCH — gate-3 B2)
+      record_sha256_note: 同 a0_reuse_decision_record — 缺失 = V542_RECORD_MISSING, 错误 digest = V542_RECORD_MISMATCH (gate-3 C2)
+      verified_by: schema_validator (prereg=t1_blocked reason; --formal=typed V542_RECORD_MISSING/V542_RECORD_MISMATCH)
 
 data_contract:
   pool: 50K curve pool # V5.3-MP S4 冻结池只读复用; 本阶段不重建数据、不新增 QC
@@ -163,7 +189,7 @@ backbone_contract:
   a0_migration:
     backbone_class: A0LegacyBackbone
     subclass_of: StarEGNNV3
-    core_loop: super().forward verbatim # 不改 legacy 源文件
+    core_loop: super().forward_verbatim # 不改 legacy 源文件; gate-0 A2: exact enum (substring 近邻如 "not verbatim" 拒绝)
     capture: message_mlp[-1] forward hook, exactly once, finally-removed, no detach
     w_v_sharing: backbone.w_v is move_decoder.w_v (same tensor object)
     state_dict_aliases: [backbone.w_v, move_decoder.w_v]
@@ -492,8 +518,15 @@ evaluation_contract:
       move_rmse_exit: {alpha: 0.025, correction: holm, scope: eligible_candidate_set_within_exit}
       process_route: {alpha: 0.025, correction: holm, scope: 2_endpoints_x_eligible_candidates, family: single_process_family}
       bonferroni_note: MOVE 两出口各 alpha=0.025 即出口间 Bonferroni; 各出口内对 eligible candidate 集做 Holm
-    h3_eligible_candidates: 完成三 seed 且每 seed H2 无 breach 的 winner-eligible candidate (A5 仅当三 seed 完成); diagnostic variants (A1-C/A5-C/A0) 不入
-    champion_rule: 冠军须 adjusted p < 对应 alpha 且效应/非劣条件成立 (qualification); 多个 H3-qualified 候选间的最终选择按 evaluation_contract.final_selection_rule 冻结字典序执行; 报告须同时给未校正与校正后结果
+    h3_eligible_candidates: # gate-0 A2: 结构化 (取代自由字符串; 旧 token-preserving 近邻形式拒绝)
+      criteria: [completed_three_seeds, per_seed_h2_no_breach, winner_eligible] # 三条件 AND; 候选必须完成三 seed 且每 seed H2 无 breach 且 winner-eligible
+      a5_rule: a5_only_when_three_seeds_complete # A5 仅当三 seed 完成才进入 eligible 集
+      excluded: [A0_matched_baseline, diagnostic_variants_A1-C_A5-C] # A0 与 diagnostic variants 永不入
+      note: 完成三 seed 且每 seed H2 无 breach 的 winner-eligible candidate (A5 仅当三 seed 完成); diagnostic variants (A1-C/A5-C/A0) 不入
+    champion_rule: # gate-0 A2: 结构化 (取代 token 检查的散文; 资格 ≠ 选择)
+      requires: holm_adjusted_p_below_alpha_and_effect_non_inferiority_conditions # 冠军资格 = adjusted p < 对应 alpha 且效应/非劣条件成立
+      selection_ref: evaluation_contract.final_selection_rule # 最终选择按冻结 final_selection_rule 执行 (qualification is not selection)
+      report: uncorrected_and_holm_adjusted # 报告须同时给未校正与 Holm 校正后结果
     seed_aggregation_note: 见 seed_aggregation; 本块冻结统计合同 (statistics_contract_sha256 进 run identity); final_selection_rule 完整 block 一并纳入 statistics/final-selection SHA 与 run identity
   route_logic: # fix-5 C2: 结构化显式括号逻辑 (取代任何「或」后条件悬空的散文)
     note: H3 判定与 seed17_screen_pass 显式复用同一括号逻辑; 非劣条件只约束所在支, 不得只作用于后一半
@@ -510,12 +543,15 @@ evaluation_contract:
       auprc_non_inferior: endpoint_auprc 下降 <=0.01
       q_non_inferior: q_corr 下降 <=0.02
     seed17_screen_reuses_same_parenthesized_logic: true
-  final_selection_rule: # fix-5 C1: 最终 Backbone* 选择规则 (WP0 冻结; 不用 dev)
+  final_selection_rule: # fix-5 C1: 最终 Backbone* 选择规则 (WP0 冻结; 不用 dev); gate-0 A2: 结构化字段 + prose 精确冻结
     definition_name: final_selection_rule
     eligible: H3-qualified 候选 only (完成三 seed 且每 seed H2 无 breach 且 adjusted p < 对应 alpha 且效应/非劣条件成立)
+    eligible_condition: H3_QUALIFIED_ONLY # 结构化资格枚举 (机器字段; token 近邻如 "NOT H3-qualified; all candidates" 拒绝)
     excluded: [A0_matched_baseline, diagnostic_variants_A1-C_A5-C] # A0/diagnostic 不参加选择; 无 H3-qualified 候选则 A0 留任
     single_candidate_rule: 恰 1 个 H3-qualified 候选则该候选即 Backbone*
+    single_candidate_rule_id: one_h3_qualified_candidate_is_backbone # 结构化分支枚举
     no_candidate_rule: 0 个 H3-qualified 候选则 A0 留任 (no_backbone_winner, §12 负结果写法)
+    no_candidate_rule_id: zero_h3_qualified_candidates_a0_retained_no_backbone_winner # 结构化分支枚举
     dev_used: false # 不使用 dev; dev 仅最终冻结后评估一次, 永不参与选择
     report_all_qualified: true # 报告须列出全部 H3-qualified 候选
     tie_break_order: # 冻结字典序 (多候选时依次判定, 命中即停)
@@ -546,6 +582,11 @@ evaluation_contract:
     hard_gates_all_pass: [H0_legality, H1_resource, diagnostic_gate, cost_gate] # cost_gate = core_time_ratio <= 2.0
     matched_a0_dependency: matched A0_S17 已完成 (V542_A0_S17 done 且指标有限)
     h2_no_breach: seed17 H2 全部 guard 无 breach (RMSE/zero 相对 R3 与 matched A0 退化 <=2%; sign 下降 <=0.01; dead 增加 <=0.01; fixed-coverage direction 退化 <=2%)
+    h2_no_breach_thresholds: # gate-0 A2: 结构化数值 (exact-match; prose 改 sign<=0.02 等近邻一律拒绝; 数值镜像 thresholds 块)
+      sign_abs_drop_max: 0.01 # = thresholds.sign_drop_abs_max
+      dead_abs_increase_max: 0.01 # = thresholds.dead_fraction_increase_abs_max
+      rmse_zero_rel_degradation_max: 0.02 # = thresholds.rmse_zero_regression_rel_max_pct / 100
+      fixed_coverage_rel_degradation_max: 0.02 # = thresholds.fixed_coverage_direction_regression_rel_max_pct / 100
     point_effect_requirement:
       rule: 至少一路 point effect 达标 (seed17 point estimate, 非三 seed bootstrap); 显式复用 evaluation_contract.route_logic 的同一括号逻辑
       process_route: "(auprc_pass AND q_non_inferior) OR (q_pass AND auprc_non_inferior); auprc_pass = delta_auprc >= 0.02; q_pass = delta_q >= 0.03; auprc_non_inferior = AUPRC 下降 <=0.01; q_non_inferior = q 下降 <=0.02"
@@ -642,7 +683,7 @@ budget:
   oom_kill_max: 0
   host_limit_gib: 12
   memory_high_gib: 10
-  per_candidate_core_time: null # WP0: profile 前保持 null; --formal typed-block V542_BUDGET_NULL, prereg 模式记 t1_blocked
+  per_candidate_core_time: null # WP0: profile 前保持 null; --formal typed-block V542_BUDGET_NULL, prereg 模式记 t1_blocked; 填充后必须是覆盖全部 8 backbone 的 mapping 且每项为有限正数 (list/string/部分键/多余键/零/负/NaN/bool => --formal typed-block V542_BUDGET_INVALID — gate-3 C4/A1)
   per_candidate_status: pending_wp3_profiling
   fixed_dose_note: 正式训练固定 37,900 updates; fixed-GPU-time 只作另报
   on_breach: [resource_failure, budget_censored]

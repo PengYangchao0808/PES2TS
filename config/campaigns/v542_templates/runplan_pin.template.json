@@ -1,6 +1,6 @@
 {
   "schema": "pes2ts_v542_runplan_pin_v1",
-  "_template_note": "Template for outputs/pesn/v542_backbone_50k/plan/runplan.pin.json (plan §9 / ADR-0033). runplan.jsonl lists concrete runs; this pin freezes the preregistered run classes so diagnostic/attribution runs can never enter the main winner selection and A5/A1-C/A5-C stay conditional. run_ids must match config/campaigns/pes2ts_v542_backbone_50k.yaml run_matrix exactly. T3 is split: top2 (A1-A4 only, max 4 runs) + a5_supplement (A5 only, max 2 runs, parent gate a5_full_dose_complete_and_seed17_screen_pass).",
+  "_template_note": "Template for outputs/pesn/v542_backbone_50k/plan/runplan.pin.json (plan §9 / ADR-0033). runplan.jsonl lists concrete runs; this pin freezes the preregistered run classes so diagnostic/attribution runs can never enter the main winner selection and A5/A1-C/A5-C stay conditional. run_ids must match config/campaigns/pes2ts_v542_backbone_50k.yaml run_matrix exactly. T3 is split: top2 (A1-A4 only, max 4 runs) + a5_supplement (A5 only, max 2 runs, parent gate a5_full_dose_complete_and_seed17_screen_pass). gate-0 A5 2026-10-30 (P3 lane D): this pin is the t1_start_requires record requirement runplan_pin_record (instance verified by the runner at the WP5 runplan freeze; record SHA = sha256 of canonical file bytes). gate-3 B2/C2 2026-10-30 (P3 remediation lane R2) clarification: runplan_pin_record is verified by the WP5 RUNNER at the runplan freeze — the WP0 schema validator --formal gate records the requirement only and NEVER reads the pin instance; only a0_reuse_decision_record and preregistration_signoff_record are validator-checked at --formal (config mirror + record_sha256 canonical digest).",
   "campaign_id": "PES2TS_V542_BACKBONE_50K",
   "gv_campaign_id": "V5.4.2",
   "config_path": "config/campaigns/pes2ts_v542_backbone_50k.yaml",
@@ -79,9 +79,12 @@
   "final_selection_rule": {
     "definition_name": "final_selection_rule",
     "eligible": "H3-qualified candidates only (three seeds complete, per-seed H2 clean, adjusted p < corresponding alpha with effect/non-inferiority conditions)",
+    "eligible_condition": "H3_QUALIFIED_ONLY",
     "excluded": ["A0_matched_baseline", "diagnostic_variants_A1-C_A5-C"],
     "no_candidate_rule": "0 H3-qualified candidates => A0 retained (no_backbone_winner)",
+    "no_candidate_rule_id": "zero_h3_qualified_candidates_a0_retained_no_backbone_winner",
     "single_candidate_rule": "exactly 1 H3-qualified candidate => that candidate is Backbone*",
+    "single_candidate_rule_id": "one_h3_qualified_candidate_is_backbone",
     "dev_used": false,
     "report_all_qualified": true,
     "tie_break_order": [

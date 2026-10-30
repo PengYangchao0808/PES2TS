@@ -47,10 +47,11 @@ Strict-load audit in the certificate (gate-1 C1)
 ================================================
 Per asset the report persists the FULL ``load_a0_strict`` audit record:
 ``source_path`` / ``source_sha256`` (the actual verified digest),
-``mapping_table_sha256`` (clearly-labelled ``LOCAL_PLACEHOLDER:`` LOCAL
-digest — the canonical SHA recipe is still advisory A3), ``n_source_keys``
-(43) / ``n_mapped_targets`` (45), ``dual_write_aliases``, ``target_key_set``,
-``torch_equal_verified`` (count) and empty
+``mapping_table_sha256`` (the CANONICAL digest — gate-0 advisory A3
+closed: same frozen recipe as every V5.4.2 identity field, see
+``pes2ts_core.pesn.models.v542.identity.canonical_sha256``),
+``n_source_keys`` (43) / ``n_mapped_targets`` (45), ``dual_write_aliases``,
+``target_key_set``, ``torch_equal_verified`` (count) and empty
 ``missing``/``unexpected``/``shape_mismatch``/``dtype_mismatch``.  The
 report schema is ``pes2ts_v542_a0_parity_report_v1`` — an EVIDENCE
 superset of the certificate template ``pes2ts_v542_parity_certificate_v1``
@@ -1129,8 +1130,8 @@ def _asset_load_audit_record(asset: Mapping[str, Any], path: Path,
 
     Carries EVERY field the certificate template's ``load_audit.record``
     requires — ``source_sha256`` (the ACTUAL verified file digest),
-    ``mapping_table_sha256`` (the clearly-labelled ``LOCAL_PLACEHOLDER:``
-    LOCAL digest; the canonical SHA recipe is still advisory A3),
+    ``mapping_table_sha256`` (the CANONICAL digest; gate-0 advisory A3
+    closed — same frozen recipe as every V5.4.2 identity field),
     ``target_key_set`` (the 45 mapped target keys), ``audit_json_path``
     (null: the audit is embedded in THIS report — the report path is the
     audit path; exact mapping declared in the report-level
@@ -1330,8 +1331,10 @@ def run_parity(cfg: Mapping[str, Any], assets: Sequence[Mapping[str, Any]],
                                   "(actual verified file digest)"),
                 "mapping_table_sha256": ("entries[].load_audit."
                                          "mapping_table_sha256 "
-                                         "(LOCAL_PLACEHOLDER: local digest; "
-                                         "canonical recipe is advisory A3)"),
+                                         "(canonical SHA-256 of the "
+                                         "mapping table via the frozen "
+                                         "V5.4.2 identity recipe; gate-0 "
+                                         "advisory A3 closed)"),
                 "target_key_set": ("entries[].load_audit.target_key_set "
                                    "(45 mapped target keys)"),
                 "audit_json_path": ("entries[].load_audit."
