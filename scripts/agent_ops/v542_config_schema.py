@@ -8,7 +8,8 @@ module only reads the V542 yaml plus the frozen G–V registry and the
 forward-view whitelist contract.
 
 Frozen v1.1 contract highlights (Oracle gate-0 remediation, 2026-10-30),
-extended by fix-5 (C1–C5/C7) and fix-6 (C6 machine checks, 2026-10-30):
+extended by fix-5 (C1–C5/C7), fix-6 (C6 machine checks, 2026-10-30) and
+the gate-2 Ruling 2 W_g/GRU-bias recording (2026-10-30):
 
 * **exact 26-run matrix** — A0×3 matched baseline, A1–A4 seed17×4, A5
   seed17 conditional full-dose, top-2 preregistration A1–A4 × {29,43} = 8
@@ -58,6 +59,21 @@ extended by fix-5 (C1–C5/C7) and fix-6 (C6 machine checks, 2026-10-30):
   as an alias equal to ``run_updates`` (single run-dose meaning — never
   the checkpoint update); smoke and non-pinned checkpoints forbidden;
   GPU 1e-6/1e-5 hard caps, floor>cap ⇒ inconclusive, no relaxation.
+* **W_g / GRUCell bias recorded per candidate (gate-2 Ruling 2;
+  2026-10-30)** — ``w_g_bias`` must be exactly ``true`` for A2/A4 (the
+  biased ``nn.Linear(5, 48)`` graph-conditioning injection = 288 params)
+  and ``false`` for A5/A5-C (``bias=False`` = 240 params per cell);
+  ``gru_cell_bias`` records the per-cell GRUCell bias in cell order — A5
+  ``[true]`` (the single biased ``GRUCell(48, 48)`` = 14,112) and A5-C
+  ``[true, false]`` (cell 0 = the A5 recipe; cell 1
+  ``GRUCell(48, 48, bias=False)`` = 13,824).  These choices reproduce the
+  frozen preregistered totals EXACTLY (A2 54,896 / A4 55,840 / A5 31,584
+  / A5-C 53,712 — unchanged invariants); ``W_g`` is zero-initialised so
+  the variants are identical at warm start.  Missing fields ⇒
+  ``V542_MISSING_FIELD``; value drift (including token-preserving
+  string/int near-misses such as ``"true"``/``1``) ⇒
+  ``V542_PARAM_BUDGET``; candidates WITHOUT a ``W_g`` injection or GRU
+  cells (A0/A1/A1-C/A3) must not carry the fields at all.
 
 Typed rejections (each carries a stable ``code``; 19 codes — the
 authoritative count for docs/registry wording):
@@ -73,7 +89,7 @@ code                          rejection
 ``V542_BACKBONE_UNKNOWN``     backbone id outside the frozen A0–A5 (+A1-C/A5-C) registry
 ``V542_FORWARD_KEY``          forward-view key outside the contract whitelist
 ``V542_INTERFACE``            BackboneOutput/Decoder/PROCESS interface contract broken
-``V542_PARAM_BUDGET``         parameter invariants broken (A0 55392/57619, 49, 2178, <=70k)
+``V542_PARAM_BUDGET``         parameter invariants broken (A0 55392/57619, 49, 2178, <=70k) or W_g/GRU-bias record drift (gate-2 Ruling 2)
 ``V542_INIT_SOURCE``          warm-start source not the frozen R3 checkpoint / policy drift
 ``V542_A0_REUSE``             a0_baseline.decision != retrain_a0_x3 (or shadow-run required)
 ``V542_CONFIRM``              confirm/sealed/QC authorization not false/0
@@ -149,6 +165,7 @@ __all__ = [
     "A5_SUPPLEMENT_MAX_RUNS",
     "A5_SUPPLEMENT_PARENT_GATE",
     "BACKBONE_ACTIVE_MAX",
+    "BIAS_FIELD_CANDIDATES",
     "BOOTSTRAP_SEED_ROOT",
     "CAMPAIGN_ID",
     "CI_METHOD",
@@ -167,6 +184,7 @@ __all__ = [
     "FORMAL_THRESHOLDS",
     "GPU_ATOL",
     "GPU_RTOL",
+    "GRU_CELL_BIAS",
     "GV_CAMPAIGN_ID",
     "IDENTITY_REQUIRED_FIELDS",
     "IMPROVEMENT_DIRECTIONS",
@@ -195,6 +213,7 @@ __all__ = [
     "TOP2_MAX_RUNS",
     "TYPED_REJECTIONS",
     "V542SchemaError",
+    "W_G_BIAS",
     "load_config",
     "main",
     "validate_config",
@@ -256,6 +275,28 @@ KNOWN_BACKBONES = frozenset(BACKBONE_REGISTRY)
 WINNER_BACKBONES = frozenset({"A1", "A2", "A3", "A4", "A5"})
 #: Diagnostic-only backbones may never be winner-eligible nor in T1/T3.
 DIAGNOSTIC_BACKBONES = frozenset({"A1-C", "A5-C"})
+
+# ---------------------------------------------------------------------------
+# gate-2 Ruling 2 (2026-10-30): per-candidate W_g / GRUCell bias freeze.
+# A2/A4 inject graph conditioning through a BIASED nn.Linear(5, 48)
+# (288 params); A5/A5-C use nn.Linear(5, 48, bias=False) (240 params per
+# cell).  In the same exact-total arithmetic A5's single GRUCell(48, 48)
+# is biased (14,112 params) and A5-C's SECOND GRUCell is bias-free
+# (13,824; cell 0 keeps the A5 recipe).  These choices reproduce the
+# frozen preregistered totals EXACTLY (A2 54,896 / A4 55,840 / A5 31,584
+# / A5-C 53,712 — never padded/shrunk); W_g is zero-initialised, so at
+# warm start both variants are identical and the difference is a small
+# per-candidate capacity choice (48 params/cell), recorded here so it can
+# never drift silently.  Candidates without a W_g injection (A0/A1/A1-C/
+# A3) or without GRU cells must not carry the fields.
+# ---------------------------------------------------------------------------
+W_G_BIAS: Dict[str, bool] = {"A2": True, "A4": True, "A5": False, "A5-C": False}
+GRU_CELL_BIAS: Dict[str, Tuple[bool, ...]] = {
+    "A5": (True,),
+    "A5-C": (True, False),
+}
+#: Every candidate that must record exactly one of the two bias fields.
+BIAS_FIELD_CANDIDATES = frozenset(W_G_BIAS)
 
 #: Signed thresholds that must be non-null before formal launch (28 keys:
 #: the original 24 + bootstrap_seed_root/top2_max_runs/a5_supplement_max_runs/
@@ -881,6 +922,72 @@ def _check_backbone_registry(cfg: Mapping[str, Any]) -> None:
                     "V542_BACKBONE_UNKNOWN",
                     f"candidates.{bid}.winner_eligible must be false "
                     "(attribution diagnostics never compete)",
+                )
+        # gate-2 Ruling 2 (2026-10-30): the per-candidate W_g / GRUCell
+        # bias record is part of the frozen parameter arithmetic (288 vs
+        # 240 per W_g cell; 14,112 vs 13,824 per GRUCell).  The fields
+        # must state the code's truth with EXACT booleans — missing
+        # fields, value drift and token-preserving near-misses ("true",
+        # 1, ...) are all typed rejections; candidates without a W_g
+        # injection or GRU cells may not carry the fields at all.
+        if bid in W_G_BIAS:
+            if "w_g_bias" not in spec:
+                _err(
+                    "V542_MISSING_FIELD",
+                    f"candidates.{bid}.w_g_bias missing (gate-2 Ruling 2: "
+                    "the per-candidate W_g bias choice must be recorded "
+                    f"explicitly; expected {W_G_BIAS[bid]})",
+                )
+            exp_w_g = W_G_BIAS[bid]
+            got_w_g = spec.get("w_g_bias")
+            if got_w_g is not exp_w_g:
+                _err(
+                    "V542_PARAM_BUDGET",
+                    f"candidates.{bid}.w_g_bias must be exactly the frozen "
+                    f"boolean {exp_w_g} (biased nn.Linear(5,48)=288 params "
+                    "for A2/A4; nn.Linear(5,48,bias=False)=240 params per "
+                    "cell for A5/A5-C; gate-2 Ruling 2), got "
+                    f"{got_w_g!r} ({type(got_w_g).__name__}) — string/int "
+                    "near-misses such as 'true'/1 are rejected",
+                )
+        else:
+            if "w_g_bias" in spec:
+                _err(
+                    "V542_PARAM_BUDGET",
+                    f"candidates.{bid} has no W_g graph-conditioning "
+                    "injection — w_g_bias must not be recorded (gate-2 "
+                    "Ruling 2 covers A2/A4/A5/A5-C only)",
+                )
+        if bid in GRU_CELL_BIAS:
+            if "gru_cell_bias" not in spec:
+                _err(
+                    "V542_MISSING_FIELD",
+                    f"candidates.{bid}.gru_cell_bias missing (gate-2 "
+                    "Ruling 2: the per-GRUCell bias record must be "
+                    f"explicit and in cell order; expected "
+                    f"{list(GRU_CELL_BIAS[bid])})",
+                )
+            exp_cells = GRU_CELL_BIAS[bid]
+            got_cells = spec.get("gru_cell_bias")
+            if not isinstance(got_cells, Sequence) or isinstance(
+                    got_cells, (str, bytes)) \
+                    or len(got_cells) != len(exp_cells) \
+                    or any(g is not e for g, e in zip(got_cells, exp_cells)):
+                _err(
+                    "V542_PARAM_BUDGET",
+                    f"candidates.{bid}.gru_cell_bias must be exactly "
+                    f"{list(exp_cells)} in cell order (cell 0 = A5 recipe "
+                    "biased GRUCell(48,48)=14112; A5-C cell 1 = "
+                    "GRUCell(48,48,bias=False)=13824; gate-2 Ruling 2), "
+                    f"got {got_cells!r} — only exact booleans accepted",
+                )
+        else:
+            if "gru_cell_bias" in spec:
+                _err(
+                    "V542_PARAM_BUDGET",
+                    f"candidates.{bid} has no GRU cells — gru_cell_bias "
+                    "must not be recorded (gate-2 Ruling 2 covers A5/A5-C "
+                    "only)",
                 )
     widths = contract.get("candidate_common_widths")
     if not isinstance(widths, Mapping):

@@ -31,6 +31,11 @@ init-source, R3-init and parity-template contracts:
 * smoke 200 / profile 40+40 / diagnostic 400+1600 dose constants, live
   sampler-spec drift,
 * run-outcome six-word vocabulary vs. legacy ledger status machine separation,
+* gate-2 Ruling 2: per-candidate ``w_g_bias`` (A2/A4 biased
+  ``nn.Linear(5,48)``=288; A5/A5-C ``bias=False``=240/cell) and
+  ``gru_cell_bias`` (A5 ``[true]``=14,112; A5-C ``[true, false]`` second
+  cell bias-free=13,824) exact record, incl. token-preserving
+  near-miss rejections and the frozen totals unchanged,
 * the five WP0 templates parse and mirror the frozen config.
 """
 
@@ -348,6 +353,147 @@ def test_a1c_must_stay_diagnostic_only(base_cfg):
         v.validate_config(cfg)
     assert exc.value.code == "V542_BACKBONE_UNKNOWN"
     assert "diagnostic_only" in exc.value.detail
+
+
+# ---------------------------------------------------------------------------
+# gate-2 Ruling 2: per-candidate W_g / GRUCell bias record
+# ---------------------------------------------------------------------------
+def test_w_g_bias_frozen_values_in_repo_config(base_cfg):
+    """The repo config states the code's truth (read-only cross-check).
+
+    A2/A4: biased nn.Linear(5,48) = 288 params; A5/A5-C:
+    nn.Linear(5,48,bias=False) = 240 params per cell.  A5's single
+    GRUCell(48,48) is biased (14,112); A5-C keeps cell 0 biased and makes
+    the SECOND cell bias-free (13,824).  Frozen totals are unchanged.
+    """
+    reg = base_cfg["backbone_contract"]["candidates"]
+    assert reg["A2"]["w_g_bias"] is True
+    assert reg["A4"]["w_g_bias"] is True
+    assert reg["A5"]["w_g_bias"] is False
+    assert reg["A5-C"]["w_g_bias"] is False
+    assert reg["A5"]["gru_cell_bias"] == [True]
+    assert reg["A5-C"]["gru_cell_bias"] == [True, False]
+    # the frozen preregistered totals stay untouched
+    assert reg["A2"]["backbone_active"] == 54896
+    assert reg["A4"]["backbone_active"] == 55840
+    assert reg["A5"]["backbone_active"] == 31584
+    assert reg["A5-C"]["backbone_active"] == 53712
+    # no W_g / GRU cells on A0/A1/A1-C/A3 — no bias fields either
+    for bid in ("A0", "A1", "A1-C", "A3"):
+        assert "w_g_bias" not in reg[bid]
+        assert "gru_cell_bias" not in reg[bid]
+
+
+def test_w_g_bias_matches_frozen_constants(base_cfg):
+    reg = base_cfg["backbone_contract"]["candidates"]
+    for bid, expected in v.W_G_BIAS.items():
+        assert reg[bid]["w_g_bias"] is expected, bid
+    for bid, expected in v.GRU_CELL_BIAS.items():
+        cells = reg[bid]["gru_cell_bias"]
+        assert len(cells) == len(expected), bid
+        assert all(g is e for g, e in zip(cells, expected)), bid
+
+
+@pytest.mark.parametrize(
+    "bid,flipped",
+    [("A2", False), ("A4", False), ("A5", True), ("A5-C", True)],
+)
+def test_w_g_bias_drift_rejected(base_cfg, bid, flipped):
+    def _bad(c):
+        c["backbone_contract"]["candidates"][bid]["w_g_bias"] = flipped
+
+    cfg = _mut(base_cfg, _bad)
+    with pytest.raises(v.V542SchemaError) as exc:
+        v.validate_config(cfg)
+    assert exc.value.code == "V542_PARAM_BUDGET"
+    assert "w_g_bias" in exc.value.detail
+
+
+@pytest.mark.parametrize("near_miss", ["true", "false", "True", 1, 0, 1.0])
+def test_w_g_bias_token_near_misses_rejected(base_cfg, near_miss):
+    """Token-preserving near-misses: string/int/float forms of the boolean."""
+    def _bad(c):
+        c["backbone_contract"]["candidates"]["A2"]["w_g_bias"] = near_miss
+
+    cfg = _mut(base_cfg, _bad)
+    with pytest.raises(v.V542SchemaError) as exc:
+        v.validate_config(cfg)
+    assert exc.value.code == "V542_PARAM_BUDGET"
+    assert "w_g_bias" in exc.value.detail
+
+
+def test_w_g_bias_missing_rejected(base_cfg):
+    def _bad(c):
+        del c["backbone_contract"]["candidates"]["A5"]["w_g_bias"]
+
+    cfg = _mut(base_cfg, _bad)
+    with pytest.raises(v.V542SchemaError) as exc:
+        v.validate_config(cfg)
+    assert exc.value.code == "V542_MISSING_FIELD"
+    assert "w_g_bias" in exc.value.detail
+
+
+def test_w_g_bias_on_candidate_without_w_g_rejected(base_cfg):
+    """A1 conditions via its node MLP — it has no W_g, so no w_g_bias."""
+    def _bad(c):
+        c["backbone_contract"]["candidates"]["A1"]["w_g_bias"] = True
+
+    cfg = _mut(base_cfg, _bad)
+    with pytest.raises(v.V542SchemaError) as exc:
+        v.validate_config(cfg)
+    assert exc.value.code == "V542_PARAM_BUDGET"
+    assert "w_g_bias" in exc.value.detail
+
+
+@pytest.mark.parametrize(
+    "cells",
+    [[True, True], [False, False], [False], [], [True, False, True],
+     ["true", "false"], [1, 0]],
+)
+def test_a5c_gru_cell_bias_drift_rejected(base_cfg, cells):
+    def _bad(c):
+        c["backbone_contract"]["candidates"]["A5-C"]["gru_cell_bias"] = cells
+
+    cfg = _mut(base_cfg, _bad)
+    with pytest.raises(v.V542SchemaError) as exc:
+        v.validate_config(cfg)
+    assert exc.value.code == "V542_PARAM_BUDGET"
+    assert "gru_cell_bias" in exc.value.detail
+
+
+def test_a5_gru_cell_bias_single_cell_frozen(base_cfg):
+    """A5 has ONE cell; a second (even matching) entry is drift."""
+    def _bad(c):
+        c["backbone_contract"]["candidates"]["A5"]["gru_cell_bias"] = [
+            True, False]
+
+    cfg = _mut(base_cfg, _bad)
+    with pytest.raises(v.V542SchemaError) as exc:
+        v.validate_config(cfg)
+    assert exc.value.code == "V542_PARAM_BUDGET"
+    assert "gru_cell_bias" in exc.value.detail
+
+
+def test_gru_cell_bias_missing_rejected(base_cfg):
+    def _bad(c):
+        del c["backbone_contract"]["candidates"]["A5-C"]["gru_cell_bias"]
+
+    cfg = _mut(base_cfg, _bad)
+    with pytest.raises(v.V542SchemaError) as exc:
+        v.validate_config(cfg)
+    assert exc.value.code == "V542_MISSING_FIELD"
+    assert "gru_cell_bias" in exc.value.detail
+
+
+def test_gru_cell_bias_on_non_gru_candidate_rejected(base_cfg):
+    def _bad(c):
+        c["backbone_contract"]["candidates"]["A3"]["gru_cell_bias"] = [True]
+
+    cfg = _mut(base_cfg, _bad)
+    with pytest.raises(v.V542SchemaError) as exc:
+        v.validate_config(cfg)
+    assert exc.value.code == "V542_PARAM_BUDGET"
+    assert "gru_cell_bias" in exc.value.detail
 
 
 def test_decoder_params_must_be_49(base_cfg):

@@ -147,7 +147,10 @@
       "V542-A0-sanity-band",
       "oracle_gate0_reviewer",
       "main_session_owner",
-      "source_tier"
+      "source_tier",
+      "w_g_bias",
+      "gru_cell_bias",
+      "Ruling 2"
     ],
     "docs/plans/PES2TS_V5.4.2_Backbone_50K_详细阶段实施方案_v1.0_20261029.md": [
       "V5.4.2",
@@ -165,7 +168,9 @@
       "route_logic",
       "V542-A0-sanity-band",
       "15,400",
-      "4f13bfbd26d4acf17572641e30453000d65243599519c269473f07d6678ccccb"
+      "4f13bfbd26d4acf17572641e30453000d65243599519c269473f07d6678ccccb",
+      "Ruling 2",
+      "bias=False"
     ],
     "config/campaigns/pes2ts_v542_backbone_50k.yaml": [
       "pes2ts_v542_campaign_v1",
@@ -196,7 +201,9 @@
       "v53mp_20k_s3_formal_15400_auxiliary",
       "conditional_backbones",
       "4f13bfbd26d4acf17572641e30453000d65243599519c269473f07d6678ccccb",
-      "871596e61b7d2e2ed77328eaa884b848621f07533e8ffd242a98442c0aec5db3"
+      "871596e61b7d2e2ed77328eaa884b848621f07533e8ffd242a98442c0aec5db3",
+      "w_g_bias",
+      "gru_cell_bias"
     ],
     "config/campaigns/v542_templates/parity_certificate.template.json": [
       "checkpoint_count",

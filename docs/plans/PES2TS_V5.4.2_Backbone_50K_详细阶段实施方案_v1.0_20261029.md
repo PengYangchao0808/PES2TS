@@ -133,7 +133,7 @@ class BackboneOutput:
 ### 5.1 共同约束
 
 - 宽度接口冻结（hidden 48 / z 64 / edge_msg 48 / node 输入 21）；输入视图不变（backbone 内可用**当前帧确定性**几何量 `d/d²/r̂`——A2/A4/A5 明确允许——但不得新学习式 featurization、不得用绝对坐标、不更新坐标、不回写坐标）；backbone position-preserving（不更新坐标）；z head 固定 `tanh(Linear(96→64)([graph_mean(h), key_mean(h)]))` 同名 `z_head`。
-- graph cond 注入：A1/A3 由同形 node MLP 注入（不额外加 `W_g`）；A2/A4/A5 加 `h_0 = node_proj(...) + W_g(graph_cond)[graph_index]`（`W_g: 5→48`，288，零初始化）。
+- graph cond 注入：A1/A3 由同形 node MLP 注入（不额外加 `W_g`）；A2/A4/A5/A5-C 加 `h_0 = node_proj(...) + W_g(graph_cond)[graph_index]`（`W_g: 5→48`，零初始化）。**bias 按候选冻结并显式记录（2026-10-30 gate-2 Ruling 2；取代旧「288」泛写）**：A2/A4 = biased `nn.Linear(5,48)`（288 params）；A5/A5-C = `nn.Linear(5,48,bias=False)`（240 params/cell）。同一精确总量算术：A5 的唯一 `GRUCell(48,48)` 带 bias（14,112）；A5-C 第一 cell 同 A5（14,112）、第二 `GRUCell(48,48,bias=False)` 无 bias（13,824）。冻结总量（A2 54,896 / A4 55,840 / A5 31,584 / A5-C 53,712）不变且被精确复现；`W_g` 零初始化 ⇒ warm start 两变体一致，差异仅为每 cell 48 params 的容量选择。config `candidates` 行以 `w_g_bias`/`gru_cell_bias` 显式记录（schema exact-match 强制，缺失/漂移均 typed rejection）。
 - attention logits 只能来自不变量；无向量通道 LayerNorm/ReLU/dropout；无 cross product。
 - warm-start 一律 R3-only + 显式语义映射 + 逐键审计；候选 fresh 参数 seeded `fork_rng`；构造期断言参数上限（backbone active ≤70,000）；`n_parameters` 报 active backbone（排除共享 `w_v`），joint 另报。
 

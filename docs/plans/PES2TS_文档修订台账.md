@@ -1,5 +1,16 @@
 # PES2TS 文档修订台账（协同性）
 
+## 2026-10-30 增量登记：V5.4.2 P2 lane（governance）— Oracle gate-2 Ruling 2 W_g/GRU bias 逐候选记录（A1/A2/A3/A5 gate-0 advisories 仍 open）
+
+- 背景：Oracle gate 2 = **REVISE**（`.slim/deepwork/v542-backbone-20261029/oracle-gate2.md`）——Ruling 2 裁定 A2/A4 与 A5/A5-C 的 `W_g` bias 差异可保留但必须显式记录；plan §5.1 旧泛写「`W_g: 5→48`，288」对 A5/A5-C 不实。本 lane 为 governance 记录：只改 config/validator/schema-tests/docs/registry gate_note，**未动** `pes2ts_core/**`、`tests/pesn/**`（实现并行车道 owns）、阈值、预算（保持 null）、`outputs/`；未 commit。
+- **事实（只读核实 `a2.py`/`a4.py`/`a5.py` 与 Oracle gate-2 实测）**：A2/A4 = biased `nn.Linear(5,48)` → 288 params；A5/A5-C = `nn.Linear(5,48,bias=False)` → 240 params/cell；A5 唯一 `GRUCell(48,48)` 带 bias（14,112）；A5-C 第一 cell 同 A5（14,112）、第二 `GRUCell(48,48,bias=False)` 无 bias（13,824）。冻结总量 A2 54,896 / A4 55,840 / A5 31,584 / A5-C 53,712 = 预注册不变量，精确复现，**未改任何计数**。
+- **config**：`backbone_contract.candidates` 行增 `w_g_bias`（A2/A4 `true`；A5/A5-C `false`）与 `gru_cell_bias`（A5 `[true]`；A5-C `[true, false]`），backbone_contract 级增 `w_g_gru_bias_note` 汇总；现有字段全部保留。
+- **validator**（`_check_backbone_registry` 内扩展现有 `backbone_registry` check，**无新 check 名 ⇒ checks 保持 26**、typed codes 保持 19）：`w_g_bias`/`gru_cell_bias` exact-match —— 缺失 → `V542_MISSING_FIELD`；值漂移（含 `"true"`/`"True"`/`1`/`0`/`1.0` 等 token-preserving near-miss、长度/顺序错位）→ `V542_PARAM_BUDGET`；无 `W_g`/无 GRU cell 的候选（A0/A1/A1-C/A3）携带字段 → `V542_PARAM_BUDGET`。
+- **文档**：plan §5.1 泛写修正为逐候选 truth（A2/A4 288 biased；A5/A5-C 240 bias-free + GRUCell 14,112/13,824 + 冻结总量不变 + warm-start 一致）；ADR-0033 **v1.3**（§2.3 记录 bullet + §2.4 `V542_PARAM_BUDGET` 描述扩至 bias 漂移 + 变更记录行）；registry `V5.4.2` gate_note 追加同一记录（`plan_revision` 保持 `2026-10-30.1`；G–V 生成文档不含 gate_note，无需重渲染）；docs/README 增 P2 lane bullet；`docs_consistency_config.json` 增 required tokens（config：`w_g_bias`/`gru_cell_bias`；ADR：`w_g_bias`/`gru_cell_bias`/`Ruling 2`；plan：`Ruling 2`/`bias=False`）。
+- **测试**：`tests/agent_ops/test_v542_config_schema.py` 新增 24 例（冻结值断言 + 逐候选漂移 + token near-miss 对抗 + 缺字段 + 无 W_g/无 GRU cell 候选携带字段 + A5 单 cell/A5-C 双 cell 顺序）；**472 → 496 schema tests，+20 registry = 516 total**。
+- **仍 open（不变）**：gate-0 advisories **A1**（budget formal gate；关闭点 P4 formal 前）、**A2**（token-only selection/statistics/H2/core-loop；关闭点 P3/WP6 前）、**A3**（identity/SHA recipes）、**A5**（T1 record gates）——本 lane 不关闭任何一条；gate-2 BLOCKER B1/B2、conditions C1/C3/C4 与 gate-2 advisories A1–A5 归实现并行车道处理。
+- 验证：`v542_config_schema.py` prereg checks=26 绿；`--formal` 仍 typed-block `V542_BUDGET_NULL`；`pytest tests/agent_ops/test_v542_config_schema.py tests/test_gv_registry.py -q` = 516 passed；`docs_consistency.py --strict` CLEAN；`render_gv_map.py --check` current；`git diff --check` clean。
+
 ## 2026-10-30 增量登记：V5.4.2 P1 lane A — Oracle gate-1 REVISE 修复（B1 + C1–C5 收口；A1/A2/A3/A5 仍 open）
 
 - 背景：Oracle gate 1 = **REVISE**（`.slim/deepwork/v542-backbone-20261029/oracle-gate1.md`）：BLOCKER **B1**（`DirectMoveDecoder.a_ref` 可构造覆写 + 可事后变异 — 同一 run identity 下 MOVE 可被改 25%）+ 条件 **C1–C5**（证书未携带 strict-load 审计、部分运行可报 PASS、真实 batch 覆盖未机器验证、loader 消耗训练 RNG、A1/A2 关闭声明失实）。本轮为 WP1 有界修复：未改 legacy 模型源、`outputs/`、V5.4/V5.4.1 registry 条目、阈值、预算（保持 null）；未 commit。
