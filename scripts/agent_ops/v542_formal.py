@@ -83,6 +83,7 @@ CLI::
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import sys
 from dataclasses import dataclass, field
@@ -135,6 +136,10 @@ FROZEN_SEEDS: tuple = (17, 29, 43)
 LAUNCHABLE: Dict[str, tuple] = {
     "T0": ("A0",),
     "T1": ("A1", "A2", "A3"),
+    # WP6 top-2 rows: only A1-A3 can ever appear here; membership in the
+    # frozen top2 set is enforced by ``decide_stage_runs`` (A4/A5/A1-C/
+    # A5-C stay structurally forbidden and are recorded gate_skipped).
+    "T3": ("A1", "A2", "A3"),
 }
 
 # -- frozen reason codes ----------------------------------------------------
@@ -149,6 +154,10 @@ A5_FROZEN_CONDITION: str = (
 #: T3 top-2 rows: top-2 freeze (A0_S17 complete + band pass + seed17
 #: screens) happens in WP6 — before that the rows stay gate_skipped.
 REASON_TOP2_NOT_FROZEN: str = "top2_not_frozen"
+#: T3 top-2 rows whose candidate is NOT in the frozen top2 set.
+REASON_TOP2_NOT_SELECTED: str = "top2_not_selected_inner_val_screen"
+#: WP6 seed17 screen report (written by ``v542_stats.py screen``).
+TOP2_SCREEN_REL: str = "reports/seed17_screen_report.json"
 #: T3 A5 supplement rows: parent gate cannot hold while T2 never ran.
 REASON_A5_SUPPLEMENT: str = "a5_supplement_parent_gate_unmet"
 A5_SUPPLEMENT_CONDITION: str = (
@@ -572,6 +581,42 @@ def _launch(row: RunRow, reason: str = REASON_FORMAL_DONE) -> RunDecision:
                        winner_eligible=row.winner_eligible)
 
 
+def load_top2_freeze(campaign_root: Any) -> Dict[str, Any]:
+    """Read the WP6 seed17 screen report and return the frozen top2 set.
+
+    A T3 top-2 row may launch only when (a) the screen report exists, (b)
+    its ``top2_freeze_precondition`` is asserted (A0_S17 complete + the
+    ``V542-A0-sanity-band`` pass), and (c) the candidate is IN that set.
+    Anything else is a typed refusal — never a silent fallback.
+    """
+    path = Path(campaign_root) / TOP2_SCREEN_REL
+    _require(path.is_file(), "V542_TOP2_SCREEN_ABSENT",
+             f"the WP6 seed17 screen report is missing ({path}); "
+             "T3 top-2 rows cannot launch before the screen is frozen")
+    try:
+        doc = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        raise V542FormalError(
+            "V542_TOP2_SCREEN_ABSENT",
+            f"the WP6 seed17 screen report is unreadable ({path}): {exc}"
+        ) from exc
+    pre = doc.get("top2_freeze_precondition") or {}
+    _require(pre.get("asserted") is True
+             and str(pre.get("sanity_band_verdict")) == "pass"
+             and pre.get("a0_s17_done") is True,
+             "V542_TOP2_SCREEN_ABSENT",
+             f"{path} does not assert the frozen top2 freeze "
+             f"precondition (a0_s17_done + sanity-band pass)")
+    top2 = list(doc.get("top2") or [])
+    _require(len(top2) <= 2,
+             "V542_TOP2_SCREEN_ABSENT",
+             f"{path} carries {len(top2)} top2 candidates; the frozen "
+             "maximum is 2")
+    return {"top2": top2,
+            "report_path": str(path),
+            "report_sha256": hashlib.sha256(path.read_bytes()).hexdigest()}
+
+
 def decide_stage_runs(stage: str, rows: Sequence[RunRow], *,
                       state: Mapping[str, Mapping[str, Any]],
                       band: Optional[Mapping[str, Any]],
@@ -633,12 +678,22 @@ def decide_stage_runs(stage: str, rows: Sequence[RunRow], *,
                     parent_gate_unmet_since=("T2 V542_A5_S17 is "
                                              "gate_skipped")))
             else:
-                decisions.append(_gate_skipped(
-                    row, REASON_TOP2_NOT_FROZEN,
-                    frozen_condition="activated_only_by_inner_val_top2",
-                    freeze_requires=("A0_S17 complete + "
-                                     f"{A0_SANITY_BAND_GATE} pass + "
-                                     "seed17 screens (WP6)")))
+                frozen_top2 = load_top2_freeze(campaign_root)
+                if row.backbone not in frozen_top2["top2"]:
+                    decisions.append(_gate_skipped(
+                        row, REASON_TOP2_NOT_SELECTED,
+                        frozen_condition="activated_only_by_inner_val_top2",
+                        top2=frozen_top2["top2"],
+                        screen_report=frozen_top2["report_path"]))
+                    continue
+                cost = cost_gate_ratio(cfg, row.backbone)
+                if not cost["within"]:
+                    decisions.append(_gate_skipped(
+                        row, REASON_COST_EXCEEDS,
+                        core_time_ratio=cost["ratio"],
+                        max_core_time_ratio=cost["max_core_time_ratio"]))
+                    continue
+                decisions.append(_launch(row))
         else:  # T-ATTR
             reason = (REASON_A1C_SKIP if row.backbone == "A1-C"
                       else REASON_A5C_SKIP)

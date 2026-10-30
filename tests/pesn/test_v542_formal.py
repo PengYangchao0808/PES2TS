@@ -82,6 +82,7 @@ from scripts.agent_ops.v542_formal import (  # noqa: E402
     REASON_A5C_SKIP,
     REASON_A5_NOT_ACTIVATED,
     REASON_TOP2_NOT_FROZEN,
+    REASON_TOP2_NOT_SELECTED,
     V542FormalError,
     _assert_launch_allowed,
     append_ledger_row,
@@ -365,6 +366,16 @@ def test_t2_t3_attr_skip_reasons_and_zero_new_training(cfg, tmp_path):
     plan = run_stage("T2", cfg=cfg, campaign_root=tmp_path,
                      formal_validated=True)
     assert plan["gate_skipped_recorded"] == ["V542_A5_S17"]
+    # WP6: T3 top-2 rows cannot even be decided before the seed17 screen
+    # report exists — typed refusal, nothing written.
+    with pytest.raises(V542FormalError) as excinfo:
+        run_stage("T3", cfg=cfg, campaign_root=tmp_path,
+                  formal_validated=True)
+    assert excinfo.value.code == "V542_TOP2_SCREEN_ABSENT"
+    assert not (tmp_path / "run_ledger.jsonl").read_text().strip().splitlines()[3:]
+    # with a frozen screen that selects nothing, every A1-A3 T3 row is
+    # gate_skipped as "not in the frozen top2" (still zero training).
+    _write_screen_report(tmp_path, top2=[])
     plan = run_stage("T3", cfg=cfg, campaign_root=tmp_path,
                      formal_validated=True)
     assert len(plan["gate_skipped_recorded"]) == 10
@@ -378,7 +389,7 @@ def test_t2_t3_attr_skip_reasons_and_zero_new_training(cfg, tmp_path):
     assert by_id["V542_A5_S17"]["reason"] == REASON_A5_NOT_ACTIVATED
     for run_id in ("V542_A1_S29", "V542_A1_S43", "V542_A2_S29",
                    "V542_A2_S43", "V542_A3_S29", "V542_A3_S43"):
-        assert by_id[run_id]["reason"] == REASON_TOP2_NOT_FROZEN
+        assert by_id[run_id]["reason"] == REASON_TOP2_NOT_SELECTED
     for run_id in ("V542_A5_S29", "V542_A5_S43"):
         assert by_id[run_id]["reason"] == REASON_A5_SUPPLEMENT_SKIP
     for run_id in ("V542_A4_S29", "V542_A4_S43"):
@@ -390,13 +401,63 @@ def test_t2_t3_attr_skip_reasons_and_zero_new_training(cfg, tmp_path):
                for row in by_id.values())
 
 
+def _write_screen_report(root, *, top2):
+    """Synthetic WP6 seed17 screen report for the T3 gate tests."""
+    reports = root / "reports"
+    reports.mkdir(parents=True, exist_ok=True)
+    doc = {
+        "schema": "pes2ts_v542_seed17_screen_report_v1",
+        "top2": list(top2),
+        "top2_count": len(top2),
+        "top2_freeze_precondition": {
+            "asserted": True,
+            "a0_s17_done": True,
+            "sanity_band_gate": "V542-A0-sanity-band",
+            "sanity_band_verdict": "pass",
+        },
+    }
+    (reports / "seed17_screen_report.json").write_text(
+        json.dumps(doc, indent=1) + "\n", encoding="utf-8")
+
+
+def test_t3_launches_only_the_frozen_top2(cfg, tmp_path):
+    """Decisions only (no training): top2 membership is the T3 gate."""
+    _write_screen_report(tmp_path, top2=["A2", "A3"])
+    decisions = decide_stage_runs(
+        "T3", stage_rows(cfg, "T3"), state={}, band=None, cfg=cfg,
+        campaign_root=tmp_path)
+    by_id = {d.run_id: d for d in decisions}
+    for backbone in ("A2", "A3"):
+        for seed in (29, 43):
+            d = by_id[f"V542_{backbone}_S{seed}"]
+            assert d.action == "launch" and d.new_training == 1
+    for seed in (29, 43):
+        assert by_id[f"V542_A1_S{seed}"].reason == \
+            REASON_TOP2_NOT_SELECTED
+        assert by_id[f"V542_A4_S{seed}"].reason == \
+            REASON_A4_GATE_SKIPPED
+        assert by_id[f"V542_A5_S{seed}"].reason == \
+            REASON_A5_SUPPLEMENT_SKIP
+    # the freeze precondition must be asserted
+    _write_screen_report(tmp_path, top2=["A2", "A3"])
+    doc_path = tmp_path / "reports/seed17_screen_report.json"
+    doc = json.loads(doc_path.read_text())
+    doc["top2_freeze_precondition"]["asserted"] = False
+    doc_path.write_text(json.dumps(doc), encoding="utf-8")
+    with pytest.raises(V542FormalError) as excinfo:
+        decide_stage_runs("T3", stage_rows(cfg, "T3"), state={},
+                          band=None, cfg=cfg, campaign_root=tmp_path)
+    assert excinfo.value.code == "V542_TOP2_SCREEN_ABSENT"
+
+
 def test_conditional_launches_are_structurally_forbidden(cfg):
     from scripts.agent_ops.v542_formal import RunRow
 
     for run_id, stage, backbone in (
             ("V542_A4_S17", "T1", "A4"),
             ("V542_A5_S17", "T2", "A5"),
-            ("V542_A1_S29", "T3", "A1"),
+            ("V542_A4_S29", "T3", "A4"),
+            ("V542_A5_S29", "T3", "A5"),
             ("V542_A1C_S17", "T-ATTR", "A1-C"),
             ("V542_A5C_S17", "T-ATTR", "A5-C")):
         row = RunRow(run_id, stage, backbone, 17, "conditional", False)
@@ -404,6 +465,12 @@ def test_conditional_launches_are_structurally_forbidden(cfg):
             _assert_launch_allowed(row)
         assert excinfo.value.code == "V542_FORMAL_LAUNCH_FORBIDDEN"
         assert run_id in excinfo.value.detail
+    # T3 top-2 rows of A1-A3 stay structurally allowed (the top2 freeze
+    # membership is the substantive gate, asserted separately)
+    for backbone in ("A1", "A2", "A3"):
+        _assert_launch_allowed(
+            RunRow(f"V542_{backbone}_S29", "T3", backbone, 29,
+                   "conditional", True))
 
 
 def test_unknown_stage_and_run_ids_are_typed_refusals(cfg):
