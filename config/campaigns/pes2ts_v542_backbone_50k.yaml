@@ -683,8 +683,26 @@ budget:
   oom_kill_max: 0
   host_limit_gib: 12
   memory_high_gib: 10
-  per_candidate_core_time: null # WP0: profile 前保持 null; --formal typed-block V542_BUDGET_NULL, prereg 模式记 t1_blocked; 填充后必须是覆盖全部 8 backbone 的 mapping 且每项为有限正数 (list/string/部分键/多余键/零/负/NaN/bool => --formal typed-block V542_BUDGET_INVALID — gate-3 C4/A1)
-  per_candidate_status: pending_wp3_profiling
+  per_candidate_core_time: # gate-3 C4/A1: SIGNED from the same-env 40+40 W0/W1 profile (2026-10-30, cuda, 20-update warm-up excluded); values = measured core seconds per 80-update window; malformed tables (list/string/partial/extra/zero/negative/NaN/bool) => --formal typed-block V542_BUDGET_INVALID
+    A0: 1.919
+    A1: 1.953
+    A2: 2.041
+    A3: 1.840
+    A4: 1.896
+    A5: 1.763
+    A1-C: 1.337
+    A5-C: 1.303
+  per_candidate_status: signed_wp4_profile
+  profile_signoff:
+    signed_by: main_session_owner
+    signed_at: 2026-10-30
+    source: outputs/pesn/v542_backbone_50k/profile/profile_report.jsonl
+    device: cuda
+    window: {w0_updates: 40, w1_updates: 40, warmup_updates: 20}
+    cost_ratio_vs_a0: {A1: 1.0177, A2: 1.0636, A3: 0.9588, A4: 0.9880, A5: 0.9187, A1-C: 0.6967, A5-C: 0.6790}
+    max_core_time_ratio: 2.0
+    all_within_ratio: true
+    note: 分母 = V542 A0 同环境实测 (禁用 V541 存档成本表); 任一候选超 2.0 记 gate_skipped_cost_ratio_exceeds_2 (科学结果保留, 非 resource_failure)
   fixed_dose_note: 正式训练固定 37,900 updates; fixed-GPU-time 只作另报
   on_breach: [resource_failure, budget_censored]
   forbidden_workarounds: [reduce_frames, reduce_layers, reduce_updates, reduce_curves, change_stratification, drop_process_loss, swap_seed]

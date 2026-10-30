@@ -234,29 +234,30 @@ def _run_by_id(cfg: dict, run_id: str) -> dict:
 # happy paths
 # ---------------------------------------------------------------------------
 def test_frozen_config_validates_prereg_with_budget_blocker(base_cfg):
-    """WP0 ships pre-profile: prereg passes; budget + 2 records block T1."""
+    """WP4: the budget is signed from the same-env profile; only the two
+    governance record instances still block T1 at prereg."""
     report = v.validate_config(base_cfg, formal=False)
     assert report["ok"] and report["mode"] == "prereg"
     assert report["null_thresholds"] == []
     assert report["t1_config_ready"] is False
     # gate-0 A5: the two governance record instances are intentionally
-    # absent at WP0 and surface as t1_blocked reasons, alongside the
-    # pre-profile budget null — prereg stays green (no typed rejection).
-    assert len(report["t1_blocked"]) == 3
+    # absent until T1 and surface as t1_blocked reasons — prereg stays
+    # green (no typed rejection).
+    assert len(report["t1_blocked"]) == 2
     joined = " ".join(report["t1_blocked"])
-    assert "per_candidate_core_time" in joined
+    assert "per_candidate_core_time" not in joined
     assert "a0_reuse_decision_record" in joined
     assert "preregistration_signoff_record" in joined
     # V5.4.2 is registered in g_v_map.yaml — the registry is NOT a blocker
     assert not any("g_v_map" in r for r in report["t1_blocked"])
 
 
-def test_repo_config_formal_is_typed_budget_block(base_cfg):
-    """--formal on the pre-profile config = typed block V542_BUDGET_NULL."""
+def test_repo_config_formal_is_typed_record_block(base_cfg):
+    """--formal on the signed-budget config = typed record block (A5)."""
     with pytest.raises(v.V542SchemaError) as exc:
         v.validate_config(base_cfg, formal=True)
-    assert exc.value.code == "V542_BUDGET_NULL"
-    assert "per_candidate_core_time" in exc.value.detail
+    assert exc.value.code == "V542_RECORD_MISSING"
+    assert "a0_reuse_decision_record" in exc.value.detail
 
 
 def test_filled_budget_formal_passes_completely(base_cfg, tmp_path):
@@ -291,7 +292,7 @@ def test_cli_formal_typed_block_on_repo_config():
     assert proc.returncode == 1
     report = json.loads(proc.stdout)
     assert report["ok"] is False
-    assert report["code"] == "V542_BUDGET_NULL"
+    assert report["code"] == "V542_RECORD_MISSING"
 
 
 def test_cli_json_report_is_parseable():
@@ -1641,11 +1642,14 @@ def test_h2_h3_cost_constants_frozen_in_config(base_cfg):
 
 
 def test_null_budget_blocks_formal_typed_but_prereg_passes(base_cfg):
-    report = v.validate_config(base_cfg, formal=False)
+    """The pre-profile state is still tested on an in-memory copy."""
+    cfg = _mut(base_cfg, lambda c: c["budget"].__setitem__(
+        "per_candidate_core_time", None))
+    report = v.validate_config(cfg, formal=False)
     assert report["ok"] and report["t1_config_ready"] is False
     assert any("per_candidate_core_time" in r for r in report["t1_blocked"])
     with pytest.raises(v.V542SchemaError) as exc:
-        v.validate_config(base_cfg, formal=True)
+        v.validate_config(cfg, formal=True)
     assert exc.value.code == "V542_BUDGET_NULL"
 
 
@@ -4567,12 +4571,18 @@ def test_signoff_template_manifest_layers_cover_identity():
 
 
 def test_budget_template_is_pre_profile_and_null():
+    """The TEMPLATE stays pre-profile; the campaign config is now signed."""
     budget = json.loads(
         (TPL_DIR / "budget_policy.template.json").read_text(encoding="utf-8")
     )
     cfg = yaml.safe_load(CONFIG.read_text(encoding="utf-8"))
     assert budget["per_candidate_status"] == "pending_wp3_profiling"
-    assert cfg["budget"]["per_candidate_core_time"] is None
+    signed = cfg["budget"]["per_candidate_core_time"]
+    assert isinstance(signed, dict)
+    assert set(signed) == {"A0", "A1", "A2", "A3", "A4", "A5", "A1-C", "A5-C"}
+    assert all(isinstance(v, (int, float)) and v > 0 for v in signed.values())
+    assert cfg["budget"]["per_candidate_status"] == "signed_wp4_profile"
+    assert cfg["budget"]["profile_signoff"]["all_within_ratio"] is True
     for cid in ("A0", "A1", "A2", "A3", "A4", "A5", "A1-C", "A5-C"):
         entry = budget["per_candidate"][cid]
         assert entry["approved_for_formal"] is None
@@ -4843,11 +4853,11 @@ def test_validate_config_reports_new_fix6_checks(base_cfg):
     for name in ("route_logic", "final_selection", "seed17_screen",
                  "a0_sanity_band", "statistics", "governance_records"):
         assert name in checks, name
-    # WP0 blockers: the pre-profile budget + the two gate-0 A5 record
-    # instances (intentionally absent until T1)
-    assert len(report["t1_blocked"]) == 3
+    # the two gate-0 A5 record instances (intentionally absent until T1);
+    # the WP4 budget is signed from the same-env profile
+    assert len(report["t1_blocked"]) == 2
     joined = " ".join(report["t1_blocked"])
-    assert "per_candidate_core_time" in joined
+    assert "per_candidate_core_time" not in joined
     assert "a0_reuse_decision_record" in joined
     assert "preregistration_signoff_record" in joined
 
@@ -5306,9 +5316,9 @@ def test_prereg_record_blocker_cleared_when_instance_valid(
     report = v.validate_config(base_cfg, formal=False, record_root=tmp_path)
     assert report["ok"] is True
     assert not any("record " in r for r in report["t1_blocked"])
-    # the pre-profile budget remains the only blocker
-    assert len(report["t1_blocked"]) == 1
-    assert "per_candidate_core_time" in report["t1_blocked"][0]
+    # budget is signed and records are valid: no remaining T1 blocker
+    assert report["t1_blocked"] == []
+    assert report["t1_config_ready"] is True
 
 
 def test_formal_missing_record_instances_typed_rejection(base_cfg, tmp_path):

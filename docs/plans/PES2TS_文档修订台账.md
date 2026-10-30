@@ -1,5 +1,16 @@
 # PES2TS 文档修订台账（协同性）
 
+## 2026-10-30 增量登记：V5.4.2 WP4 预算签认（同环境 40+40 profile）
+
+- 背景：WP3 提交（dbae3f4）后按 gate-3 A4 纪律执行同环境 profile（cuda，40 W0 + 40 W1，20 update 预热剔除）。A0–A5 主表与 A1-C/A5-C conditional 两轮共 8 行写入 `outputs/pesn/v542_backbone_50k/profile/profile_report.jsonl`；`rank_excluded=true`、`scientific_result=false`。
+- 实测 core-seconds（80 update window）：A0 1.919 / A1 1.953 / A2 2.041 / A3 1.840 / A4 1.896 / A5 1.763 / A1-C 1.337 / A5-C 1.303；相对 A0 的 core 比 1.018 / 1.064 / 0.959 / 0.988 / 0.919 / 0.697 / 0.679 —— 全部 ≤ `max_core_time_ratio=2.0`，无候选触发 `gate_skipped_cost_ratio_exceeds_2`。
+- config `budget.per_candidate_core_time` 回填实测值（覆盖全部 8 个 backbone，含两个 full-dose 诊断变体）、`per_candidate_status=signed_wp4_profile`、新增 `budget.profile_signoff`（signed_by=main_session_owner、signed_at=2026-10-30、device=cuda、窗口、cost_ratio_vs_a0、max_core_time_ratio、all_within_ratio=true、分母=V542 A0 实测）。
+- 状态变化：`--formal` 的 typed-block 由 `V542_BUDGET_NULL` 转为 `V542_RECORD_MISSING`（两条 governance record 实例仍未签认，按设计在 T1 前生成）；prereg `t1_blocked` 从 3 条降为 2 条（仅 record 实例）。gate-0 A1（budget formal gate）关闭点达成（值由 profile 签认，不再有默认值/占位值）。
+- 测试同步：`tests/agent_ops/test_v542_config_schema.py` 7 条断言从「committed config 预算为 null」更新为「预算已签认 + 仅 record 阻断」；null 预算路径保留在内存副本测试。603 tests 全绿（583 schema + 20 registry）。
+- 边界：仅预算/文档/测试状态同步；未改接口/阈值/计数/run 矩阵；未启动 smoke/formal/QC；confirm/sealed 恒 false；`new_QC_calls=0`；单路、swap=0。
+
+## 2026-10-30 增量登记：V5.4.2 WP3 提交（runner/identity/resume + WP4 harness）
+
 ## 2026-10-30 增量登记：V5.4.2 P3 gate-3 remediation lane R2（B2/C2 record gate 镜像+SHA 核验 + C4/A1 budget formal gate 硬化）
 
 - 背景：Oracle gate 3 = **REVISE**（`.slim/deepwork/v542-backbone-20261029/oracle-gate3.md`）——**B2**（A5 record gate 不镜像 `config_path`/`signed_by_roles`：`config_path="config/campaigns/WRONG.yaml"` 与 `signed_by_roles={}` 均通过 `--formal`）+ **C2**（`sha_rule: sha256_of_canonical_file_bytes` 声明了但从未计算/核验 record digest）+ **C4/A1**（budget formal gate：`per_candidate_core_time=[]`/全零/全负/NaN 通过 `--formal`）。本 lane 只改 config/validator/schema-tests/templates/docs/registry gate_note，**未动** `pes2ts_core/**`、`scripts/agent_ops/v542_campaign.py`、`v542_identity.py`、`tests/pesn/**`（并行车道 owns）、阈值（数值不变）、预算（保持 null）、`outputs/`；未 commit。
