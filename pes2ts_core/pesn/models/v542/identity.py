@@ -84,6 +84,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import datetime
 import os
 import platform
 import struct
@@ -251,10 +252,22 @@ def canonical_bytes(obj: Any) -> bytes:
     JSON-shaped identity field hashes exactly these bytes.  A value that is
     not JSON-serializable is a typed refusal (never a silent ``str()``
     fallback: an identity digest must never depend on ``repr``).
+
+    One documented normalization: ``datetime.date`` / ``datetime.datetime``
+    (what a YAML ``2026-10-30`` becomes under PyYAML) serialize as their
+    ISO-8601 string, so a signed date inside the budget/signoff blocks
+    hashes deterministically instead of refusing.  Every other non-JSON
+    type still raises ``V542_IDENTITY_SERIALIZE``.
     """
+    def _default(value: Any) -> Any:
+        if isinstance(value, (datetime.date, datetime.datetime)):
+            return value.isoformat()
+        raise TypeError(
+            f"Object of type {type(value).__name__} is not JSON serializable")
+
     try:
         return json.dumps(obj, sort_keys=True, separators=(",", ":"),
-                          ensure_ascii=False).encode("utf-8")
+                          ensure_ascii=False, default=_default).encode("utf-8")
     except (TypeError, ValueError) as exc:
         raise V542IdentityError(
             "V542_IDENTITY_SERIALIZE",

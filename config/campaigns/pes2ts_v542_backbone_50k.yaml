@@ -393,6 +393,16 @@ diagnostic:
     - rmse_zero_rel_degradation_gt_10pct_vs_A0_at_2000
   forbids_full_dose_h3_effect_gates: true # 2,000 步不得套用 3% H3 效应量
   note: 诊断只做工程粗筛 (是否学习/是否破硬门/是否超预算); 其余一律进入 full-dose; 诊断指标只写 diagnostic, 不进 winner 选择
+  # WP4 diagnostic ruling 2026-10-30 (Oracle; ADR-0033 v1.3.3): screen-subject scope correction — additive only, NO threshold/rule change
+  screen_subjects: [A1, A2, A3, A4, A5]   # A0 excluded: matched control, not a candidate screen subject
+  a0_role: matched_dose_reference
+  a0_screen_role: control
+  a0_disposition: control_not_screened
+  a0_reason_code: a0_matched_control_not_screened
+  screen_applies_to_a0: false
+  control_validity_screens: [H0_or_H1_any_failure, non_finite_loss_or_gradient_NaN_Inf]
+  disposition_vocabulary: [advance_full_dose, eliminated, control_not_screened]
+  disposition_note: "elimination_rules apply only to screen_subjects; A0 is the same-dose control and is never eliminated by its own learning screen; A0 validity failures (non-finite/H0/H1/resource) are invalid_run, not eliminated. A4 3.849742% < 5.0% is binding; no post-hoc threshold/rule change."
 
 run_matrix:
   classes: [nominal, conditional, diagnostic]

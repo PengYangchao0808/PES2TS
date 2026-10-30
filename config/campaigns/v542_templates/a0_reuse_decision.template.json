@@ -25,6 +25,14 @@
   "e0_not_used_for": ["H2_comparison", "H3_comparison", "winner_selection"],
   "h3_comparator": "matched_a0_only",
   "runs": ["V542_A0_S17", "V542_A0_S29", "V542_A0_S43"],
+  "wp4_diagnostic_control_note": {
+    "_note": "WP4 diagnostic ruling 2026-10-30 (Oracle; ADR-0033 v1.3.3; protocol_amendment_id V542_WP4_DIAG_20261030): V542_DIAG_A0_S17 is the matched same-dose CONTROL — decision control_not_screened (reason a0_matched_control_not_screened, screen_role=control, screen_applied=false, failing_screens=[] with best_inner_val_total_loss_drop kept informational only). The candidate learning screen never eliminates A0; T0 A0x3 formal stays MANDATORY with no diagnostic_gate. The frozen decision=retrain_a0_x3 on this record is UNCHANGED by the correction (outcome-neutral: A0 is winner_eligible=false and T0 is mandatory regardless).",
+    "diagnostic_row_decision": "control_not_screened",
+    "diagnostic_row_reason_code": "a0_matched_control_not_screened",
+    "t0_a0x3_mandatory": true,
+    "decision_unchanged": "retrain_a0_x3",
+    "effective_report": "outputs/pesn/v542_backbone_50k/diagnostics/diagnostic_report.v2.jsonl"
+  },
   "sanity_band_vs_v541_e0": {
     "rmse_zero_rel_max_pct": 2.0,
     "auprc_abs_max": 0.01,

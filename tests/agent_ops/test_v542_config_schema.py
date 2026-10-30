@@ -61,6 +61,13 @@ init-source, R3-init and parity-template contracts:
   no-candidate, ``h3_eligible_candidates``, ``champion_rule``, seed17
   H2 sign threshold and ``core_loop`` are exact/structured — every
   token-preserving near-miss from the Oracle probe tables is rejected,
+* WP4 diagnostic-ruling freeze (ADR-0033 v1.3.3; Oracle 2026-10-30):
+  ``diagnostic.screen_subjects``/A0 control fields/disposition
+  vocabulary are exact (A0 ``eliminated`` attempts typed-rejected),
+  A4 stays ``gate_skipped`` under the frozen 5% drop rule, the
+  append-only v2 diagnostic report + protocol-amendment record carry
+  verified SHAs/digests, and the three decision templates mirror the
+  ruling with the 28 signed thresholds / 26 run ids untouched,
 * the five WP0 templates parse and mirror the frozen config.
 """
 
@@ -234,30 +241,23 @@ def _run_by_id(cfg: dict, run_id: str) -> dict:
 # happy paths
 # ---------------------------------------------------------------------------
 def test_frozen_config_validates_prereg_with_budget_blocker(base_cfg):
-    """WP4: the budget is signed from the same-env profile; only the two
-    governance record instances still block T1 at prereg."""
+    """WP4/records: budget signed and both governance records signed, so
+    prereg reports no remaining T1 blocker."""
     report = v.validate_config(base_cfg, formal=False)
     assert report["ok"] and report["mode"] == "prereg"
     assert report["null_thresholds"] == []
-    assert report["t1_config_ready"] is False
-    # gate-0 A5: the two governance record instances are intentionally
-    # absent until T1 and surface as t1_blocked reasons — prereg stays
-    # green (no typed rejection).
-    assert len(report["t1_blocked"]) == 2
-    joined = " ".join(report["t1_blocked"])
-    assert "per_candidate_core_time" not in joined
-    assert "a0_reuse_decision_record" in joined
-    assert "preregistration_signoff_record" in joined
+    assert report["t1_config_ready"] is True
+    assert report["t1_blocked"] == []
     # V5.4.2 is registered in g_v_map.yaml — the registry is NOT a blocker
     assert not any("g_v_map" in r for r in report["t1_blocked"])
 
 
-def test_repo_config_formal_is_typed_record_block(base_cfg):
-    """--formal on the signed-budget config = typed record block (A5)."""
-    with pytest.raises(v.V542SchemaError) as exc:
-        v.validate_config(base_cfg, formal=True)
-    assert exc.value.code == "V542_RECORD_MISSING"
-    assert "a0_reuse_decision_record" in exc.value.detail
+def test_repo_config_formal_passes_with_signed_records(base_cfg):
+    """Both record instances exist at the frozen paths: formal is green."""
+    formal = v.validate_config(base_cfg, formal=True)
+    assert formal["ok"] and formal["mode"] == "formal"
+    assert formal["t1_config_ready"] is True
+    assert formal["t1_blocked"] == []
 
 
 def test_filled_budget_formal_passes_completely(base_cfg, tmp_path):
@@ -283,16 +283,15 @@ def test_cli_exit_zero_on_repo_config():
     assert proc.returncode == 0, proc.stderr
 
 
-def test_cli_formal_typed_block_on_repo_config():
+def test_cli_formal_passes_on_repo_config():
     proc = subprocess.run(
         [sys.executable, str(SCRIPT), "--formal", "--config", str(CONFIG), "--json"],
         capture_output=True,
         text=True,
     )
-    assert proc.returncode == 1
+    assert proc.returncode == 0, proc.stderr
     report = json.loads(proc.stdout)
-    assert report["ok"] is False
-    assert report["code"] == "V542_RECORD_MISSING"
+    assert report["ok"] is True and report["mode"] == "formal"
 
 
 def test_cli_json_report_is_parseable():
@@ -4853,13 +4852,10 @@ def test_validate_config_reports_new_fix6_checks(base_cfg):
     for name in ("route_logic", "final_selection", "seed17_screen",
                  "a0_sanity_band", "statistics", "governance_records"):
         assert name in checks, name
-    # the two gate-0 A5 record instances (intentionally absent until T1);
-    # the WP4 budget is signed from the same-env profile
-    assert len(report["t1_blocked"]) == 2
-    joined = " ".join(report["t1_blocked"])
-    assert "per_candidate_core_time" not in joined
-    assert "a0_reuse_decision_record" in joined
-    assert "preregistration_signoff_record" in joined
+    # both gate-0 A5 record instances are signed and the WP4 budget is
+    # signed, so nothing blocks T1
+    assert report["t1_blocked"] == []
+    assert report["t1_config_ready"] is True
 
 
 # ---------------------------------------------------------------------------
@@ -5801,3 +5797,353 @@ def test_a2_h2_sign_threshold_structured_near_miss_rejected(base_cfg):
         v.validate_config(cfg)
     assert exc.value.code == "V542_RUN_MATRIX"
     assert "sign_abs_drop_max" in exc.value.detail
+
+
+# ---------------------------------------------------------------------------
+# WP4 diagnostic-ruling freeze (ADR-0033 v1.3.3; Oracle WP4 2026-10-30):
+# A0 = control_not_screened (never eliminated by its own learning screen);
+# A4 = eliminated / gate_skipped under the frozen 5% drop rule; additive
+# config fields only — thresholds/budget values and the 26-run matrix are
+# untouched; the immutable v1 diagnostic report stays byte-identical.
+# ---------------------------------------------------------------------------
+DIAG_DIR = (REPO_ROOT / "outputs" / "pesn" / "v542_backbone_50k"
+            / "diagnostics")
+PLAN_DIR = REPO_ROOT / "outputs" / "pesn" / "v542_backbone_50k" / "plan"
+WP4_AMENDMENT_ID = "V542_WP4_DIAG_20261030"
+
+
+def _diag_v2_rows() -> dict:
+    path = DIAG_DIR / "diagnostic_report.v2.jsonl"
+    rows = {}
+    for line in path.read_text(encoding="utf-8").splitlines():
+        row = json.loads(line)
+        rows[row["run_id"]] = row
+    return rows
+
+
+def test_wp4_diagnostic_block_frozen_in_config(base_cfg):
+    diag = base_cfg["diagnostic"]
+    assert tuple(diag["screen_subjects"]) == v.DIAG_SCREEN_SUBJECTS
+    assert "A0" not in diag["screen_subjects"]
+    assert diag["a0_role"] == v.DIAG_A0_ROLE == "matched_dose_reference"
+    assert diag["a0_screen_role"] == v.DIAG_A0_SCREEN_ROLE == "control"
+    assert diag["a0_disposition"] == v.DIAG_A0_DISPOSITION
+    assert diag["a0_reason_code"] == v.DIAG_A0_REASON_CODE
+    assert diag["screen_applies_to_a0"] is False
+    assert v.DIAG_SCREEN_APPLIES_TO_A0 is False
+    assert tuple(diag["control_validity_screens"]) == (
+        v.DIAG_CONTROL_VALIDITY_SCREENS)
+    assert tuple(diag["disposition_vocabulary"]) == (
+        v.DIAG_DISPOSITION_VOCABULARY) == (
+        "advance_full_dose", "eliminated", "control_not_screened")
+    # additive only: the frozen five-rule list and the 5.0 threshold stand
+    assert tuple(diag["elimination_rules"]) == v.DIAG_ELIMINATION_RULES
+    assert base_cfg["thresholds"][
+        "diagnostic_loss_drop_min_pct"] == v.DIAG_LOSS_DROP_MIN_PCT == 5.0
+
+
+def test_wp4_diagnostic_disposition_check_registered(base_cfg):
+    report = v.validate_config(base_cfg, formal=False)
+    assert "diagnostic_disposition" in report["checks"]
+    assert len(report["checks"]) == 28
+    # the check introduces NO blocker: budget and both governance records
+    # are signed, so T1 has no remaining blocker
+    assert report["t1_blocked"] == []
+
+
+def test_wp4_a0_eliminated_attempt_typed_rejected(base_cfg):
+    """A0 cannot be 'eliminated' by the candidate learning screen."""
+    def _bad(c):
+        c["diagnostic"]["a0_disposition"] = "eliminated"
+
+    cfg = _mut(base_cfg, _bad)
+    with pytest.raises(v.V542SchemaError) as exc:
+        v.validate_config(cfg)
+    assert exc.value.code == "V542_RUN_MATRIX"
+    assert "a0_disposition" in exc.value.detail
+    assert "control_not_screened" in exc.value.detail
+
+
+def test_wp4_a0_screen_applies_drift_typed_rejected(base_cfg):
+    def _bad(c):
+        c["diagnostic"]["screen_applies_to_a0"] = True
+
+    cfg = _mut(base_cfg, _bad)
+    with pytest.raises(v.V542SchemaError) as exc:
+        v.validate_config(cfg)
+    assert exc.value.code == "V542_RUN_MATRIX"
+    assert "screen_applies_to_a0" in exc.value.detail
+
+
+@pytest.mark.parametrize("token_near_miss", ["false", 0])
+def test_wp4_a0_screen_applies_near_miss_typed_rejected(
+        base_cfg, token_near_miss):
+    def _bad(c, value=token_near_miss):
+        c["diagnostic"]["screen_applies_to_a0"] = value
+
+    cfg = _mut(base_cfg, _bad)
+    with pytest.raises(v.V542SchemaError) as exc:
+        v.validate_config(cfg)
+    assert exc.value.code == "V542_RUN_MATRIX"
+    assert "screen_applies_to_a0" in exc.value.detail
+
+
+def test_wp4_screen_subjects_with_a0_typed_rejected(base_cfg):
+    def _bad(c):
+        c["diagnostic"]["screen_subjects"] = [
+            "A0", "A1", "A2", "A3", "A4", "A5"]
+
+    cfg = _mut(base_cfg, _bad)
+    with pytest.raises(v.V542SchemaError) as exc:
+        v.validate_config(cfg)
+    assert exc.value.code == "V542_RUN_MATRIX"
+    assert "screen_subjects" in exc.value.detail
+
+
+def test_wp4_screen_subjects_drop_candidate_typed_rejected(base_cfg):
+    def _bad(c):
+        c["diagnostic"]["screen_subjects"] = ["A1", "A2", "A3", "A4"]
+
+    cfg = _mut(base_cfg, _bad)
+    with pytest.raises(v.V542SchemaError) as exc:
+        v.validate_config(cfg)
+    assert exc.value.code == "V542_RUN_MATRIX"
+    assert "screen_subjects" in exc.value.detail
+
+
+def test_wp4_a0_reason_code_drift_typed_rejected(base_cfg):
+    def _bad(c):
+        c["diagnostic"]["a0_reason_code"] = "a0_screen_failed"
+
+    cfg = _mut(base_cfg, _bad)
+    with pytest.raises(v.V542SchemaError) as exc:
+        v.validate_config(cfg)
+    assert exc.value.code == "V542_RUN_MATRIX"
+    assert "a0_reason_code" in exc.value.detail
+
+
+def test_wp4_disposition_vocabulary_drift_typed_rejected(base_cfg):
+    def _bad(c):
+        c["diagnostic"]["disposition_vocabulary"] = [
+            "advance_full_dose", "eliminated", "control", "invalid_run"]
+
+    cfg = _mut(base_cfg, _bad)
+    with pytest.raises(v.V542SchemaError) as exc:
+        v.validate_config(cfg)
+    assert exc.value.code == "V542_RUN_MATRIX"
+    assert "disposition_vocabulary" in exc.value.detail
+
+
+def test_wp4_elimination_rules_frozen_typed_rejected(base_cfg):
+    """Removing the learning-screen rule (post-hoc rule change) is refused."""
+    def _bad(c):
+        c["diagnostic"]["elimination_rules"] = [
+            "H0_or_H1_any_failure",
+            "non_finite_loss_or_gradient_NaN_Inf",
+            "dead_fraction_gt_A0_at_2000_plus_0.20",
+            "rmse_zero_rel_degradation_gt_10pct_vs_A0_at_2000",
+        ]
+
+    cfg = _mut(base_cfg, _bad)
+    with pytest.raises(v.V542SchemaError) as exc:
+        v.validate_config(cfg)
+    assert exc.value.code == "V542_RUN_MATRIX"
+    assert "elimination_rules" in exc.value.detail
+
+
+def test_wp4_loss_drop_threshold_drift_typed_rejected(base_cfg):
+    """3.849742% passes a 3% threshold — changing 5.0 now would be post-hoc."""
+    def _bad(c):
+        c["thresholds"]["diagnostic_loss_drop_min_pct"] = 3.0
+
+    cfg = _mut(base_cfg, _bad)
+    with pytest.raises(v.V542SchemaError) as exc:
+        v.validate_config(cfg)
+    assert exc.value.code == "V542_RUN_MATRIX"
+    assert "diagnostic_loss_drop_min_pct" in exc.value.detail
+
+
+def test_wp4_a0_diagnostic_row_keeps_control_role(base_cfg):
+    row = _run_by_id(base_cfg, "V542_DIAG_A0_S17")
+    assert row["role"] == v.DIAG_A0_ROLE == "matched_dose_reference"
+    assert row["winner_eligible"] is False
+    assert "launch_requires" not in row  # no diagnostic_gate on the control
+
+    def _bad(c):
+        _run_by_id(c, "V542_DIAG_A0_S17")["role"] = "candidate"
+
+    cfg = _mut(base_cfg, _bad)
+    with pytest.raises(v.V542SchemaError) as exc:
+        v.validate_config(cfg)
+    assert exc.value.code == "V542_RUN_MATRIX"
+    assert "V542_DIAG_A0_S17" in exc.value.detail
+
+
+def test_wp4_a0_v2_report_is_control_not_screened():
+    row = _diag_v2_rows()["V542_DIAG_A0_S17"]
+    assert row["decision"] == "control_not_screened"
+    assert row["gate_disposition"] == "control_not_screened"
+    assert row["reason_code"] == "a0_matched_control_not_screened"
+    assert row["screen_role"] == "control"
+    assert row["screen_applied"] is False
+    assert row["failing_screens"] == []
+    assert row["informational_failing_screens"] == [
+        "best_inner_val_total_loss_drop"]
+    assert row["next_stage"] == "T0_formal_mandatory"
+    assert row["run_outcome"] == "done"
+    assert row["rank_excluded"] is True
+    assert row["scientific_result"] is False
+    # the measured values remain visible as control measurements
+    assert row["screen_measurement"]["loss_drop_pct"] == 3.609756
+
+
+def test_wp4_a4_v2_report_is_gate_skipped_under_frozen_rule():
+    """A4 3.849742% < the signed 5.0% stays a binding elimination."""
+    diag = yaml.safe_load(CONFIG.read_text(encoding="utf-8"))["diagnostic"]
+    assert "best_inner_val_total_loss_drop_lt_5pct_vs_initial_diagnostic_eval" \
+        in diag["elimination_rules"]
+    row = _diag_v2_rows()["V542_DIAG_A4_S17"]
+    assert row["screen_measurement"]["loss_drop_pct"] == 3.849742
+    assert row["screen_measurement"]["loss_drop_pct"] < \
+        row["screen_measurement"]["loss_drop_min_pct"] == 5.0
+    assert row["decision"] == "eliminated"
+    assert row["gate_disposition"] == "gate_skipped"
+    assert row["reason_code"] == "diag_best_inner_val_drop_lt_5pct_vs_initial"
+    assert row["screen_role"] == "candidate"
+    assert row["screen_applied"] is True
+    assert row["failing_screens"] == ["best_inner_val_total_loss_drop"]
+    assert row["next_stage"] == "none"
+    # the diagnostic run itself completed; only the GATE is skipped
+    assert row["run_outcome"] == "done"
+    assert row["new_training"] == 1
+
+
+def test_wp4_v2_report_advances_unchanged():
+    rows = _diag_v2_rows()
+    for run_id in ("V542_DIAG_A1_S17", "V542_DIAG_A2_S17",
+                   "V542_DIAG_A3_S17"):
+        row = rows[run_id]
+        assert row["decision"] == "advance_full_dose"
+        assert row["gate_disposition"] == "advance_full_dose"
+        assert row["reason_code"] == (
+            "diag_all_engineering_screens_pass_advance_full_dose")
+        assert row["screen_role"] == "candidate"
+        assert row["screen_applied"] is True
+        assert row["failing_screens"] == []
+        assert row["informational_failing_screens"] == []
+        assert row["next_stage"] == "T1_formal"
+    assert rows["V542_DIAG_A5_S17"]["next_stage"] == "T2_conditional"
+    assert rows["V542_DIAG_A5_S17"]["decision"] == "advance_full_dose"
+    assert set(rows) == {
+        "V542_DIAG_A0_S17", "V542_DIAG_A1_S17", "V542_DIAG_A2_S17",
+        "V542_DIAG_A3_S17", "V542_DIAG_A4_S17", "V542_DIAG_A5_S17"}
+
+
+def test_wp4_v1_report_immutable_and_superseded_by_sha():
+    import hashlib
+
+    v1_path = DIAG_DIR / "diagnostic_report.jsonl"
+    v1_bytes = v1_path.read_bytes()
+    assert hashlib.sha256(v1_bytes).hexdigest() == (
+        "304c3db6978a8af0091bcec8062ad9ad1d72f997cc17eaf741d2d67685fe435b")
+    rows = _diag_v2_rows()
+    for idx, line in enumerate(v1_bytes.splitlines()):
+        obj = json.loads(line)
+        row = rows[obj["run_id"]]
+        assert row["supersedes_sha256"] == hashlib.sha256(line).hexdigest()
+        assert row["v1_row_index"] == idx
+        assert row["protocol_amendment_id"] == WP4_AMENDMENT_ID
+
+
+def test_wp4_diagnostic_report_current_names_both_shas():
+    import hashlib
+
+    cur = json.loads(
+        (DIAG_DIR / "diagnostic_report_current.json").read_text(
+            encoding="utf-8"))
+    assert cur["protocol_amendment_id"] == WP4_AMENDMENT_ID
+    v1 = REPO_ROOT / cur["superseded_report"]
+    v2 = REPO_ROOT / cur["effective_report"]
+    assert cur["superseded_report_sha256"] == hashlib.sha256(
+        v1.read_bytes()).hexdigest()
+    assert cur["effective_report_sha256"] == hashlib.sha256(
+        v2.read_bytes()).hexdigest()
+    assert cur["superseded_report_immutable"] is True
+
+
+def test_wp4_protocol_amendment_record_fields_and_digest():
+    import hashlib
+
+    payload = json.loads(
+        (PLAN_DIR / "protocol_amendment_wp4_diagnostic.json").read_text(
+            encoding="utf-8"))
+    assert payload["protocol_amendment_id"] == WP4_AMENDMENT_ID
+    assert payload["thresholds_changed"] is False
+    assert payload["budget_values_changed"] is False
+    assert payload["diagnostic_screen_rule_changed"] is False
+    assert payload["a4_gate_skipped"] is True
+    assert payload["a0_control_correction"] is True
+    assert payload["signed_by"] == "main_session_owner"
+    assert payload["signed_at"] == "2026-10-30"
+    assert payload["old_config_sha256"] == (
+        "a414edd0fa77732d42a2f87da5141828cfc534a7d5112f5d2c5421c1b1a120b5")
+    assert payload["new_config_sha256"] == hashlib.sha256(
+        CONFIG.read_bytes()).hexdigest()
+    assert payload["record_sha256"] == _record_canonical_sha(payload)
+
+
+def test_wp4_runplan_pin_template_diagnostic_entries():
+    pin = json.loads(
+        (TPL_DIR / "runplan_pin.template.json").read_text(encoding="utf-8"))
+    block = pin["wp4_diagnostic_disposition"]
+    control = block["diagnostic_control"]
+    assert control["run_id"] == "V542_DIAG_A0_S17"
+    assert control["decision"] == "control_not_screened"
+    assert control["reason_code"] == "a0_matched_control_not_screened"
+    assert control["next_stage"] == "T0_formal_mandatory"
+    skipped = block["diagnostic_gate_skipped"]
+    assert skipped["run_id"] == "V542_A4_S17"
+    assert skipped["decision"] == "eliminated"
+    assert skipped["gate_disposition"] == "gate_skipped"
+    assert skipped["reason_code"] == (
+        "diag_best_inner_val_drop_lt_5pct_vs_initial")
+    assert skipped["new_training"] == 0
+    assert skipped["t3_rows"] == ["V542_A4_S29", "V542_A4_S43"]
+    # the 26 frozen run ids are untouched
+    ids = [rid for cls in pin["run_classes"].values()
+           for rid in cls["run_ids"]]
+    assert len(ids) == 26 == len(set(ids))
+    assert set(ids) == set(v.EXPECTED_RUN_IDS)
+
+
+def test_wp4_signoff_template_wp4_disposition_and_untouched_thresholds():
+    signoff = json.loads(
+        (TPL_DIR / "preregistration_signoff.template.json").read_text(
+            encoding="utf-8"))
+    block = signoff["wp4_diagnostic_disposition"]
+    note = block["amendment_note"]
+    assert note["thresholds_changed"] is False
+    assert note["budget_values_changed"] is False
+    assert note["a4_gate_skipped"] is True
+    assert block["protocol_amendment_id"] == WP4_AMENDMENT_ID
+    # the 28 signed threshold values are untouched and still mirror config
+    cfg = yaml.safe_load(CONFIG.read_text(encoding="utf-8"))
+    signed = signoff["thresholds_signed_frozen"]
+    # 28 signed keys + 4 metadata keys (status/signed_on/signed_by/
+    # cost_acceptance_rule)
+    assert len(signed) - 4 == 28
+    for key in v.FORMAL_THRESHOLDS:
+        assert signed[key] == cfg["thresholds"][key], key
+
+
+def test_wp4_a0_reuse_template_control_note():
+    record = json.loads(
+        (TPL_DIR / "a0_reuse_decision.template.json").read_text(
+            encoding="utf-8"))
+    assert record["decision"] == "retrain_a0_x3"  # unchanged by the ruling
+    note = record["wp4_diagnostic_control_note"]
+    assert note["diagnostic_row_decision"] == "control_not_screened"
+    assert note["diagnostic_row_reason_code"] == (
+        "a0_matched_control_not_screened")
+    assert note["t0_a0x3_mandatory"] is True
+    assert note["decision_unchanged"] == "retrain_a0_x3"

@@ -109,9 +109,11 @@ def test_v541_gates_are_v541_namespaced():
 
 def test_v541_plan_revision_recorded():
     gv_map = load_gv_map(DEFAULT_MAP_PATH)
-    # fix-6: registry plan_revision moved to 2026-10-30.1 (V5.4.2 WP0
-    # condition closure); the V5.4.1 historical note must still be present.
-    assert gv_map.plan_revision == "2026-10-30.1"
+    # 2026-10-30 WP4 diagnostic amendment: registry plan_revision moved to
+    # 2026-10-30.2 (ADR-0033 v1.3.3; A0 control correction + A4 gate_skipped,
+    # thresholds/budget unchanged); the V5.4.1 historical note must still
+    # be present.
+    assert gv_map.plan_revision == "2026-10-30.2"
     import yaml as _yaml
 
     doc = _yaml.safe_load(DEFAULT_MAP_PATH.read_text(encoding="utf-8"))

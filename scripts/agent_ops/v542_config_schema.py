@@ -106,6 +106,23 @@ gate-0 A5/A2 closure (2026-10-30):
   string/int near-misses such as ``"true"``/``1``) ⇒
   ``V542_PARAM_BUDGET``; candidates WITHOUT a ``W_g`` injection or GRU
   cells (A0/A1/A1-C/A3) must not carry the fields at all.
+* **WP4 diagnostic dispositions frozen (ADR-0033 v1.3.3; Oracle WP4
+  ruling 2026-10-30)** — the candidate learning screen applies only to
+  ``diagnostic.screen_subjects = [A1..A5]``; A0 is the matched same-dose
+  CONTROL (``a0_disposition=control_not_screened``,
+  ``a0_reason_code=a0_matched_control_not_screened``,
+  ``screen_applies_to_a0=false`` — an A0 ``eliminated`` attempt is a
+  typed rejection) and is validity-checked only
+  (``control_validity_screens``; failures are ``invalid_run``);
+  ``disposition_vocabulary`` is exactly ``[advance_full_dose, eliminated,
+  control_not_screened]``; A4's 3.849742% < 5.0% frozen-rule elimination
+  stays binding (``gate_skipped``); the five-rule
+  ``elimination_rules`` list and
+  ``thresholds.diagnostic_loss_drop_min_pct = 5.0`` are UNCHANGED (no
+  threshold/budget/run-matrix value moves).  Enforced by the dedicated
+  ``diagnostic_disposition`` check reusing the existing
+  ``V542_RUN_MATRIX`` code (the 22-code typed table above stays
+  untouched; checks 27 → 28).
 
 Typed rejections (each carries a stable ``code``; 22 codes — the
 authoritative count for docs/registry wording):
@@ -159,16 +176,17 @@ Modes
   ``canonical_bytes`` recipe — gate-3 B2/C2), i.e. the gate a formal
   launch must pass.
 
-``validate_config`` runs these named checks in order (27 checks with the
+``validate_config`` runs these named checks in order (28 checks with the
 G–V cross-check enabled — keep this list current):
 
 ``schema``, ``objective``, ``required_fields``, ``backbone_registry``,
 ``forward_view``, ``interface``, ``param_budget``, ``init_source``,
 ``a0_decision``, ``authorization``, ``sampler_binding``, ``dose_blocks``,
-``selection_tau``, ``gv_registry``, ``identity_start``, ``run_matrix``,
-``top2_preregistration``, ``activation_branches``, ``statistics``,
-``route_logic``, ``final_selection``, ``seed17_screen``,
-``a0_sanity_band``, ``run_outcomes``, ``cost_acceptance``, ``thresholds``,
+``diagnostic_disposition``, ``selection_tau``, ``gv_registry``,
+``identity_start``, ``run_matrix``, ``top2_preregistration``,
+``activation_branches``, ``statistics``, ``route_logic``,
+``final_selection``, ``seed17_screen``, ``a0_sanity_band``,
+``run_outcomes``, ``cost_acceptance``, ``thresholds``,
 ``governance_records``.
 
 CLI::
@@ -228,6 +246,16 @@ __all__ = [
     "CONSTRUCTION_ORDER",
     "DECODER_PARAMS",
     "DEFAULT_CONFIG",
+    "DIAG_A0_DISPOSITION",
+    "DIAG_A0_REASON_CODE",
+    "DIAG_A0_ROLE",
+    "DIAG_A0_SCREEN_ROLE",
+    "DIAG_CONTROL_VALIDITY_SCREENS",
+    "DIAG_DISPOSITION_VOCABULARY",
+    "DIAG_ELIMINATION_RULES",
+    "DIAG_LOSS_DROP_MIN_PCT",
+    "DIAG_SCREEN_APPLIES_TO_A0",
+    "DIAG_SCREEN_SUBJECTS",
     "EXPECTED_RUN_IDS",
     "EXPECTED_RUN_TABLE",
     "FINAL_DRAWS",
@@ -1049,6 +1077,46 @@ GOVERNANCE_RECORDS: Dict[str, Dict[str, Any]] = {
         "signoff_roles": True,
     },
 }
+
+# ---------------------------------------------------------------------------
+# WP4 diagnostic-ruling freeze (ADR-0033 v1.3.3; Oracle WP4 2026-10-30):
+# the candidate learning screen applies ONLY to ``screen_subjects`` =
+# [A1..A5]; A0 is the matched same-dose CONTROL (``control_not_screened``)
+# and can never be eliminated by its own learning screen; A4's frozen-rule
+# elimination (3.849742% < 5.0%) stays binding (``gate_skipped``).
+# Additive governance only — NO threshold value change
+# (``thresholds.diagnostic_loss_drop_min_pct`` stays 5.0), the five-rule
+# ``elimination_rules`` list and the 26-run matrix are unchanged, and
+# rejections reuse the existing ``V542_RUN_MATRIX`` code (the 22-code
+# typed table stays untouched).
+# ---------------------------------------------------------------------------
+#: Frozen diagnostic screen subjects — A0 excluded (matched control).
+DIAG_SCREEN_SUBJECTS: Tuple[str, ...] = ("A1", "A2", "A3", "A4", "A5")
+DIAG_A0_ROLE = "matched_dose_reference"
+DIAG_A0_SCREEN_ROLE = "control"
+DIAG_A0_DISPOSITION = "control_not_screened"
+DIAG_A0_REASON_CODE = "a0_matched_control_not_screened"
+DIAG_SCREEN_APPLIES_TO_A0 = False
+DIAG_CONTROL_VALIDITY_SCREENS: Tuple[str, ...] = (
+    "H0_or_H1_any_failure",
+    "non_finite_loss_or_gradient_NaN_Inf",
+)
+#: The three legal effective diagnostic dispositions (D.3 schema vocab).
+DIAG_DISPOSITION_VOCABULARY: Tuple[str, ...] = (
+    "advance_full_dose",
+    "eliminated",
+    "control_not_screened",
+)
+#: The frozen five-rule elimination list (unchanged by the WP4 ruling).
+DIAG_ELIMINATION_RULES: Tuple[str, ...] = (
+    "H0_or_H1_any_failure",
+    "non_finite_loss_or_gradient_NaN_Inf",
+    "best_inner_val_total_loss_drop_lt_5pct_vs_initial_diagnostic_eval",
+    "dead_fraction_gt_A0_at_2000_plus_0.20",
+    "rmse_zero_rel_degradation_gt_10pct_vs_A0_at_2000",
+)
+#: The frozen signed learning-screen threshold — never changed by this ruling.
+DIAG_LOSS_DROP_MIN_PCT = 5.0
 
 _DEFAULT_CONFIG = (
     PROJECT_ROOT / "config" / "campaigns" / "pes2ts_v542_backbone_50k.yaml"
@@ -2367,6 +2435,158 @@ def _check_dose_blocks(cfg: Mapping[str, Any]) -> None:
     if diag.get("rank_excluded") is not True:
         _err(
             "V542_RUN_MATRIX", "diagnostic must be rank_excluded")
+
+
+def _check_diagnostic_disposition(cfg: Mapping[str, Any]) -> None:
+    """WP4 diagnostic-ruling freeze (ADR-0033 v1.3.3; Oracle WP4 2026-10-30).
+
+    Screen-subject scope correction (additive; NO threshold/rule change):
+
+    * ``diagnostic.screen_subjects`` is EXACTLY ``[A1, A2, A3, A4, A5]`` —
+      A0 is excluded because it is the matched same-dose control;
+    * ``a0_role=matched_dose_reference``, ``a0_screen_role=control``,
+      ``a0_disposition=control_not_screened``,
+      ``a0_reason_code=a0_matched_control_not_screened`` and
+      ``screen_applies_to_a0=false`` are frozen enums — an A0
+      ``eliminated`` disposition attempt (or a token-preserving
+      near-miss such as ``"false"``/``0``) is a typed rejection;
+    * ``control_validity_screens`` lists the checks A0 DOES face
+      (H0/H1 failure, non-finite loss/gradient — those yield
+      ``invalid_run``, never ``eliminated``);
+    * ``disposition_vocabulary`` is exactly the three legal decisions
+      ``[advance_full_dose, eliminated, control_not_screened]`` (D.3);
+    * the frozen five-rule ``elimination_rules`` list is unchanged and
+      ``thresholds.diagnostic_loss_drop_min_pct`` stays 5.0 (A4's
+      3.849742% < 5.0% ``gate_skipped`` elimination remains binding);
+    * the A0 diagnostic run-matrix row keeps ``role=matched_dose_reference``.
+
+    Rejections reuse the existing ``V542_RUN_MATRIX`` code — the 22-code
+    typed table and every threshold/budget value are untouched.
+    """
+    diag = cfg.get("diagnostic")
+    if not isinstance(diag, Mapping):
+        _err("V542_MISSING_FIELD", "diagnostic must be a mapping")
+    subjects = tuple(diag.get("screen_subjects") or ())
+    if subjects != DIAG_SCREEN_SUBJECTS:
+        _err(
+            "V542_RUN_MATRIX",
+            "diagnostic.screen_subjects must be exactly "
+            f"{list(DIAG_SCREEN_SUBJECTS)} (WP4 ruling: A0 is the matched "
+            "same-dose control, not a candidate screen subject), got "
+            f"{list(subjects)!r}",
+        )
+    if "A0" in subjects:
+        _err(
+            "V542_RUN_MATRIX",
+            "diagnostic.screen_subjects must NOT include A0 — the candidate "
+            "learning screen never eliminates the matched control (WP4 "
+            "ruling; A0 is screened only by control_validity_screens)",
+        )
+    if diag.get("a0_role") != DIAG_A0_ROLE:
+        _err(
+            "V542_RUN_MATRIX",
+            f"diagnostic.a0_role must be {DIAG_A0_ROLE!r} (the run-matrix "
+            f"A0@2000 role), got {diag.get('a0_role')!r}",
+        )
+    if diag.get("a0_screen_role") != DIAG_A0_SCREEN_ROLE:
+        _err(
+            "V542_RUN_MATRIX",
+            f"diagnostic.a0_screen_role must be {DIAG_A0_SCREEN_ROLE!r}, got "
+            f"{diag.get('a0_screen_role')!r}",
+        )
+    if diag.get("a0_disposition") != DIAG_A0_DISPOSITION:
+        _err(
+            "V542_RUN_MATRIX",
+            f"diagnostic.a0_disposition must be {DIAG_A0_DISPOSITION!r} — A0 "
+            "is never 'eliminated' by its own learning screen (frozen "
+            f"outcome-neutral control-role correction; WP4 ruling), got "
+            f"{diag.get('a0_disposition')!r}",
+        )
+    if diag.get("a0_reason_code") != DIAG_A0_REASON_CODE:
+        _err(
+            "V542_RUN_MATRIX",
+            f"diagnostic.a0_reason_code must be {DIAG_A0_REASON_CODE!r}, got "
+            f"{diag.get('a0_reason_code')!r}",
+        )
+    if diag.get("screen_applies_to_a0") is not DIAG_SCREEN_APPLIES_TO_A0:
+        _err(
+            "V542_RUN_MATRIX",
+            "diagnostic.screen_applies_to_a0 must be exactly the boolean "
+            f"false (WP4 ruling: the candidate screens are "
+            f"candidate-advancement filters and A0 is the control), got "
+            f"{diag.get('screen_applies_to_a0')!r} "
+            f"({type(diag.get('screen_applies_to_a0')).__name__}) — "
+            "string/int near-misses such as 'false'/0 are rejected",
+        )
+    validity = tuple(diag.get("control_validity_screens") or ())
+    if validity != DIAG_CONTROL_VALIDITY_SCREENS:
+        _err(
+            "V542_RUN_MATRIX",
+            "diagnostic.control_validity_screens must be exactly "
+            f"{list(DIAG_CONTROL_VALIDITY_SCREENS)} (the validity checks A0 "
+            "still faces; failures are invalid_run, never eliminated), got "
+            f"{list(validity)!r}",
+        )
+    vocab = tuple(diag.get("disposition_vocabulary") or ())
+    if vocab != DIAG_DISPOSITION_VOCABULARY:
+        _err(
+            "V542_RUN_MATRIX",
+            "diagnostic.disposition_vocabulary must be exactly "
+            f"{list(DIAG_DISPOSITION_VOCABULARY)} (the three legal effective "
+            f"dispositions; D.3 schema vocab), got {list(vocab)!r}",
+        )
+    rules = tuple(diag.get("elimination_rules") or ())
+    if rules != DIAG_ELIMINATION_RULES:
+        _err(
+            "V542_RUN_MATRIX",
+            "diagnostic.elimination_rules must stay the frozen five-rule "
+            f"list {list(DIAG_ELIMINATION_RULES)} (unchanged by the WP4 "
+            f"ruling — the A4 binding depends on it), got {list(rules)!r}",
+        )
+    note = str(diag.get("disposition_note") or "")
+    for token in ("screen_subjects", "control", "invalid_run",
+                  "A4 3.849742% < 5.0%", "no post-hoc"):
+        if token not in note:
+            _err(
+                "V542_RUN_MATRIX",
+                "diagnostic.disposition_note must state the WP4 ruling "
+                f"(token {token!r} missing): screen_subjects-only "
+                "elimination, A0 control validity => invalid_run, A4 "
+                "3.849742% < 5.0% binding, no post-hoc threshold/rule "
+                f"change; got {note!r}",
+            )
+    th = cfg.get("thresholds")
+    if isinstance(th, Mapping) and \
+            th.get("diagnostic_loss_drop_min_pct") is not None and \
+            th.get("diagnostic_loss_drop_min_pct") != DIAG_LOSS_DROP_MIN_PCT:
+        _err(
+            "V542_RUN_MATRIX",
+            "thresholds.diagnostic_loss_drop_min_pct must stay the signed "
+            f"{DIAG_LOSS_DROP_MIN_PCT} (the WP4 ruling changes no threshold "
+            "value; A4's elimination is binding UNDER this value), got "
+            f"{th.get('diagnostic_loss_drop_min_pct')!r}",
+        )
+    runs = cfg.get("run_matrix").get("runs") \
+        if isinstance(cfg.get("run_matrix"), Mapping) else None
+    a0_row = None
+    for entry in runs or ():
+        if isinstance(entry, Mapping) and \
+                entry.get("run_id") == "V542_DIAG_A0_S17":
+            a0_row = entry
+            break
+    if a0_row is None:
+        _err(
+            "V542_RUN_MATRIX",
+            "V542_DIAG_A0_S17 must stay registered (the matched-dose "
+            "control underpins every screen)",
+        )
+    if a0_row.get("role") != DIAG_A0_ROLE:
+        _err(
+            "V542_RUN_MATRIX",
+            f"V542_DIAG_A0_S17.role must stay {DIAG_A0_ROLE!r} (WP4 ruling: "
+            f"A0 is the control, not a candidate screen subject), got "
+            f"{a0_row.get('role')!r}",
+        )
 
 
 def _check_selection_tau(cfg: Mapping[str, Any]) -> None:
@@ -4412,6 +4632,8 @@ def validate_config(
     checks.append("sampler_binding")
     _check_dose_blocks(cfg)
     checks.append("dose_blocks")
+    _check_diagnostic_disposition(cfg)
+    checks.append("diagnostic_disposition")
     _check_selection_tau(cfg)
     checks.append("selection_tau")
     if check_gv:

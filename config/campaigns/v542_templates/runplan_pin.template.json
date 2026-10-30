@@ -66,6 +66,39 @@
     }
   },
   "core_training_count_formula": "N_core = 3 + n_T1_seed17(<=4) + I(A5_full_dose) + n_diag2000(=6) + 2*n_top2_selected(<=2 candidates) + 2*I(A5_supplement) + I(A1C_activated) + I(A5C_activated). This counts NEW TRAINING runs only; smoke/profile are technical measurements and do NOT enter N_core. top2 max = 4 runs (2 A1-A4 candidates x seeds 29/43); a5_supplement max = 2 runs; combined T3 ceiling = 6. N_core is always computed from the formula, NEVER by summing listed run rows.",
+  "wp4_diagnostic_disposition": {
+    "_note": "WP4 diagnostic ruling 2026-10-30 (Oracle; ADR-0033 v1.3.3; protocol_amendment_id V542_WP4_DIAG_20261030): effective dispositions of the completed seed17 diagnostic 2,000 screens. The candidate learning screen applies only to screen_subjects [A1,A2,A3,A4,A5]; A0 is the matched same-dose control; A4's frozen-rule elimination (3.849742% < 5.0%) is binding. thresholds/budget values and the 26 run_ids are unchanged; the immutable v1 diagnostic_report.jsonl is superseded append-only by diagnostic_report.v2.jsonl.",
+    "amendment_record": "outputs/pesn/v542_backbone_50k/plan/protocol_amendment_wp4_diagnostic.json",
+    "effective_report": "outputs/pesn/v542_backbone_50k/diagnostics/diagnostic_report.v2.jsonl",
+    "diagnostic_control": {
+      "run_id": "V542_DIAG_A0_S17",
+      "decision": "control_not_screened",
+      "gate_disposition": "control_not_screened",
+      "reason_code": "a0_matched_control_not_screened",
+      "screen_role": "control",
+      "screen_applied": false,
+      "failing_screens": [],
+      "informational_failing_screens": ["best_inner_val_total_loss_drop"],
+      "next_stage": "T0_formal_mandatory",
+      "note": "A0@2000 is the matched-dose control, never a candidate screen subject; T0 A0x3 formal rows stay mandatory with NO diagnostic_gate; A0 validity failures (non-finite/H0/H1/resource) are invalid_run, not eliminated"
+    },
+    "diagnostic_gate_skipped": {
+      "run_id": "V542_A4_S17",
+      "decision": "eliminated",
+      "gate_disposition": "gate_skipped",
+      "reason_code": "diag_best_inner_val_drop_lt_5pct_vs_initial",
+      "screen_role": "candidate",
+      "screen_applied": true,
+      "failing_screens": ["best_inner_val_total_loss_drop"],
+      "informational_failing_screens": [],
+      "next_stage": "none",
+      "new_training": 0,
+      "diagnostic_run_outcome": "done",
+      "t3_rows": ["V542_A4_S29", "V542_A4_S43"],
+      "t3_status": "gate_skipped unactivated (cannot satisfy activated_only_by_inner_val_top2 without the seed-17 full-dose / seed17_screen_pass evidence; same diagnostic reason)",
+      "note": "A4 loss drop 3.849742% < 5.0% frozen threshold is binding — V542_A4_S17 full dose is NOT run; no replacement candidate or extra seed is backfilled"
+    }
+  },
   "statistics_contract": {
     "bootstrap_seed_root": 20261029,
     "bootstrap_subseed_formula": "int(sha256(f\"v542|{root}|{seed}|{endpoint}\").hexdigest()[:16], 16) % 2147483647",

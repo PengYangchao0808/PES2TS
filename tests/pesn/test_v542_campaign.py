@@ -660,10 +660,12 @@ def test_diagnostic_requires_the_a0_control(config):
 # ---------------------------------------------------------------------------
 # --formal typed-blocked / --dry-run performs no training
 # ---------------------------------------------------------------------------
-def test_formal_is_typed_blocked_by_the_validator():
+def test_formal_is_refused_by_the_technical_harness():
+    # WP4 record instances exist and the formal gate passes, so this
+    # harness must delegate: it never executes formal runs.
     with pytest.raises(V542CampaignError) as excinfo:
         formal_gate(CONFIG_PATH)
-    assert excinfo.value.code == "V542_BUDGET_NULL"
+    assert excinfo.value.code == "V542_CAMPAIGN_FORMAL_DELEGATED"
 
 
 def test_formal_cli_is_typed_blocked(tmp_path, capsys):
@@ -672,7 +674,7 @@ def test_formal_cli_is_typed_blocked(tmp_path, capsys):
                  "--config", str(CONFIG_PATH)])
     assert code == 2
     err = capsys.readouterr().err
-    assert "V542_BUDGET_NULL" in err
+    assert "V542_CAMPAIGN_FORMAL_DELEGATED" in err
     assert not (tmp_path / "campaign").exists()
 
 

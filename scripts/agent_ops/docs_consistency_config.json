@@ -157,7 +157,11 @@
       "preregistration_signoff_record",
       "H3_QUALIFIED_ONLY",
       "V542_BUDGET_INVALID",
-      "record_sha256"
+      "record_sha256",
+      "control_not_screened",
+      "a0_matched_control_not_screened",
+      "diag_best_inner_val_drop_lt_5pct_vs_initial",
+      "V542_WP4_DIAG_20261030"
     ],
     "docs/plans/PES2TS_V5.4.2_Backbone_50K_详细阶段实施方案_v1.0_20261029.md": [
       "V5.4.2",
@@ -177,7 +181,10 @@
       "15,400",
       "4f13bfbd26d4acf17572641e30453000d65243599519c269473f07d6678ccccb",
       "Ruling 2",
-      "bias=False"
+      "bias=False",
+      "control_not_screened",
+      "a0_matched_control_not_screened",
+      "diag_best_inner_val_drop_lt_5pct_vs_initial"
     ],
     "config/campaigns/pes2ts_v542_backbone_50k.yaml": [
       "pes2ts_v542_campaign_v1",
@@ -219,7 +226,11 @@
       "V542_RECORD_MISSING",
       "V542_RECORD_MISMATCH",
       "V542_BUDGET_INVALID",
-      "record_sha256"
+      "record_sha256",
+      "screen_subjects",
+      "control_not_screened",
+      "a0_matched_control_not_screened",
+      "disposition_vocabulary"
     ],
     "config/campaigns/v542_templates/parity_certificate.template.json": [
       "checkpoint_count",
@@ -245,7 +256,9 @@
       "route_logic",
       "V542-A0-sanity-band",
       "runplan_pin_record",
-      "H3_QUALIFIED_ONLY"
+      "H3_QUALIFIED_ONLY",
+      "diagnostic_control",
+      "diagnostic_gate_skipped"
     ],
     "config/campaigns/v542_templates/preregistration_signoff.template.json": [
       "seed17_screen_pass",
@@ -262,7 +275,9 @@
       "a0_reuse_decision_record",
       "preregistration_signoff_record",
       "record_sha256",
-      "canonical_bytes"
+      "canonical_bytes",
+      "wp4_diagnostic_disposition",
+      "thresholds_changed"
     ],
     "config/campaigns/v542_templates/a0_reuse_decision.template.json": [
       "instance_required_before_formal",
@@ -272,7 +287,9 @@
       "a0_reuse_decision_record",
       "V542_RECORD_MISMATCH",
       "record_sha256",
-      "canonical_bytes"
+      "canonical_bytes",
+      "wp4_diagnostic_control_note",
+      "control_not_screened"
     ]
   },
   "historical_banner_marker": "ADR-0030"

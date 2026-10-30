@@ -99,6 +99,21 @@
     "n_core_counting": "formula_only",
     "a5_supplement_parent_gate": "a5_full_dose_complete_and_seed17_screen_pass"
   },
+  "wp4_diagnostic_disposition": {
+    "_note": "WP4 diagnostic ruling 2026-10-30 (Oracle; ADR-0033 v1.3.3): effective seed17 diagnostic-2,000 dispositions bound to this signoff via protocol_amendment_id. The 28 signed threshold values above are UNTOUCHED (diagnostic_loss_drop_min_pct stays 5.0); the signed budget table is UNTOUCHED; the diagnostic screen RULE is UNTOUCHED — only the screen-subject scope was corrected (A0 = matched control) and A4's frozen-rule elimination is recorded as binding.",
+    "protocol_amendment_id": "V542_WP4_DIAG_20261030",
+    "protocol_amendment_record": "outputs/pesn/v542_backbone_50k/plan/protocol_amendment_wp4_diagnostic.json",
+    "effective_report": "outputs/pesn/v542_backbone_50k/diagnostics/diagnostic_report.v2.jsonl",
+    "superseded_report_immutable": "outputs/pesn/v542_backbone_50k/diagnostics/diagnostic_report.jsonl",
+    "amendment_note": {
+      "thresholds_changed": false,
+      "budget_values_changed": false,
+      "diagnostic_screen_rule_changed": false,
+      "a4_gate_skipped": true,
+      "a0_control_correction": true,
+      "note": "A0 = control_not_screened(a0_matched_control_not_screened), T0 A0x3 mandatory with no diagnostic_gate; A1/A2/A3 = advance_full_dose (T1_formal); A5 = advance_full_dose (T2_conditional); A4 = eliminated/gate_skipped(diag_best_inner_val_drop_lt_5pct_vs_initial), V542_A4_S17 not run, S29/S43 not activated"
+    }
+  },
   "parity_gate": {
     "checkpoints": 6,
     "required": ["V541_E0_S17", "V541_E0_S29", "V541_E0_S43", "V53MP_C_S17", "V53MP_C_S29", "V53MP_C_S43"],

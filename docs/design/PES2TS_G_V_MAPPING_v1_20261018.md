@@ -2,7 +2,7 @@
 
 > 状态：权威（机器可读源：`config/registry/g_v_map.yaml`）
 > 映射版本：`2026-10-18.1`
-> 计划修订：`2026-10-30.1`
+> 计划修订：`2026-10-30.2`
 > 生成命令：`python scripts/render_gv_map.py --write`
 > 校验命令：`python scripts/render_gv_map.py --check`
 
