@@ -81,6 +81,7 @@ from scripts.agent_ops.v542_formal import (  # noqa: E402
     REASON_A4_GATE_SKIPPED,
     REASON_A5C_SKIP,
     REASON_A5_NOT_ACTIVATED,
+    REASON_A5_NOT_EVALUATED,
     REASON_TOP2_NOT_FROZEN,
     REASON_TOP2_NOT_SELECTED,
     V542FormalError,
@@ -386,7 +387,7 @@ def test_t2_t3_attr_skip_reasons_and_zero_new_training(cfg, tmp_path):
     assert plan["executed"] == []
 
     by_id = {r["run_id"]: r for r in read_ledger(tmp_path)}
-    assert by_id["V542_A5_S17"]["reason"] == REASON_A5_NOT_ACTIVATED
+    assert by_id["V542_A5_S17"]["reason"] == REASON_A5_NOT_EVALUATED
     for run_id in ("V542_A1_S29", "V542_A1_S43", "V542_A2_S29",
                    "V542_A2_S43", "V542_A3_S29", "V542_A3_S43"):
         assert by_id[run_id]["reason"] == REASON_TOP2_NOT_SELECTED
@@ -455,7 +456,6 @@ def test_conditional_launches_are_structurally_forbidden(cfg):
 
     for run_id, stage, backbone in (
             ("V542_A4_S17", "T1", "A4"),
-            ("V542_A5_S17", "T2", "A5"),
             ("V542_A4_S29", "T3", "A4"),
             ("V542_A5_S29", "T3", "A5"),
             ("V542_A1C_S17", "T-ATTR", "A1-C"),
@@ -465,12 +465,15 @@ def test_conditional_launches_are_structurally_forbidden(cfg):
             _assert_launch_allowed(row)
         assert excinfo.value.code == "V542_FORMAL_LAUNCH_FORBIDDEN"
         assert run_id in excinfo.value.detail
-    # T3 top-2 rows of A1-A3 stay structurally allowed (the top2 freeze
-    # membership is the substantive gate, asserted separately)
+    # WP6: T3 top-2 rows of A1-A3 and the T2 A5 full-dose row are
+    # structurally allowed — their frozen predicates are the substantive
+    # gates, asserted separately.
     for backbone in ("A1", "A2", "A3"):
         _assert_launch_allowed(
             RunRow(f"V542_{backbone}_S29", "T3", backbone, 29,
                    "conditional", True))
+    _assert_launch_allowed(
+        RunRow("V542_A5_S17", "T2", "A5", 17, "conditional", True))
 
 
 def test_unknown_stage_and_run_ids_are_typed_refusals(cfg):

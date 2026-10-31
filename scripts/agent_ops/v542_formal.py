@@ -140,6 +140,9 @@ LAUNCHABLE: Dict[str, tuple] = {
     # frozen top2 set is enforced by ``decide_stage_runs`` (A4/A5/A1-C/
     # A5-C stay structurally forbidden and are recorded gate_skipped).
     "T3": ("A1", "A2", "A3"),
+    # WP6: the A5 full-dose row launches only when the frozen activation
+    # predicate is satisfied in the WP6 activation record.
+    "T2": ("A5",),
 }
 
 # -- frozen reason codes ----------------------------------------------------
@@ -158,6 +161,10 @@ REASON_TOP2_NOT_FROZEN: str = "top2_not_frozen"
 REASON_TOP2_NOT_SELECTED: str = "top2_not_selected_inner_val_screen"
 #: WP6 seed17 screen report (written by ``v542_stats.py screen``).
 TOP2_SCREEN_REL: str = "reports/seed17_screen_report.json"
+#: WP6 activation decisions (written by ``v542_stats.py activate``).
+ACTIVATION_REPORT_REL: str = "reports/activation_decisions.json"
+#: T2 A5 full-dose rows whose activation was never evaluated.
+REASON_A5_NOT_EVALUATED: str = "a5_activation_not_evaluated"
 #: T3 A5 supplement rows: parent gate cannot hold while T2 never ran.
 REASON_A5_SUPPLEMENT: str = "a5_supplement_parent_gate_unmet"
 A5_SUPPLEMENT_CONDITION: str = (
@@ -617,6 +624,31 @@ def load_top2_freeze(campaign_root: Any) -> Dict[str, Any]:
             "report_sha256": hashlib.sha256(path.read_bytes()).hexdigest()}
 
 
+def load_activation(campaign_root: Any) -> Optional[Dict[str, Any]]:
+    """Read the WP6 activation decisions record (``v542_stats.py activate``).
+
+    Returns ``None`` when the record does not exist yet (T2 then stays
+    ``gate_skipped`` with ``a5_activation_not_evaluated``); a present
+    record is returned as-is so the T2 branch can honour the frozen
+    activation predicate instead of guessing.
+    """
+    path = Path(campaign_root) / ACTIVATION_REPORT_REL
+    if not path.is_file():
+        return None
+    try:
+        doc = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        raise V542FormalError(
+            "V542_ACTIVATION_REPORT_INVALID",
+            f"the WP6 activation record is unreadable ({path}): {exc}"
+        ) from exc
+    if not isinstance(doc, Mapping):
+        raise V542FormalError(
+            "V542_ACTIVATION_REPORT_INVALID",
+            f"{path} is not a JSON object")
+    return dict(doc)
+
+
 def decide_stage_runs(stage: str, rows: Sequence[RunRow], *,
                       state: Mapping[str, Mapping[str, Any]],
                       band: Optional[Mapping[str, Any]],
@@ -661,10 +693,38 @@ def decide_stage_runs(stage: str, rows: Sequence[RunRow], *,
                 continue
             decisions.append(_launch(row))
         elif stage == "T2":
-            decisions.append(_gate_skipped(
-                row, REASON_A5_NOT_ACTIVATED,
-                frozen_condition=A5_FROZEN_CONDITION,
-                not_evaluable_before="WP6 (top2 seeds + final H3)"))
+            activation = load_activation(campaign_root)
+            if activation is None:
+                # WP6 activation not evaluated yet: never guess.
+                decisions.append(_gate_skipped(
+                    row, REASON_A5_NOT_EVALUATED,
+                    frozen_condition=A5_FROZEN_CONDITION,
+                    activation_report=f"{campaign_root}/"
+                                      f"{ACTIVATION_REPORT_REL}"))
+                continue
+            a5 = dict(activation.get("a5_full_dose") or {})
+            if not bool(a5.get("activated")):
+                decisions.append(_gate_skipped(
+                    row, str(a5.get("reason") or REASON_A5_NOT_ACTIVATED),
+                    frozen_condition=A5_FROZEN_CONDITION,
+                    activation_report=f"{campaign_root}/"
+                                      f"{ACTIVATION_REPORT_REL}"))
+                continue
+            diag = diagnostic_disposition(campaign_root, row.backbone)
+            if diag["disposition"] != "advance_full_dose":
+                decisions.append(_gate_skipped(
+                    row, diag["reason_code"] or diag["disposition"],
+                    diagnostic_disposition=diag["disposition"],
+                    diagnostic_report=diag["report"]))
+                continue
+            cost = cost_gate_ratio(cfg, row.backbone)
+            if not cost["within"]:
+                decisions.append(_gate_skipped(
+                    row, REASON_COST_EXCEEDS,
+                    core_time_ratio=cost["ratio"],
+                    max_core_time_ratio=cost["max_core_time_ratio"]))
+                continue
+            decisions.append(_launch(row))
         elif stage == "T3":
             if row.backbone == "A4":
                 decisions.append(_gate_skipped(

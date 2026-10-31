@@ -1657,7 +1657,7 @@ def paired_cluster_values(cfg: Mapping[str, Any], campaign_root: Any,
         positions = _band_inner_val_positions(cfg, env.ds, int(seed))
         by_curve: Dict[str, List[int]] = {}
         for p in positions:
-            sid = str(env.ds.samples[int(p)])
+            sid = str(env.ds.samples[int(p)].sample_id)
             curve = str(env.labels.by_sample[sid].curve_id)
             by_curve.setdefault(curve, []).append(int(p))
         train_pos, _val = _band_train_positions(cfg, env.ds, int(seed))
@@ -1717,10 +1717,20 @@ def run_h3(cfg: Mapping[str, Any], *, campaign_root: Any,
         h2_doc = _load_json(Path(campaign_root) / H2_REPORT_REL,
                             "V542_STATS_H2_REPORT_MISSING",
                             "the H2 report")
-        runs_matrix = {
-            str(r.get("backbone")): bool(r.get("winner_eligible"))
-            for r in ((cfg.get("run_matrix") or {}).get("runs") or [])
-            if isinstance(r, Mapping)}
+        runs_matrix: Dict[str, bool] = {}
+        for r in ((cfg.get("run_matrix") or {}).get("runs") or []):
+            if not isinstance(r, Mapping):
+                continue
+            backbone = str(r.get("backbone"))
+            # A candidate is winner-eligible when ANY of its non-diagnostic
+            # rows carries the flag (the T-DIAG row is always false and must
+            # not overwrite the nominal rows).
+            if str(r.get("stage")) == "T-DIAG" or str(
+                    r.get("class")) == "diagnostic":
+                continue
+            runs_matrix[backbone] = bool(
+                runs_matrix.get(backbone)
+                or bool(r.get("winner_eligible")))
         ledger = latest_ledger_state(read_ledger(campaign_root))
         candidate_inputs = {}
         seen_backbones = sorted({
@@ -1749,8 +1759,17 @@ def run_h3(cfg: Mapping[str, Any], *, campaign_root: Any,
                 # incomplete run: keep an empty shell so eligibility
                 # records "three_seeds_incomplete" honestly.
                 point = {}
-            paired = paired_cluster_values(
-                cfg, campaign_root, backbone, device=device)
+            seeds_done = [
+                int(seed) for seed in FROZEN_SEEDS
+                if str((ledger.get(f"V542_{backbone}_S{seed}") or {})
+                       .get("outcome")) == "done"]
+            if len(seeds_done) == H3_TOTAL_SEEDS:
+                paired = paired_cluster_values(
+                    cfg, campaign_root, backbone, device=device)
+            else:
+                # not a three-seed candidate (e.g. A1 outside the top2):
+                # no paired values; compute_h3 records it ineligible.
+                paired = {}
             candidate_inputs[backbone] = {
                 "winner_eligible": bool(runs_matrix.get(backbone)),
                 "h2_no_breach_by_seed": h2_by_seed,
