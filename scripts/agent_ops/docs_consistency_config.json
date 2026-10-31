@@ -290,6 +290,14 @@
       "canonical_bytes",
       "wp4_diagnostic_control_note",
       "control_not_screened"
+    ],
+    "docs/reports/PES2TS_V542_Backbone_50K_实施与训练报告_20261031.md": [
+      "V5.4.2",
+      "no_backbone_winner",
+      "A0（matched baseline）留任",
+      "H3",
+      "confirm",
+      "new_QC_calls=0"
     ]
   },
   "historical_banner_marker": "ADR-0030"

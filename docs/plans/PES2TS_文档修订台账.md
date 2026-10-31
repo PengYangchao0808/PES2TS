@@ -1,5 +1,14 @@
 # PES2TS 文档修订台账（协同性）
 
+## 2026-10-31 增量登记：V5.4.2 WP7 冻结与执行结论（`no_backbone_winner`；A0 留任）
+
+- 执行链：T0 `V542_A0_S17/S29/S43`（0.6806/0.6666/0.6841）→ `V542-A0-sanity-band` **pass** → T1 `A1/A2/A3 S17`（0.6924/0.3275/0.6476；`A4` 按 WP4 binding `gate_skipped`）→ seed17 screen top2=[A2,A3]（A1 未入选）→ T3 `A2/A3 S29/S43`（0.3213/0.3209、0.6506/0.6713；A1 not-selected、A4 binding、A5 supplement parent-gate unmet）→ T2 `A5_S17`（0.7079，按冻结激活条件）。N_core=17。
+- 判定：`H2` 逐 seed 对照 matched A0 与 R3 —— A2_S43、A3_S43 触发 `matched_a0.sign_abs_drop` 与 `matched_a0.fixed_coverage_direction_rel_degradation`（A0_S17 对 R3 的 dead-fraction 微超仅基线漂移）；因此 `H3 eligible=[]`（A1/A5 three_seeds_incomplete、A2/A3 per_seed_h2_breach、A4 diagnostic-eliminated），`final_selection` 走 `zero_h3_qualified_candidates_a0_retained_no_backbone_winner`——**A0 留任，不写成「A0 胜出」**，且不与 V541 E0 比较。
+- 激活/删失：A5 supplement `gate_skipped(a5_supplement_parent_gate_unmet, a5_seed17_screen_pass=false)`；A1-C `gate_skipped(a1_not_in_top2_and_not_selected)`；A5-C `gate_skipped(a5_not_selected_backbone)`；A4 全程 `gate_skipped(diag_best_inner_val_drop_lt_5pct_vs_initial)`。
+- 冻结件：新报告 `docs/reports/PES2TS_V542_Backbone_50K_实施与训练报告_20261031.md`（Executed-Frozen，含全部预注册指标、失败与删失、成本、负结果措辞、V5.4.3 交接）；registry `V5.4.2` status `proposed → executed`、`plan_revision 2026-10-30.3`、`evidence` 指向报告；G–V 文档重渲染。
+- 边界：confirm 未读（`confirm_read=false`）、`new_QC_calls=0`、`sealed_authorized=false`、单路、`swap=0`、`oom_kill_max=0`；dev 未访问；旧 V5.4/V5.4.1 条目与 `outputs/` 历史未改；无生产 No-Move/verified-TS/部署声明。
+
+
 ## 2026-10-30 增量登记：V5.4.2 WP4 diagnostic ruling 收口（ADR-0033 v1.3.3；minimal path，阈值/预算数值不变）
 
 - 背景：Oracle WP4 评审（`.slim/deepwork/v542-backbone-20261029/oracle-wp4-diagnostic.md`，绑定 HEAD `3acecc4` 证据）裁定 seed17 diagnostic 2,000 六行处置：**A0 是 matched 同剂量对照、不是候选学习筛对象**（harness「A0 included」为相对冻结 run matrix 的实现越权）；**A4 在冻结规则下 3.849742% < 5.0% = binding 淘汰**；5% 阈值与 comparator 冻结不变（改值即 post-hoc）。minimal path：只修 A0 control 角色 + 记录 A4 binding + 声明 initialization-proxy 混杂为设计局限，不重跑、不改阈值/预算/run 矩阵。

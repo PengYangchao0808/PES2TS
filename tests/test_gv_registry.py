@@ -109,11 +109,10 @@ def test_v541_gates_are_v541_namespaced():
 
 def test_v541_plan_revision_recorded():
     gv_map = load_gv_map(DEFAULT_MAP_PATH)
-    # 2026-10-30 WP4 diagnostic amendment: registry plan_revision moved to
-    # 2026-10-30.2 (ADR-0033 v1.3.3; A0 control correction + A4 gate_skipped,
-    # thresholds/budget unchanged); the V5.4.1 historical note must still
-    # be present.
-    assert gv_map.plan_revision == "2026-10-30.2"
+    # 2026-10-31 WP7 execution: registry plan_revision moved to
+    # 2026-10-30.3 (V5.4.2 executed, no_backbone_winner; thresholds/budget
+    # unchanged); the V5.4.1 historical note must still be present.
+    assert gv_map.plan_revision == "2026-10-30.3"
     import yaml as _yaml
 
     doc = _yaml.safe_load(DEFAULT_MAP_PATH.read_text(encoding="utf-8"))
@@ -133,8 +132,10 @@ def test_v542_registered_as_proposed_with_fix6_gates():
     gv_map = load_gv_map(DEFAULT_MAP_PATH)
     validate_gv_map(gv_map)
     entry = resolve_campaign(gv_map, "V5.4.2")
-    # WP0 must stay proposed — never an execution-state claim
-    assert entry.status == "proposed"
+    # WP7 execution closed the campaign: status is now ``executed`` with the
+    # frozen no_backbone_winner verdict (A0 matched baseline retained).
+    assert entry.status == "executed"
+    assert "no_backbone_winner" in entry.title
     assert entry.primary_g == "G3.P.2"
     assert set(entry.supporting_g) == {"G3.P.1", "G3.P.3", "G0", "G1"}
     # the A0 sanity band is a canonical registry gate (fix-5 C5 / fix-6)
@@ -163,7 +164,9 @@ def test_v542_registered_as_proposed_with_fix6_gates():
     ):
         assert pattern in entry.code_scope, pattern
     assert entry.config == "config/campaigns/pes2ts_v542_backbone_50k.yaml"
-    assert entry.evidence and "V5.4.2" in entry.evidence
+    # WP7: evidence points at the frozen execution report (V542 naming)
+    assert entry.evidence.endswith(
+        "PES2TS_V542_Backbone_50K_实施与训练报告_20261031.md")
 
 
 def test_v541_run_record_validates_against_registry():

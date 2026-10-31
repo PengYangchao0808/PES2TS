@@ -3252,12 +3252,22 @@ def _check_gv_block(cfg: Mapping[str, Any]) -> None:
             "V542_GV_MISMATCH",
             f"gv.map_version {gv.get('map_version')!r} != {gv_map.map_version!r}",
         )
-    if campaign.status not in {"proposed", "active"}:
+    if campaign.status not in {"proposed", "active", "executed"}:
         _err(
             "V542_GV_MISMATCH",
-            f"registry {campaign.campaign_id} status {campaign.status!r} — WP0 "
-            "registration must stay proposed/active, never executed",
+            f"registry {campaign.campaign_id} status {campaign.status!r} — "
+            "only proposed/active (pre-execution) or executed (WP7 freeze) "
+            "are legal states",
         )
+    if campaign.status == "executed":
+        # WP7: an executed claim must point at the frozen final report.
+        report = Path(str(campaign.evidence or ""))
+        if not report.is_file():
+            _err(
+                "V542_GV_MISMATCH",
+                f"registry {campaign.campaign_id} is 'executed' but its "
+                f"evidence report is missing ({campaign.evidence!r})",
+            )
 
 
 def _check_statistics(cfg: Mapping[str, Any]) -> None:
