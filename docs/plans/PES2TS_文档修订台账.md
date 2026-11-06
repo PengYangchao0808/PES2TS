@@ -1,5 +1,28 @@
 # PES2TS 文档修订台账（协同性）
 
+## 2026-11-06 增量登记：V5.4.3 全阶段执行完毕（Executed-Frozen；双轨冠军确证）
+
+- 新增执行报告 [PES2TS_V543_双Decoder_50K_实施与训练报告_20261106](../reports/PES2TS_V543_双Decoder_50K_实施与训练报告_20261106.md)：WP0–WP9 全部完成；18-run 矩阵（682,200 updates）全部 done；H3 双轨确证（M1 move_rmse +4.77%、P3 process_auprc +0.283/process_q +0.351，Holm 后 p=0.0001 级）；T7 dev 一次性访问已使用并封存（ledger 恰 1 行）；QC=0、confirm 全程未读、docs 门与 gv-map 门 CLEAN、终版 bundle 208 文件 verify ok。
+- 状态变化：主方案与 WP 清单保持 `Frozen-Preregistered v1.0`（按预注册执行完毕，不改文）；ADR-0034 保持 Proposed（v1.1 补记在册）。
+- 代码与产物：`pes2ts_core/pesn/models/v543/`、`offline/{training,data,evaluation}/v543_*.py`、`scripts/agent_ops/v543_*.py`、配套测试全部落地；训练产物位于 `outputs/pesn/v543_dual_decoder_50k/`（gitignored）与 repo 根 `audit/dev_rollout_access_ledger.jsonl`（dev 一次性账本，随库提交）。
+
+## 2026-11-02 增量登记：V5.4.3 WP0 治理落地与预注册签认（ADR-0034；方案转 Frozen-Preregistered）
+
+- 新增 [ADR-0034 V5.4.3 双 Decoder 基准与 DecoderContextV1](../design/decisions/ADR-0034-V5.4.3-双Decoder与DecoderContextV1.md)（**Proposed**；D1–D8 已签认，2026-11-02）：按主方案附录 D 的 10 节目录成文——背景与问题（V542 交接、A0 留任、Decoder 问题）/ 决策（固定 Encoder + 参数自由 Bridge + 两 Track 独立残差；五组件与唯一数据流；五条冻结边界；零残差初始化；Controller 非学习语义；F1–F8 八处修正；Decoder Registry 协议）/ 数据合同（`DecoderContextV1` 字段/单位/对称性/形状约束、`MoveContextV1`/`ProcessContextV1` 强制互斥、`key_v` 8 通道、`pair_s` 48 维、key-key 邻接 `Ek ≤ 2·(P + 4K)` 与 token 布局、禁读清单与运行时审计、缓存键、A0 零残差 parity 等式）/ 训练合同（M0–M5、P0–P5、P4-C 注册表与参数匹配 36K ±5% = 34,200–37,800、单候选硬上限 40,000、整模 129,619/带内最大 133,219/硬上限 150,000；37,900 flat + 400 warmup、LR 3e-4、AdamW、wd 1e-4、clip 1.0、fp32、batch 8×4=32、`v541_curve_stratified_v1`、每 100 updates 验证、inner-val cap 8,192、seeds 17/29/43；`L_M = L_atom + 0.5L_pair + 0.02L_cos`、`L_P = 0.5L_ranking + 0.5L_q + 0.012385049119773344L_endpoint`、独立 `process_frame_mask`；梯度隔离；S0-A/B/C → S1 → S2）/ 评估合同（新指标表、`fixed_coverage_direction@3` 正式定义、H0–H3、统计合同 10,000 draws + Holm + `(1+#{…})/10001` p 值、q 有效性规则、dev 一次性与 confirm 永封）/ 预注册与治理（D1–D8 全部签认 + 三条运行授权、18-run 矩阵 7+7+≤4 = 682,200 updates、seed 策略与 screen score、资源边界与熔断）/ 与 V542/V541/合同的关系（不改旧文件、复用 `load_a0_strict`、禁 `strict=False`）/ 不能声称的结论 / R1–R10 风险与回退 / 变更记录。
+- **D1–D8 签认**：签认人 = 仓库所有者（经 DSH 编排会话明确指令），日期 2026-11-02，建议值**全部采用**（F1–F8 全接受、新 fixed-coverage、q MAE/ordering 为主、36K ±5%、MOVE 损失沿用 V542、37,900 flat + 400 warmup、18-run + 两 seed 筛选 + 三 seed 终审、T7 仅 dev 一次性 + confirm 永封）。
+- **三条运行授权（2026-11-02）**：① 自主连续推进——WP3 go/no-go 等治理门由编排 agent 内部核验后自主通过，重大异常或需签认事项暂停上报；② 正式训练 smoke 先行——每条 Track 短程 smoke 通过后直接排队启动正式 run；③ confirm 永封、QC=0、dev 仅 T7 一次性访问、`strict=False` 禁用、禁 `torch.compile`。
+- **状态变化**：主方案 [PES2TS_V5.4.3_双Decoder_50K_全面开发与训练方案_v1.0](PES2TS_V5.4.3_双Decoder_50K_全面开发与训练方案_v1.0_20261102.md) 与 [WP 执行清单 v1.0](PES2TS_V5.4.3_WP执行清单_v1.0_20261102.md) 均由 `Active-Proposed v1.0` 转 **`Frozen-Preregistered v1.0`**；主方案头部新增签认记录行，WP 清单 §0 的 D1–D8 勾选框全部勾选并填写签认人/日期（签认人：仓库所有者 / DSH 编排会话；日期：2026-11-02）。
+- **registry 与配置**：按本台账 2026-11-02 条既定规则（「registry 暂不新增 `V5.4.3`，WP0 签认后才登记」）——签认已完成，`config/registry/g_v_map.yaml` 的 `V5.4.3` 条目（status `proposed`）、`config/campaigns/pes2ts_v543_dual_decoder_50k.yaml` 与 `scripts/agent_ops/v543_config_schema.py` 由**并行 lane 创建**，本 lane 只登记指向、不落地代码/配置。
+- 边界：本 lane 只改 docs 五处（ADR-0034 新建、主方案状态行、WP 清单签认栏、本台账、`docs/README.md`）；未创建代码文件，未改 `config/`、`scripts/`、`tests/`、`pes2ts_core/`；未启动训练/QC、未读 dev/confirm、`new_QC_calls=0`、`confirm_read=false`；V542/V541 冻结件与 `outputs/` 历史未动；不宣称训练完成或任何候选科学收益。
+
+## 2026-11-02 增量登记：V5.4.3 双 Decoder 50K 全面方案（Active-Proposed；未执行）
+
+- 新增主方案 [PES2TS_V5.4.3_双Decoder_50K_全面开发与训练方案_v1.0_20261102](PES2TS_V5.4.3_双Decoder_50K_全面开发与训练方案_v1.0_20261102.md)：固定 A0 Encoder + 参数自由 `DecoderContextV1` + MOVE/PROCESS 两 Track 独立残差；首轮 7 候选（M1–M3、P1–P4），M4 Flow 条件激活、M5 Diffusion/P5 GraphGRU 默认关闭；18-run 上限（7+7+≤4）、37,900 flat + 400 warmup、同 Track 36K ±5% 参数匹配、总模型硬上限 150K。
+- 方案对用户提案 v2.0 做 8 处修正（F1–F8）：`q0_raw` 用 `fc2` hook；`pair_index/pair_edit` 监督隔离并采用规范序；新增独立 `fixed_coverage_direction@3`；PROCESS `frame_mask` 覆盖 terminal 行；补 `key_edge_index`/`token` 合同；basis 覆盖率加条件数/有效秩/留一；`q_corr` 降为诊断；MOVE 损失沿用 V542 实际配方（不含 strong/dead）。
+- 新增执行清单 [PES2TS_V5.4.3_WP执行清单_v1.0_20261102](PES2TS_V5.4.3_WP执行清单_v1.0_20261102.md)：D1–D8 签认、WP0–WP9、18-run 追踪、H0–H3 门、冻结与交付清单。
+- 状态与边界：`Active-Proposed`；未改代码、未启动训练、未读 dev/confirm、`new_QC_calls=0`；registry 暂不新增 `V5.4.3`（WP0 签认后才登记）；V542/V541 冻结件未动。
+- 下一步：D1–D8 签认 → WP0（ADR-0034 + campaign YAML + validator）→ WP1 三 seed parity。
+
 ## 2026-10-31 增量登记：V5.4.2 WP7 冻结与执行结论（`no_backbone_winner`；A0 留任）
 
 - 执行链：T0 `V542_A0_S17/S29/S43`（0.6806/0.6666/0.6841）→ `V542-A0-sanity-band` **pass** → T1 `A1/A2/A3 S17`（0.6924/0.3275/0.6476；`A4` 按 WP4 binding `gate_skipped`）→ seed17 screen top2=[A2,A3]（A1 未入选）→ T3 `A2/A3 S29/S43`（0.3213/0.3209、0.6506/0.6713；A1 not-selected、A4 binding、A5 supplement parent-gate unmet）→ T2 `A5_S17`（0.7079，按冻结激活条件）。N_core=17。
