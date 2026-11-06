@@ -1,0 +1,328 @@
+# PES2TS V5.4.3 双 Decoder 50K 战役配置 — WP0 预注册冻结
+# 权威规格: docs/plans/PES2TS_V5.4.3_双Decoder_50K_全面开发与训练方案_v1.0_20261102.md
+#           §5 (DecoderContextV1 字段表/双只读视图/禁读/缓存键/零残差 parity)
+#           §6 (M0–M5 / P0–P5 候选、参数匹配 36K±5%、整模 129,619/带内 133,219/硬上限 150,000)
+#           §7 (S0-A/B/C → S1 37,900 flat + 400 warmup → S2 条件)
+#           §8 (阶段矩阵 18-run、seed 策略、资源边界、熔断) / §9 (评估、H0–H3、统计合同)
+#           §10 (T7 四组合 B0/BM/BP/BMP) / §12 (WP0–WP9) / 附录 A (本 YAML 草案)
+#           附录 B (预注册阈值表) / 附录 C (18-run 正式矩阵)
+# 治理:     ADR-0034 (V5.4.3 双 Decoder 基准与 DecoderContextV1 — 唯一治理锚点)
+#           ADR-0031 (MoveProcessContract v1 — MOVE/PROCESS 语义不变)
+#           ADR-0032 (V5.4.1 — Embedding 接口与预注册治理上游)
+#           ADR-0033 (V5.4.2 — Backbone 接口与预注册治理上游; V5.4.2 = no_backbone_winner, A0 留任)
+# 上游设计源: docs/plans/PES2TS_V5.4.3_双Decoder_50K_全面开发与训练方案_v1.0_20261102.md
+#             (Frozen-Preregistered; D1–D8 全部签认 2026-11-02)
+#             + docs/plans/PES2TS_V5.4.3_WP执行清单_v1.0_20261102.md
+# 校验:     python scripts/agent_ops/v543_config_schema.py --prereg \
+#             --config config/campaigns/pes2ts_v543_dual_decoder_50k.yaml
+#           (WP0 状态: prereg 通过; budget.per_candidate_core_time 未回填 =>
+#            t1_blocked 记录 WP7 same-env profile 签认; preregistration_signoff 实例
+#            由 validator 在 --formal 机验, WP0 期缺席记 t1_blocked)
+# 变更规则: 任何字段变更 = config_sha256 变更 + runplan 重新冻结 (runplan_pin);
+#           阈值/矩阵/seed 策略/损失配方/参数带签认后不得按 seed17/dev 结果调整
+#           (改值须重走签认 + 更新全部 SHA); 不得改 V541/V542 冻结件与只读报告。
+# 授权记录: 仓库所有者经 DSH 编排会话 2026-11-02 签认 D1–D8 全部采用建议值 +
+#           三条运行授权: ① WP3 go/no-go 等治理门由编排 agent 内部核验后自主通过
+#           (重大异常暂停上报); ② 每条 Track 短程 smoke 通过后直接排队启动正式
+#           run (smoke-gated auto-launch); ③ confirm 永封 / new_QC_calls=0 /
+#           dev 仅 T7 一次性访问 / strict=False 禁用 / torch.compile 禁用。
+schema: pes2ts_v543_dual_decoder_campaign_v1
+campaign_id: PES2TS_V543_DUAL_DECODER_50K
+version: 0.1.0-wp0
+status: proposed
+
+gv:
+  campaign_id: V5.4.3
+  primary_g: G3.P.2
+  supporting_g: [G3.P.1, G3.P.3, G0, G1]
+  map_version: "2026-10-18.1"
+  gates:
+    - V543-WP0-prereg
+    - V543-WP1-encoder-parity
+    - V543-WP2-bridge-context
+    - V543-WP3-sufficiency
+    - V543-WP4-registry-trainer
+    - V543-smoke-200
+    - V543-profile
+    - V543-diagnostic-2000
+    - V543-H0-legality
+    - V543-H1-resource
+    - V543-H2-move
+    - V543-H2-process
+    - V543-H3-move
+    - V543-H3-process
+    - V543-budget-signoff
+    - V543-formal
+    - V543-S2-conditional
+
+governance:
+  constitution: docs/PES2TS_开发宪法_v1.md
+  contracts:
+    - docs/contracts/PES2TS_MoveProcessContract_v1.md # 唯一任务合同 (MOVE+PROCESS 语义不变)
+    - docs/contracts/PES2TS_ReactionIntent_Contract_v2.md
+    - docs/contracts/PES2TS_GeometryPolicyContract_v2.md
+  adrs: [ADR-0031, ADR-0032, ADR-0033, ADR-0034] # ADR-0034 = 本战役唯一治理锚点
+  plan: docs/plans/PES2TS_V5.4.3_双Decoder_50K_全面开发与训练方案_v1.0_20261102.md
+  wp_checklist: docs/plans/PES2TS_V5.4.3_WP执行清单_v1.0_20261102.md
+  adr_path: docs/design/decisions/ADR-0034-V5.4.3-双Decoder与DecoderContextV1.md
+  docs_gate: python scripts/agent_ops/docs_consistency.py --strict
+  schema_validator: python scripts/agent_ops/v543_config_schema.py --prereg --config config/campaigns/pes2ts_v543_dual_decoder_50k.yaml
+  authorization:
+    implementation_authorized: true # 2026-11-02 D1–D8 签认后进入 WP0–WP9 实现
+    formal_training_authorized: true # smoke-gated auto-launch: 每条 Track 短程 smoke 通过后直接排队启动正式 run
+    formal_training_scope: 18-run 上限内 gated formal training; 实际 run 仍须 H0/H1/smoke/profile/预算门全过 (§8.5)
+    thresholds_signed_frozen: true # 附录 B 阈值 2026-11-02 签认为 frozen (见 thresholds.signoff)
+    signed_decisions: [D1, D2, D3, D4, D5, D6, D7, D8]
+    signed_on: "2026-11-02"
+    signed_by: repository_owner_via_dsh_orchestration_session
+    run_authorizations:
+      - autonomous_go_no_go_within_governance_gates # WP3 go/no-go 等治理门由编排 agent 内部核验后自主通过; 重大异常暂停上报
+      - smoke_gated_auto_launch_formal # 每条 Track 短程 smoke 通过后直接排队启动正式 run
+      - confirm_sealed_qc_zero_dev_t7_one_shot # confirm 永封 / QC=0 / dev 仅 T7 一次性访问
+    t1_start_requires: [V543-WP1-encoder-parity, V543-WP2-bridge-context, V543-WP3-sufficiency, V543-WP4-registry-trainer, V543-smoke-200, V543-profile, V543-diagnostic-2000, V543-H0-legality, V543-H1-resource, V543-budget-signoff, runplan_pin_record, preregistration_signoff_record]
+    t1_start_requires_note: 前 10 项为 registry (g_v_map.yaml) canonical gate IDs; 后 2 项为 record requirements (outputs/pesn/v543_dual_decoder_50k/plan 下实例必须存在且按 governance.records 冻结的 SHA 规则记录), 不是 gate alias; preregistration_signoff_record 由 validator 机器核验 (prereg 缺失记 t1_blocked, --formal 缺失/不可读/内容漂移 typed-reject V543_RECORD_MISSING/V543_RECORD_MISMATCH); runplan_pin_record 由 WP5 runner 在 runplan 冻结时核验, WP0 validator 不读实例
+    confirm_authorized: false # confirm 永封存 (schema 强制 typed rejection)
+    sealed_authorized: false
+    new_qc_calls: 0 # 本阶段 0 QC 调用
+    single_lane: true # 单路执行
+    swap_allowed: false # swap=0
+  records: # T1 record requirements 冻结 spec (validator _check_governance_records 逐项镜像校验); SHA 规则 = canonical bytes (compact sorted-key JSON, UTF-8) 的 sha256, 实例携带 record_sha256 并被 validator 核验; runplan_pin_record 由 WP5 runner 在 runplan 冻结时核验 (WP0 validator 不读实例)
+    runplan_pin_record:
+      template: config/campaigns/v543_templates/runplan_pin.template.json
+      instance: outputs/pesn/v543_dual_decoder_50k/plan/runplan.pin.json
+      required_fields: [campaign_id, config_path, schema_id, seeds, runplan_sha256, frozen_on, frozen_by]
+      sha_rule: sha256_of_canonical_file_bytes
+      verified_by: runner_at_runplan_pin (WP5 freeze; validator 记录 requirement, 实例由 runner 在 runplan 冻结时生成并核验 — WP0 --formal 门不读 pin 实例)
+    preregistration_signoff_record:
+      template: config/campaigns/v543_templates/preregistration_signoff.template.json
+      instance: outputs/pesn/v543_dual_decoder_50k/plan/preregistration_signoff.json
+      required_fields: [campaign_id, config_path, schema, schema_id, gv_campaign_id, thresholds_signed_frozen, signed_by_roles, record_sha256]
+      sha_rule: sha256_of_canonical_file_bytes
+      expected: {campaign_id: PES2TS_V543_DUAL_DECODER_50K, schema_id: pes2ts_v543_dual_decoder_campaign_v1, gv_campaign_id: V5.4.3, config_path: config/campaigns/pes2ts_v543_dual_decoder_50k.yaml, schema: pes2ts_v543_preregistration_signoff_v1}
+      threshold_mirror: thresholds_signed_frozen # 19 签认阈值必须逐值镜像 config thresholds 且 canonical bytes 相等, 漂移 = V543_RECORD_MISMATCH
+      signoff_roles: true # signed_by_roles 必须是冻结角色键集 (statistics_owner/evaluation_signoff=main_session_owner, oracle_reviewer=oracle_gate0_reviewer; 空 mapping = V543_RECORD_MISMATCH)
+      record_sha256_note: 实例声明 record_sha256 = sha256(canonical_bytes(实例去掉 record_sha256 字段)) — 缺失 = V543_RECORD_MISSING, 错误 digest = V543_RECORD_MISMATCH
+      verified_by: schema_validator (prereg=t1_blocked reason; --formal=typed V543_RECORD_MISSING/V543_RECORD_MISMATCH)
+
+# ---- 附录 A 草案正文 (逐字转写; 数字/字符串不得按结果修改) ----
+source:
+  encoder: V542_A0
+  seeds: [17, 29, 43]
+  checkpoint_rule: same_seed_v542_a0_best
+  checkpoints:
+    "17": {path: outputs/pesn/v542_backbone_50k/runs/V542_A0_S17/checkpoint_best.pt,
+           sha256: cab512b0094788093a9969484db7f9f303802d2fff0d7380bffb8923fc7f89bb}
+    "29": {path: outputs/pesn/v542_backbone_50k/runs/V542_A0_S29/checkpoint_best.pt,
+           sha256: c52db93253777a00637ea6cb41eb1366eeeaf37464d38a3d42c04692f496466b}
+    "43": {path: outputs/pesn/v542_backbone_50k/runs/V542_A0_S43/checkpoint_best.pt,
+           sha256: dd37c7e997d74c6426db9052918a2400687ce827600fc3dedd69efd01b6be8d4}
+  freeze_encoder: true
+  freeze_coarse_move: true
+  freeze_coarse_process: true
+  allow_confirm_access: false
+  allow_new_qc_calls: false
+
+data:
+  tables_dir: /pes2ts_data/v53mp_50k_data
+  split_manifest: /pes2ts_data/v53mp_50k_data/split_manifest_v53mp.json
+  pool: 50000
+  dev: 589
+  confirm: 2000
+  confirm_policy: sealed_never_read
+  label_statuses: [ok, masked, terminal, conflict]
+  move_eligible_status: ok
+  process_endpoint_statuses: [ok, masked, terminal, conflict]
+
+bridge:
+  schema: geometric_latent_bridge_v1
+  context_schema: decoder_context_v1
+  graph_scalar_dim: 64
+  key_scalar_dim: 48
+  pair_scalar_dim: 48
+  vector_channels: 8
+  vector_type: polar
+  reference_move_channel: 0
+  parameter_free: true
+  allow_decoder_raw_xyz: false
+  allow_supervision_leak: false
+  pair_direction: canonical_key_slot_order_with_signed_delta_b
+  pair_source: forward_edges_only
+  audit_pair_equivalence_sample: 10000
+
+tracks:
+  move:
+    baseline: M0
+    formal_candidates: [M1, M2, M3]
+    conditional_candidates: [M4, M5]
+    loss: frozen_v53mp_move_atom_pair_cos
+    lambda_pair: 0.5
+    lambda_cos: 0.02
+    lambda_strong: 0.0
+    lambda_dead: 0.0
+    max_trainable_params: 40000
+    target_params: 36000
+    param_band_pct: 5.0
+    output: residual_key_displacement
+  process:
+    baseline: P0
+    formal_candidates: [P1, P2, P3, P4]
+    matched_control: P4-C
+    conditional_candidates: [P5]
+    loss: frozen_v53mp_process
+    lambda_rank: 0.5
+    lambda_q: 0.5
+    lambda_endpoint: 0.012385049119773344
+    max_trainable_params: 40000
+    target_params: 36000
+    param_band_pct: 5.0
+    output: residual_q_raw_endpoint_logit
+    share_order_with_q: true
+    process_frame_mask: endpoint_label_mask_all_statuses
+
+training:
+  mode: decoder_only
+  encoder_frozen: true
+  optimizer: AdamW
+  learning_rate: 3.0e-4
+  warmup_updates: 400
+  weight_decay: 1.0e-4
+  grad_clip: 1.0
+  precision: fp32
+  updates: 37900
+  val_every: 100
+  batch_curves: 8
+  frames_per_curve: 4
+  sampler: v541_curve_stratified_v1
+  sampler_spec_sha256: 0769817ef01dca3abbb1d67f5405e98138b4707e74b690240d3f9b6821b65d9e
+  inner_val_max_samples: 8192
+  resume_requires_identity_match: true
+  torch_compile: false
+
+cache:
+  enabled: true
+  mode: frozen_encoder_only
+  ram_lru_packets: 200000
+  disk_max_gb: 30
+  shard_curves: 256
+  hit_rate_target: 0.80
+  joint_finetune_forbidden: true
+
+screening:
+  smoke_updates: 200
+  diagnostic_updates: 2000
+  initial_formal_seeds: [17, 29]
+  finalist_seed: 43
+  finalists_per_track_max: 2
+  diagnostic_h3_selection_forbidden: true
+  diagnostic_loss_drop_min_pct: 5.0
+  diagnostic_move_dead_margin: 0.20
+  diagnostic_move_rmse_rel_max_pct: 10.0
+  diagnostic_process_auprc_drop_max: 0.02
+
+evaluation:
+  matched_seed_baseline: true
+  baseline: V543_M0_P0_recomputed
+  cluster_bootstrap: true
+  bootstrap_draws: 10000
+  bootstrap_seed_root: 20261102
+  multiple_testing_correction: Holm
+  freeze_thresholds_before_runs: true
+  dev_policy: final_frozen_candidates_only_one_shot
+  confirm_policy: sealed
+  new_metric: fixed_coverage_direction_at_3
+  q_corr_role: diagnostic_only
+  q_min_points_for_corr: 3
+  q_frac_curves_ge3_min: 0.70
+
+thresholds:
+  move_rmse_regression_rel_max_pct: 2.0
+  move_sign_drop_abs_max: 0.01
+  move_dead_increase_abs_max: 0.01
+  move_fixed_coverage_regression_rel_max_pct: 2.0
+  move_h3_rmse_rel_min_pct: 3.0
+  move_h3_direction_rel_min_pct: 3.0
+  move_h3_direction_abs_min: 0.01
+  process_auprc_drop_abs_max: 0.01
+  process_recall_at_fpr_drop_abs_max: 0.02
+  process_q_mae_regression_rel_max_pct: 5.0
+  process_ordering_drop_abs_max: 0.02
+  process_ece_increase_abs_max: 0.02
+  process_h3_auprc_abs_min: 0.02
+  process_h3_q_mae_rel_min_pct: 5.0
+  process_fpr_constraint: 0.05
+  move_exit_alpha_each: 0.025
+  process_family_alpha: 0.025
+  max_core_time_ratio: 2.0
+  max_latency_ratio_p95: 2.0
+  signoff: # 附录 B 阈值表签认 (2026-11-02, D1–D8 签认的一部分); 19 值必须逐值镜像上方键
+    status: frozen
+    signed_on: "2026-11-02"
+    signed_by: repository_owner_via_dsh_orchestration_session
+    basis: 附录 B 预注册阈值表 (签认版); 签认后不得按 seed17/dev 结果修改, 改值须重走签认并同步 config/runplan/budget SHA
+    move_rmse_regression_rel_max_pct: 2.0
+    move_sign_drop_abs_max: 0.01
+    move_dead_increase_abs_max: 0.01
+    move_fixed_coverage_regression_rel_max_pct: 2.0
+    move_h3_rmse_rel_min_pct: 3.0
+    move_h3_direction_rel_min_pct: 3.0
+    move_h3_direction_abs_min: 0.01
+    process_auprc_drop_abs_max: 0.01
+    process_recall_at_fpr_drop_abs_max: 0.02
+    process_q_mae_regression_rel_max_pct: 5.0
+    process_ordering_drop_abs_max: 0.02
+    process_ece_increase_abs_max: 0.02
+    process_h3_auprc_abs_min: 0.02
+    process_h3_q_mae_rel_min_pct: 5.0
+    process_fpr_constraint: 0.05
+    move_exit_alpha_each: 0.025
+    process_family_alpha: 0.025
+    max_core_time_ratio: 2.0
+    max_latency_ratio_p95: 2.0
+
+resources:
+  total_model_params_max: 150000
+  move_refiner_params_max: 40000
+  process_refiner_params_max: 40000
+  p95_latency_ratio_max: 2.0
+  encoder_forward_per_frame: 1
+  single_lane: true
+  swap_allowed: false
+  host_limit_gib: 12
+
+conditional_generation:
+  flow_nfe: [1, 2, 4, 8]
+  flow_activation: residual_bottleneck_evidence
+  diffusion_default_enabled: false
+  graph_gru_activation: process_systematic_failure
+  sample_selection_uses_teacher: false
+  activation_requires_new_signoff: true
+
+run_matrix:
+  formal_runs_max: 18
+  t3_seed17: [M1, M2, M3, P1, P2, P3, P4]
+  t4_seed29: [M1, M2, M3, P1, P2, P3, P4]
+  t5_seed43_max: 4
+  t6_selection: two_track_champions_or_retain
+  t7_integration: [B0, BM, BP, BMP]
+  t8_conditional: separate_identity
+
+# v542 结构同构块 (附录 A 未列, 键名沿用 v542 budget; WP7 same-env profile 后回填)
+budget:
+  single_lane: true
+  swap_max: 0
+  oom_kill_max: 0
+  host_limit_gib: 12
+  per_candidate_core_time: # WP7 same-env profile 2026-11-03 回填 (plan/budget_profile.json, measurements_sha256 01c0840e…63ac04; CPU core-time — frozen trainer从不迁移 device, V542 同源同法, same-env 分母纪律优先); WP0 期为 null => prereg 记 t1_blocked, --formal 以 V543_BUDGET_NULL typed 拒绝 (该门已于回填后解除)
+    M1: {core_seconds: 0.899911}
+    M2: {core_seconds: 0.935677}
+    M3: {core_seconds: 1.128640}
+    P1: {core_seconds: 0.985508}
+    P2: {core_seconds: 1.047760}
+    P3: {core_seconds: 1.715897}
+    P4: {core_seconds: 1.318384}
+    M0: {core_seconds: 1.211450} # same-env MOVE 分母
+    P0: {core_seconds: 1.175610} # same-env PROCESS 分母
+  per_candidate_status: measured # 7 候选 + M0/P0 分母已实测 (窗口 warmup 20 + steady 40; robust 列与 outlier 计数见 budget_profile.json); 成本门 7/7 通过 (ratio ≤ 2.0, robust 同过)
+  fixed_dose_note: 正式训练固定 37,900 updates (37,900 flat + 400 warmup); fixed-GPU-time 只作另报
+  on_breach: [resource_failure, budget_censored]
+  forbidden_workarounds: [reduce_frames, reduce_layers, reduce_updates, reduce_curves, change_stratification, swap_seed, extend_dose]

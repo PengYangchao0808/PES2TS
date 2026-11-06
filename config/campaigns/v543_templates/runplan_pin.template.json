@@ -1,0 +1,126 @@
+{
+  "schema": "pes2ts_v543_runplan_pin_v1",
+  "_template_note": "Template for outputs/pesn/v543_dual_decoder_50k/plan/runplan.pin.json (plan §8 / §12 WP5 / ADR-0034 §6). runplan.jsonl lists concrete runs; this pin freezes the preregistered run classes and the 18-run ceiling so diagnostic / conditional runs can never be counted as formal matrix rows. Run ids must match config/campaigns/pes2ts_v543_dual_decoder_50k.yaml run_matrix exactly (appendix C). T3 = 7 decoders at seed 17, T4 = 7 decoders at seed 29, T5 <= 4 finalists at seed 43 (at most 2 per track); M0/P0 are baselines and never train; P4-C / M4 / M5 / P5 stay outside the 18 rows. This pin is the t1_start_requires record requirement runplan_pin_record: the INSTANCE is generated and verified by the WP5 runner at the runplan freeze — the WP0 schema validator --formal gate records the requirement only and NEVER reads the pin instance.",
+  "campaign_id": "PES2TS_V543_DUAL_DECODER_50K",
+  "gv_campaign_id": "V5.4.3",
+  "config_path": "config/campaigns/pes2ts_v543_dual_decoder_50k.yaml",
+  "config_sha256": null,
+  "schema_id": "pes2ts_v543_dual_decoder_campaign_v1",
+  "seed_primary": 17,
+  "seeds": [17, 29, 43],
+  "run_classes": {
+    "nominal": {
+      "description": "T3: seven formal decoders (M1, M2, M3, P1, P2, P3, P4) at seed 17, full dose 37,900 (flat, 400 warmup); T4: the same seven decoders at seed 29. M0/P0 are NOT trained here — they are the S0-A parity baselines and the per-seed comparison baseline (V543_M0_P0_recomputed).",
+      "stage_order": ["T3_seed17", "T4_seed29"],
+      "run_ids": [
+        "V543_M1_S17", "V543_M2_S17", "V543_M3_S17",
+        "V543_P1_S17", "V543_P2_S17", "V543_P3_S17", "V543_P4_S17",
+        "V543_M1_S29", "V543_M2_S29", "V543_M3_S29",
+        "V543_P1_S29", "V543_P2_S29", "V543_P3_S29", "V543_P4_S29"
+      ],
+      "counts_toward_n_core": true,
+      "dose_per_run": 37900
+    },
+    "conditional": {
+      "description": "T5: only the frozen per-track finalists re-run at seed 43 — at most 2 per track (MOVE top1/top2, PROCESS top1/top2), i.e. <= 4 runs. Activation is produced by the frozen screen score ranking, never by eyes on seed 17/29 results.",
+      "activation": "two_finalists_per_track_max_by_frozen_screen_score",
+      "t5_seed43_max": 4,
+      "run_ids": [
+        "V543_<MOVE_top1>_S43", "V543_<MOVE_top2>_S43",
+        "V543_<PROC_top1>_S43", "V543_<PROC_top2>_S43"
+      ],
+      "unactivated_status": "gate_skipped",
+      "unactivated_new_trainings": 0,
+      "dose_per_run": 37900,
+      "n_core_counting": "formula_only"
+    },
+    "diagnostic": {
+      "description": "T1 200-update smoke (7 decoders) and T2 2,000-update diagnostic + 40+40 profile are ENGINEERING screens, not matrix rows: they never enter the 18-run ceiling, never carry H3 effect gates, and never feed winner selection.",
+      "smoke_updates": 200,
+      "diagnostic_updates": 2000,
+      "profile_window": {"warmup_updates": 20, "w0_equivalent_updates": 40, "w1_equivalent_updates": 40},
+      "counts_toward_n_core": false,
+      "h3_selection_forbidden": true
+    },
+    "integration": {
+      "description": "T7 closed-loop stress test on dev (one-shot, after T6 froze both champions). The four combos are B0 (M0+P0), BM (M*+P0), BP (M0+P*), BMP (M*+P*). Rollout is reported separately from single-step metrics and never grants deployment qualification.",
+      "t7_integration": ["B0", "BM", "BP", "BMP"],
+      "fallback_order": ["BMP", "BM", "BP", "B0"],
+      "dev_access": "one_shot_after_T6_freeze_only",
+      "physics_relaxation": "not_performed_separate_reporting"
+    },
+    "conditional_generation": {
+      "description": "T8 Flow / Diffusion / GraphGRU are a separate identity with their own budget and report; they never enter the 18-run ceiling.",
+      "t8_conditional": "separate_identity",
+      "flow_nfe": [1, 2, 4, 8],
+      "diffusion_default_enabled": false,
+      "activation_requires_new_signoff": true
+    }
+  },
+  "core_training_count_formula": "N_core = n(T3 seed17 formal decoders) + n(T4 seed29 formal decoders) + n(T5 activated finalists) = 7 + 7 + <=4 <= 18. Every run is 37,900 updates, so the ceiling is 18 x 37,900 = 682,200 updates. smoke/diagnostic/profile/profile are technical measurements and do NOT enter N_core; T8 has its own identity and budget. N_core is always computed from the formula, NEVER by summing listed run rows.",
+  "formal_runs_max": 18,
+  "total_formal_updates": 682200,
+  "dose_semantics": {
+    "updates": 37900,
+    "warmup_updates": 400,
+    "note": "37,900 flat updates with a 400-update linear warmup; the V542 W0/W1 (400 + 37,500) two-phase split is retired because the Encoder / D0 / P0 are frozen for the whole run (plan §2 difference 6). 37,500 is derived only and is never quoted as the training dose."
+  },
+  "frozen_sequence": [
+    "S0-A zero-residual parity (three seeds, CPU bitwise) -> S0-B probe / S0-C basis (WP3 go/no-go)",
+    "WP4 registry + trainer + cache; WP5 MOVE decoders; WP6 PROCESS decoders",
+    "T1 smoke 200 -> T2 diagnostic 2000 + profile 40+40 -> T3 seed17 -> T4 seed29",
+    "T5 seed43 finalists (<=2 per track) -> T6 per-track champion or retain -> T7 four combos -> T8 conditional (separate)"
+  ],
+  "shared_protocol": {
+    "same_seed_shared": ["common_protocol_sha256", "sampler_spec_sha256", "statistics_contract_sha256"],
+    "may_vary": ["decoder_id", "track", "decoder_spec_sha256"],
+    "batch": "8 curves x 4 frames stratified start/pre-TS/post-TS/endpoint; (seed, update, salt) sampler protocol",
+    "sampler_spec_sha256": "0769817ef01dca3abbb1d67f5405e98138b4707e74b690240d3f9b6821b65d9e"
+  },
+  "statistics_contract": {
+    "bootstrap_unit": "curve (reaction cluster)",
+    "bootstrap_draws": 10000,
+    "bootstrap_seed_root": 20261102,
+    "ci": "percentile_95",
+    "p_value_rule": "one-sided improvement paired cluster bootstrap: p = (1 + #{seed-averaged paired bootstrap improvement <= 0}) / 10001; CI and p share the same draws; frame-level bootstrap forbidden",
+    "seed_aggregation": "seed-average per draw before comparison; >=2/3 seeds same direction; every seed H2-clean",
+    "holm_families": "MOVE has two exits (direction and rmse) each alpha=0.025 with Holm over the eligible candidate set; PROCESS is one family over 2 endpoints x eligible candidates with alpha=0.025",
+    "missing_cluster_rule": "drop in both models, report the dropped count, never impute"
+  },
+  "selection_rule": {
+    "per_track": true,
+    "eligible": "three seeds complete + every seed H2-clean + H3 route pass with Holm-adjusted p < alpha",
+    "screen_score": "MOVE: max(rmse_rel_improve/0.03, fixed_coverage_direction_rel/0.03); PROCESS: max(delta_auprc/0.02, q_mae_rel_improve/0.05, ordering_abs_improve/0.02)",
+    "finalists_per_track_max": 2,
+    "tie_break_order": ["1_inner_val_primary_loss", "2_core_time", "3_fewer_trainable_params", "4_decoder_id_lexicographic"],
+    "no_candidate_rule": "该 Track 保留 M0/P0 (正常负结果, 不得事后更换 seed 或补候选)",
+    "dev_used": false,
+    "report_all_qualified": true
+  },
+  "resource_contract": {
+    "single_lane": true,
+    "swap_max": 0,
+    "oom_kill_max": 0,
+    "host_limit_gib": 12,
+    "max_core_time_ratio": 2.0,
+    "max_latency_ratio_p95": 2.0,
+    "encoder_forward_per_frame": 1,
+    "on_breach": ["resource_failure", "budget_censored"],
+    "forbidden_workarounds": ["reduce_frames", "reduce_layers", "reduce_updates", "reduce_curves", "change_stratification", "swap_seed", "extend_dose"]
+  },
+  "runplan_sha256": null,
+  "sha256": null,
+  "campaign_mode": "prereg",
+  "budget_sha256": null,
+  "budget_policy_sha256": null,
+  "common_protocol_sha256": null,
+  "source_manifest_sha256": null,
+  "environment_sha256": null,
+  "bridge_spec_sha256": null,
+  "parity_certificate_sha256": null,
+  "statistics_contract_sha256": null,
+  "plan_sha256": null,
+  "frozen_on": null,
+  "frozen_by": null,
+  "_t1_block_rule": "runplan_sha256 AND source_manifest_sha256 AND budget_policy_sha256 must be non-null before formal T1; the runplan freeze is the WP5 runner's job (the WP0 validator never reads this instance)"
+}

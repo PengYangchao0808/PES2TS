@@ -298,6 +298,123 @@
       "H3",
       "confirm",
       "new_QC_calls=0"
+    ],
+    "docs/design/decisions/ADR-0034-V5.4.3-双Decoder与DecoderContextV1.md": [
+      "V5.4.3",
+      "ADR-0034",
+      "DecoderContextV1",
+      "proposed",
+      "no_backbone_winner"
+    ],
+    "docs/plans/PES2TS_V5.4.3_双Decoder_50K_全面开发与训练方案_v1.0_20261102.md": [
+      "V5.4.3",
+      "DecoderContextV1",
+      "Frozen-Preregistered",
+      "37,900",
+      "129,619",
+      "133,219",
+      "150,000",
+      "fixed_coverage_direction_at_3",
+      "bootstrap_seed_root",
+      "682,200",
+      "±5%"
+    ],
+    "docs/plans/PES2TS_V5.4.3_WP执行清单_v1.0_20261102.md": [
+      "V5.4.3",
+      "WP0",
+      "Frozen-Preregistered"
+    ],
+    "config/campaigns/pes2ts_v543_dual_decoder_50k.yaml": [
+      "pes2ts_v543_dual_decoder_campaign_v1",
+      "PES2TS_V543_DUAL_DECODER_50K",
+      "V5.4.3",
+      "0.1.0-wp0",
+      "status: proposed",
+      "decoder_context_v1",
+      "geometric_latent_bridge_v1",
+      "target_params: 36000",
+      "max_trainable_params: 40000",
+      "lambda_endpoint: 0.012385049119773344",
+      "bootstrap_seed_root: 20261102",
+      "two_track_champions_or_retain",
+      "sealed_never_read",
+      "fixed_coverage_direction_at_3",
+      "confirm_authorized: false",
+      "swap_allowed: false",
+      "torch_compile: false",
+      "host_limit_gib: 12",
+      "V543_RECORD_MISSING",
+      "V543_BUDGET_NULL"
+    ],
+    "scripts/agent_ops/v543_config_schema.py": [
+      "pes2ts_v543_dual_decoder_campaign_v1",
+      "PES2TS_V543_DUAL_DECODER_50K",
+      "V543SchemaError",
+      "TYPED_REJECTIONS",
+      "34,200–37,800",
+      "129,619",
+      "133,219",
+      "150,000",
+      "37,900 flat",
+      "decoder_context_v1",
+      "two_track_champions_or_retain",
+      "V543_RECORD_MISMATCH",
+      "V543_BUDGET_INVALID"
+    ],
+    "config/campaigns/v543_templates/preregistration_signoff.template.json": [
+      "pes2ts_v543_preregistration_signoff_v1",
+      "thresholds_signed_frozen",
+      "record_sha256",
+      "2026-11-02",
+      "oracle_gate0_reviewer",
+      "main_session_owner",
+      "signed_decisions",
+      "smoke_gated_auto_launch_formal"
+    ],
+    "config/campaigns/v543_templates/runplan_pin.template.json": [
+      "pes2ts_v543_runplan_pin_v1",
+      "V543_<MOVE_top1>_S43",
+      "682200",
+      "37900",
+      "two_finalists_per_track_max_by_frozen_screen_score",
+      "bootstrap_seed_root",
+      "20261102",
+      "runplan_pin_record"
+    ],
+    "config/campaigns/v543_templates/budget_policy.template.json": [
+      "pes2ts_v543_budget_policy_v1",
+      "pending_wp7_profiling",
+      "34200",
+      "37800",
+      "129619",
+      "133219",
+      "150000",
+      "max_core_time_ratio",
+      "gate_skipped_cost_ratio_exceeds_2"
+    ],
+    "config/campaigns/v543_templates/parity_certificate.template.json": [
+      "pes2ts_v543_parity_certificate_v1",
+      "zero_residual_equations",
+      "tanh(q0_raw_V543) == q0_V543",
+      "cab512b0094788093a9969484db7f9f303802d2fff0d7380bffb8923fc7f89bb",
+      "checkpoint_count",
+      "required_count",
+      "gpu_parity_inconclusive",
+      "zero_residual_forward_migration_only",
+      "state_dict_count_semantics",
+      "payload_key_count",
+      "expanded_target_key_count",
+      "count_scope_of_this_audit"
+    ],
+    "config/campaigns/v543_templates/decoder_context.template.json": [
+      "decoder_context_v1",
+      "DecoderContextV1",
+      "MoveContextV1",
+      "ProcessContextV1",
+      "key_v",
+      "pair_s",
+      "SUPERVISION_KEYS_V3",
+      "bridge_spec_sha256"
     ]
   },
   "historical_banner_marker": "ADR-0030"

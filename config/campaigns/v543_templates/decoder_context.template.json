@@ -1,0 +1,122 @@
+{
+  "schema": "pes2ts_v543_decoder_context_template_v1",
+  "_template_note": "Template / frozen field spec for DecoderContextV1 (plan §5.2–§5.7; ADR-0034 §3). V5.4.3's real deliverable is this data contract, not a decoder weight: a read-only, typed, immutable context that carries everything a Refiner may see and nothing else. A Decoder receives ONLY its own read-only view (MoveContextV1 or ProcessContextV1) — it never receives `batch`, `pos`, or any supervision key. Fill the *_sha256 fields at Bridge freeze (WP2) and re-hash into bridge_spec_sha256.",
+  "context_schema": "decoder_context_v1",
+  "precision_version": "fp32_v1",
+  "bridge_spec_sha256": null,
+  "encoder_ckpt_sha256": null,
+  "construct_once_per_configuration": true,
+  "cacheable": true,
+  "parameter_free": true,
+  "fields": {
+    "graph_s": {"shape": ["G", 64], "dtype": "fp32", "unit": "dimensionless", "rotation": "invariant", "translation": "invariant", "permutation": "graph-equivariant", "source": "z (A0 z_head output, tanh-saturated)"},
+    "key_s": {"shape": ["K", 48], "dtype": "fp32", "unit": "dimensionless", "rotation": "invariant", "translation": "invariant", "permutation": "atom-equivariant", "source": "last-layer h[key_index] (norm_h[-1] hook)"},
+    "key_v": {"shape": ["K", 8, 3], "dtype": "fp32", "unit": "dimensionless", "rotation": "polar vector", "translation": "invariant", "permutation": "atom-equivariant", "source": "Bridge construction (§5.3, 8 deterministic channels, channel 0 = u0/a_ref)"},
+    "u0": {"shape": ["K", 3], "dtype": "fp32", "unit": "angstrom", "rotation": "polar vector", "translation": "invariant", "permutation": "atom-equivariant", "source": "DirectMoveDecoder (V542 w_v = 49 params, same five tensors)"},
+    "key_graph": {"shape": ["K"], "dtype": "int64", "unit": null, "rotation": null, "translation": null, "permutation": "renumbered with the atom permutation", "source": "graph_index[key_index]"},
+    "key_ptr": {"shape": ["G+1"], "dtype": "int64", "unit": null, "rotation": null, "translation": null, "permutation": "graph-equivariant", "source": "prefix sum of keys per graph"},
+    "key_edge_index": {"shape": ["2", "Ek"], "dtype": "int64", "unit": "key-local row index", "rotation": null, "translation": null, "permutation": "atom-equivariant", "source": "Bridge construction (§5.5)"},
+    "key_edge_attr": {"shape": ["Ek", 8], "dtype": "fp32", "unit": "mixed (distance in angstrom + dimensionless)", "rotation": "invariant", "translation": "invariant", "permutation": "edge-equivariant", "source": "Bridge construction (d, RBF(d;2,3,4,5) x4, |delta_b|, is_changed, edge_type)"},
+    "pair_s": {"shape": ["P", 48], "dtype": "fp32", "unit": "dimensionless", "rotation": "invariant", "translation": "invariant", "permutation": "pair-equivariant", "source": "Bridge construction (§5.4, 48-dim fixed layout, no pair_index/pair_edit reads)"},
+    "intent_pair_index": {"shape": ["2", "P"], "dtype": "int64", "unit": "key-local row index", "rotation": null, "translation": null, "permutation": "pair-equivariant", "source": "Bridge construction; canonical key-slot order, NOT a chemical arrow"},
+    "pair_graph": {"shape": ["P"], "dtype": "int64", "unit": null, "rotation": null, "translation": null, "permutation": "graph-equivariant", "source": "owning graph per pair"},
+    "pair_ptr": {"shape": ["G+1"], "dtype": "int64", "unit": null, "rotation": null, "translation": null, "permutation": "graph-equivariant", "source": "prefix sum of pairs per graph"},
+    "token_index": {"shape": ["T"], "dtype": "int64", "unit": "key/pair row index", "rotation": null, "translation": null, "permutation": "token-equivariant", "source": "layout: per graph [graph, keys..., pairs...]; -1 for the graph token"},
+    "token_type": {"shape": ["T"], "dtype": "int8", "unit": "0=graph, 1=key, 2=pair", "rotation": null, "translation": null, "permutation": "token-equivariant", "source": "layout"},
+    "token_graph": {"shape": ["T"], "dtype": "int64", "unit": null, "rotation": null, "translation": null, "permutation": "graph-equivariant", "source": "layout"},
+    "token_ptr": {"shape": ["G+1"], "dtype": "int64", "unit": null, "rotation": null, "translation": null, "permutation": "graph-equivariant", "source": "prefix sum of tokens per graph"},
+    "q0_raw": {"shape": ["G"], "dtype": "fp32", "unit": "pre-tanh scalar", "rotation": "invariant", "translation": "invariant", "permutation": "graph-equivariant", "source": "progress_head.fc2 output (forward hook)"},
+    "endpoint0_logit": {"shape": ["G"], "dtype": "fp32", "unit": "logit", "rotation": "invariant", "translation": "invariant", "permutation": "graph-equivariant", "source": "endpoint_head.fc(z)"},
+    "schema": {"shape": null, "dtype": "str", "unit": null, "rotation": null, "translation": null, "permutation": null, "source": "\"decoder_context_v1\""},
+    "bridge_spec_sha256": {"shape": null, "dtype": "str", "unit": null, "rotation": null, "translation": null, "permutation": null, "source": "Bridge canonical spec SHA"},
+    "encoder_ckpt_sha256": {"shape": null, "dtype": "str", "unit": null, "rotation": null, "translation": null, "permutation": null, "source": "A0 checkpoint SHA"},
+    "precision_version": {"shape": null, "dtype": "str", "unit": null, "rotation": null, "translation": null, "permutation": null, "source": "\"fp32_v1\""}
+  },
+  "field_count": 22,
+  "shape_constraints": {
+    "K": "key_ptr[-1]",
+    "P": "pair_ptr[-1]",
+    "T": "token_ptr[-1] = G + K + P",
+    "ptr_monotone": "key_ptr / pair_ptr / token_ptr are non-decreasing, start at 0, end at the corresponding total",
+    "min_keys_per_graph": 1,
+    "empty_pair_allowed": "P = 0 (no changed K-pair) => pair_s is [0,48]; every decoder must handle the empty-pair case",
+    "empty_edge_allowed": "Ek = 0 is legal; M3 must degrade to no message passing",
+    "edge_bound": "Ek <= 2 * (P + 4K)"
+  },
+  "read_only_views": {
+    "MoveContextV1": {
+      "fields": ["graph_s", "key_s", "key_v", "u0", "key_edge_index", "key_edge_attr", "key_graph", "key_ptr"],
+      "must_not_contain": ["q0_raw", "endpoint0_logit", "pair_s", "token_index", "token_type", "token_graph", "token_ptr"],
+      "consumer": "MoveRefiner (M1/M2/M3 formal; M4/M5 conditional)"
+    },
+    "ProcessContextV1": {
+      "fields": ["graph_s", "key_s", "pair_s", "intent_pair_index", "key_graph", "pair_graph", "key_ptr", "pair_ptr", "token_index", "token_type", "token_graph", "token_ptr", "q0_raw", "endpoint0_logit"],
+      "must_not_contain": ["u0", "key_v", "key_edge_index", "key_edge_attr"],
+      "consumer": "ProcessRefiner (P1/P2/P3/P4 formal, P4-C matched control; P5 conditional)"
+    },
+    "isolation_rule": "两个 Read-only 视图互斥: MOVE 不能读 PROCESS 状态 (q0_raw/endpoint0_logit/pair_s/token_*), PROCESS 不能读 MOVE 初猜 u0 或向量基底 key_v/key_edge_*. 两个视图都不含 pos、监督键、绝对坐标、历史帧。",
+    "required_test": "test_v543_track_view_isolation 必须断言 MoveContextV1 没有 q0_raw/endpoint0_logit, ProcessContextV1 没有 u0/key_v",
+    "why": "如果 MOVE 能读 q0_raw 它会用 PROCESS 的进度作弊; 如果 PROCESS 能读 u0 它会从 MOVE 的位移反推进度; V543 要回答的是两条独立专家各自能从同一份 Encoder 表征学到什么"
+  },
+  "key_v_channels": {
+    "a_ref_angstrom": 0.08,
+    "channels": {
+      "0": "u0[k] / a_ref (继承 MOVE 初猜; 除 a_ref 变成无量纲)",
+      "1": "sum_{e: dst=k, delta_b_e<0} |delta_b_e| * unit_e / sum|delta_b_e| (断键方向)",
+      "2": "sum_{e: dst=k, delta_b_e>0} |delta_b_e| * unit_e / sum|delta_b_e| (成键方向)",
+      "3": "sum_{e: dst=k, delta_b_e=0, covalent} unit_e / count (不变共价边方向)",
+      "4": "sum_{e: dst=k, spatial} kappa(d_e) * unit_e / sum kappa, kappa(d)=exp(-((d-3.0)/1.0)^2)",
+      "5": "sum_{p: k in pair, changed K-pair} sign(delta_b_p) * (x[other]-x[k])/(norm+0.1) / count",
+      "6": "sum_{e: dst=k} (d_e/4.0) * unit_e / sum(d_e/4.0) (距离加权全边均值)",
+      "7": "(mean_{j in K, j != k} x[j] - x[k]) / (norm + 0.1) (指向关键原子质心)"
+    },
+    "rules": [
+      "zero denominator => zero vector for that channel, never NaN",
+      "only pos differences, delta_b, is_changed, is_covalent, is_spatial, key_index — no absolute coordinates",
+      "channel 0 is linearly dependent on u0: S0-C must report coverage WITH and WITHOUT channel 0 (no self-证)",
+      "the 8 channels are a cheap equivariant read-out basis, not a claim of expressing the true action; S0-B/S0-C decide sufficiency"
+    ]
+  },
+  "pair_s_layout": {
+    "dimension": 48,
+    "pair_definition": "changed K-pair (i,j) with i<j in key-slot canonical order",
+    "direction": "canonical_key_slot_order_with_signed_delta_b",
+    "source": "forward_edges_only",
+    "blocks": {
+      "32-39": "graph-level broadcast: signed_intent, ||cv_delta||, cv_delta[0:6]",
+      "40-47": "W_fixed @ (key_s[i] - key_s[j]); W_fixed is a fixed 8x48 +-1/sqrt(48) matrix (persistent=False, no trainable parameters)",
+      "note": "0-31 are frozen in the Bridge spec (§5.4) at WP2 freeze; this template pins the layout rules (canonical order, signed delta_b, forward edges only, 48 dims) and the two sketch blocks needed for the parameter-free guarantee — the full block table is frozen by bridge_spec_sha256, never edited here"
+    },
+    "parameter_free": true,
+    "audit_sample_frames": 10000
+  },
+  "forbidden_inputs": {
+    "keys": ["pos (except differences)", "pair_index", "pair_edit", "y_teacher", "q_true", "endpoint labels", "frame_weight", "d0", "reference TS/endpoint XYZ", "future frames", "IRC history", "energy/gradients", "split_family", "branch_id", "curve_id", "sample_id", "any SUPERVISION_KEYS_V3 member"],
+    "runtime_audit": "assert_no_supervision(ctx): for name in SUPERVISION_KEYS_V3: assert not hasattr(ctx, name); for forbidden in ('pos','xyz','pair_edit','y_teacher','q_true'): assert not hasattr(ctx, forbidden)",
+    "slots_rule": "DecoderContextV1 的 __slots__ 只含冻结字段; __getattr__ 不得回退到 batch",
+    "required_tests": ["test_v543_decoder_no_xyz", "test_v543_no_supervision_leak", "test_v543_track_view_isolation"]
+  },
+  "cache_contract": {
+    "mode": "frozen_encoder_only",
+    "cache_key": ["encoder_ckpt_sha256", "bridge_spec_sha256", "input_feature_sha256", "source_frame_identity (curve_id + node_index + intent_id + d0 canonical hash)", "precision_version", "code_fingerprint"],
+    "content": "only the DecoderContextV1 tensor fields + schema/identity; never y_teacher/q_true/endpoint/frame_weight/sample_id/curve_id",
+    "rules": [
+      "joint_finetune must build live and keep autograd; detached cache reads forbidden",
+      "cache is built after the split; inner-train + inner-val only; dev/confirm never cached",
+      "shard by curve (256 curves/shard), RAM LRU 1-2 GB, disk <= 30 GB, hit-rate target >= 80%",
+      "identity/SHA/schema mismatch => refuse the hit and rebuild; never silently reuse"
+    ],
+    "required_test": "test_v543_cache_identity"
+  },
+  "zero_residual_parity_ref": "config/campaigns/v543_templates/parity_certificate.template.json",
+  "decoder_contract": {
+    "MoveDecoderProtocol": "forward(ctx: MoveContextV1) -> delta_u [K,3] in angstrom (K rows are key-only, so non-key zero rows are structurally impossible)",
+    "ProcessDecoderProtocol": "forward(ctx: ProcessContextV1) -> ProcessResidual (delta_q_raw [G], delta_e [G])",
+    "trust_boundary": "Decoder 不得私自实现数据读取、损失定义、checkpoint 选择; 统一由 v543_train.py 负责",
+    "registry_record_fields": ["decoder_id", "track", "model_version", "contract_version", "n_trainable_params", "equivariance", "stochastic", "nfe", "zero_init", "status", "checkpoint_sha256", "config_sha256", "acceptance"],
+    "contract_version_value": "decoder_context_v1",
+    "status_vocabulary": ["proposed", "smoke", "diagnostic", "formal", "champion", "rejected"]
+  },
+  "frozen_on": null,
+  "frozen_by": null
+}

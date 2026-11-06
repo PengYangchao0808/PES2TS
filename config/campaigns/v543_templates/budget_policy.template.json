@@ -1,0 +1,95 @@
+{
+  "schema": "pes2ts_v543_budget_policy_v1",
+  "_template_note": "Template for outputs/pesn/v543_dual_decoder_50k/plan/budget_policy.json (plan §8.3 / §12 WP7 / ADR-0034 §4). WP0 ships PRE-PROFILE: every per_decoder entry is null with status pending_wp7_profiling; the prereg validator passes (the null table is a t1_blocked reason only) while --formal is the typed block V543_BUDGET_NULL. Fill each entry from the same-env WP7 smoke(200)/diagnostic(2,000)/profile(40+40) measurement BEFORE formal T1 and re-hash into budget_policy_sha256. The fixed dose 37,900 updates (flat, 400 warmup) is immutable. The cost denominator is the same-env V543 M0/P0 measurement — never the archived V542/V541 per-candidate core time.",
+  "_t1_block_rule": "per_decoder.*.approved_for_formal must all be true for the admitted formal decoders before formal T1; the validator refuses --formal while budget.per_candidate_core_time is null (V543_BUDGET_NULL) and rejects malformed/partial tables (V543_BUDGET_INVALID)",
+  "campaign_id": "PES2TS_V543_DUAL_DECODER_50K",
+  "config_path": "config/campaigns/pes2ts_v543_dual_decoder_50k.yaml",
+  "config_sha256": null,
+  "activation_summary": {
+    "T3_seed17": 7,
+    "T4_seed29": 7,
+    "T5_seed43_max": 4,
+    "formal_runs_max": 18,
+    "total_formal_updates": 682200,
+    "t5_note": "T5 takes at most the 2 frozen finalists per track (MOVE top1/top2, PROCESS top1/top2); unactivated rows are gate_skipped and count 0 new trainings",
+    "baselines_not_trained": ["M0", "P0"],
+    "outside_18": ["P4-C", "M4", "M5", "P5"],
+    "conditional_flow_diffusion_gru": "M4/M5/P5 and T8 have their own identity, budget and report; activation requires a new signoff",
+    "diagnostic_2000": "T2 2,000-update engineering screens for the 7 formal decoders are technical measurements (not N_core)"
+  },
+  "parameter_budget": {
+    "per_track_target_params": 36000,
+    "per_track_band_pct": 5.0,
+    "per_track_band": [34200, 37800],
+    "single_decoder_hard_cap": 40000,
+    "whole_model_target": 129619,
+    "whole_model_in_band_max": 133219,
+    "whole_model_hard_cap": 150000,
+    "encoder_frozen_params": 57619,
+    "arithmetic": "57,619 (frozen A0 encoder + D0 + P0) + 36,000 + 36,000 = 129,619; in-band maximum 57,619 + 37,800 + 37,800 = 133,219; global hard cap 150,000",
+    "assertion": "构造时 sum(p.numel()) 精确断言; 估算值不得作为实现前 exact 断言; dead weights / 无用 bias 凑参数禁止"
+  },
+  "cost_acceptance": {
+    "max_core_time_ratio": 2.0,
+    "rule": "hard_ratio",
+    "ratio_expression": "decoder_core_time / v543_m0_p0_same_env_core_time <= thresholds.max_core_time_ratio",
+    "denominator": "same V543 environment, same batch, same 40+40 profile measured M0/P0 (Encoder frozen)",
+    "forbidden_denominator": "v542_archived_per_candidate_core_time / v541_archived_per_candidate_core_time (different code / hook environment)",
+    "on_exceed": "gate_skipped_cost_ratio_exceeds_2 — scientific result retained, no promotion, baseline stays (NOT resource_failure); no frame/layer/update reduction to 'fix' cost",
+    "deployment_gate": "p95 latency ratio <= 2x A0 (thresholds.max_latency_ratio_p95)"
+  },
+  "cost_model": {
+    "formula": "T_run = 37900 * t_update + 400 * t_warmup_update + T_startup + T_eval + T_checkpoint",
+    "encoder_frozen_note": "Encoder 每当前构型恰好 1 次 forward; 冻结表征可走 frozen_encoder_only 缓存, cache miss 时 live fallback",
+    "measure_w0_w1_separately": false,
+    "measure_note": "Decoder-only: 无 W0/W1 两阶段语义; profile 记录 warmup 段与稳态段, 不得把 200-update smoke 外推到正式剂量",
+    "profile_window": {"warmup_updates": 20, "steady_updates": 40},
+    "metrics_reported": ["core_time", "wall_time", "peak_vram", "host_rss", "cache_hit_rate", "projected_wall_hours"],
+    "profile_code_sha_in_run_identity": true
+  },
+  "execution_policy": {
+    "concurrency": 1,
+    "single_lane": true,
+    "swap_max": 0,
+    "oom_kill_max": 0,
+    "host_limit_gib": 12,
+    "on_breach": ["resource_failure", "budget_censored"],
+    "forbidden_workarounds": ["reduce_frames", "reduce_layers", "reduce_updates", "reduce_curves", "change_stratification", "swap_seed", "extend_dose"]
+  },
+  "cache_budget": {
+    "enabled": true,
+    "mode": "frozen_encoder_only",
+    "ram_lru_packets": 200000,
+    "disk_max_gb": 30,
+    "shard_curves": 256,
+    "hit_rate_target": 0.8,
+    "joint_finetune_forbidden": true
+  },
+  "per_decoder": {
+    "M0": {"approved_for_formal": null, "core_seconds": null, "w1_core_ratio": null, "projected_wall_hours": null, "status": "pending_wp7_profiling", "role": "baseline / cost denominator (not trained)", "target_params": 0},
+    "M1": {"approved_for_formal": null, "core_seconds": null, "w1_core_ratio": null, "projected_wall_hours": null, "status": "pending_wp7_profiling", "role": "T3/T4 formal candidate", "target_params": 36000, "toy_size_note": "Residual MLP with 8 scalar coefficients over key_v (~36.6K design point; exact count asserted at construction)"},
+    "M2": {"approved_for_formal": null, "core_seconds": null, "w1_core_ratio": null, "projected_wall_hours": null, "status": "pending_wp7_profiling", "role": "T3/T4 formal candidate", "target_params": 36000, "toy_size_note": "2 GVP blocks, scalar 96 / vector 8 channels"},
+    "M3": {"approved_for_formal": null, "core_seconds": null, "w1_core_ratio": null, "projected_wall_hours": null, "status": "pending_wp7_profiling", "role": "T3/T4 formal candidate", "target_params": 36000, "toy_size_note": "2-layer scalar-vector message passing on the key graph, hidden 56, edge features 8 (~34.5K design point)"},
+    "M4": {"approved_for_formal": null, "core_seconds": null, "w1_core_ratio": null, "projected_wall_hours": null, "status": "pending_wp7_profiling", "role": "conditional (Flow, T8, separate identity)", "target_params": 36000, "winner_eligible": false, "activation": "residual_bottleneck_evidence + new signoff; NFE 1/2/4/8"},
+    "M5": {"approved_for_formal": null, "core_seconds": null, "w1_core_ratio": null, "projected_wall_hours": null, "status": "pending_wp7_profiling", "role": "conditional (Diffusion, default OFF)", "target_params": 36000, "winner_eligible": false},
+    "P0": {"approved_for_formal": null, "core_seconds": null, "w1_core_ratio": null, "projected_wall_hours": null, "status": "pending_wp7_profiling", "role": "baseline / cost denominator (not trained)", "target_params": 0},
+    "P1": {"approved_for_formal": null, "core_seconds": null, "w1_core_ratio": null, "projected_wall_hours": null, "status": "pending_wp7_profiling", "role": "T3/T4 formal candidate", "target_params": 36000, "toy_size_note": "graph_s[64] -> 160 -> 160 -> 2 (~36.5K design point)"},
+    "P2": {"approved_for_formal": null, "core_seconds": null, "w1_core_ratio": null, "projected_wall_hours": null, "status": "pending_wp7_profiling", "role": "T3/T4 formal candidate", "target_params": 36000, "toy_size_note": "DeepSets over key/pair tokens 48->88 + mean/max pooling + graph_s concat (~35.7K design point); must use the shared token layout"},
+    "P3": {"approved_for_formal": null, "core_seconds": null, "w1_core_ratio": null, "projected_wall_hours": null, "status": "pending_wp7_profiling", "role": "T3/T4 formal candidate", "target_params": 36000, "toy_size_note": "2-layer latent Graph-GNN on the shared token graph, hidden 56, edge features 8 (~34.5K design point)"},
+    "P4": {"approved_for_formal": null, "core_seconds": null, "w1_core_ratio": null, "projected_wall_hours": null, "status": "pending_wp7_profiling", "role": "T3/T4 formal candidate (highest cost risk — early profile)", "target_params": 36000, "toy_size_note": "2-layer graph transformer d=48, 4 heads x 12, FFN 80 (~37K design point); token-level attention only"},
+    "P4-C": {"approved_for_formal": null, "core_seconds": null, "w1_core_ratio": null, "projected_wall_hours": null, "status": "pending_wp7_profiling", "role": "parameter-matched non-attention control (diagnostic, only if P4 enters the top2)", "target_params": 36000, "winner_eligible": false},
+    "P5": {"approved_for_formal": null, "core_seconds": null, "w1_core_ratio": null, "projected_wall_hours": null, "status": "pending_wp7_profiling", "role": "conditional (GraphGRU, activation only on a systematic PROCESS failure)", "target_params": 36000, "winner_eligible": false}
+  },
+  "schedule": {
+    "smoke_updates": 200,
+    "diagnostic_updates": 2000,
+    "total_updates": 37900,
+    "warmup_updates": 400,
+    "flat_note": "37,900 flat + 400 warmup; no W0/W1 phase split in Decoder-only training",
+    "fixed_dose_note": "正式训练始终固定 37,900 updates；fixed-GPU-time 只作另报成本匹配分析，不替代同剂量主比较"
+  },
+  "n_core_note": "N_core = 7 (T3 seed17) + 7 (T4 seed29) + activated T5 finalists (<=4) <= 18 formal runs; 18 x 37,900 = 682,200 updates. smoke/diagnostic/profile are technical measurements excluded from N_core.",
+  "budget_policy_sha256": null,
+  "signed_by": null,
+  "signed_on": null
+}

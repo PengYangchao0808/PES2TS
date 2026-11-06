@@ -1,5 +1,13 @@
 # PES2TS 文档索引
 
+## 2026-11-02 V5.4.3 双 Decoder 50K 全面方案（Frozen-Preregistered；D1–D8 已签认）
+
+- **[V5.4.3 双 Decoder 50K 全面开发与训练方案 v1.0](plans/PES2TS_V5.4.3_双Decoder_50K_全面开发与训练方案_v1.0_20261102.md)**：固定 A0 Encoder + 参数自由 `DecoderContextV1` + MOVE/PROCESS 两条独立残差 Track；首轮 `M1–M3 / P1–P4` 共 7 候选，M4 Flow 条件、M5 Diffusion/P5 GraphGRU 默认关闭；18-run 上限、37,900 flat + 400 warmup、同 Track 36K ±5% 参数匹配（整模 129,619 / 带内最大 133,219 / 硬上限 150,000）；新 `fixed_coverage_direction@3`、q MAE/ordering、FPR-constrained recall、Brier/ECE；H2/H3 用 V543 M0/P0 重算基线；confirm 永封、QC=0。
+- **[WP 执行清单 v1.0](plans/PES2TS_V5.4.3_WP执行清单_v1.0_20261102.md)**：D1–D8 签认、WP0–WP9 验收、18-run 追踪、H0–H3 门、冻结与交付清单。
+- **[ADR-0034 V5.4.3 双 Decoder 基准与 DecoderContextV1](design/decisions/ADR-0034-V5.4.3-双Decoder与DecoderContextV1.md)**（**Proposed**；D1–D8 已签认，2026-11-02）：五组件冻结架构（`CoarseEncoder` 57,619 冻结 / `LatentBridge` 0 trainable / `MoveRefiner` ≤36K / `ProcessRefiner` ≤36K / `ReactionController` 非学习）；`DecoderContextV1` 字段/单位/对称性/双只读视图/禁读清单/缓存键/A0 零残差 parity；提案 F1–F8 八处修正；训练合同 37,900 flat + 400 warmup 与两条 Track 独立损失；评估合同 H0–H3 + 10,000 draws Holm 统计合同；预注册治理（D1–D8 签认 + 三条运行授权 + 18-run 矩阵）；R1–R10 风险回退。
+- **签认（2026-11-02）**：D1–D8 全部采用建议值，签认人 = 仓库所有者（经 DSH 编排会话）；三条运行授权 = ① WP3 go/no-go 等治理门内部核验后自主通过（重大异常/需签认事项暂停上报）② 每条 Track smoke 通过后直接排队启动正式 run ③ confirm 永封、QC=0、dev 仅 T7 一次性、`strict=False` 禁用、禁 `torch.compile`。
+- **边界**：方案与 ADR 状态为 `Frozen-Preregistered`/`Proposed`（D1–D8 已签认），但**未执行**——未实现、未训练、未读 dev/confirm；registry `V5.4.3`（status `proposed`）、campaign YAML 与 `v543_config_schema.py` 由并行 lane 创建；V542 冻结件未动。方案对用户提案 v2.0 的 8 处修正见主方案 §2，登记见 [台账](plans/PES2TS_文档修订台账.md)。
+
 ## 2026-10-29 V5.4.2 WP0 治理/预注册落地（Active-Proposed）
 
 - **2026-10-31 V5.4.2 WP7 EXECUTED（`no_backbone_winner`；A0 留任）**：T0 A0×3 + `V542-A0-sanity-band` PASS（AUPRC 0.29670 vs E0 0.28858、q_corr 0.99682 vs 0.99727、RMSE/zero −0.199%）；T1 A1/A2/A3 S17 done（0.6924/0.3275/0.6476），A4 `gate_skipped`（WP4 binding）；seed17 screen top2=[A2,A3]；T3 A2/A3 S29/S43 done（0.3213/0.3209、0.6506/0.6713）；T2 A5 S17 done（0.7079）；**H2：A2_S43/A3_S43 对 matched A0 sign 与 fixed-coverage direction 退化** → H3 eligible=[]，`final_selection` 分支 `zero_h3_qualified_candidates_a0_retained_no_backbone_winner`；A5 supplement 与 A1-C/A5-C 均 `gate_skipped`（含冻结 reason code）；N_core=17；confirm 未读、QC=0、单路、swap=0、dev 未访问。报告 [PES2TS_V542_Backbone_50K_实施与训练报告_20261031](reports/PES2TS_V542_Backbone_50K_实施与训练报告_20261031.md)。

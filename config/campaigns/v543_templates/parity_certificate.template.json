@@ -1,0 +1,199 @@
+{
+  "schema": "pes2ts_v543_parity_certificate_v1",
+  "_template_note": "Template for outputs/pesn/v543_dual_decoder_50k/audits/parity_certificate.json (plan §5.8 + §7.1 S0-A / ADR-0034 §3). This is the S0-A ZERO-RESIDUAL parity certificate for the three same-seed V542 A0 checkpoints — it proves that the V543 frozen CoarseEncoder (A0 strict load + message_mlp[-1]/norm_h[-1]/fc2 hooks + shared w_v) plus the parameter-free Bridge reproduce the V542 A0 forward pass EXACTLY, with zero decoder residual. It is NOT evidence for training comparability, H2/H3 baseline substitution, or any candidate gain: those require the matched V543 M0/P0 recomputed baseline and the formal runs. PASS is decided by CPU bitwise equality; GPU tolerances are hard caps (atol 1e-6 / rtol 1e-5) and a run-to-run floor above the cap makes GPU parity inconclusive, never relaxed. State-dict counting is recorded under TWO explicit 口径 that must never be mixed: `payload_key_count` = the checkpoint payload key count with the w_v dual-write counted ONCE (43 = 37 backbone + 6 process_head; ADR-0033 identity 口径), and `expanded_target_key_count` = the strict-load expanded target key count with w_v counted TWICE (45 = 37 backbone + 2 move_decoder.w_v + 6 process_head; plan §1.2 口径); the only legal expansion is the declared w_v alias, so the two differ by exactly 2 (the alias expands into backbone.w_v + move_decoder.w_v). Every single-checkpoint row carries `state_dict_counts` with the two MEASURED values plus `count_scope_of_this_audit`, which must name the 口径 its per-key assertions use.",
+  "campaign_id": "PES2TS_V543_DUAL_DECODER_50K",
+  "config_path": "config/campaigns/pes2ts_v543_dual_decoder_50k.yaml",
+  "config_sha256": null,
+  "code_sha256": null,
+  "environment_sha256": null,
+  "source_manifest_sha256": null,
+  "bridge_spec_sha256": null,
+  "certificate_type": "s0a_zero_residual_forward_migration_only",
+  "not_evidence_for": ["training_comparability", "h2_h3_baseline_substitution", "candidate_gain", "e0_reuse"],
+  "zero_residual_equations": {
+    "required": [
+      "u0_V543 == u_V542",
+      "z_V543 == z_V542",
+      "q0_V543 == q_V542",
+      "tanh(q0_raw_V543) == q0_V543",
+      "endpoint0_V543 == endpoint_logit_V542",
+      "zero_residual_V543(u,q,e) == V542(u,q,e)",
+      "order_score is q"
+    ],
+    "equation_count": 7,
+    "note": "plan §5.8 / §7.1 S0-A: 七等式逐元素验证 (CPU bitwise); tanh(q0_raw)==q 必须在同一 dtype/device 下比较; order_score 必须是 q 本身 (同一张量语义), 不是并列头"
+  },
+  "asset_policy": {
+    "all_seeds_required": true,
+    "required_count": 3,
+    "smoke_checkpoints_forbidden": true,
+    "non_pinned_checkpoints_forbidden": true,
+    "source_tier": "v542_backbone_50k_runs_best",
+    "source_tier_note": "三个资产 = outputs/pesn/v542_backbone_50k/runs/V542_A0_S{17,29,43}/checkpoint_best.pt (V542 A0 matched 重训基线的最佳 inner-val checkpoint); path + SHA 已在 config source.checkpoints 钉死; smoke 路径与非钉死 checkpoint 一律禁止 (parity 资产必须可追溯到冻结 run)"
+  },
+  "load_audit": {
+    "rule": "strict-audit mapping: read file SHA-256 + payload['model']; load through the V542 A0 adapter/loader (A0LegacyBackbone subclass, shared w_v); missing/unexpected/shape_mismatch/dtype_mismatch ALL empty; load_state_dict(strict=True); per-key torch.equal(source, target) after load",
+    "strict_false_forbidden": true,
+    "silent_key_filtering_forbidden": true,
+    "read_only_reuse": ["pes2ts_core/pesn/models/v542/backbone_a0.py", "pes2ts_core/pesn/models/v542/decoder.py", "pes2ts_core/pesn/models/v542/loader.py"],
+    "hooks": {
+      "message_mlp[-1]": "edge_msg capture, fires exactly once, removed in finally, never detached",
+      "norm_h[-1]": "last-layer h capture, fires exactly once, removed in finally, never detached",
+      "progress_head.fc2": "q0_raw capture, fires exactly once, removed in finally, never detached"
+    },
+    "record": ["source_sha256", "mapping_table_sha256", "target_key_set", "hook_fire_count", "payload_key_count", "expanded_target_key_count", "audit_json_path"]
+  },
+  "state_dict_count_semantics": {
+    "_note": "两个 state-dict 计数口径必须分别记录、分别断言, 禁止混用 (mapping 审计断言必须写明用的是哪一个口径)。WP0 只冻结口径与字段; 证书实例填实测值。",
+    "payload_key_count": {
+      "definition": "checkpoint payload 的键数 (payload['model'] 的原始键集大小), w_v 双写只计一次",
+      "authority": "ADR-0033 identity 口径 (run identity / 资产身份按该口径记账)",
+      "expected": 43,
+      "derivation": "37 backbone 键 (backbone.w_v 只计一次) + 6 process_head 键 = 43"
+    },
+    "expanded_target_key_count": {
+      "definition": "strict 加载展开后的目标键数 (别名键按 tensor 别名展开), w_v 双写计两次 (backbone.w_v + move_decoder.w_v)",
+      "authority": "主方案 §1.2 口径 (strict-load / mapping 目标键集)",
+      "expected": 45,
+      "derivation": "37 backbone + 2 move_decoder.w_v (backbone.w_v <-> move_decoder.w_v 同一 tensor, 展开成两个目标键) + 6 process_head = 45"
+    },
+    "consistency_rule": "expanded_target_key_count = payload_key_count + 2 (唯一合法展开 = 声明的 w_v 双写别名展开为 backbone.w_v + move_decoder.w_v 两个目标键); 差值 != 2 说明存在未声明别名或静默键过滤 => 审计失败",
+    "mapping_audit_must_state_scope": true,
+    "silent_key_filtering_forbidden": true
+  },
+  "checkpoints": [
+    {
+      "id": "V542_A0_S17",
+      "source": "V542 A0 matched baseline seed17 best inner-val checkpoint (the same-seed encoder V543 freezes)",
+      "source_tier": "v542_backbone_50k_runs_best",
+      "required": true,
+      "path": "outputs/pesn/v542_backbone_50k/runs/V542_A0_S17/checkpoint_best.pt",
+      "sha256": "cab512b0094788093a9969484db7f9f303802d2fff0d7380bffb8923fc7f89bb",
+      "maps_to": "V543_M0_S17",
+      "equations": {
+        "u0_equals_v542_u": null,
+        "z_equals_v542_z": null,
+        "q0_equals_v542_q": null,
+        "tanh_q0_raw_equals_q0": null,
+        "endpoint0_equals_v542_endpoint_logit": null,
+        "zero_residual_model_equal": null,
+        "order_score_is_q": null
+      },
+      "cpu_bitwise": null,
+      "real_batch_bitwise": null,
+      "gpu_tolerance": null,
+      "max_abs_diff": {"u0": null, "z": null, "q0": null, "q0_raw": null, "endpoint0": null, "u": null, "q": null, "endpoint_logit": null, "order_score": null},
+      "encoder_forward_count": null,
+      "hook_fire_counts": {"message_mlp[-1]": null, "norm_h[-1]": null, "progress_head.fc2": null},
+      "state_dict_counts": {
+        "payload_key_count_measured": null,
+        "expanded_target_key_count_measured": null,
+        "count_scope_of_this_audit": null,
+        "note": "instances fill the two MEASURED counts here; count_scope_of_this_audit must name which 口径 the per-key assertions below use (never both at once)"
+      },
+      "status": "pending"
+    },
+    {
+      "id": "V542_A0_S29",
+      "source": "V542 A0 matched baseline seed29 best inner-val checkpoint (the same-seed encoder V543 freezes)",
+      "source_tier": "v542_backbone_50k_runs_best",
+      "required": true,
+      "path": "outputs/pesn/v542_backbone_50k/runs/V542_A0_S29/checkpoint_best.pt",
+      "sha256": "c52db93253777a00637ea6cb41eb1366eeeaf37464d38a3d42c04692f496466b",
+      "maps_to": "V543_M0_S29",
+      "equations": {
+        "u0_equals_v542_u": null,
+        "z_equals_v542_z": null,
+        "q0_equals_v542_q": null,
+        "tanh_q0_raw_equals_q0": null,
+        "endpoint0_equals_v542_endpoint_logit": null,
+        "zero_residual_model_equal": null,
+        "order_score_is_q": null
+      },
+      "cpu_bitwise": null,
+      "real_batch_bitwise": null,
+      "gpu_tolerance": null,
+      "max_abs_diff": {"u0": null, "z": null, "q0": null, "q0_raw": null, "endpoint0": null, "u": null, "q": null, "endpoint_logit": null, "order_score": null},
+      "encoder_forward_count": null,
+      "hook_fire_counts": {"message_mlp[-1]": null, "norm_h[-1]": null, "progress_head.fc2": null},
+      "state_dict_counts": {
+        "payload_key_count_measured": null,
+        "expanded_target_key_count_measured": null,
+        "count_scope_of_this_audit": null,
+        "note": "instances fill the two MEASURED counts here; count_scope_of_this_audit must name which 口径 the per-key assertions below use (never both at once)"
+      },
+      "status": "pending"
+    },
+    {
+      "id": "V542_A0_S43",
+      "source": "V542 A0 matched baseline seed43 best inner-val checkpoint (the same-seed encoder V543 freezes)",
+      "source_tier": "v542_backbone_50k_runs_best",
+      "required": true,
+      "path": "outputs/pesn/v542_backbone_50k/runs/V542_A0_S43/checkpoint_best.pt",
+      "sha256": "dd37c7e997d74c6426db9052918a2400687ce827600fc3dedd69efd01b6be8d4",
+      "maps_to": "V543_M0_S43",
+      "equations": {
+        "u0_equals_v542_u": null,
+        "z_equals_v542_z": null,
+        "q0_equals_v542_q": null,
+        "tanh_q0_raw_equals_q0": null,
+        "endpoint0_equals_v542_endpoint_logit": null,
+        "zero_residual_model_equal": null,
+        "order_score_is_q": null
+      },
+      "cpu_bitwise": null,
+      "real_batch_bitwise": null,
+      "gpu_tolerance": null,
+      "max_abs_diff": {"u0": null, "z": null, "q0": null, "q0_raw": null, "endpoint0": null, "u": null, "q": null, "endpoint_logit": null, "order_score": null},
+      "encoder_forward_count": null,
+      "hook_fire_counts": {"message_mlp[-1]": null, "norm_h[-1]": null, "progress_head.fc2": null},
+      "state_dict_counts": {
+        "payload_key_count_measured": null,
+        "expanded_target_key_count_measured": null,
+        "count_scope_of_this_audit": null,
+        "note": "instances fill the two MEASURED counts here; count_scope_of_this_audit must name which 口径 the per-key assertions below use (never both at once)"
+      },
+      "status": "pending"
+    }
+  ],
+  "checkpoint_count": 3,
+  "required_count": 3,
+  "fixture_parity": {
+    "outputs": ["u", "z", "q", "endpoint_logit", "order_score"],
+    "encoder_outputs": ["u0", "z", "q0_raw", "q0", "endpoint0", "edge_msg", "h_last"],
+    "cpu": {"torch_num_threads": 1, "model_eval": true, "dtype": "fp32", "torch_equal_required": true, "record_max_abs_diff": true}
+  },
+  "real_batch_parity": {
+    "min_inner_val_batches": 8,
+    "seeds": [17, 29, 43],
+    "coverage": ["start", "pre_TS", "post_TS", "endpoint", "forward", "reverse", "small_graph", "large_graph"],
+    "rule": "same CPU bitwise on real inner-val batches; fixture pass + real-batch fail => data-dependent boundary bug (empty edges, degK=0, key without in-edges) must be diagnosed, never waived",
+    "measured_categories": ["isolated_atom", "zero_in_degree_node"]
+  },
+  "gpu_tolerance": {
+    "atol": 1e-06,
+    "rtol": 1e-05,
+    "atol_ref": "plan §7.1 S0-A: GPU <=1e-6 hard cap",
+    "hard_caps_note": "GPU <=1e-6 (atol) / 1e-5 (rtol) 是硬上限; 任何 run-to-run 地板规则都不得放宽该容差 (no tolerance relaxation)",
+    "same_gpu": true,
+    "tf32_disabled": true,
+    "legacy_floor_rule": "run the parity twice first to measure the run-to-run floor; the floor is DIAGNOSTIC ONLY — GPU pass/fail is decided solely by the hard caps; if the measured floor exceeds the cap => GPU parity INCONCLUSIVE; CPU bitwise remains decisive",
+    "floor_gt_cap_means": "gpu_parity_inconclusive; cpu_bitwise_still_decisive; no_tolerance_relaxation",
+    "legacy_floor_max_abs": null
+  },
+  "bridge_parity": {
+    "parameter_free": true,
+    "trainable_params": 0,
+    "note": "Bridge 不引入可训练参数; 固定投影矩阵以 persistent=False buffer 存放, 不进入 optimizer; bridge_spec_sha256 覆盖全部固定构造 (8 通道 key_v / 48 维 pair_s / key 邻接 / token 布局)"
+  },
+  "failure_procedure": [
+    "1_strictly_block_all_training",
+    "2_classify_defect: code / data / initialization / hook",
+    "3_fix_then_bump_matching_identity_layer (code => code_sha256; data => source_manifest_sha256; init => checkpoint/init mapping; hook => capture spec)",
+    "4_rerun_s0a_all_three_seeds; prior certificate => invalid",
+    "5_approximate_equality_release_forbidden"
+  ],
+  "overall_status": "pending",
+  "signed_by": null,
+  "signed_on": null
+}

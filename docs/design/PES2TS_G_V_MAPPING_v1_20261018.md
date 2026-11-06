@@ -35,6 +35,7 @@
 | V5.4 | S | S |  |  |  | S | P | S |  |  |  |  |  |
 | V5.4.1 | S | S |  |  |  | S | P | S |  |  |  |  |  |
 | V5.4.2 | S | S |  |  |  | S | P | S |  |  |  |  |  |
+| V5.4.3 | S | S |  |  |  | S | P | S |  |  |  |  |  |
 | V5_SPRINT | S | S |  |  | P | S | S | S |  |  |  |  |  |
 | V5_1A_SPRINT | S | S |  |  | S | S | P | S |  |  |  |  |  |
 | V6.0 | D | D |  |  |  |  |  | S |  | P |  |  |  |
@@ -65,6 +66,7 @@
 | V5.4 | proposed | G3.P.2 | G3.P.1, G3.P.3, G0, G1 | `config/campaigns/v5_4_rollout.yaml` | `data/manifests/v5/split_manifest.json` | V5-G1, V5.4-field, V5.4-rollout, V5.4-stop |
 | V5.4.1 | executed | G3.P.2 | G3.P.1, G3.P.3, G0, G1 | `config/campaigns/pes2ts_v541_embed_50k.yaml` | `data/manifests/v5/split_manifest.json` | V541-WP0-prereg, V541-WP1-pair-eval, V541-WP2-parity, V541-e0-reuse-decision, V541-smoke-200, V541-H0-legality, V541-H1-resource, V541-H2-move, V541-H3-process, V541-budget-signoff, V541-formal-t1 |
 | V5.4.2 | executed | G3.P.2 | G3.P.1, G3.P.3, G0, G1 | `config/campaigns/pes2ts_v542_backbone_50k.yaml` | `/pes2ts_data/v53mp_50k_data/split_manifest_v53mp.json` | V542-WP0-prereg, V542-WP1-interface-parity, V542-WP2-candidates, V542-smoke-200, V542-profile, V542-diagnostic-2000, V542-A0-sanity-band, V542-H0-legality, V542-H1-resource, V542-H2-move, V542-H3-backbone, V542-budget-signoff, V542-formal |
+| V5.4.3 | proposed | G3.P.2 | G3.P.1, G3.P.3, G0, G1 | `config/campaigns/pes2ts_v543_dual_decoder_50k.yaml` | `/pes2ts_data/v53mp_50k_data/split_manifest_v53mp.json` | V543-WP0-prereg, V543-WP1-encoder-parity, V543-WP2-bridge-context, V543-WP3-sufficiency, V543-WP4-registry-trainer, V543-smoke-200, V543-profile, V543-diagnostic-2000, V543-H0-legality, V543-H1-resource, V543-H2-move, V543-H2-process, V543-H3-move, V543-H3-process, V543-budget-signoff, V543-formal, V543-S2-conditional |
 | V5_SPRINT | executed | G3.P.0 | G3.P.1, G3.P.2, G3.P.3, G0, G1 | `config/campaigns/v5_sprint.yaml` | `data/manifests/v5/split_manifest.json` | V5-G1, V5-G2, V5-G3, V5-G4 |
 | V5_1A_SPRINT | executed | G3.P.2 | G3.P.0, G3.P.1, G3.P.3, G0, G1 | `config/campaigns/v5_1_sprint.yaml` | `data/manifests/v5/split_manifest.json` | V5-G1, V5-G2, V5-G3, V5-G4 |
 | V6.0 | archived | G3.2 | G3.P.3 | `config/campaigns/v6_0_data.yaml` | `data/manifests/v6/split_manifest.json` | V6-OOF, V6-leakage |

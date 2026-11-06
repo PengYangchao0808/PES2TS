@@ -398,6 +398,28 @@ campaigns:
     comparison_only:
       - pes2ts_core/pesn/models/dual_egnn.py
       - pes2ts_core/pesn/models/dual_ts_policy.py
+  V5.4.3:
+    title: V5.4.3 dual-Decoder 50K benchmark (frozen A0 Encoder + parameter-free DecoderContextV1 Bridge + independent MOVE/PROCESS residual tracks)
+    status: proposed
+    primary_g: G3.P.2
+    supporting_g: [G3.P.1, G3.P.3, G0, G1]
+    data_dependencies: [G0, G1]
+    code_scope:
+      - config/campaigns/pes2ts_v543_dual_decoder_50k.yaml
+      - scripts/agent_ops/v543_config_schema.py
+      - tests/agent_ops/test_v543_config_schema.py
+      - config/campaigns/v543_templates/**
+      - pes2ts_core/pesn/models/v543/**
+      - pes2ts_core/pesn/offline/training/v543_*.py
+      - scripts/agent_ops/v543_*.py
+    config: config/campaigns/pes2ts_v543_dual_decoder_50k.yaml
+    data_manifest: /pes2ts_data/v53mp_50k_data/split_manifest_v53mp.json
+    gates: [V543-WP0-prereg, V543-WP1-encoder-parity, V543-WP2-bridge-context, V543-WP3-sufficiency, V543-WP4-registry-trainer, V543-smoke-200, V543-profile, V543-diagnostic-2000, V543-H0-legality, V543-H1-resource, V543-H2-move, V543-H2-process, V543-H3-move, V543-H3-process, V543-budget-signoff, V543-formal, V543-S2-conditional]
+    evidence: docs/design/decisions/ADR-0034-V5.4.3-双Decoder与DecoderContextV1.md
+    gate_note: "WP0 preregistered 2026-11-02 (ADR-0034; plan Frozen-Preregistered, D1–D8 signed by the repository owner through the DSH orchestration session + three run authorizations): status proposed — no smoke/training/executed claim, no candidate-gain claim. Architecture: frozen V542 A0 CoarseEncoder (57,619 = 55,392 active backbone + 49 w_v + 2,178 process head; message_mlp[-1]/norm_h[-1]/fc2 hooks, shared w_v, strict load, CPU-bitwise zero-residual parity on the three same-seed A0 checkpoints in source.checkpoints, seven equations incl. tanh(q0_raw)==q and order_score is q) + parameter-free Geometric Latent Bridge (key_v 8 polar channels, pair_s 48 dims canonical key-slot order with signed delta_b from forward edges only, Ek <= 2(P+4K), no supervision leak) + two INDEPENDENT residual tracks with mutually exclusive MoveContextV1/ProcessContextV1 views (M1–M3 formal / M4 Flow & M5 Diffusion conditional; P1–P4 formal / P4-C matched control / P5 GraphGRU conditional). Parameter matching: 36,000 target +-5% (34,200–37,800) per track, single-decoder hard cap 40,000, whole model 129,619 target / 133,219 in-band max / 150,000 hard cap, exact sum(p.numel()) assertions. Training: decoder-only, 37,900 flat updates + 400 warmup (the V542 400+37,500 split retired), LR 3e-4 AdamW wd 1e-4 clip 1.0 fp32, batch 8x4, v541_curve_stratified_v1 (spec_sha256 0769817e...), inner-val cap 8,192, identity-matched resume only, torch.compile forbidden; frozen V53MP losses L_M = L_atom + 0.5 L_pair + 0.02 L_cos and L_P = 0.5 L_ranking + 0.5 L_q + 0.012385049119773344 L_endpoint with the endpoint-label PROCESS frame mask. Screening: smoke 200 (T1) + diagnostic 2,000 (T2) + profile, seeds 17/29 first and seed 43 only for at most 2 finalists per track, no H3 selection on diagnostics. Formal matrix: 18-run ceiling = T3 7 (seed17) + T4 7 (seed29) + T5 <=4 (seed43) = 682,200 updates; T6 two_track_champions_or_retain; T7 four combos [B0, BM, BP, BMP]; T8 conditional generation separate identity. Evaluation: V543 M0/P0 recomputed matched-seed baseline, new fixed_coverage_direction_at_3 metric, q MAE/ordering primary with q_corr diagnostic-only (>=3 points, frac_curves_ge3 >= 0.70), curve-level paired cluster bootstrap 10,000 draws (seed root 20261102), Holm (MOVE two exits alpha 0.025 each; PROCESS single family alpha 0.025), thresholds signed frozen 2026-11-02 (19 appendix-B keys). Governance: confirm sealed, new_QC_calls=0, dev one-shot at T7 only, single lane, swap=0, host <= 12 GiB; preregistration_signoff_record is validator-checked at --formal (V543_RECORD_MISSING / V543_RECORD_MISMATCH) while runplan_pin_record is runner-verified at the WP5 freeze; budget.per_candidate_core_time stays null until the same-env WP7 profile (prereg => t1_blocked, --formal => V543_BUDGET_NULL). V542/V541 frozen artifacts untouched; not evidence for verified TS / production No-Move / deployment qualification / G4 exit."
+    comparison_only:
+      - pes2ts_core/pesn/models/dual_egnn.py
+      - pes2ts_core/pesn/models/dual_ts_policy.py
   V5_SPRINT:
     title: V5 phase-1 ten-hour sprint (label screen, recheck, conditional OOF)
     status: executed
