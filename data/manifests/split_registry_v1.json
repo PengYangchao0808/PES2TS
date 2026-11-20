@@ -1,0 +1,139 @@
+{
+  "schema": "pes2ts_split_registry_v1",
+  "created_at": "2026-11-20T13:06:00.632462+00:00",
+  "purpose": "Repo-tracked reaction-ID lists for every frozen split layer, so a clone can inspect and verify the partition without the local/WSL data tree.",
+  "layers": {
+    "L0": "G0 official split (per reaction, from the dataset authors)",
+    "L1": "predictor parent split (canonical groups): train_fit / train_dev / train_calibration + family_holdout",
+    "L3": "campaign cohort + 50K split manifest: nested pool tiers, frozen dev, confirm ids (listed only, never built)"
+  },
+  "confirm_seal_note": "Confirm ids are published as ids ONLY. They were never built into the six tables and never read; publishing the list is what the manifest's own 'rules' field prescribes and does not unseal them.",
+  "data_tree_note": "The six tables themselves are NOT published: the 50K tree in WSL (/pes2ts_data/v53mp_50k_data) is 128 GB. These lists let a clone verify the partition and, once it holds the data, reproduce the exact curve selection without any local state.",
+  "artifacts": [
+    {
+      "id": "g0_official_split",
+      "layer": "L0",
+      "repo_path": "data/manifests/split_ids_g0_v1.csv",
+      "source_artifact": "data/interim/split_assignment.parquet",
+      "schema": "g0_split_assignment_csv_v1",
+      "rows": 199168,
+      "counts": {
+        "test": 19909,
+        "train": 159355,
+        "valid": 19904
+      },
+      "sha256": "07bdbedc5d089cf8f556281b237bd27300c92216c8663211a93082b3a395aca3",
+      "bytes": 4162637,
+      "verified_against": "data/manifests/split_manifest.json counts (train 159355 / valid 19904 / test 19909)",
+      "regen": "python bin/pes2ts g0 split && python bin/pes2ts g0 freeze"
+    },
+    {
+      "id": "l1_pesn_irc_split",
+      "layer": "L1",
+      "repo_path": "data/manifests/pesn_irc_split_ids_v1.json",
+      "source_artifact": "outputs/pesn/g3_p1/splits/pesn_irc_split.json",
+      "schema": "pesn_irc_split_v1",
+      "counts": {
+        "train_calibration": 15159,
+        "train_dev": 15161,
+        "train_fit": 121363,
+        "family_holdout": 9573,
+        "isolated_conflicts": 2
+      },
+      "seed": 42,
+      "fractions": {
+        "calibration": 0.1,
+        "dev": 0.1,
+        "family_holdout": 0.05
+      },
+      "sha256": "802f6243649b62c85ce86927adbecfe44d54f7d0c4ee22c0c51ddc08ca42ce5e",
+      "bytes": 2903919,
+      "copy_note": "verbatim copy: sha256 equals the producing artifact",
+      "regen": "python -m pes2ts_core.pesn split --config config/pesn/g3_p1.yaml"
+    },
+    {
+      "id": "l3_v53mp_cohort_20k",
+      "layer": "L3",
+      "repo_path": "data/manifests/v53mp_cohort_20k_ids_v1.json",
+      "source_artifact": "outputs/pesn/v53mp/cohort/v53mp_cohort_v1.json",
+      "schema": "v53mp_cohort_v1",
+      "seed_key": "v53mp:cohort:20261021",
+      "counts": {
+        "pool_candidates": 26000,
+        "dev": 600,
+        "confirm": 2000
+      },
+      "parent_split_sha256": "802f6243649b62c85ce86927adbecfe44d54f7d0c4ee22c0c51ddc08ca42ce5e",
+      "sha256": "83e72e9a2570415d71cdf87919edfdc1521600386dd4ea18678a111d428195b4",
+      "bytes": 1316830,
+      "copy_note": "verbatim copy (renamed only): sha256 equals the producing artifact",
+      "regen": "scripts/agent_ops/data_gate/r3_v53mp_freeze_cohort.py --pool-candidate-target 26000"
+    },
+    {
+      "id": "l3_v53mp_cohort_50k",
+      "layer": "L3",
+      "repo_path": "data/manifests/v53mp_cohort_50k_ids_v1.json",
+      "source_artifact": "outputs/pesn/v53mp/s4_50k/cohort/v53mp_cohort_v1.json",
+      "schema": "v53mp_cohort_v1",
+      "seed_key": "v53mp:cohort:20261021",
+      "counts": {
+        "pool_candidates": 65000,
+        "dev": 600,
+        "confirm": 2000
+      },
+      "parent_split_sha256": "802f6243649b62c85ce86927adbecfe44d54f7d0c4ee22c0c51ddc08ca42ce5e",
+      "sha256": "b65fa4c92f9db2cd2eb8d06dc5306c747702b282ea7c25a111015309698a932b",
+      "bytes": 3110831,
+      "copy_note": "verbatim copy (renamed only): sha256 equals the producing artifact",
+      "regen": "scripts/agent_ops/data_gate/r3_v53mp_freeze_cohort.py --pool-candidate-target 65000"
+    },
+    {
+      "id": "l3_v53mp_split_50k",
+      "layer": "L3",
+      "repo_path": "data/manifests/v53mp_split_50k_ids_v1.json",
+      "source_artifact": "/pes2ts_data/v53mp_50k_data/split_manifest_v53mp.json (WSL)",
+      "schema": "v53mp_split_v1",
+      "seed_key": "v53mp:cohort:20261021",
+      "counts": {
+        "pool_tiers": {
+          "2k": 2000,
+          "5k": 5000,
+          "20k": 20000,
+          "50k": 50000
+        },
+        "dev": 589,
+        "confirm": 2000,
+        "curve_folds": 66195,
+        "pool_qualified": 60073,
+        "pool_20k": 50000,
+        "pool_frozen": 50000,
+        "pool_overflow_unqualified_or_margin": 15000,
+        "confirm_listed_never_built": 2000
+      },
+      "parents": {
+        "cohort": {
+          "path": "outputs/pesn/v53mp/s4_50k/cohort/v53mp_cohort_v1.json",
+          "sha256": "b65fa4c92f9db2cd2eb8d06dc5306c747702b282ea7c25a111015309698a932b"
+        },
+        "g3p1_split": {
+          "path": "outputs/pesn/g3_p1/splits/pesn_irc_split.json",
+          "sha256": "802f6243649b62c85ce86927adbecfe44d54f7d0c4ee22c0c51ddc08ca42ce5e",
+          "schema_version": "pesn_irc_split_v1"
+        },
+        "s0a_qualification": {
+          "path": "outputs/pesn/v53mp/s0a/metadata_qualification.json",
+          "sha256": "b94c341c37cd1fc2dd9b151418773c6246e4ea24b83222747ab3c6779207a554"
+        }
+      },
+      "rules": [
+        "tiers are nested prefixes of the frozen pool in cohort rank order (2k ⊂ 5k ⊂ 20k ⊂ 50k)",
+        "confirm ids are listed only; confirm reactions were never read or built in this campaign stage",
+        "fold: built curves carry position % 3; confirm carries 4"
+      ],
+      "sha256": "c0d2cb2aabde403277d413a113f57924877cc370784865e65951678690b7d7f3",
+      "bytes": 3720470,
+      "copy_note": "verbatim copy: sha256 equals the producing artifact in WSL",
+      "regen": "scripts/agent_ops/data_gate/r3_v53mp_finalize.py --data <tables_dir> --cohort <cohort.json> --s0a <s0a_dir> --pool-target 50000"
+    }
+  ]
+}

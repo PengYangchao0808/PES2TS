@@ -1,5 +1,24 @@
 # PES2TS 文档修订台账（协同性）
 
+## 2026-11-20 增量登记：划分名单发布（修复"仓库不含反应名单"）
+
+- **触发**：队友复刻时发现仓库里没有任何反应 ID 名单（此前只有**计数型** manifest）。核实属实：`data/manifests/split_manifest.json` 仅 8.4 KB（counts/audit，无 id 列表），真正的名单全在 `outputs/**`（整目录 gitignored）与 WSL。
+- **已发布（逐字节副本，随库入库）**——共 **15.2 MB**，索引 [`data/manifests/split_registry_v1.json`](../../data/manifests/split_registry_v1.json)（含每份的 sha256 / 计数 / 来源路径 / 再生成命令）：
+
+  | 文件 | 大小 | 内容 | sha256 前缀 |
+  |---|---:|---|---|
+  | `data/manifests/split_ids_g0_v1.csv` | 4.16 MB | L0 官方 `reaction_id,split`，199,168 行（train 159,355 / valid 19,904 / test 19,909） | `07bdbedc…` |
+  | `data/manifests/pesn_irc_split_ids_v1.json` | 2.90 MB | L1 `pesn_irc_split_v1`：train_fit 121,363 / train_dev 15,161 / train_calibration 15,159 + family_holdout 9,573 | `802f6243…` |
+  | `data/manifests/v53mp_cohort_20k_ids_v1.json` | 1.32 MB | 20K 建库 cohort：pool 26,000 / dev 600 / confirm 2,000 | `83e72e9a…` |
+  | `data/manifests/v53mp_cohort_50k_ids_v1.json` | 3.11 MB | 50K 建库 cohort：pool 65,000 / dev 600 / confirm 2,000 | `b65fa4c9…` |
+  | `data/manifests/v53mp_split_50k_ids_v1.json` | 3.72 MB | `v53mp_split_v1`：pool tiers 2k/5k/20k/50k、dev 589、confirm 2,000、`curve_folds` 66,195 | `c0d2cb2a…` |
+
+- **链条校验（可机械复核）**：两个 cohort 的 `parent_split_sha256` 与 50K manifest 的 `parents.g3p1_split.sha256` **均等于 L1 的 `802f6243…`**；50K manifest 另记录 `pool_qualified 60,073 / pool_frozen 50,000 / pool_overflow 15,000`。
+- **封存纪律不变**：confirm 只发布 **id 列表**（manifest 自身 `rules` 即如此规定），从未建表/读取，因此**不构成解封**；文档 §4 仍禁止据此建表或评估。
+- **策略更新**：[data/README.md](../../data/README.md) 把 `data/manifests/*ids*` 登记为**明确例外**（超 1 MB 目标是有意的：该划分无法从仓库内任何其它文件重建），并规定"只做逐字节副本、改动须同 commit 更新 registry 的 SHA"。
+- **仍未入库**：六表本体（WSL `/pes2ts_data/v53mp_50k_data`，`du -sh` 实测 **128 GB**）与 dev pack/idx；仍需按划分文档 §6.5 清单内部传输。
+- **文档同步**：[划分与数据来源方案](PES2TS_训练测试集划分标准_v1_20261120.md) 升 **v1.1**（§1/§6.4/§6.4b/§8-2/§9/§10 改判）、`docs/README.md` 条目更新。
+
 ## 2026-11-20 增量登记：CI 红灯修复（G–V map 外部路径）+ MIT LICENSE
 
 - **修 CI 既有红灯**（自 2026-10-31 起 `master` 每次 run 都失败，本次推送实测同样在第 5 步 `G–V map check` 挂）：根因是 `config/registry/g_v_map.yaml` 中 `V5.4.1/V5.4.2.data_manifest` 记录的是 WSL 绝对路径 `/pes2ts_data/v53mp_50k_data/split_manifest_v53mp.json`，而 `pes2ts_core/gv_registry.py` 对所有 `config/data_manifest/evidence` 一律要求 `(root / value).exists()`，该路径在 Windows 与 GitHub ubuntu runner 上都不存在。

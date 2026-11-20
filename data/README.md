@@ -9,6 +9,22 @@ local and are re-generated from the frozen inputs when needed.
 - `data/manifests/*.json` — small manifests (target: each file < 1 MB).
 - `data/interim/g2_needs_review.json` — the small G2 review list.
 - `data/README.md` — this policy.
+- **`data/manifests/*ids*` — the frozen reaction-ID lists (documented exception, 2026-11-20).**
+  These exceed the 1 MB target on purpose, because the split **cannot be re-derived from
+  anything else in the repo** (the producing artifacts live under `outputs/`, which is never
+  versioned, and the source data only exists on the author's WSL host). Index and hashes:
+  [data/manifests/split_registry_v1.json](manifests/split_registry_v1.json).
+
+  | File | Size | Content |
+  |---|---:|---|
+  | `manifests/split_ids_g0_v1.csv` | 4.2 MB | G0 official `reaction_id,split` (199,168 rows) |
+  | `manifests/pesn_irc_split_ids_v1.json` | 2.9 MB | L1 predictor split: train_fit / train_dev / train_calibration / family_holdout |
+  | `manifests/v53mp_cohort_20k_ids_v1.json` | 1.3 MB | 20K build cohort (26,000 pool candidates + dev + confirm) |
+  | `manifests/v53mp_cohort_50k_ids_v1.json` | 3.1 MB | 50K build cohort (65,000 pool candidates + dev + confirm) |
+  | `manifests/v53mp_split_50k_ids_v1.json` | 3.7 MB | 50K split manifest: pool tiers 2k/5k/20k/50k, dev 589, confirm 2,000 |
+
+  Rule: these are **verbatim copies** of frozen artifacts — never hand-edit; regenerate with the
+  command recorded in `split_registry_v1.json` and update the SHA there in the same commit.
 
 ## Not versioned (local only)
 

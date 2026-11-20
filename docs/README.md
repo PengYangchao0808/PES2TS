@@ -13,7 +13,8 @@
 - **[PES2TS 训练测试集划分与数据来源方案 v1（合并版）](plans/PES2TS_训练测试集划分标准_v1_20261120.md)**：一份文档同时回答"怎么划分"和"数据从哪来"，供队友同步与下载。
   - **划分**：L0–L4 五层继承链——G0 官方 split（train 159,355 / valid 19,904 / test 19,909，`leak_status=clean`）→ `pesn_irc_split_v1`（train_fit 121,363 / train_dev 15,161 / train_calibration 15,159 + family_holdout 9,573）→ V5 冲刺 fit50 5 折（历史）→ 战役 cohort + `split_manifest_v53mp.json`（pool 50,000 嵌套 tier / dev **589** / confirm **2,000 仅列名** / fold=`位置%3`、confirm=4）→ run 内层 `v53mp_pool_split`（池内 20% 曲线 inner-val，只用于选 checkpoint 与校准 `tau_end`）。含四类"测试集"（父 valid/test、排族 holdout、confirm、dev）辨析、fold 两代语义差异、硬规则。
   - **数据来源**：Zenodo 记录 18551029（DOI `10.5281/zenodo.18551029` rev1）六文件 **12.15 GB**，逐文件 MD5 + 本地 sha256 + URL；`g0 fetch` 的 `.part`→MD5→落盘语义与退出码；`GFN2_xTB.h5`（~21 GB）刻意跳过；派生落位与真值隔离（2 个 HDF5 搬入 `data/ground_truth/sources/`）；**可获得性矩阵**（哪些在 git、哪些只在本地 `outputs/`、哪些必须重生成）；传 50K 大表的最小可复现集合与 sidecar 校验；环境与**从零复现 12 步**。
-  - **9 项待对齐缺口**：无规范位、**划分真身几乎都不入库**（`outputs/**` 全 gitignored）、manifest 三代命名、fold 跨代读法、父 valid/test 与 family_holdout 评测协议未冻结、dev 600→589 差额、50K 六表无发布渠道/体积未登记、dev pack 双身份等。
+  - **9 项待对齐缺口**：无规范位、**~~划分真身几乎都不入库~~（2026-11-20 已解决：5 份名单 15.2 MB 随库发布，索引 `data/manifests/split_registry_v1.json`）**、manifest 三代命名、fold 跨代读法、父 valid/test 与 family_holdout 评测协议未冻结、dev 600→589 差额、50K 六表 128 GB 无发布渠道、dev pack 双身份等。
+  - **v1.1（2026-11-20 晚）**：队友反馈"仓库不含反应名单"后补齐——G0 assignment（199,168 行 CSV）、L1 划分、20K/50K cohort、50K split manifest 均以**逐字节副本**入库并带 sha256/计数/再生成命令；新增 §6.4b 校验流程（链条校验：两个 cohort 的父哈希与 50K manifest 的 `parents.g3p1_split` 必须都等于 L1 的 `802f6243…`）。
 - **边界**：**只整理既有事实**，不新增规则、不改任何冻结件、不下载、不训练、不读 dev/confirm；其升格为规范须按 [AGENT.md](../AGENT.md) §7.2 走 ADR 与宪法登记。
 
 ## 2026-11-02 V5.4.3 双 Decoder 50K 全面方案（Frozen-Preregistered；D1–D8 已签认）
