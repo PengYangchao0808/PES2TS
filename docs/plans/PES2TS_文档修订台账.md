@@ -1,5 +1,14 @@
 # PES2TS 文档修订台账（协同性）
 
+## 2026-11-20 增量登记：CI 红灯修复（G–V map 外部路径）+ MIT LICENSE
+
+- **修 CI 既有红灯**（自 2026-10-31 起 `master` 每次 run 都失败，本次推送实测同样在第 5 步 `G–V map check` 挂）：根因是 `config/registry/g_v_map.yaml` 中 `V5.4.1/V5.4.2.data_manifest` 记录的是 WSL 绝对路径 `/pes2ts_data/v53mp_50k_data/split_manifest_v53mp.json`，而 `pes2ts_core/gv_registry.py` 对所有 `config/data_manifest/evidence` 一律要求 `(root / value).exists()`，该路径在 Windows 与 GitHub ubuntu runner 上都不存在。
+- **修复（选型经仓库所有者确认）**：`gv_registry.py` 新增 `_is_external_path()`——**仓库外**（POSIX 绝对、Windows 盘符/UNC、或 resolve 后逃出 repo）路径只作 provenance 记录、**不强制存在**；**仓库内相对路径仍严格校验**（缺失照样 `GVMapError`）。`validate_gv_map` docstring 同步说明。
+- **测试同步**：`tests/test_gv_registry.py` 中 V5.4.1 的断言由"data_manifest 必须是库内文件"改为"evidence 必须在库内、data_manifest 可为外部位置"；新增 `test_external_data_manifest_is_recorded_but_not_required` 与 `test_missing_relative_data_manifest_still_raises` 两例（防止把宽松扩散到相对路径）。
+- **验证**：`python scripts/render_gv_map.py --check` → **exit 0**（"G–V mapping doc is current"）；`pytest -q tests/test_gv_registry.py tests/test_config_env.py` → **26 passed**（修复前为 4 failed / 20 passed）。**未改 `g_v_map.yaml` 的任何数值/状态**，V5.4.1/V5.4.2 的 provenance 字符串原样保留。
+- **LICENSE**：新增根 `LICENSE`（**MIT**，Copyright (c) 2026 PengYangchao0808），根 `README.md` 末尾加 `## License` 段指向该文件。此前仓库**无任何许可文件**，公开仓库下等于"保留所有权利"。
+- 边界：本次只改 `gv_registry.py` 的路径判定 + 一个测试文件 + LICENSE/README 两处文档；未触碰 split 数据、冻结件、`docs/reports/**`、预注册配置与门禁名单。
+
 ## 2026-11-20 增量登记：归档执行（docs/superseded 建立 + 4 份已取代文档迁入 + 5 个零引用脚本归档）
 
 - 新建 **`docs/superseded/`**（含 [README](../superseded/README.md)）：明确定位为"**已取代文档存放区**"，与 `docs/archive/`（版本快照，禁止搬入过时文档）严格区分；收录规则、命名、三件套动作（修链接 / 本目录索引 / 台账登记）写在该 README。

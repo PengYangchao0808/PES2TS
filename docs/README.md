@@ -6,7 +6,7 @@
   - **大块头已被挡住**：`data/` 12.15 GB、`outputs/` GB 级均不入库；真正要处理的是**入库面的历史沉淀**——根目录 7 份战役 memo（`V52_PROGRESS_STOP_REPORT.md`、`NEXT_DAY_DECISION_MEMO.md`、`FAILURE_AND_REMAINING_WORK.md`、`24H_FINAL_REPORT.md`、`24H_EXECUTION_TIMELINE.md`、`R3_RESULT_SUMMARY.md`、`V53_ROLLOUT_REPORT.md`）、`docs/plans/` 的 5 份多版本残留（单端点 IRC 产品设计 v1/v2、V5.1-R3 v1/v2/三位一体）、`scripts/` 根约 18 个 V4 一次性脚本、本地缓存。
   - **四条红线**：CI 有 4 道门（`render_gv_map --check`、`check_docs_links.py`、registry tests、两档 pytest）；**`docs/archive/` 是版本快照、禁止当"过时文档墓地"**（归档目标另立 `docs/superseded/`）；`docs/reports/**` 永不改内容；`historical`(17)/`required_files`(27) 与 `g_v_map` 路径是门禁输入、移动即红。
   - **推送前必补**：**`LICENSE` 缺失**（公开前必须加）；远端为 SSH（`git@github.com:PengYangchao0808/PES2TS.git`），需确认 key 或切 HTTPS+PAT；`master` + `sync/20261018` 两条分支需决定是否都推。
-  - **执行状态（2026-11-20，部分落地）**：P1 本地缓存清理；P3 建 `docs/superseded/` 并迁入 **4 份**自身已声明 Superseded 的文档（单端点 IRC 产品设计 v1/v2、V5.1-R3 端点对称 v1/v2），同步修好跨目录链接；P4 迁入 **5 个零引用** V4 脚本到 `scripts/archive/v4/`；P2（根目录 7 份 memo）按方案建议**不移动**，仅留索引。**未删除任何证据、未改 `docs/reports/**`、未改 `docs_consistency` 门禁名单**。归档区规则见 [docs/superseded/README.md](superseded/README.md)。
+  - **执行状态（2026-11-20，部分落地）**：P1 本地缓存清理；P3 建 `docs/superseded/` 并迁入 **4 份**自身已声明 Superseded 的文档（单端点 IRC 产品设计 v1/v2、V5.1-R3 端点对称 v1/v2），同步修好跨目录链接；P4 迁入 **5 个零引用** V4 脚本到 `scripts/archive/v4/`；P2（根目录 7 份 memo）按方案建议**不移动**，仅留索引。**未删除任何证据、未改 `docs/reports/**`、未改 `docs_consistency` 门禁名单**。归档区规则见 [docs/superseded/README.md](superseded/README.md)。同日另修 **CI 既有红灯**（`G–V map check` 对外部绝对路径误判为缺失；改 `gv_registry.py` 只对仓库内相对路径强制存在）并补 **MIT `LICENSE`**。
 
 ## 2026-11-20 训练/测试集划分与数据来源方案（对齐用，说明性汇总，非规范）
 

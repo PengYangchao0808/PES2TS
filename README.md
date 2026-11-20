@@ -1304,3 +1304,9 @@ tree skips every stage and rewrites only the run report.
 Per-todo command transcripts and outputs are recorded under
 `.omo/evidence/task-*-pes2ts-g0-data-entry-and-split.txt` (G0) and
 `.omo/evidence/task-*-pes2ts-g1-general-s0.txt` (G1).
+
+---
+
+## License
+
+MIT — see [LICENSE](LICENSE).

@@ -217,9 +217,40 @@ def test_v541_code_scope_paths_exist_for_executed():
     # every declared code_scope pattern must match at least one file
     for pattern in entry.code_scope:
         assert any(root.glob(pattern)), f"code_scope pattern matches nothing: {pattern}"
-    # evidence + data manifest exist
+    # evidence exists; data_manifest may be an EXTERNAL location (the 50K split
+    # manifest lives on a WSL mount), which is provenance — not a checkout file
     assert (root / entry.evidence).is_file()
-    assert (root / entry.data_manifest).is_file()
+    assert entry.data_manifest
+    if not entry.data_manifest.startswith(("/", "\\")):
+        assert (root / entry.data_manifest).is_file()
+
+
+def test_external_data_manifest_is_recorded_but_not_required(tmp_path):
+    """A data manifest outside the checkout is provenance, not a local file."""
+    path = _write_map(tmp_path, status="active")
+    document = yaml.safe_load(path.read_text(encoding="utf-8"))
+    campaign = document["campaigns"]["V5.1"]
+    campaign["code_scope"] = ["code.py"]
+    campaign["config"] = "code.py"
+    campaign["evidence"] = "code.py"
+    campaign["data_manifest"] = "/pes2ts_data/v53mp_50k_data/split_manifest_v53mp.json"
+    path.write_text(yaml.safe_dump(document, sort_keys=False), encoding="utf-8")
+    # everything except the external manifest resolves -> no refusal
+    validate_gv_map(load_gv_map(path), repo_root=tmp_path)
+
+
+def test_missing_relative_data_manifest_still_raises(tmp_path):
+    """Repo-relative artifacts keep the strict existence contract."""
+    path = _write_map(tmp_path, status="active")
+    document = yaml.safe_load(path.read_text(encoding="utf-8"))
+    campaign = document["campaigns"]["V5.1"]
+    campaign["code_scope"] = ["code.py"]
+    campaign["config"] = "code.py"
+    campaign["evidence"] = "code.py"
+    campaign["data_manifest"] = "data/manifests/absent_manifest.json"
+    path.write_text(yaml.safe_dump(document, sort_keys=False), encoding="utf-8")
+    with pytest.raises(GVMapError, match="absent_manifest.json"):
+        validate_gv_map(load_gv_map(path), repo_root=tmp_path)
 
 
 def test_proposed_campaign_may_reference_planned_paths(tmp_path):

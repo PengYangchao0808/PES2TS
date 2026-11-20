@@ -215,6 +215,27 @@ def _glob_exists(root: Path, pattern: str) -> bool:
         return False
 
 
+def _is_external_path(root: Path, value: str) -> bool:
+    """True when ``value`` points outside the repository checkout.
+
+    Registered artifacts are normally repo-relative and must exist.  A data
+    manifest may legitimately live *outside* the repo — the V5.4.1/V5.4.2 50K
+    split manifest sits on a WSL mount (``/pes2ts_data/...``) — and such a
+    location can be verified neither from a Windows checkout nor from CI.  The
+    provenance string is still recorded; it simply is not required to be
+    present.  Absolute paths (POSIX ``/...``, a Windows drive or UNC root) and
+    paths that resolve outside ``root`` count as external; every other value
+    stays enforced.
+    """
+    if Path(value).is_absolute() or value.startswith(("/", "\\")):
+        return True
+    try:
+        Path(root / value).resolve().relative_to(Path(root).resolve())
+    except ValueError:
+        return True
+    return False
+
+
 def validate_gv_map(
     gv_map: GVMap,
     *,
@@ -225,6 +246,10 @@ def validate_gv_map(
 
     ``require_existing=None`` means: enforce paths for ``active`` and
     ``executed`` campaigns, allow missing paths for ``proposed``.
+
+    Paths that point outside ``repo_root`` (an external data manifest on a
+    mount, for example) are recorded as provenance but are not required to
+    exist in this checkout — see :func:`_is_external_path`.
     """
     root = Path(repo_root)
     for stage_id, stage in gv_map.stages.items():
@@ -268,6 +293,10 @@ def validate_gv_map(
             ("evidence", campaign.evidence),
         ):
             if value is None:
+                continue
+            if _is_external_path(root, value):
+                # Declared external artifact (e.g. the WSL-mounted 50K data
+                # manifest): kept as provenance, never required to be present.
                 continue
             if not (root / value).exists():
                 raise GVMapError(f"{where}.{label} does not exist: {value}")
