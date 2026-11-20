@@ -1,6 +1,6 @@
 # PES2TS / PES-N V5.1-R3：端点对称特征与损失重训方案 v2
 
-> **Superseded（2026-10-20）**：本文件的 `endpoint-symmetric` 语义已被 [R3 v3](PES2TS_V5.1-R3_反应意图条件化与端点标签不变重训方案_v3_20261020.md) 修正为 `reaction-intent-conditioned, endpoint-label-invariant`；请勿再按“所有端点特征取无符号绝对值”执行。
+> **Superseded（2026-10-20）**：本文件的 `endpoint-symmetric` 语义已被 [R3 v3](../plans/PES2TS_V5.1-R3_反应意图条件化与端点标签不变重训方案_v3_20261020.md) 修正为 `reaction-intent-conditioned, endpoint-label-invariant`；请勿再按“所有端点特征取无符号绝对值”执行。
 >
 > 状态：**Proposed v2 / Superseded by R3 v3**（修订 v1；先于任何 R3 训练冻结）
 > 日期：2026-10-20

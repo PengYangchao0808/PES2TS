@@ -1,5 +1,34 @@
 # PES2TS 文档修订台账（协同性）
 
+## 2026-11-20 增量登记：归档执行（docs/superseded 建立 + 4 份已取代文档迁入 + 5 个零引用脚本归档）
+
+- 新建 **`docs/superseded/`**（含 [README](../superseded/README.md)）：明确定位为"**已取代文档存放区**"，与 `docs/archive/`（版本快照，禁止搬入过时文档）严格区分；收录规则、命名、三件套动作（修链接 / 本目录索引 / 台账登记）写在该 README。
+- **迁入 4 份**（均为**自身顶部已声明 Superseded**、且全库 0 引用）：`单端点IRC生成控制器_产品设计_v1`、`_v2`（取代者=产品设计 v3）、`V5.1-R3_端点对称特征与损失重训方案_v1`、`_v2`（取代者=R3 v3）。正文未改，仅把同目录 v3 链接改为 `../plans/…`，保证 `check_docs_links.py` 仍 0 error。
+- **未迁入**：`V5.1-R3_数据库特征损失三位一体修复方案_v1`（仍登记为 Proposed 执行细化，自身未声明取代 → 留 `docs/plans/`）；`V5-V7 v2.0`、`PES-N v1.2`、`V5.0-V5.2 冲刺`、`V5.1-R2`、`30h R3` 五份（在 `docs_consistency` 的 `historical` 名单，移动即断门禁 → 留原地）。
+- **脚本归档**：`aggregate_v41_matrix`、`compare_a45_vs_a50`、`freeze_smoke_selection_v2`、`project_direct_amax`、`summarize_direct_prep` 5 个**零引用** V4 脚本 `git mv` 到 `scripts/archive/v4/`（该目录 .py 由 16 → 21）；`scripts/README.md` 目录表同步。**保留在根**的 V4 脚本（如 `run_v42_campaign`、`eval_v42_protocols`、`freeze_v42_splits`、`diagnose_v41_*`）因被 `tests/pesn/test_v41_diagnostics.py` 等测试引用，**不动**。
+- **本地缓存**：`.pytest_cache`、`.ruff_cache`、`scripts/__pycache__` 已清理（均不入库）；`.slim/` 属本地工具目录，保留。
+- **门禁结果**：`check_docs_links.py` = **0 error / 173 warning（182 docs）**；`docs_consistency.py --strict` = **CLEAN**；`render_gv_map.py --check` 失败于**既有环境问题**（`campaigns.V5.4.2.data_manifest` 指向 WSL 路径 `/pes2ts_data/v53mp_50k_data/split_manifest_v53mp.json`，本机不存在；与本次改动无关）。
+- 边界：**未删除任何证据**、未改 `docs/reports/**`、未改 `docs_consistency_config.json`、未改 `g_v_map.yaml`、未触碰冻结件与 checkpoint。
+
+## 2026-11-20 增量登记：仓库归档与清理方案（推 GitHub 前；操作性，非规范）
+
+- 新增 [PES2TS 仓库归档与清理方案 v1](../infra/PES2TS_仓库归档与清理方案_v1_20261120.md)（**Operational，非规范**；落位 `docs/infra/`，与 `wsl_memory_governance.md` 同区）：静态体检 + A/B/C 三档清单 + P0–P5 五步执行与回滚 + 推送前 10 项 checklist + 风险表 + 5 项待人工确认。
+- **体检结论**：`data/`（12.15 GB）与 `outputs/`（GB 级，含 `g2t_campaign_*` ≈1.3 GB）已被 `.gitignore` 挡住，入库面的真实体积在 `docs/`+`scripts/`+`config/`；`.gitattributes` 已存在；**`LICENSE` 缺失**；远端为 SSH 形式 `git@github.com:PengYangchao0808/PES2TS.git`，本地两条分支 `master` / `sync/20261018`；CI（`.github/workflows/ci.yml`）在 PR 与 push(master) 上跑 `render_gv_map --check` + `check_docs_links.py` + registry tests + 两档 pytest。
+- **A 档（清本地，不进历史）**：`__pycache__`（scripts 下约 30 个 `.pyc`）、`.pytest_cache/.ruff_cache/.mypy_cache`、`.omo/.slim/.*-check-*/.review_tmp_*`、`scripts/local/**`；`data|outputs|ground_truth` 保留本地不动。
+- **B 档（只移不删）**：①`docs/plans` 5 份多版本残留（单端点 IRC 产品设计 v1/v2、V5.1-R3 端点对称 v1/v2、V5.1-R3 三位一体 v1）→ 新建 `docs/superseded/`（**不得**放入 `docs/archive/`，后者是版本快照且明文禁止当墓地）；②`scripts/` 根约 18 个 V4 一次性脚本 → `scripts/archive/v4/`；③根目录 7 份战役 memo → 推荐**折中**：不移动，只在 `docs/agent_runs/README.md` 加索引（因其 5 份在 `historical`、7 份在 `root_scope`，移动须同 PR 改门禁配置）。
+- **C 档（不动）**：`docs/reports/**`（只读证据）、`docs/archive/**`、`docs/contracts/**`、`docs/design/decisions/ADR-*`、`config/**`、`tests/**`、`examples/**`、`docs/agent_runs/state/gates/*.json`（门禁证据，非垃圾）、根 `README.md`/`AGENT.md`/`.gitignore`/`.gitattributes`/`requirements.txt`/`bin/`/`pes2ts_core/`。
+- **门禁数字（写入本方案，便于复核）**：`docs_consistency_config.json` 的 `historical` = **17 条**（其中 plans 5 条、contracts 4 条、ADR 3 条、根 memo 5 条）、`required_files` = **27 条**；`docs/agent_runs/` 在 `token_exempt_prefixes` 内（已被承认为运营记录）。
+- **边界**：本方案**未执行任何删除或移动**，未改 `.gitignore`、未改门禁配置、未触碰冻结件与报告；执行与复核由仓库所有者按 P0–P5 分批完成。
+
+## 2026-11-20 增量登记：训练/测试集划分与数据来源方案（合并版，说明性汇总，非规范）
+
+- 新增 [PES2TS 训练测试集划分与数据来源方案 v1（合并版）](PES2TS_训练测试集划分标准_v1_20261120.md)（**Descriptive，非规范**）：一份文档覆盖"怎么划分"与"数据从哪来"，供队友同步与下载。
+- **划分链（L0–L4）**：L0 G0 官方 split（train 159,355 / valid 19,904 / test 19,909，`leak_status=clean`、`max_similarity=0.8571`）→ L1 `pesn_irc_split_v1`（train_fit 121,363 / train_dev 15,161 / train_calibration 15,159 + family_holdout 9,573 + 冲突隔离 2）→ L2 V5 冲刺 fit50 5 折（fold 3/4 封存，历史）→ L3 战役 cohort + `split_manifest_v53mp.json`（`v53mp_split_v1`：pool 50,000 嵌套 tier 2k⊂5k⊂20k⊂50k / dev 589 / confirm 2,000 仅列名 / fold=`位置%3`、confirm=4）→ L4 `v53mp_pool_split`（池内按曲线 20% inner-val，只用于选 checkpoint 与校准 `tau_end`）。
+- **数据来源**：Zenodo 记录 18551029（DOI `10.5281/zenodo.18551029`，rev1，modified 2025-09-01）六文件 **12,145,874,640 B ≈ 12.15 GB**，逐文件 Zenodo MD5 + 本地 sha256 + `https://zenodo.org/api/records/18551029/files/<name>/content`；`g0 fetch` 的 `.part-<pid>` → MD5 → `os.replace` 语义、幂等跳过、全通过才写 `source_manifest.json`、任一不符退出码 3；`GFN2_xTB.h5`（~21 GB）刻意跳过（G2 本地重算）；`g0 quarantine` 把 2 个真值 HDF5 搬入 `data/ground_truth/sources/`、提取 `ts.parquet`/`irc_index.parquet`、IRC 帧永不复制。
+- **同步可用性（本文件新增的判断）**：`outputs/**` 整体 gitignored，`data/` 仅入库 `manifests/*.json`（含 `v5/*.json`）——因此 **L1 `pesn_irc_split.json`、L3 cohort、`split_manifest_v53mp.json`、sidecar 全是本地资产**，队友只能"重生成 + 对数字"或"向持有者索取"（manifest 仅约 1.4 MB，实测 1,466,480 B，`sha256 142af7c1…`）；50K 六表无发布渠道。文中给出**可获得性矩阵**、传大表的最小可复现集合（六表 + split manifest + `curve_family.csv` + `data_manifest.json` + sidecars + dev pack，不含 confirm）、sidecar 校验格式、环境与**从零复现 12 步**。
+- **待对齐缺口（9 项）**：无规范位（升格须走 ADR）、划分真身几乎不入库（建议指定内部制品位）、split manifest 三代命名、fold 跨代读法、父 valid/test 与 family_holdout 最终评测协议未冻结、计数口径澄清（151,683 为父 train 子集；差值 7,672 落在 holdout/exposure/冲突隔离；`family_holdout 9,573` 来自全库分组抽样，不可与三子集相加）、dev 候选 600→建库 589 差额无逐条原因、50K 六表无渠道且体积未登记（应补 `du -sh`）、dev pack 双身份（`4d84b611…` / `4f6c1e95…`）。
+- **边界**：本轮只新增说明文档并登记索引；**未改动任何冻结件（split manifest / cohort / 六表 / checkpoint）、未下载数据、未训练、未读 dev/confirm、QC=0**；本文件不产生规范效力，规范冲突仍以[宪法](../PES2TS_开发宪法_v1.md)为准。
+
 ## 2026-11-06 增量登记：V5.4.3 全阶段执行完毕（Executed-Frozen；双轨冠军确证）
 
 - 新增执行报告 [PES2TS_V543_双Decoder_50K_实施与训练报告_20261106](../reports/PES2TS_V543_双Decoder_50K_实施与训练报告_20261106.md)：WP0–WP9 全部完成；18-run 矩阵（682,200 updates）全部 done；H3 双轨确证（M1 move_rmse +4.77%、P3 process_auprc +0.283/process_q +0.351，Holm 后 p=0.0001 级）；T7 dev 一次性访问已使用并封存（ledger 恰 1 行）；QC=0、confirm 全程未读、docs 门与 gv-map 门 CLEAN、终版 bundle 208 文件 verify ok。

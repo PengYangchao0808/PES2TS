@@ -1,5 +1,21 @@
 # PES2TS 文档索引
 
+## 2026-11-20 仓库归档与清理方案（推 GitHub 前；操作性，非规范）
+
+- **[PES2TS 仓库归档与清理方案 v1](infra/PES2TS_仓库归档与清理方案_v1_20261120.md)**：静态体检 + 三档清单 + P0–P5 执行与回滚 + 推 GitHub 10 项 checklist。要点：
+  - **大块头已被挡住**：`data/` 12.15 GB、`outputs/` GB 级均不入库；真正要处理的是**入库面的历史沉淀**——根目录 7 份战役 memo（`V52_PROGRESS_STOP_REPORT.md`、`NEXT_DAY_DECISION_MEMO.md`、`FAILURE_AND_REMAINING_WORK.md`、`24H_FINAL_REPORT.md`、`24H_EXECUTION_TIMELINE.md`、`R3_RESULT_SUMMARY.md`、`V53_ROLLOUT_REPORT.md`）、`docs/plans/` 的 5 份多版本残留（单端点 IRC 产品设计 v1/v2、V5.1-R3 v1/v2/三位一体）、`scripts/` 根约 18 个 V4 一次性脚本、本地缓存。
+  - **四条红线**：CI 有 4 道门（`render_gv_map --check`、`check_docs_links.py`、registry tests、两档 pytest）；**`docs/archive/` 是版本快照、禁止当"过时文档墓地"**（归档目标另立 `docs/superseded/`）；`docs/reports/**` 永不改内容；`historical`(17)/`required_files`(27) 与 `g_v_map` 路径是门禁输入、移动即红。
+  - **推送前必补**：**`LICENSE` 缺失**（公开前必须加）；远端为 SSH（`git@github.com:PengYangchao0808/PES2TS.git`），需确认 key 或切 HTTPS+PAT；`master` + `sync/20261018` 两条分支需决定是否都推。
+  - **执行状态（2026-11-20，部分落地）**：P1 本地缓存清理；P3 建 `docs/superseded/` 并迁入 **4 份**自身已声明 Superseded 的文档（单端点 IRC 产品设计 v1/v2、V5.1-R3 端点对称 v1/v2），同步修好跨目录链接；P4 迁入 **5 个零引用** V4 脚本到 `scripts/archive/v4/`；P2（根目录 7 份 memo）按方案建议**不移动**，仅留索引。**未删除任何证据、未改 `docs/reports/**`、未改 `docs_consistency` 门禁名单**。归档区规则见 [docs/superseded/README.md](superseded/README.md)。
+
+## 2026-11-20 训练/测试集划分与数据来源方案（对齐用，说明性汇总，非规范）
+
+- **[PES2TS 训练测试集划分与数据来源方案 v1（合并版）](plans/PES2TS_训练测试集划分标准_v1_20261120.md)**：一份文档同时回答"怎么划分"和"数据从哪来"，供队友同步与下载。
+  - **划分**：L0–L4 五层继承链——G0 官方 split（train 159,355 / valid 19,904 / test 19,909，`leak_status=clean`）→ `pesn_irc_split_v1`（train_fit 121,363 / train_dev 15,161 / train_calibration 15,159 + family_holdout 9,573）→ V5 冲刺 fit50 5 折（历史）→ 战役 cohort + `split_manifest_v53mp.json`（pool 50,000 嵌套 tier / dev **589** / confirm **2,000 仅列名** / fold=`位置%3`、confirm=4）→ run 内层 `v53mp_pool_split`（池内 20% 曲线 inner-val，只用于选 checkpoint 与校准 `tau_end`）。含四类"测试集"（父 valid/test、排族 holdout、confirm、dev）辨析、fold 两代语义差异、硬规则。
+  - **数据来源**：Zenodo 记录 18551029（DOI `10.5281/zenodo.18551029` rev1）六文件 **12.15 GB**，逐文件 MD5 + 本地 sha256 + URL；`g0 fetch` 的 `.part`→MD5→落盘语义与退出码；`GFN2_xTB.h5`（~21 GB）刻意跳过；派生落位与真值隔离（2 个 HDF5 搬入 `data/ground_truth/sources/`）；**可获得性矩阵**（哪些在 git、哪些只在本地 `outputs/`、哪些必须重生成）；传 50K 大表的最小可复现集合与 sidecar 校验；环境与**从零复现 12 步**。
+  - **9 项待对齐缺口**：无规范位、**划分真身几乎都不入库**（`outputs/**` 全 gitignored）、manifest 三代命名、fold 跨代读法、父 valid/test 与 family_holdout 评测协议未冻结、dev 600→589 差额、50K 六表无发布渠道/体积未登记、dev pack 双身份等。
+- **边界**：**只整理既有事实**，不新增规则、不改任何冻结件、不下载、不训练、不读 dev/confirm；其升格为规范须按 [AGENT.md](../AGENT.md) §7.2 走 ADR 与宪法登记。
+
 ## 2026-11-02 V5.4.3 双 Decoder 50K 全面方案（Frozen-Preregistered；D1–D8 已签认）
 
 - **[V5.4.3 双 Decoder 50K 全面开发与训练方案 v1.0](plans/PES2TS_V5.4.3_双Decoder_50K_全面开发与训练方案_v1.0_20261102.md)**：固定 A0 Encoder + 参数自由 `DecoderContextV1` + MOVE/PROCESS 两条独立残差 Track；首轮 `M1–M3 / P1–P4` 共 7 候选，M4 Flow 条件、M5 Diffusion/P5 GraphGRU 默认关闭；18-run 上限、37,900 flat + 400 warmup、同 Track 36K ±5% 参数匹配（整模 129,619 / 带内最大 133,219 / 硬上限 150,000）；新 `fixed_coverage_direction@3`、q MAE/ordering、FPR-constrained recall、Brier/ECE；H2/H3 用 V543 M0/P0 重算基线；confirm 永封、QC=0。

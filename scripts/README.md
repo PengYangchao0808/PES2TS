@@ -6,7 +6,7 @@
 |---|---|---|
 | `scripts/`（根） | 当前活跃入口：G0/G1/G2 数据、训练、评测、冻结 | 是 |
 | `scripts/archive/` | 已收口的一次性脚本（历史证据） | 是 |
-| `scripts/archive/v4/` | V4 诊断/审计脚本（V4.2–V4.7 已执行，负结果） | 是，只读 |
+| `scripts/archive/v4/` | V4.1–V4.7 诊断/审计/矩阵聚合脚本（V4.2–V4.7 已执行，负结果；2026-11-20 迁入 5 个零引用脚本） | 是，只读 |
 | `scripts/campaigns/` | V 战役编排入口（`run_v5_sprint.py`、`run_v7_rollout.py`） | 是 |
 | `scripts/local/` | 会改写外部 ACP checkout、绑定本机路径的维护/探测脚本 | **否**（`.gitignore`） |
 

@@ -1,6 +1,6 @@
 # PES2TS / PES-N V5.1-R3：端点对称特征与损失重训方案 v1
 
-> **Superseded（2026-10-20）**：已被 [R3 v3](PES2TS_V5.1-R3_反应意图条件化与端点标签不变重训方案_v3_20261020.md) 取代；请勿按本文件的 endpoint-symmetric 语义执行。
+> **Superseded（2026-10-20）**：已被 [R3 v3](../plans/PES2TS_V5.1-R3_反应意图条件化与端点标签不变重训方案_v3_20261020.md) 取代；请勿按本文件的 endpoint-symmetric 语义执行。
 >
 > 状态：**Proposed v1 / Superseded by R3 v3**（可执行研究方案；先于任何 R3 训练冻结）
 > 日期：2026-10-20
