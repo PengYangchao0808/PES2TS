@@ -1,5 +1,14 @@
 # PES2TS 文档修订台账（协同性）
 
+## 2026-11-22 增量登记：文档清理执行（standard 档 D1+D2；退役 107 份 + 档案树落成）
+
+- **治理前置（同日完成）**：新增 [ADR-0035 文档生命周期与退役政策](../design/decisions/ADR-0035-文档生命周期与退役政策.md)（Accepted）；修订 [AGENT.md](../../AGENT.md) §9.4 增加"可退役"例外与 §9.6 文档生命周期；本台账新增"退役"动作。
+- **档案树落成**：`docs/archive_tree/` **32 份**（7 期 / 17 条目 + 横切层 X0 + 索引/模板/变更/证据/元数据），内容来自 `doc_cleanup/20261121/ARCHIVE_TREE.md` 成稿（17 条目全部落盘，含 N01–N21 负结果总表）；`docs/README.md` 同步重写为 4 入口短索引（v2.0）。
+- **执行规模**：**退役 107 份**（D1 低风险 56 + D2 中风险 51）；另暂缓：`MERGE_INTO` 8 份（需先并入目标）、`GATE_CONFIG_MUST_CHANGE` 15 份（aggressive 档，需同 PR 改门禁配置）、`docs/reports/PES2TS_V52R_输入充分性决策记录_20261021.md`（被 `g_v_map` 引用，保留）。核心保留集 **101 份**（含 34 ADR 全留）。
+- **安全机制**：删除前 commit `76ab46c` 为基线；tag `pre-doc-purge-20261121`；bundle `PES2TS-pre-doc-purge-20261121.bundle`（23.2 MB，verify OK）；tar `PES2TS-docs-20261121.tar.gz`（2.7 MB）；恢复演练 5/5 通过。逐条流水见 [RETIRE_LOG.md](../infra/doc_cleanup/20261121/RETIRE_LOG.md)（107 行，含原路径/档案条目/恢复锚点）。
+- **链接与索引**：自动改写 143 处指向被退役文件的 markdown 链接（38 个文件）→ 改指档案树条目；`docs/README.md` 重写为短索引；`docs_consistency --strict` **0 violation**、`check_docs_links` **0 error / 132 warning**（较基线 172 减少 40，来自已退役报告中的历史绝对路径）、`render_gv_map --check` current、registry **26 passed**。
+- **边界**：未执行 aggressive 档（不动 15 条门禁钉死路径，未改 `docs_consistency_config.json` / `g_v_map.yaml` / CI）；未删除 `docs/agent_runs/state/gates/**`、`artifacts/**/model_card.md`、`docs/archive/**` manifest；未改写任何保留文档的正文（仅链接与索引）。
+
 ## 2026-11-21 增量登记：开发档案树与文档清理方案 v1.0（系统性瘦身提案）
 
 - **新增** [PES2TS 开发档案树与文档清理方案 v1.0](../infra/PES2TS_开发档案树与文档清理方案_v1_20261121.md)（**Active-Proposed；提案 + 执行方案**）。背景：仓库所有者判断"大量开发文档已无保留价值"，要求系统性清理并归档为开发档案树；本方案是其可执行化。**扩展** [归档方案 v2.0](../infra/PES2TS_开发文档规范化归档方案_v2_20261121.md)，并**部分变更**其 §7.3"删除红线"（仅对过程性文档开放"可恢复退役"，SSOT/合同/ADR/模型卡/门禁证据仍永不删除）。
@@ -267,7 +276,7 @@
 
 ## 2026-10-22 增量登记：V5.3-MP S1 2k 冒烟完成（S1 PASS）
 
-- 新增报告：[V5.3-MP S1 2k 冒烟报告 20261022](../reports/PES2TS_V53MP_S1_2k冒烟报告_20261022.md)（write-once）——三臂 ok、Move guard 全过、GPU 1,829s≤3,600s 上限；ordering/endpoint 处冒烟冻结段的随机水平（与 V5.2-R D1 负结果一致）；λ 探针 endpoint calibrated / q target_unreachable / rank scale_unreachable（上限运行并记录）。
+- 新增报告：[V5.3-MP S1 2k 冒烟报告 20261022](../archive_tree/50_p5_v53mp_20261021_20261027/E12_v53mp_scale_training.md)（write-once）——三臂 ok、Move guard 全过、GPU 1,829s≤3,600s 上限；ordering/endpoint 处冒烟冻结段的随机水平（与 V5.2-R D1 负结果一致）；λ 探针 endpoint calibrated / q target_unreachable / rank scale_unreachable（上限运行并记录）。
 - 新增脚本：`r3_v53mp_orchestrate.py`（单 GPU 串行编排 + 锁等待 + 诚实失败记录）；`r3_v53mp_lambda_probe.py`（gradient-share λ 校准）。
 - 修复（诚实记录）：driver 按臂清零 λ（arm A 曾因此失败一次，S1 attempt cap 3→4 按消耗数上调并注明）；`_FeatureLRU` 对 terminal/masked 行零填充 `y_teacher`（修混合批次丢键）；eval 的 MOVE 指标只在 ok 行上评估；`s1_eval_max_samples` 接线。
 - 配置：`pes2ts_v53mp_20261021.yaml` 回填 λ 值 + verdicts；`s1_authorized`/`s2_authorized` 翻转（S0 全过 + S1 健康）；`joint_updates_scaling: density_preserving_per_tier`（2k/5k/20k = 1500/3750/15000 joint）。
@@ -275,7 +284,7 @@
 
 ## 2026-10-22 增量登记：V5.3-MP S0 数据建库与资格（S0 全部门通过）
 
-- 新增报告：[V5.3-MP S0 数据建库与资格报告 20261022](../reports/PES2TS_V53MP_S0_数据建库与资格报告_20261022.md)（write-once）——S0-A 元数据资格（142,221 合格 / 141,483 组）→ S0-B 授权提取建库（26,038 曲线 / 5,958,548 样本，经审计 truth bridge，逐反应记录）→ S0-C/E 标签（endpoint_label_spec_v1，有效正例覆盖 99.62%，TS/起点 0% 正例）→ S0-D 分片惰性加载（启动 695.8s / RSS 9.71GiB / 分片↔CSV 逐比特等价）→ S0-F 就绪 7/7 + 表校验 10/10。
+- 新增报告：[V5.3-MP S0 数据建库与资格报告 20261022](../archive_tree/50_p5_v53mp_20261021_20261027/E12_v53mp_scale_training.md)（write-once）——S0-A 元数据资格（142,221 合格 / 141,483 组）→ S0-B 授权提取建库（26,038 曲线 / 5,958,548 样本，经审计 truth bridge，逐反应记录）→ S0-C/E 标签（endpoint_label_spec_v1，有效正例覆盖 99.62%，TS/起点 0% 正例）→ S0-D 分片惰性加载（启动 695.8s / RSS 9.71GiB / 分片↔CSV 逐比特等价）→ S0-F 就绪 7/7 + 表校验 10/10。
 - 20k 冻结池：`split_manifest_v53mp.json`（pool 20,000 嵌套 2k/5k/20k + dev 589 + confirm 2,000 仅列名封存）；cohort `v53mp_cohort_v1.json`。
 - 新代码（本轮提交）：`r3_v53mp_s0a_qualify.py` / `r3_v53mp_freeze_cohort.py` / `r3_v53mp_build_tables_h5.py` / `r3_v53mp_finalize.py`；`irc_reader` 增 `energies`/`atomic_numbers` 别名读取；`validate_r3_tables.py` 增 `--split-manifest`；`key_atom_label_cache_v53mp.py` 标签缓存（绑定 data manifest sha）。
 - 已知缺陷修复：`EndpointLabelTableV1.report()` 由 O(曲线×行) 改为单遍 O(行)（20k 规模下原形为病态二次）；`build_endpoint_labels_spec_v1` 加逐节点/逐 intent 缓存。
@@ -324,7 +333,7 @@
 - 按 [V5.0–V5.2 十小时方案 v1.1](PES2TS_V5.0-V5.2_十小时冲刺训练与验证执行方案_v1_20261018.md) 与 [ADR-0026](../design/decisions/ADR-0026-V5冲刺key-atom位移合同与OOF语义.md) 完成五阶段执行：prepare-audit（split 冻结/三跨度教师/冲突审计/特征/测速/G5.1）→ label-screen（六臂×1500 更新）→ recipe-recheck（Top-2×双折×三种子，A05/A12 双双稳定，胜者 A05=d0 0.05+anchor on）→ crossfit（测速阶梯降档 5fold×1seed 正式 OOF，3000 更新/折，`move_proposal_v5_draft1.parquet` 5088 行无删失，selection-exposed）→ report（封存 REFUSED 正确登记）。
 - 关键实测：G5.1 pass；Oracle 静态上限 ORACLE_STATIC_OK（8/8）；A05 formal 开发级 G5.2 全部 8 项阈值通过（RMSE/zero 0.742、/classic 0.663、cos 0.841、nearTS 0.662、88.9% 优于零），verdict 保守 fail_or_insufficient 仅为 9 簇<20 簇样本量门；X0 起点记忆为主导因子（A 系全胜 C 系）；与 V4.7 负结果（MSE/zero 1.132、cos 0.180）形成对照。
 - 执行中发现并修复的实现缺陷（均已提交+测试）：端点边集匹配需键级签名（仅键级变化反应）；参考块分级回退 + `native_verified_v1` 帧连续性分层（预注册阈值，实证 IRC 存档帧连续，eligible 11.7%→91.4%）；G5.4 pair 轴分段错误（key 轴混用致 Oracle 假阴性）；YAML on/off 布尔解析（报告复验 anchor 错配）；向量化损失（与循环参照 42 项等值测试）。
-- 执行报告：[PES2TS_V5第一阶段冲刺执行报告_20261018](../reports/PES2TS_V5第一阶段冲刺执行报告_20261018.md)；机器产物 `outputs/pesn/v5/sprint/`（gate_report、label_recipe_matrix、recipe_recheck、ablation_table、timing_probe、OOF parquet、sealed_eval 等 20 件，含 sha256 链）。
+- 执行报告：[PES2TS_V5第一阶段冲刺执行报告_20261018](../archive_tree/40_p4_v5sprint_24h_20261018_20261021/E09_v50_v52_sprint_r3.md)；机器产物 `outputs/pesn/v5/sprint/`（gate_report、label_recipe_matrix、recipe_recheck、ablation_table、timing_probe、OOF parquet、sealed_eval 等 20 件，含 sha256 链）。
 - 未完成/边界（如实）：三种子 OOF 未做（测速降档）；Confirm/OOD 封存未开启；G5.2/G5.3 正式门不发 pass（样本量门）；扩量/粗到细仅计划（scale_curriculum_next_run.json）；sprint status = `complete_oof_1seed`，不宣称 V5.2 完成。
 
 ## 2026-10-19 增量登记：ADR-0026 V5 冲刺实现与战役注册
@@ -389,21 +398,21 @@
 
 ## 2026-10-15 增量登记：双端TS训练与整体项目进度统一
 
-用户确认最终规格后，新增[统一方案v4](PES2TS_双端拓扑条件训练与项目进度统一方案_v4_20261015.md)、[ADR-0021](../design/decisions/ADR-0021-无序双端拓扑与完整双侧TS教师主线.md)、[合同v2草案](../contracts/PES2TS_双端TS教师与相容转移合同_v2.md)。明确无序完整双图、完整两侧向TS教师、逐点E/g、fit-only规范化、BC三配方、相容IQL、按门500/2k及三seed；SAC后置。建立旧证据/新任务矩阵、WP与G阶段映射、文件归属/依赖、资格/终止、重定价及历史资产规则，用户15节规格原文保留。
+用户确认最终规格后，新增[统一方案v4](../archive_tree/30_p3_v4x_20261015_20261018/E07_v40_v41_input_semantics.md)、[ADR-0021](../design/decisions/ADR-0021-无序双端拓扑与完整双侧TS教师主线.md)、[合同v2草案](../contracts/PES2TS_双端TS教师与相容转移合同_v2.md)。明确无序完整双图、完整两侧向TS教师、逐点E/g、fit-only规范化、BC三配方、相容IQL、按门500/2k及三seed；SAC后置。建立旧证据/新任务矩阵、WP与G阶段映射、文件归属/依赖、资格/终止、重定价及历史资产规则，用户15节规格原文保留。
 
 同步宪法v2.7 §6.7/§9.6（研究直接动作和有条件转移资格，R1–R6保持）、AGENT v3.15、阶段定义v4.5、整体发布v3.5、流程v2.4、两个README与旧训练/未来计划的取代指针。旧ADR-0020和训练v3追加当前取代说明；不改写其历史结论或报告。新接口只是设计登记，可执行validator/schema与模型能力仍待实现。文档整合完成不表示整个WP0通过；未动业务代码、运行配置、guard、数据/权重/报告，未启动训练或QC。
 
 ## 2026-10-15 增量登记：fit50 训练表征分析（BC/静态RL）
 
-[表征分析报告](../reports/PES2TS_Direct_fit50训练表征分析_20261015.md)。BC 修复前运行发现 **σ 头硬钳位饱和缺陷**（994/994 节点超上限、梯度精确为 0、模型退化为 N(0,I) 先验平台 42.23）→ 修复为 `σ=σ_min+softplus(raw)` 并加回归测试；修复后 50/150 epoch NLL −66.7/−78.4 单调下降（每原子 log-density +4.99 vs 先验 +2.72、oracle +7.10）。**方向余弦 0.163（移动原子 0.129）**：NLL 在该动作尺度（u 半径均值 0.098）下方向可学信号仅 0.2%，为计划 §7.1 预登记的辅助方向损失版本提供依据（不静默改配方）。IQL 真实数据 3,000 更新：损失收敛、Q/V 有限、**AWR ESS≈均匀（255.9/256）→ 重加权无信号**、V-MC MAE 1.37 如实报告；训练器特征缓存修复 ~7× 提速。新增 `evaluate_direct_bc.py`、`diagnose_direct_bc.py`、`train_direct_iql.py`。全部为 fit50 表征（非正式配方/三 seed）；无新增 QC/真值访问；宪法/guard/生产默认未改。
+[表征分析报告](../archive_tree/30_p3_v4x_20261015_20261018/E07_v40_v41_input_semantics.md)。BC 修复前运行发现 **σ 头硬钳位饱和缺陷**（994/994 节点超上限、梯度精确为 0、模型退化为 N(0,I) 先验平台 42.23）→ 修复为 `σ=σ_min+softplus(raw)` 并加回归测试；修复后 50/150 epoch NLL −66.7/−78.4 单调下降（每原子 log-density +4.99 vs 先验 +2.72、oracle +7.10）。**方向余弦 0.163（移动原子 0.129）**：NLL 在该动作尺度（u 半径均值 0.098）下方向可学信号仅 0.2%，为计划 §7.1 预登记的辅助方向损失版本提供依据（不静默改配方）。IQL 真实数据 3,000 更新：损失收敛、Q/V 有限、**AWR ESS≈均匀（255.9/256）→ 重加权无信号**、V-MC MAE 1.37 如实报告；训练器特征缓存修复 ~7× 提速。新增 `evaluate_direct_bc.py`、`diagnose_direct_bc.py`、`train_direct_iql.py`。全部为 fit50 表征（非正式配方/三 seed）；无新增 QC/真值访问；宪法/guard/生产默认未改。
 
 ## 2026-10-15 增量登记：Direct 批次 1–6 实施
 
-实施计划v3.4 §11.11、[批次 1–6 实施记录](../reports/PES2TS_Direct批次1-6实施记录_20261015.md)。真实 RL 前业务代码落地：WP0 `pesn/contracts/direct.py`+`offline/splits/direct_freeze.py`（真实 split 冻结：fit 4,964 组/隔离 29/14/3/6 selection）；WP5a `generation/planning/direct_mdp.py`+`direct_environment.py`（奖励手算表/状态充分性）；WP1 `integration/acp/direct_observation.py`+`offline/data/direct_preprocess.py`+`direct_dataset.py`+`scripts/prepare_direct_data.py`（**fit50 50/50 完成：3,612 转移、3,662 QC、0 失败、3.51h 真实执行、验收 pass，无进展失败终端 shaping 语义修复并以零 QC refresh 重放**）；WP2 `features/direct_graph.py`+`models/{egnn,direct_policy,direct_critics}.py`（概率合同 float64 Jacobian 1e-6/等变/逆变换）；WP-INFRA1 `offline/training/{device,direct_loader,performance}.py`；WP3 `direct_bc.py`（完整 fit50 GPU 3-epoch 冒烟 NLL 42.2）；WP7a `generation/planning/direct_candidates.py`；WP4 `direct_iql.py`。全仓 2051 测试通过；truth guard 全绿（未扩 allowlist）。**校准信号**：goal 12/50、budget 21、no-progress 17；a_max=0.2 投影几何可达 54% 触发 §6.1 校准决策（待评审重建）；500 组定价 70.2h 串行/35.1h 二路/17.5h 四路（p90）。未完成：a_max 决策与重建、fit500/2k 正式数据、三 seed 正式训练、严格链、SAC。所有新能力按四层纪律标注；宪法/guard/历史产物未改。
+实施计划v3.4 §11.11、[批次 1–6 实施记录](../archive_tree/30_p3_v4x_20261015_20261018/E07_v40_v41_input_semantics.md)。真实 RL 前业务代码落地：WP0 `pesn/contracts/direct.py`+`offline/splits/direct_freeze.py`（真实 split 冻结：fit 4,964 组/隔离 29/14/3/6 selection）；WP5a `generation/planning/direct_mdp.py`+`direct_environment.py`（奖励手算表/状态充分性）；WP1 `integration/acp/direct_observation.py`+`offline/data/direct_preprocess.py`+`direct_dataset.py`+`scripts/prepare_direct_data.py`（**fit50 50/50 完成：3,612 转移、3,662 QC、0 失败、3.51h 真实执行、验收 pass，无进展失败终端 shaping 语义修复并以零 QC refresh 重放**）；WP2 `features/direct_graph.py`+`models/{egnn,direct_policy,direct_critics}.py`（概率合同 float64 Jacobian 1e-6/等变/逆变换）；WP-INFRA1 `offline/training/{device,direct_loader,performance}.py`；WP3 `direct_bc.py`（完整 fit50 GPU 3-epoch 冒烟 NLL 42.2）；WP7a `generation/planning/direct_candidates.py`；WP4 `direct_iql.py`。全仓 2051 测试通过；truth guard 全绿（未扩 allowlist）。**校准信号**：goal 12/50、budget 21、no-progress 17；a_max=0.2 投影几何可达 54% 触发 §6.1 校准决策（待评审重建）；500 组定价 70.2h 串行/35.1h 二路/17.5h 四路（p90）。未完成：a_max 决策与重建、fit500/2k 正式数据、三 seed 正式训练、严格链、SAC。所有新能力按四层纪律标注；宪法/guard/历史产物未改。
 
 ## 2026-10-15 增量登记：GPU环境建立与P0/P1执行
 
-实施计划v3.3 §11.10、[GPU环境与磁盘预算执行记录](../reports/PES2TS_GPU环境与磁盘预算执行记录_20261015.md)。按§11.9顺序执行：磁盘预算GO（E:26G可用，稳态余~18.5G/峰值~15G≥10G保留线；实测新环境5.8G、E:余量不变——VHD存在~25G已分配块复用）；冻结CPU环境依赖清单（SHA256落盘）。新建`pes2ts-gpu`（Python 3.12.15，torch **2.14.1+cu130**官方wheel，与CPU环境同核心版本；numpy/pandas/pyarrow/pyyaml对齐；`--no-cache-dir`）。P1验证通过：CUDA可用、4060Ti capability(8,9)、BF16支持、小张量matmul/autograd/optimizer与合成变长图批次前反向/优化步全在cuda:0且梯度有限；跨环境同seed冒烟数值一致。WP-INFRA0交付：`scripts/probe_direct_training_env.py`（只读探针+显式GPU代表批次子命令，缺CUDA明确失败）、`config/pesn/direct_infra_v1.yaml`（python_path/锁hash回填，严格loader属WP-INFRA1）、[GPU探针JSON](fixtures/pes2ts_gpu_env_probe_20261015.json)与双环境freeze。
+实施计划v3.3 §11.10、[GPU环境与磁盘预算执行记录](../archive_tree/30_p3_v4x_20261015_20261018/E07_v40_v41_input_semantics.md)。按§11.9顺序执行：磁盘预算GO（E:26G可用，稳态余~18.5G/峰值~15G≥10G保留线；实测新环境5.8G、E:余量不变——VHD存在~25G已分配块复用）；冻结CPU环境依赖清单（SHA256落盘）。新建`pes2ts-gpu`（Python 3.12.15，torch **2.14.1+cu130**官方wheel，与CPU环境同核心版本；numpy/pandas/pyarrow/pyyaml对齐；`--no-cache-dir`）。P1验证通过：CUDA可用、4060Ti capability(8,9)、BF16支持、小张量matmul/autograd/optimizer与合成变长图批次前反向/优化步全在cuda:0且梯度有限；跨环境同seed冒烟数值一致。WP-INFRA0交付：`scripts/probe_direct_training_env.py`（只读探针+显式GPU代表批次子命令，缺CUDA明确失败）、`config/pesn/direct_infra_v1.yaml`（python_path/锁hash回填，严格loader属WP-INFRA1）、[GPU探针JSON](fixtures/pes2ts_gpu_env_probe_20261015.json)与双环境freeze。
 
 未迁移磁盘/清理pip缓存/改`.wslconfig`/动CPU与ACP环境/改业务代码/运行训练QC；P2 device全链路依赖WP5a→WP1→WP2；加速倍数与并发对照未测量。图批次smoke吞吐不作为加速声明。
 
@@ -413,21 +422,21 @@
 
 ## 2026-10-15 增量登记：多核/GPU基础设施规划
 
-[实施训练计划v3.1](PES2TS_EGNN_BC_IQL_SAC实施与训练计划_v3_20261015.md)新增§11.3–11.8，[ADR-0020](../design/decisions/ADR-0020-EGNN直接位移与BC-IQL-SAC研究主线.md) v1.2。只读核查本机7950X 16物理核/32线程、4060Ti 8188MiB、当前可用内存约16.7GiB；两Windows解释器未发现torch，WSL访问与磁盘核查失败。[资源快照](fixtures/pes2ts_infra_probe_20261015.json)区分瞬时负载与未测历史训练。
+[实施训练计划v3.1](../archive_tree/30_p3_v4x_20261015_20261018/E07_v40_v41_input_semantics.md)新增§11.3–11.8，[ADR-0020](../design/decisions/ADR-0020-EGNN直接位移与BC-IQL-SAC研究主线.md) v1.2。只读核查本机7950X 16物理核/32线程、4060Ti 8188MiB、当前可用内存约16.7GiB；两Windows解释器未发现torch，WSL访问与磁盘核查失败。[资源快照](fixtures/pes2ts_infra_probe_20261015.json)区分瞬时负载与未测历史训练。
 
 新增单GPU learner、CPU loader/独立episode与ACP全局QC资源分工；safe_start 2×2线程、条件并发对照、轮屏障/幂等/恢复、数值与AMP验证、峰值内存/显存/磁盘及吞吐测量。追加WP-INFRA0–3和Gate-INFRA，回填预算后放行扩量。同步根README、AGENT v3.11和docs索引。本次仅改计划/指针和只读证据，未安装依赖、更改系统或执行配置、停止进程、修改业务训练代码/guard/宪法、访问真值或运行训练/QC；不声明已获得加速。
 
 ## 2026-10-15 增量登记：BC/IQL/SAC 直接位移研究方案
 
-本日审核后进一步形成[实施与训练计划v3](PES2TS_EGNN_BC_IQL_SAC实施与训练计划_v3_20261015.md)，取代v2的下一步实施安排。明确2k独立组主训练、50/500小试、fit12双初始化SAC；登记文件级代码修改、前置共享推进器/严格候选桥、逻辑预算与删失、固定失败基础回报、无量纲每维熵、训练超参/实验矩阵/预算和验收。新增[候选元数据审计](fixtures/pes2ts_direct_training_input_audit_20261015.json)及`scripts/audit_direct_training_inputs.py`：旧5k为4,994组、17组历史开发替补交叉，剩4,977候选；14个组多族标签/3个成员缺有效族标签仍待正式闭合。核查仅涉及名单/分类元数据，未读IRC/TS几何、未训练/QC。ADR-0020更新为v1.1 Proposed，根README/AGENT/docs索引同步；宪法、guard、执行配置与历史报告保持。
+本日审核后进一步形成[实施与训练计划v3](../archive_tree/30_p3_v4x_20261015_20261018/E07_v40_v41_input_semantics.md)，取代v2的下一步实施安排。明确2k独立组主训练、50/500小试、fit12双初始化SAC；登记文件级代码修改、前置共享推进器/严格候选桥、逻辑预算与删失、固定失败基础回报、无量纲每维熵、训练超参/实验矩阵/预算和验收。新增[候选元数据审计](fixtures/pes2ts_direct_training_input_audit_20261015.json)及`scripts/audit_direct_training_inputs.py`：旧5k为4,994组、17组历史开发替补交叉，剩4,977候选；14个组多族标签/3个成员缺有效族标签仍待正式闭合。核查仅涉及名单/分类元数据，未读IRC/TS几何、未训练/QC。ADR-0020更新为v1.1 Proposed，根README/AGENT/docs索引同步；宪法、guard、执行配置与历史报告保持。
 
-本日后续整合为[EGNN完整训练方案v2](PES2TS_EGNN_BC_IQL_SAC下一步完整训练方案_v2_20261015.md)，登记[ADR-0020草案](../design/decisions/ADR-0020-EGNN直接位移与BC-IQL-SAC研究主线.md)。用户确认EGNN主模型；v2承接v1并细化概率动作、主线数据规模、fit/monitor/dev/sealed用途、奖励、训练配置、critic校准、真实费用、小试/对照与WP0–7。更新根README、AGENT和索引的下一步研究指针；旧报告/模型/配置保持。全部新增WP仍planned，不改变宪法、真值guard、生产默认或已验收能力。
+本日后续整合为[EGNN完整训练方案v2](../archive_tree/30_p3_v4x_20261015_20261018/E07_v40_v41_input_semantics.md)，登记[ADR-0020草案](../design/decisions/ADR-0020-EGNN直接位移与BC-IQL-SAC研究主线.md)。用户确认EGNN主模型；v2承接v1并细化概率动作、主线数据规模、fit/monitor/dev/sealed用途、奖励、训练配置、critic校准、真实费用、小试/对照与WP0–7。更新根README、AGENT和索引的下一步研究指针；旧报告/模型/配置保持。全部新增WP仍planned，不改变宪法、真值guard、生产默认或已验收能力。
 
-新增 [IRC→BC→IQL→SAC直接位移研究方案](PES2TS_IRC_BC_IQL_SAC直接位移研究方案_v1_20261015.md)，状态 Proposed，承接用户明确的 MDP、IRC 邻帧、直接原子位移与三阶段学习方向。设计第一版纯位移/单点观测环境，使专家与真实交互共享动作/转移语义；横向松弛留作独立环境。细化专家制备、奖励与终态、等变概率密度、IQL expectile/优势加权、SAC soft critic 校准、replay及冻结 iid/family严格评测。WP0 在实现前登记新接口/真值用途边界；本次仅新增计划并同步索引，未变规范、默认、能力、业务代码或启动训练/QC。
+新增 [IRC→BC→IQL→SAC直接位移研究方案](../archive_tree/30_p3_v4x_20261015_20261018/E07_v40_v41_input_semantics.md)，状态 Proposed，承接用户明确的 MDP、IRC 邻帧、直接原子位移与三阶段学习方向。设计第一版纯位移/单点观测环境，使专家与真实交互共享动作/转移语义；横向松弛留作独立环境。细化专家制备、奖励与终态、等变概率密度、IQL expectile/优势加权、SAC soft critic 校准、replay及冻结 iid/family严格评测。WP0 在实现前登记新接口/真值用途边界；本次仅新增计划并同步索引，未变规范、默认、能力、业务代码或启动训练/QC。
 
 ## 2026-10-09 增量登记：自适应路径生长研究提案
 
-新增 [RL 自适应路径生长与 IRC 验证研究方案 v1](PES2TS_RL自适应路径生长与IRC验证研究方案_v1_20261009.md)，状态 Proposed，归属现有 G2.T/X 与 G3.2/G4。依据首批 47 个训练 episode、开发 46 组三组对照与 156 配对分支，提出解除固定 lambda/driver 同步推进限制及新 on-policy 探索入口，保留物理/身份/预算与真值隔离边界。
+新增 [RL 自适应路径生长与 IRC 验证研究方案 v1](../archive_tree/20_p2_pesn_20261005_20261014/E06_light_control_unified_residual.md)，状态 Proposed，归属现有 G2.T/X 与 G3.2/G4。依据首批 47 个训练 episode、开发 46 组三组对照与 156 配对分支，提出解除固定 lambda/driver 同步推进限制及新 on-policy 探索入口，保留物理/身份/预算与真值隔离边界。
 
 提案区分自主轨迹、候选路径与严格 TS/IRC；包含真实梯度横向松弛、fit 配对监督、四组消融、22小时24分/11040请求的小包建议以及额外严格验证/训练全成本。新接口与默认变化在实施前沿既有架构流程登记。同步 docs 索引；本次未修改业务代码、历史报告/模型或启动计算，不将方案记为能力验收。
 
@@ -493,14 +502,14 @@
 
 | 文档 | 新状态 | 修订动作 |
 |---|---|---|
-| [IRC20k与RL2000详细方案](PES2TS_IRC20k与RL2000下一阶段详细方案_v1_20261008.md) | 当前扩量v1.0；planned | 2026-10-08新增：独立组计数、审核补修/回放/跨反应支持、两条扩量线、配方/迁移/指标/完整预算/封存评测；新增规划JSON与文档校验 |
-| [PES2TS_RL下一轮代码修复训练与调整方案_v1_20261008.md](PES2TS_RL下一轮代码修复训练与调整方案_v1_20261008.md) | 上一轮算法细化v1.1；部分实施，审核未全通过 | 2026-10-08新增第一批证据/四项缺口与新扩量承接说明；原规划正文和历史产物保留 |
+| [IRC20k与RL2000详细方案](../archive_tree/20_p2_pesn_20261005_20261014/E06_light_control_unified_residual.md) | 当前扩量v1.0；planned | 2026-10-08新增：独立组计数、审核补修/回放/跨反应支持、两条扩量线、配方/迁移/指标/完整预算/封存评测；新增规划JSON与文档校验 |
+| [PES2TS_RL下一轮代码修复训练与调整方案_v1_20261008.md](../archive_tree/20_p2_pesn_20261005_20261014/E06_light_control_unified_residual.md) | 上一轮算法细化v1.1；部分实施，审核未全通过 | 2026-10-08新增第一批证据/四项缺口与新扩量承接说明；原规划正文和历史产物保留 |
 | [PES2TS_Demo24_真实RL闭环与对照实施方案_v1_20261007.md](PES2TS_Demo24_真实RL闭环与对照实施方案_v1_20261007.md) | round0历史实施与纠错指针 | 2026-10-08增加当前审查说明；旧产物/报告不改写，纯BC对照声明按新证据限定 |
-| [PES2TS_G3_P1_IRC教师预训练与模型版本计划_v1_20261006.md](PES2TS_G3_P1_IRC教师预训练与模型版本计划_v1_20261006.md) | 当前第一期训练方案v1.1；设计完成 | 2026-10-07细化预测器B0–B7文件/接口/依赖/验收；G3.P及模型身份保持；未训练 |
-| [PES2TS_PES-N未来开发计划_v2_20261005.md](PES2TS_PES-N未来开发计划_v2_20261005.md) | 当前未来开发计划 | 2026-10-05 同步规范；STOP监督→残差→离线Q→冻结闭环；新增合同草案/系统验收，代码不变 |
-| [PES2TS_G0-G4整体开发框架修改方案_v1_20261005.md](PES2TS_G0-G4整体开发框架修改方案_v1_20261005.md) | 历史提案，已被 PES-N 取代 | 保留原文；当前模型主线及阶段安排改由 PES-N 计划与 ADR-0010 定义 |
-| [PES2TS_拓扑约束TS接近度与位移联合学习方案_v2_20261004.md](PES2TS_拓扑约束TS接近度与位移联合学习方案_v2_20261004.md) | 历史提案，已被 PES-N 取代 | 距离/直接位移改为辅助任务；保留原数学/标签论证与取代指针 |
-| [PES2TS_统一价值模型与搜索排序一体化发展方案_v1_20261004.md](PES2TS_统一价值模型与搜索排序一体化发展方案_v1_20261004.md) | 历史提案，最新由 PES-N 承接 | 当前以协议条件化 p/C/Q 和 STOP/MOVE 统一；旧提案链保留 |
+| [PES2TS_G3_P1_IRC教师预训练与模型版本计划_v1_20261006.md](../archive_tree/20_p2_pesn_20261005_20261014/E04_g2t_ab3_ab4_g3p.md) | 当前第一期训练方案v1.1；设计完成 | 2026-10-07细化预测器B0–B7文件/接口/依赖/验收；G3.P及模型身份保持；未训练 |
+| [PES2TS_PES-N未来开发计划_v2_20261005.md](../archive_tree/20_p2_pesn_20261005_20261014/E03_pesn_kernel_ssot.md) | 当前未来开发计划 | 2026-10-05 同步规范；STOP监督→残差→离线Q→冻结闭环；新增合同草案/系统验收，代码不变 |
+| [PES2TS_G0-G4整体开发框架修改方案_v1_20261005.md](../archive_tree/20_p2_pesn_20261005_20261014/E03_pesn_kernel_ssot.md) | 历史提案，已被 PES-N 取代 | 保留原文；当前模型主线及阶段安排改由 PES-N 计划与 ADR-0010 定义 |
+| [PES2TS_拓扑约束TS接近度与位移联合学习方案_v2_20261004.md](../archive_tree/20_p2_pesn_20261005_20261014/E03_pesn_kernel_ssot.md) | 历史提案，已被 PES-N 取代 | 距离/直接位移改为辅助任务；保留原数学/标签论证与取代指针 |
+| [PES2TS_统一价值模型与搜索排序一体化发展方案_v1_20261004.md](../archive_tree/20_p2_pesn_20261005_20261014/E03_pesn_kernel_ssot.md) | 历史提案，最新由 PES-N 承接 | 当前以协议条件化 p/C/Q 和 STOP/MOVE 统一；旧提案链保留 |
 | `../PES2TS_开发宪法_v1.md` | 权威（SSOT，内容 v2） | 2026-10-05 同步 PES-N；R1–R6 原文保留，模型/阶段/接口/评测更新 |
 | `PES2TS_阶段定义_G0-G3.md` | 权威（内容 v4） | 2026-10-05 G1 化学编译、G2 底座、G3 STOP/残差、G4 离线 Q/闭环；历史状态保留 |
 | `PES2TS_整体开发与发布方案_v2.md` | 权威（内容 v3） | 2026-10-05 共享内核/宿主、合同兼容与当前发布门；旧版精确归档 |
@@ -567,6 +576,17 @@
 
 ---
 
+### 3.6 退役（Retire）动作
+
+自 2026-11-22 起，台账新增"退役"动作类型（ADR-0035）。登记格式：
+
+| 日期 | 批次 | 原路径 | 档案条目 | 恢复锚点 | 备注 |
+|---|---|---|---|---|---|
+
+- 退役 = `git rm` + 结论已入档案树 + tag/bundle 快照 + 本台账登记；四条件缺一不可。
+- 逐条流水见 `docs/infra/doc_cleanup/20261121/RETIRE_LOG.md`；本表只登记批次级摘要。
+- 2026-11-22：standard 档 D1+D2 共 **107 份**退役（D1 56 / D2 51），锚点 `pre-doc-purge-20261121`。
+
 ## 4. 状态头规范
 
 ```markdown
@@ -616,8 +636,8 @@
 
 ## 8. PES-G 数学与边界修订（2026-10-03）
 
-- 新增 [PES-G 方案](PES2TS_G2_PESG收紧算法迭代方案_20261003.md)：取代粘贴草案中质量加权防 H 滑移、测地距离保拓扑、谱 barrier/同构投影保证、强制单 irrep、VRI 泛化及“RMSD-PP/NT2 是带优化”等表述。采用有条件的 KKT 分支理论与可测试假说，不宣称全球收敛。
-- 新增 [G1→G2 审计](PES2TS_G1_G2边界审计与补齐任务_20261003.md)：历史 gate/白名单对账 + 五个确定性样本，不冒称全量复审。现有映射与队列筛选都有真值来源，替换“端到端真值独立”结论。
+- 新增 [PES-G 方案](../archive_tree/10_p1_baseline_20260925_20261004/E02_g1_mapping_g2_classic_demo24.md)：取代粘贴草案中质量加权防 H 滑移、测地距离保拓扑、谱 barrier/同构投影保证、强制单 irrep、VRI 泛化及“RMSD-PP/NT2 是带优化”等表述。采用有条件的 KKT 分支理论与可测试假说，不宣称全球收敛。
+- 新增 [G1→G2 审计](../archive_tree/10_p1_baseline_20260925_20261004/E02_g1_mapping_g2_classic_demo24.md)：历史 gate/白名单对账 + 五个确定性样本，不冒称全量复审。现有映射与队列筛选都有真值来源，替换“端到端真值独立”结论。
 - 阶段文档 §3 改为：G1 交方法来源和证据状态，unknown 合法；G2 选方法后经 ACP 起点准备。边界 v2/旁车待实现，旧 export v1、旧 gate 和数据不覆盖。
 - ACP 计划 §2.1/§9 复用已存在的 OrcaGradient 客户端、SVD、曲率及候选模块；原生键级产品提前为 P1，键级导数仍为独立可选能力；ACP 部署/真实冒烟本次未核查。
 - 约束分支、受驱动轨迹、NEB/string 三类方法按各自资格门生产帧，共享严格精修验证；历史直调实验脚本保持归档。
@@ -637,7 +657,7 @@
 
 ## 10. G2-AB1 下一批算法调整与测试（2026-10-03；2026-10-04 宪法对齐修订 v2）
 
-- 新增 [G2 下一批算法调整与测试方案](PES2TS_G2_下一批算法调整与测试方案_20261003.md)：批次号 **G2-AB1**，范围锁定 **PES2TS 侧算法核心 + 测试**，不新增主干阶段。
+- 新增 [G2 下一批算法调整与测试方案](../archive_tree/10_p1_baseline_20260925_20261004/E02_g1_mapping_g2_classic_demo24.md)：批次号 **G2-AB1**，范围锁定 **PES2TS 侧算法核心 + 测试**，不新增主干阶段。
 - 工作包：WP-1 执行身份命名空间与内容寻址梯度复用（对应 strict `CACHED_GRADIENT_INPUT_MISMATCH`）；WP-2 相对上一接受帧的分支约束/释放/分级局部性（对应校正阶段大位移）；WP-3 起点准备证据化与结构化失败；WP-4 梯度排名接入验证入口并允许部分路径候选；WP-5 严格 landing 身份分级；WP-6 代数反例固化为仓库测试；WP-7（v2 新增）R5 成本账本 / R6 分裂防火墙 / 数据飞轮接口固化。
 - **v2 宪法对齐（2026-10-04）**：全文改为引用宪法 SSOT（R1–R6 / P1–P5 / §5–§11），不新增规范；命名改用 `G0–G4` + 学习级 `L-G*/L-R*` + M0–M5 声明投影；WP-2 增加 `A(H)`/分支证据；WP-4 分离 basin-entry 与 verified TS；WP-7 落地 R5/R6；新增 §5 Preparation Layer 诚实声明、§7 决策层回放（P3，非逐位）与 `J_G = P_basin − λ·C_xTB/C_ref` / `R_oracle(H)` 报告口径；§8 架构审查按宪法 §12 重写。
 - 与 PES-G 的 A/B/G/H 包、根因报告 §10 的 P0/P1 条目对齐；`evaluation_id` 改名对齐数据链身份（AGENT §5 / 宪法 P1），冲突拒绝保留。
@@ -703,19 +723,19 @@
 
 ## 12. G2-AB2 下一批实现方案：真引擎接通与验收（2026-10-04）
 
-- 新增 [G2 下一批实现方案：真引擎接通与验收](PES2TS_G2_下一批实现方案_真引擎接通与验收_20261004.md)：批次号 **G2-AB2**，细化 G2-AB1 遗留的 V2/V3 gated 验收、Classic→Rank→Gen §10 工作包 3–5 与阶段定义 G2 退出门前置项①③。
+- 新增 [G2 下一批实现方案：真引擎接通与验收](../archive_tree/20_p2_pesn_20261005_20261014/E04_g2t_ab3_ab4_g3p.md)：批次号 **G2-AB2**，细化 G2-AB1 遗留的 V2/V3 gated 验收、Classic→Rank→Gen §10 工作包 3–5 与阶段定义 G2 退出门前置项①③。
 - **v2 裁决（2026-10-04）**：以 **G2.T 24 例首轮端到端战役 + 第一份真实反馈** 为唯一主轴重组（取代 v1 并行目标结构）——四例 strict 重放降为战役试点阶段（S2，=V2 门），参数校准改试点驱动，`J_G` 完整口径降为条件项，第一份反馈报告升为第一交付物。
 - 工作包/阶段：S1 WP-1 战役基建（编排器 `pes2ts g2t-run`/幂等恢复/预算强制/四类终态 + 成本采集）；S2 WP-2 试点 4 例 + 参数冻结；WP-3 起点准备 ACP 生产适配器（fail-closed）；S3 WP-4 全量 24 例（四类终态分列 + 完整账本 = G2 退出门前置项①）；S4 WP-5 验证链执行（硬依赖人工复核，双轨不阻塞生成轨道）；S5 WP-6 第一份反馈报告（漏斗/失败直方图/B1 对照/成本/AB3 改进清单）+ WP-7 收口冻结。
 - 交付物 D1–D5（战役基建、试点通过、24/24 可审计终态、≥1 次验证链执行、首份反馈报告）。**不承诺** ≥1 严格目标 TS 与 M0 声明（G2 退出门）。
 - 新接口拟定：`pes2ts_campaign_manifest_v1`、`pes2ts_g2t_terminal_state_v1`、`pes2ts_g2t_feedback_report_v1`、`pes2ts_branch_calibration_v1`（实施时按宪法 §12 登记 §9.6）。
 - 状态纪律：本方案为设计层，未实施、未启动 QC、不改变任何能力状态（宪法 §11.5）。
-- **离线实施（2026-10-04，V0 门通过）**：S1 离线交付全部落地——WP-1 战役编排器（`pes2ts_core/generation/campaign.py`：manifest 冻结/幂等恢复/预算强制/typed 四类终态）+ 成本采集（`planning/cost_capture.py`）+ CLI `g2t-manifest`/`g2t-run`/`g2t-status`/`g2t-report`；WP-2-A 离线解析网格 + 判定器（`planning/branch_calibration.py`、`planning/replay_report.py`），最保守通过格冻结入 `config/defaults.yaml`（`g2.continuation.branch_policy` 等，测试互锁）；WP-3 `ORCAOriginPreparation`（`integration/acp/origin_backend.py`，fail-closed，加入 `SUBPROCESS_IMPORT_ALLOWLIST`）；WP-6 报告器（`generation/campaign_report.py`）；WP-7 `scripts/collect_g2t_terminal_states.py`。新接口登记 §9.6 + [ADR-0004](../design/decisions/ADR-0004-G2-AB2接口登记.md) + [战役合同字段字典](../contracts/PES2TS_G2T_战役合同字段字典_v1.md)。无 ACP 环境实测：`g2t-run` 正确产出 typed `blocked`（`ORIGIN_BACKEND_UNAVAILABLE` + 需求清单，不静默回退）。改动文件与测试清单见 `.omo/evidence/task-11-pes2ts-g2-ab2.txt`。**S2 试点/S3 全量/S4 验证为 gated**（真实引擎 + 人工复核），相关能力保持 `fixture_passed`/`implemented`，不升 `smoke_passed`（§11.5）。
+- **离线实施（2026-10-04，V0 门通过）**：S1 离线交付全部落地——WP-1 战役编排器（`pes2ts_core/generation/campaign.py`：manifest 冻结/幂等恢复/预算强制/typed 四类终态）+ 成本采集（`planning/cost_capture.py`）+ CLI `g2t-manifest`/`g2t-run`/`g2t-status`/`g2t-report`；WP-2-A 离线解析网格 + 判定器（`planning/branch_calibration.py`、`planning/replay_report.py`），最保守通过格冻结入 `config/defaults.yaml`（`g2.continuation.branch_policy` 等，测试互锁）；WP-3 `ORCAOriginPreparation`（`integration/acp/origin_backend.py`，fail-closed，加入 `SUBPROCESS_IMPORT_ALLOWLIST`）；WP-6 报告器（`generation/campaign_report.py`）；WP-7 `scripts/collect_g2t_terminal_states.py`。新接口登记 §9.6 + [ADR-0004](../design/decisions/ADR-0004-G2-AB2接口登记.md) + [战役合同字段字典](../archive_tree/10_p1_baseline_20260925_20261004/E02_g1_mapping_g2_classic_demo24.md)。无 ACP 环境实测：`g2t-run` 正确产出 typed `blocked`（`ORIGIN_BACKEND_UNAVAILABLE` + 需求清单，不静默回退）。改动文件与测试清单见 `.omo/evidence/task-11-pes2ts-g2-ab2.txt`。**S2 试点/S3 全量/S4 验证为 gated**（真实引擎 + 人工复核），相关能力保持 `fixture_passed`/`implemented`，不升 `smoke_passed`（§11.5）。
 
 ---
 
 ## 13. G2.T 真实战役执行方案（2026-10-04）
 
-- 新增 [G2.T 真实战役执行方案](PES2TS_G2T真实战役执行方案_20261004.md)：嵌套归属 = G2-AB2 批次 S2-S5 执行 ⊂ G2.T 子阶段（阶段定义 :46）⊂ G2 ⊂ G0-G4 主干；细化不取代 G2-AB2 v2，判据修订以 ADR-0005 为准。
+- 新增 [G2.T 真实战役执行方案](../archive_tree/20_p2_pesn_20261005_20261014/E04_g2t_ab3_ab4_g3p.md)：嵌套归属 = G2-AB2 批次 S2-S5 执行 ⊂ G2.T 子阶段（阶段定义 :46）⊂ G2 ⊂ G0-G4 主干；细化不取代 G2-AB2 v2，判据修订以 ADR-0005 为准。
 - **Wave 0 四项执行前修补（2026-10-04 已实施，先修订后执行）**：①campaign.py 恢复顺序（已完成终态先于预算检查）②corrector 缓存复用证据透传（acp.reused → cache_hit 零成本账本）③origin BatchOptimize profile opt→opt_only + 能量读取改轨迹 JSON 末周期 energy_hartree ④试点判定器语义 v2（schema `pes2ts_pilot_replay_report_v2`）。全部经 [ADR-0005](../design/decisions/ADR-0005-G2-AB2执行前判定器与恢复修补.md) 登记（已接受）；离线回归门 1720 passed > 基线 1709，证据 `outputs/g2t_campaign_logs/T2..T6`。
 - S2-S5 阶段概要：S2 试点 4 例（7762 双跑独立账本，λ 绑定锚点复现）→ S3 全量 24 例（单 manifest `--case` 子集分批）→ D3 验收（24/24 可审计终态 + 完整账本 = G2 退出门前置项①）→ S4 验证链条件（硬依赖人工复核导入，双轨）→ 状态冻结与 D5 第一份反馈报告。
 - 状态：设计登记，不改变能力状态（宪法 §11.5）；S2 及之后阶段待真实执行。本方案为执行细化，不新增规范条文、不承诺 ≥1 严格 TS / M0-M5。
@@ -751,7 +771,7 @@
 | [ADR-0011](../design/decisions/ADR-0011-三模块产品架构与统一可视化.md) | Accepted开发方向：细化ADR-0010与ACP展示边界，不取代阶段/旧接口 |
 | [开发宪法](../PES2TS_开发宪法_v1.md) | 内容v2.1：新增§2.5产品视图及§5.5不同完整度输入与评价资格；R1–R6原文保留 |
 | [AGENT执行投影](../../AGENT.md) | v3.1：同步宪法版本与产品设计指针；受保护目录和阶段出口保持 |
-| [PES-N未来计划](PES2TS_PES-N未来开发计划_v2_20261005.md) | v2.1：§8.3承接产品整合，STOP→模仿/残差→离线Q→冻结闭环顺序保持 |
+| [PES-N未来计划](../archive_tree/20_p2_pesn_20261005_20261014/E03_pesn_kernel_ssot.md) | v2.1：§8.3承接产品整合，STOP→模仿/残差→离线Q→冻结闭环顺序保持 |
 | [项目开发与发布方案](PES2TS_整体开发与发布方案_v2.md) | v3.1：一个用户产品，工程发布单元不等于多套用户产品 |
 | [文档索引](../README.md) | 增补设计/ADR入口及当前版本 |
 
@@ -765,7 +785,7 @@
 
 用户指定“化学图论约束→每次只移动关键成键原子→xTB限制性扫描→重复覆盖范围”，要求现有代码功能整合及优化器改造方案。本轮交付设计；未改运行代码、正式schema、预算、默认方法或真实能力。
 
-- 新增[Classic设计](../design/PES2TS_Classic图论驱动与xTB原生约束扫描设计_v1_20261006.md)、[G2-AB3实施方案](PES2TS_G2_AB3功能整合与原生扫描改造方案_20261006.md)、[ADR-0012](../design/decisions/ADR-0012-Classic图论驱动与xTB原生约束扫描.md)，归属G1/G2及C/R/X。
+- 新增[Classic设计](../design/PES2TS_Classic图论驱动与xTB原生约束扫描设计_v1_20261006.md)、[G2-AB3实施方案](../archive_tree/20_p2_pesn_20261005_20261014/E04_g2t_ab3_ab4_g3p.md)、[ADR-0012](../design/decisions/ADR-0012-Classic图论驱动与xTB原生约束扫描.md)，归属G1/G2及C/R/X。
 - 三模块以薄门面整合、保留目录：拓扑编译与独立规则；Classic目标/关键原子初猜/接受状态；ACP原生优化与收据接缝。旧投影BFGS保留显式对照，新方法无静默回退。
 - 初猜只改变F/B driver所涉K原子；默认其余自由度由xTB松弛，全冻结另作协议。扫描完成指冻结低维区间覆盖，不宣称完整高维PES、MEP或TS。
 - ACP底层已有xTB constrained_optimize/relaxed_scan，但当前success仅依赖结构存在，批量回调无化学接受握手。公开单点入口、收敛/实际残差、物理与约束能量、费用/恢复需先验收；PES2TS不绕过ACP。
@@ -784,11 +804,11 @@
 | 文档 | 当前版本 / 本次动作 |
 |---|---|
 | [ADR-0013](../design/decisions/ADR-0013-G3并行IRC预训练与模型版本体系.md) | v1 Accepted：部分取代 ADR-0010 全串行启动安排；教师与生产状态/转移资格分开 |
-| [G3-P1 训练方案](PES2TS_G3_P1_IRC教师预训练与模型版本计划_v1_20261006.md) | v1 新增；来源/分裂→标签/基线→编码器→研究冻结；WP-0…7、配置/扩量/指标及迁移 |
+| [G3-P1 训练方案](../archive_tree/20_p2_pesn_20261005_20261014/E04_g2t_ab3_ab4_g3p.md) | v1 新增；来源/分裂→标签/基线→编码器→研究冻结；WP-0…7、配置/扩量/指标及迁移 |
 | [教师合同](../contracts/PES2TS_PESN_IRC教师数据与模型包合同_v1.md) | v1 新增设计草案；dataset/labels/split/features/run/bundle 各版本与父哈希；正式schema未发布 |
 | [开发宪法](../PES2TS_开发宪法_v1.md) / [执行投影](../../AGENT.md) | v2.2 / v3.2；登记隔离教师和并行入口，R1–R6原文不改，未扩guard权限 |
 | [阶段定义](PES2TS_阶段定义_G0-G3.md) | v4.1；G3.P.0–.3及G3-P1，入口无G2调教依赖；正式1000漏斗/STOP/残差/Q/闭环门保留 |
-| [PES-N计划](PES2TS_PES-N未来开发计划_v2_20261005.md) / [发布方案](PES2TS_整体开发与发布方案_v2.md) / [流程总纲](PES2TS_完整开发流方案_整合版_v1.md) | v2.2 / v3.2 / v2.1；双线汇合、研究包和真实决策能力分开发布、初始化对照/版本兼容 |
+| [PES-N计划](../archive_tree/20_p2_pesn_20261005_20261014/E03_pesn_kernel_ssot.md) / [发布方案](PES2TS_整体开发与发布方案_v2.md) / [流程总纲](PES2TS_完整开发流方案_整合版_v1.md) | v2.2 / v3.2 / v2.1；双线汇合、研究包和真实决策能力分开发布、初始化对照/版本兼容 |
 | README / docs索引 / 本台账 | 当前入口和取代关系同步；本台账v2.3 |
 
 首个模型目标 `pesn-irc-v0.1.0`；后续 0.2 STOP、0.3 residual、0.4 offline Q、0.5 closed loop、1.0 core 是待验收的规划身份，软件 `0.1.0` 不 bump。教师数据发布目标0.1.0和六个v1合同草案分别登记，不覆盖旧split/数据/报告。
@@ -807,9 +827,9 @@
 |---|---|
 | [ADR-0014](../design/decisions/ADR-0014-预测器产品归属与G3代码范围.md) | v1 Accepted：部分取代ADR-0013目录建议；所有新增业务代码统一pesn，runtime/offline隔离 |
 | [预测器模块划分](../design/PES2TS_预测器产品与G3代码模块划分_v1_20261007.md) | v1新增：现有资产/产品矩阵、目标文件树、B0–B7、接口/配置/依赖、导入/真值/导出及测试验收 |
-| [G3-P1](PES2TS_G3_P1_IRC教师预训练与模型版本计划_v1_20261006.md) / [教师合同](../contracts/PES2TS_PESN_IRC教师数据与模型包合同_v1.md) | v1.1 / 草案内容v1.1；实施范围及PESNInput/TeacherPrediction草案；payload schema身份保持v1 |
+| [G3-P1](../archive_tree/20_p2_pesn_20261005_20261014/E04_g2t_ab3_ab4_g3p.md) / [教师合同](../contracts/PES2TS_PESN_IRC教师数据与模型包合同_v1.md) | v1.1 / 草案内容v1.1；实施范围及PESNInput/TeacherPrediction草案；payload schema身份保持v1 |
 | [宪法](../PES2TS_开发宪法_v1.md) / [执行投影](../../AGENT.md) | 内容v2.3 / v3.3；§2.6产品归属及依赖边界；R1–R6原文保留 |
-| [阶段](PES2TS_阶段定义_G0-G3.md) / [未来计划](PES2TS_PES-N未来开发计划_v2_20261005.md) | v4.2 / v2.3；G3.P代码归属，原G2出口与正式G3/G4门保持 |
+| [阶段](PES2TS_阶段定义_G0-G3.md) / [未来计划](../archive_tree/20_p2_pesn_20261005_20261014/E03_pesn_kernel_ssot.md) | v4.2 / v2.3；G3.P代码归属，原G2出口与正式G3/G4门保持 |
 | [发布](PES2TS_整体开发与发布方案_v2.md) / [流程](PES2TS_完整开发流方案_整合版_v1.md) / [产品架构](../design/PES2TS_三模块与可视化产品架构_v1_20261005.md) | v3.3 / v2.2 / v1.1；预测器在线/离线分发、预测与显式选择、教师评测与系统评测分工 |
 | ADR-0013 / 根README / docs索引 / 本台账 | 前ADR新增局部取代指针，历史决策保留；入口同步；本台账v2.4 |
 
@@ -828,9 +848,9 @@
 |---|---|
 | [轻量控制与RL衔接计划](PES2TS_轻量控制与RL衔接计划_v1_20261007.md) / [ADR-0015](../design/decisions/ADR-0015-G2稳定底座与轻量RL研究入口.md) | v1 / v1；有限步长与候选提交、共用执行循环、规则/BC/小Q、小批同预算对照；复杂物理后置 |
 | [宪法](../PES2TS_开发宪法_v1.md) / [执行投影](../../AGENT.md) | 内容v2.4 / v3.4；P5/§6.5研究入口与正式默认门分开，R1–R6原文保持 |
-| [阶段](PES2TS_阶段定义_G0-G3.md) / [未来计划](PES2TS_PES-N未来开发计划_v2_20261005.md) | v4.3 / v2.4；研究原型可并行，AB3/G3指针更新，正式阶段出口保持 |
+| [阶段](PES2TS_阶段定义_G0-G3.md) / [未来计划](../archive_tree/20_p2_pesn_20261005_20261014/E03_pesn_kernel_ssot.md) | v4.3 / v2.4；研究原型可并行，AB3/G3指针更新，正式阶段出口保持 |
 | [发布](PES2TS_整体开发与发布方案_v2.md) / [流程](PES2TS_完整开发流方案_整合版_v1.md) | v3.4 / v2.3；固定G2、续做G3、4例试点；研究能力不自动发布为默认 |
-| [G3-P1](PES2TS_G3_P1_IRC教师预训练与模型版本计划_v1_20261006.md) | v1.2；沿已有B0–B7和首轮模型目标，仅补后续可选复用，不重复实施 |
+| [G3-P1](../archive_tree/20_p2_pesn_20261005_20261014/E04_g2t_ab3_ab4_g3p.md) | v1.2；沿已有B0–B7和首轮模型目标，仅补后续可选复用，不重复实施 |
 | 根README / docs索引 / 本台账 | 当前入口/状态/版本同步；台账v2.5；历史条目按当时版本保留 |
 
 接口草案登记：`pes2ts_control_action_v1`、`pes2ts_control_transition_v1`、`pes2ts_policy_reward_spec_v1`，归既有Action/Transition族；模型沿PESNModelBundle扩研究能力。正式schema/validator待实现；旧网格和新变步长完整性分开。奖励代理不作严格Y，人工gate/未知终态不自动作负例；所有失败/尝试和费用保留。
@@ -844,7 +864,7 @@
 
 | 文档 | 当前版本 / 本次动作 |
 |---|---|
-| [G2-AB4方案](PES2TS_G2_AB4_ORCA驱动xTB约束优化试点方案_20261007.md) / [ADR-0016](../design/decisions/ADR-0016-ORCA驱动xTB硬约束优化试点.md) | v1 / v1；公开薄工作流、硬约束与物理能量、4点成对门、共享预算有限回退及文件级实施范围 |
+| [G2-AB4方案](../archive_tree/20_p2_pesn_20261005_20261014/E04_g2t_ab3_ab4_g3p.md) / [ADR-0016](../design/decisions/ADR-0016-ORCA驱动xTB硬约束优化试点.md) | v1 / v1；公开薄工作流、硬约束与物理能量、4点成对门、共享预算有限回退及文件级实施范围 |
 | [4点选择清单](fixtures/g2_ab4_orca_xtb_pilot_selection_v1.json) | 文档选择manifest v1；3历史失败点+1正常点及16项源产物hash；未执行，方法/电子态/能力资格待核验 |
 | [宪法](../PES2TS_开发宪法_v1.md) / [执行投影](../../AGENT.md) | 内容v2.5 / v3.5；仅接口/设计登记与实施指针，R1–R6和工程政策原文保持 |
 | [轻量计划](PES2TS_轻量控制与RL衔接计划_v1_20261007.md) | v1.1；对已有失败机制启动有界优化器试点，不增加学习动作或复制G3 |
@@ -863,9 +883,9 @@
 | 文档 | 当前版本 / 本次动作 |
 |---|---|
 | [统一实施方案](PES2TS_统一残差决策与G2有限回退实施方案_v1_20261007.md) / [ADR-0017](../design/decisions/ADR-0017-统一残差决策与G2有限回退.md) | v1 / v1：现有规模真实RL、共享网络残差/Q头、MDP近似及坐标注意力、公共G2单步/宏步/费用，六包交付和边界 |
-| [轻量计划](PES2TS_轻量控制与RL衔接计划_v1_20261007.md) / [AB4](PES2TS_G2_AB4_ORCA驱动xTB约束优化试点方案_20261007.md) | v1.2 / v1.1：当前入口统一，旧步长为可选对照；AB4救援门/原清单不变，稳定逻辑目标延续配额，策略不选优化器 |
+| [轻量计划](PES2TS_轻量控制与RL衔接计划_v1_20261007.md) / [AB4](../archive_tree/20_p2_pesn_20261005_20261014/E04_g2t_ab3_ab4_g3p.md) | v1.2 / v1.1：当前入口统一，旧步长为可选对照；AB4救援门/原清单不变，稳定逻辑目标延续配额，策略不选优化器 |
 | [宪法](../PES2TS_开发宪法_v1.md) / [执行投影](../../AGENT.md) | 内容v2.6 / v3.6：近期研究顺序、接口及状态指针；R1–R6原文保持 |
-| [阶段](PES2TS_阶段定义_G0-G3.md) / [未来计划](PES2TS_PES-N未来开发计划_v2_20261005.md) | v4.4 / v2.5：当前研究入口，正式阶段/退出门及长期路线保持 |
+| [阶段](PES2TS_阶段定义_G0-G3.md) / [未来计划](../archive_tree/20_p2_pesn_20261005_20261014/E03_pesn_kernel_ssot.md) | v4.4 / v2.5：当前研究入口，正式阶段/退出门及长期路线保持 |
 | 根README / docs索引 / 本台账 | 入口/版本/局部取代关系同步；台账v2.7；历史条目保持当时口径 |
 
 接口存在性草案：pesn_control_input/prediction_v1、control_action/transition_v2、policy_reward_spec_v2、model_bundle_v2、学习native_scan_result/trace_v3。实施schema/validator待冻结；旧教师v1、固定网格原生v1/AB4混合v2与历史产物不改义。不扩大真值/执行allowlist，不解锁正式p/C/Q_MOVE或生产控制。
@@ -888,7 +908,7 @@
 
 用户在第一批结果审核后提出IRC2万个、RL2000个规模目标，并要求制定下一阶段详细方案。本次按独立canonical反应组解释IRC20000fit与RL新2000主episode，失败计尝试、未运行/重复分支/参数更新不代替数量。若单位另有意图，修改计划和预算，不混计。
 
-新增[详细方案](PES2TS_IRC20k与RL2000下一阶段详细方案_v1_20261008.md)、[ADR-0019](../design/decisions/ADR-0019-IRC20k与RL2000分阶段扩量.md)及[不可执行规划清单](fixtures/irc20k_rl2000_campaign_plan_v1_20261008.json)。先补F1–F4、多episode/回放与教师加载资源缺口，再按IRC2k/5k/10k/20k、RL50/200/500/1000/2000分批；同反应支持不证明跨反应Q适用，迁移门和阈值只用fit内校准。
+新增[详细方案](../archive_tree/20_p2_pesn_20261005_20261014/E06_light_control_unified_residual.md)、[ADR-0019](../design/decisions/ADR-0019-IRC20k与RL2000分阶段扩量.md)及[不可执行规划清单](fixtures/irc20k_rl2000_campaign_plan_v1_20261008.json)。先补F1–F4、多episode/回放与教师加载资源缺口，再按IRC2k/5k/10k/20k、RL50/200/500/1000/2000分批；同反应支持不证明跨反应Q适用，迁移门和阈值只用fit内校准。
 
 第一批BC模式纠错/权重有真实证据、CQL复现旧权重；独立定向测试27通过/1跳过，未重跑全量1966。context联合匹配、TD白名单、registry贯穿与审计缺源反例未关闭，因此不认可WP-2全部验收。更新上一轮计划v1.1、AGENTv3.8、docs索引和本台账v3.1，旧运行报告/模型不覆盖。
 
@@ -898,6 +918,6 @@
 
 ## 24. PES2TS-30H 并行执行套件（2026-10-20）
 
-30h 战役（PES2TS_30H_R3_V52_V53）升级为并行研究执行模式。新增执行套件目录 [docs/agent_runs/](../agent_runs/)（非规范层）：[PARALLEL_EXECUTION_PLAN.md](../agent_runs/PARALLEL_EXECUTION_PLAN.md)（3-lane 并发/DAG/11+1 WP/串行 gate/合规映射/待决策清单）、[BOOTSTRAP_REVIEW.md](../agent_runs/BOOTSTRAP_REVIEW.md)（环境核查、3-lane dry-run 复核、Oracle ORA-1 预审处置）、state/parallel_config.json、state/task_state.json。配套脚手架 `scripts/agent_ops/{data_gate,feature_gate,ledger,gpu_queue}` 与 `tests/agent_ops`（70 项新测试）。
+30h 战役（PES2TS_30H_R3_V52_V53）升级为并行研究执行模式。新增执行套件目录 [docs/agent_runs/](../agent_runs/)（非规范层）：[PARALLEL_EXECUTION_PLAN.md](../agent_runs/PARALLEL_EXECUTION_PLAN.md)（3-lane 并发/DAG/11+1 WP/串行 gate/合规映射/待决策清单）、[BOOTSTRAP_REVIEW.md](../archive_tree/40_p4_v5sprint_24h_20261018_20261021/E10_24h_campaign.md)（环境核查、3-lane dry-run 复核、Oracle ORA-1 预审处置）、state/parallel_config.json、state/task_state.json。配套脚手架 `scripts/agent_ops/{data_gate,feature_gate,ledger,gpu_queue}` 与 `tests/agent_ops`（70 项新测试）。
 
 并行 dry-run（3 独立 worktree lane）已过；Oracle 预审 3 项启动阻塞已处置或列入 WP-L2 预启动硬化。未启动训练/QC；未触碰 sealed 目录与 data/ground_truth；未修改科研指标/阈值/损失/数据语义；旧 53-run 证据（outputs/pesn/v5_1 + v5_1_r1）只读。正式启动被 PD-1/2/4/6（宪法阻塞决策）+ WP-L2 + E0 冻结签认阻挡，`formal_training_authorized=false`。

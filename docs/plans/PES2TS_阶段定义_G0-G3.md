@@ -15,7 +15,7 @@
 
 > 2026-10-18：V4.2–V4.7 已执行并判定负结果；当前活跃提案为 [V5–V7 v2.0](PES2TS_V5-V7_三阶段研究与架构修订方案_v2.0_20261020.md)（取代 v1.2），V5.1-R2 先行。G–V 映射见文首指针。以下 10-15 条目保留为历史，不覆盖阶段出口。
 
-[统一方案v4](PES2TS_双端拓扑条件训练与项目进度统一方案_v4_20261015.md)与[ADR-0021](../design/decisions/ADR-0021-无序双端拓扑与完整双侧TS教师主线.md)为当前训练排期。G0/G1承接无序双端与分裂合同，G3.P承接完整双侧TS教师/规范化EGNN/BC，G4.0承接相容IQL；G2/X严格验证并行，G4.1 SAC后置，G4.2仍待独立评测/发布证据。
+[统一方案v4](../archive_tree/30_p3_v4x_20261015_20261018/E07_v40_v41_input_semantics.md)与[ADR-0021](../design/decisions/ADR-0021-无序双端拓扑与完整双侧TS教师主线.md)为当前训练排期。G0/G1承接无序双端与分裂合同，G3.P承接完整双侧TS教师/规范化EGNN/BC，G4.0承接相容IQL；G2/X严格验证并行，G4.1 SAC后置，G4.2仍待独立评测/发布证据。
 
 旧fit50制备和BC/IQL冒烟按旧版本成立，新任务WP0–WP7实现/数据/训练仍planned；本次WP0仅文档登记完成。下文旧“未启动离线Q”指正式能力未验收，旧direct研究运行已有证据但不升级G4出口。正式G3.0/3.1及G2/G4门保持，研究动作与教师/Bellman适用按宪法§6.7和合同v2；同名旧WP不继承完成。
 
@@ -34,9 +34,9 @@
 | G4.1 | 冻结模型真实QC闭环，train内采集后离线再训练 | Shield/backup/uncertainty门；同预算严格收益 |
 | G4.2 | 全系统、跨生成器/整族泛化、独立内核发布 | 成功率门下总费用改善，单点/上下文、部署及回退证据 |
 
-G2.T 仍为 G2 的四例/24例测试，不是独立阶段；物理验证贯穿各阶段。PES-N 不是新增 G5。详细任务见 [PES-N未来开发计划](PES2TS_PES-N未来开发计划_v2_20261005.md)。
+G2.T 仍为 G2 的四例/24例测试，不是独立阶段；物理验证贯穿各阶段。PES-N 不是新增 G5。详细任务见 [PES-N未来开发计划](../archive_tree/20_p2_pesn_20261005_20261014/E03_pesn_kernel_ssot.md)。
 
-G3.P 教师预训练可与 G2 并行；自 ADR-0031 起，正式决策接入为 **MOVE + PROCESS**（不再以单一 STOP 头为第二任务）：MOVE 沿完整曲线推进并跨 TS，PROCESS 输出有向进度/端点完成/排序；No-Move 由 p_end 与化学一致性决定。V5.3-MP 的 S0–S4 与三臂见 [V5.3-MP 计划](PES2TS_V5.3-MP_大规模MOVE-PROCESS联合训练计划_v1_20261021.md)。预训练不阻塞 V5.3-MP，不降低 G2/G3.0–G4 的出口门；静态排序可先交付，G/R 使用同一内核。规范以开发宪法 v2.9 与 MoveProcessContract v1 为准，本次规划改版不声称模型或新能力已实现。首期方案及版本见 [G3-P1](PES2TS_G3_P1_IRC教师预训练与模型版本计划_v1_20261006.md)与[ADR-0013](../design/decisions/ADR-0013-G3并行IRC预训练与模型版本体系.md)。
+G3.P 教师预训练可与 G2 并行；自 ADR-0031 起，正式决策接入为 **MOVE + PROCESS**（不再以单一 STOP 头为第二任务）：MOVE 沿完整曲线推进并跨 TS，PROCESS 输出有向进度/端点完成/排序；No-Move 由 p_end 与化学一致性决定。V5.3-MP 的 S0–S4 与三臂见 [V5.3-MP 计划](PES2TS_V5.3-MP_大规模MOVE-PROCESS联合训练计划_v1_20261021.md)。预训练不阻塞 V5.3-MP，不降低 G2/G3.0–G4 的出口门；静态排序可先交付，G/R 使用同一内核。规范以开发宪法 v2.9 与 MoveProcessContract v1 为准，本次规划改版不声称模型或新能力已实现。首期方案及版本见 [G3-P1](../archive_tree/20_p2_pesn_20261005_20261014/E04_g2t_ab3_ab4_g3p.md)与[ADR-0013](../design/decisions/ADR-0013-G3并行IRC预训练与模型版本体系.md)。
 
 ---
 
@@ -69,11 +69,11 @@ G3.P 教师预训练可与 G2 并行；自 ADR-0031 起，正式决策接入为 
   | 2.3 回收、质量与验证证据 | 逐帧 → 部分/完整路径资格 → 规则候选 → ACP 验证 → 图身份/成本 | 🔶 有模块，严格闭环未完成 |
   | 2.4 执行统一 | ExecutionBackend + ACP 唯一计算后端 | 🔶 接缝已建；迁移与能力补齐见 ADR-0002 |
   | 2.T 小批测试(24) | 24 条端到端 | 🔶 进行中（round0–round3） |
-- **当前状态（2026-10-07）**：AB3原生24例产物为13 complete_path/9 partial_prefix/2 rejected_typed；validated=0，严格验证仍受人工复核gate。原生引擎为显式分支，生产默认未切。早期round2/strict四例记录作为历史证据保留，不代表当前原生状态；见[AB3实施](PES2TS_G2_AB3功能整合与原生扫描改造方案_20261006.md)。近期固定此底座，真实缺陷/兼容/费用和严格验证按[轻量计划](PES2TS_轻量控制与RL衔接计划_v1_20261007.md)推进。
+- **当前状态（2026-10-07）**：AB3原生24例产物为13 complete_path/9 partial_prefix/2 rejected_typed；validated=0，严格验证仍受人工复核gate。原生引擎为显式分支，生产默认未切。早期round2/strict四例记录作为历史证据保留，不代表当前原生状态；见[AB3实施](../archive_tree/20_p2_pesn_20261005_20261014/E04_g2t_ab3_ab4_g3p.md)。近期固定此底座，真实缺陷/兼容/费用和严格验证按[轻量计划](PES2TS_轻量控制与RL衔接计划_v1_20261007.md)推进。
 - **退出条件**：冻结的 24 条均经 ACP 统一体系取得可审计终态与完整失败/成本账本；**≥1 条非参考种子生成的严格目标 TS**；配方/回放证书和真实能力冒烟通过。拒绝或部分路径算已处理，不能算完整路径/科学成功，三类数量分列。
 - 此处“跑通”明确指自动流程闭环；不意味着 24/24 化学成功。≥1 是工程最低门，不构成普适可靠性结论。完整连续路径率、目标成功率和适用范围必须随发布披露。
 
-> **G2.4 执行统一注记（2026-10-03）：** 子阶段 2.4「方法统一」的裁决现见 [ADR-0002 计算后端统一经 ACP 执行](../design/decisions/ADR-0002-计算后端统一经ACP执行.md)（**Accepted**）：所有计算后端（XTB_PATH、ORCA scan/constraints/NEB、continuation）统一经外部 ACP 执行；ADR-0001 的执行本地化条款与 X1/X2 退出条件被**部分取代**，接缝/计划/记录/词表仍有效。实施按《[PES2TS_ACP执行统一与旧代码清理方案_20261003](PES2TS_ACP执行统一与旧代码清理方案_20261003.md)》X1′–X5′ 推进（**planned / ADR-0002**；本地 xTB runner 删除与全后端 ACP 化尚未完成）。G-R 模块布局迁移已完成：`scan_strategy/` → `generation/planning/`，`g2/` → `generation/execution/xtb_path/`，`endpoints` → `generation/assembly/`。
+> **G2.4 执行统一注记（2026-10-03）：** 子阶段 2.4「方法统一」的裁决现见 [ADR-0002 计算后端统一经 ACP 执行](../design/decisions/ADR-0002-计算后端统一经ACP执行.md)（**Accepted**）：所有计算后端（XTB_PATH、ORCA scan/constraints/NEB、continuation）统一经外部 ACP 执行；ADR-0001 的执行本地化条款与 X1/X2 退出条件被**部分取代**，接缝/计划/记录/词表仍有效。实施按《[PES2TS_ACP执行统一与旧代码清理方案_20261003](../archive_tree/10_p1_baseline_20260925_20261004/E02_g1_mapping_g2_classic_demo24.md)》X1′–X5′ 推进（**planned / ADR-0002**；本地 xTB runner 删除与全后端 ACP 化尚未完成）。G-R 模块布局迁移已完成：`scan_strategy/` → `generation/planning/`，`g2/` → `generation/execution/xtb_path/`，`endpoints` → `generation/assembly/`。
 
 ### G3 · 并行教师预训练、规模化与 PES-N 离线监督
 
@@ -142,7 +142,7 @@ G1 放行产物提供 §3.1 边界与版本身份；G2 在方法选择和计划�
 | **R · generation 核心研究** | R0–R4 | 旧基线回放→原生优化/质量门→相位/步长/保护消融→验证与数据；曲率及已验收回退按需 | 阻塞 G2 质量 |
 | **X · 执行收敛** | X0 + X1′–X5′ | 接缝→ACP xTB→证书/投影→全 QC 迁 ACP→可视化与清理 | G2.4 |
 
-现行职责详见《PES2TS_整体开发与发布方案_v2》（内容 v3）§3；ADR-0001 保留历史接缝决策；G2.4 执行统一的最新裁决与实施计划见 [ADR-0002](../design/decisions/ADR-0002-计算后端统一经ACP执行.md) 与《[PES2TS_ACP执行统一与旧代码清理方案_20261003](PES2TS_ACP执行统一与旧代码清理方案_20261003.md)》（X1′–X5′）。
+现行职责详见《PES2TS_整体开发与发布方案_v2》（内容 v3）§3；ADR-0001 保留历史接缝决策；G2.4 执行统一的最新裁决与实施计划见 [ADR-0002](../design/decisions/ADR-0002-计算后端统一经ACP执行.md) 与《[PES2TS_ACP执行统一与旧代码清理方案_20261003](../archive_tree/10_p1_baseline_20260925_20261004/E02_g1_mapping_g2_classic_demo24.md)》（X1′–X5′）。
 
 ---
 

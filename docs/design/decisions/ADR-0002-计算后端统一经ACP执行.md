@@ -8,7 +8,7 @@
 > 下游：X1′–X5′ 实现、`pes2ts-generation-v1` 发布
 > 上游依赖：ADR-0001、`PES2TS_整体开发与发布方案_v2`、`PES2TS_阶段定义_G0-G3`
 
-> 实施快照补注（2026-10-03）：下文“背景”保留决策形成时的状态；后续只读核查已看到 ACP 工作区的 `XTBBackend.path_search` 与新 `workflows/xtb_path.py`，尚未完成全部注册与联合冒烟。当前能力缺口、梯度/计量/验证补齐及 ACP calculations 基元落点以 [联合开发计划](../../plans/PES2TS_G2_ACP能力补齐与联合验收计划_20261003.md) 为实施细化。本 ADR 的 ACP 唯一后端、配方/判定归属、旧产物只读和等价证书决策保持有效。
+> 实施快照补注（2026-10-03）：下文“背景”保留决策形成时的状态；后续只读核查已看到 ACP 工作区的 `XTBBackend.path_search` 与新 `workflows/xtb_path.py`，尚未完成全部注册与联合冒烟。当前能力缺口、梯度/计量/验证补齐及 ACP calculations 基元落点以 [联合开发计划](../../archive_tree/10_p1_baseline_20260925_20261004/E02_g1_mapping_g2_classic_demo24.md) 为实施细化。本 ADR 的 ACP 唯一后端、配方/判定归属、旧产物只读和等价证书决策保持有效。
 
 ---
 

@@ -49,7 +49,7 @@ PES2TS 是化学约束、真实物理闭环、成本敏感的TS搜索决策工�
 **规则**：新工作必须先声明属于 `G#` 或 `C/R/X`，否则不立项。禁用旧字母阶梯；旧编号出现时必须同时给出对应 G#/工作流。`demo` = **G2.T**。
 科学里程碑 `M0–M5` 只在评测/论文语境使用，是 G 阶段的声明投影（宪法 §10.2）。
 
-G3.P 的入口/四个子任务见[阶段定义](docs/plans/PES2TS_阶段定义_G0-G3.md)与[G3-P1 训练方案](docs/plans/PES2TS_G3_P1_IRC教师预训练与模型版本计划_v1_20261006.md)：数据/坐标/隔离资格后可先训练 `pesn-irc-v0.1.0`。软件、模型、数据/split/run 版本分开；教师方向/路径分数不当 STOP/MOVE-Q，IRC 帧差不当命令/生产转移（宪法§6.5/§7.3）。G2、正式G3.0–G4门继续保留。
+G3.P 的入口/四个子任务见[阶段定义](docs/plans/PES2TS_阶段定义_G0-G3.md)与[G3-P1 训练方案](docs/archive_tree/20_p2_pesn_20261005_20261014/E04_g2t_ab3_ab4_g3p.md)：数据/坐标/隔离资格后可先训练 `pesn-irc-v0.1.0`。软件、模型、数据/split/run 版本分开；教师方向/路径分数不当 STOP/MOVE-Q，IRC 帧差不当命令/生产转移（宪法§6.5/§7.3）。G2、正式G3.0–G4门继续保留。
 
 ---
 
@@ -79,7 +79,7 @@ R/P与H → 化学控制模板 → ReactiveState → Classic/残差候选
 
 ## 6. 数学工具的适用条件（证据边界纪律）
 
-任何引入数学工具（质量度规、测地信赖域、平行移动、谱门、图同构投影、irrep 投影、CNPI/Weyl chamber、VRI 诊断、曲率探针等）的改动，**必须在文档中同时写明其成立条件与不能声称什么**。已确立边界（见 [PES-G 收紧方案](docs/plans/PES2TS_G2_PESG收紧算法迭代方案_20261003.md) §2）：
+任何引入数学工具（质量度规、测地信赖域、平行移动、谱门、图同构投影、irrep 投影、CNPI/Weyl chamber、VRI 诊断、曲率探针等）的改动，**必须在文档中同时写明其成立条件与不能声称什么**。已确立边界（见 [PES-G 收紧方案](docs/archive_tree/10_p1_baseline_20260925_20261004/E02_g1_mapping_g2_classic_demo24.md) §2）：
 
 - 质量范数**不**等同化学保护；需独立逐原子/H 伙伴门。
 - 测地距离只限制运动大小，**不**编码能垒、**不**证明不跨拓扑。
@@ -155,11 +155,11 @@ R/P与H → 化学控制模板 → ReactiveState → Classic/残差候选
 
 **2026-10-29 V5.4.1 执行完成（E*=E0 留任；registry executed）**：[V5.4.1 实施与训练报告](docs/reports/PES2TS_V541_Embedding_50K_实施与训练报告_20261029.md)——WP0–WP7 全部完成。T0-R matched E0×3（seeds 17/29/43）+ E1/E2/E3 seed17 均 37,900 updates done；**E1/E2 `scientific_failure`（H2 sign guard）、E3 `scientific_failure`（H2 sign+dead）**——三者虽 `provisional_H3=true`（ΔAUPRC +0.05~+0.46），H2 硬门不被 PROCESS 增益豁免；**E4 `gate_skipped`（core-time ratio 3.6455>2.0 成本门，非资源失败）**；E5（父门 E4）/T3（`n_selected=0`，0 补 seed、`N_core` 未膨胀）/T4（`no_new_embedding_gain`；容量/深度混杂未闭合已声明）均 `gate_skipped`。**E\*=E0 留任**：dev（589 冻结全集，三 seed mean）AUPRC 0.290702 / q_corr 0.397494 / RMSE-zero 0.910039；dev veto 不适用、无调参、tau 未重算；候选三 seed CI 合法缺席（不编造 p 值）。rollout 1,152 episodes no-physics 双口径分开（endpoint arrival 均 0.005208、TS candidate 0.055556、QC=0、非关键原子位移 0、生产 No-Move 不开）；E0 冠军 bundle 8 文件白名单+SHA+strict-load/read-only 通过（`outputs/pesn/v541_embed_50k/exports/embedding_champion_bundle/`）。**confirm 从未读取、`new_QC_calls=0`、无 verified TS/部署资格声明**。留账的失败/修复：loader WP5-CERT 单次 `EVIDENCE_MISSING` → E0×3 重训裁决（sampler 不等价）；rollout attempt-1 v1 loader SIGTERM 资源失败 + loader v2 实现修复重跑。方案转 v1.2 Executed-Frozen（§19 执行指针）；ADR-0032 增 §6 执行附录；全仓 pytest 4,954 passed/1 skipped/11 deselected（2026-10-29）；`plan_revision: 2026-10-29.1`。**V5.4.2 `joint-finetune-E*` 须另立预注册实验。**
 
-**2026-10-23 V5.3-MP S3 完成（9/9，门 V53MP-S3-formal 通过）**：[S3 20k 主结果报告](docs/reports/PES2TS_V53MP_S3_20k主结果报告_20261023.md)——Move guard 全过且全为负退化（−9.9%~−12.0% vs R3 zero-shot）、零 NaN、attempt 15/15 恰好用尽（4 次外部中断逐次记账提额：commit 6951683/3133f99/9d19b19/a098f17）、GPU 12,699s。科学结果：ordering cross-TS 0.80（5k 时 0.57）、q corr 0.21–0.25、C 臂 endpoint AUROC 0.59–0.60 / AUPRC 0.24（prevalence 0.175）、联合监督对 Move 同评估集代价 +1.9%（endpoint 项仅 +0.13%）；C_s29 endpoint 头误停 0.63（seed 不稳定，"训练资格≠部署资格"再实证）。闭环门 V53MP-S3-closed-loop 通过（[闭环评估报告](docs/reports/PES2TS_V53MP_S3_闭环评估报告_20261023.md)：双预算分开报、864 episode、C 在线停 seed 分裂 s29 82/96、No-Move 控制权维持未授予）；C_s43 已导出 `pes2ts_move_process_bundle_v1`（`outputs/pesn/v53mp/exports/v53mp_20k_C_s43_bundle/`，白名单 7 文件 + 账本绑定）；S4（50k–100k）另议。
+**2026-10-23 V5.3-MP S3 完成（9/9，门 V53MP-S3-formal 通过）**：[S3 20k 主结果报告](docs/archive_tree/50_p5_v53mp_20261021_20261027/E12_v53mp_scale_training.md)——Move guard 全过且全为负退化（−9.9%~−12.0% vs R3 zero-shot）、零 NaN、attempt 15/15 恰好用尽（4 次外部中断逐次记账提额：commit 6951683/3133f99/9d19b19/a098f17）、GPU 12,699s。科学结果：ordering cross-TS 0.80（5k 时 0.57）、q corr 0.21–0.25、C 臂 endpoint AUROC 0.59–0.60 / AUPRC 0.24（prevalence 0.175）、联合监督对 Move 同评估集代价 +1.9%（endpoint 项仅 +0.13%）；C_s29 endpoint 头误停 0.63（seed 不稳定，"训练资格≠部署资格"再实证）。闭环门 V53MP-S3-closed-loop 通过（[闭环评估报告](docs/archive_tree/50_p5_v53mp_20261021_20261027/E12_v53mp_scale_training.md)：双预算分开报、864 episode、C 在线停 seed 分裂 s29 82/96、No-Move 控制权维持未授予）；C_s43 已导出 `pes2ts_move_process_bundle_v1`（`outputs/pesn/v53mp/exports/v53mp_20k_C_s43_bundle/`，白名单 7 文件 + 账本绑定）；S4（50k–100k）另议。
 
-**2026-10-22 V5.3-MP S1 完成 / S2 进行中**（历史）：[S1 冒烟报告](docs/reports/PES2TS_V53MP_S1_2k冒烟报告_20261022.md)（三臂 ok、Move guard 全过、GPU 1,829s≤上限）+ [S0 报告](docs/reports/PES2TS_V53MP_S0_数据建库与资格报告_20261022.md)（全部门通过：20k 冻结池 + dev 589 + confirm 2k 封存）。λ 探针 verdicts：endpoint calibrated / q target_unreachable / rank scale_unreachable（上限运行并记录）。当前 S2（5k，三臂×三 seed，density-preserving joint 3,750 更新）在跑；S3（20k，joint 15,000 更新）待 S2 通过后授权。任务合同 [MoveProcessContract v1](docs/contracts/PES2TS_MoveProcessContract_v1.md)；文档门 `--strict` 训练前强制。
+**2026-10-22 V5.3-MP S1 完成 / S2 进行中**（历史）：[S1 冒烟报告](docs/archive_tree/50_p5_v53mp_20261021_20261027/E12_v53mp_scale_training.md)（三臂 ok、Move guard 全过、GPU 1,829s≤上限）+ [S0 报告](docs/archive_tree/50_p5_v53mp_20261021_20261027/E12_v53mp_scale_training.md)（全部门通过：20k 冻结池 + dev 589 + confirm 2k 封存）。λ 探针 verdicts：endpoint calibrated / q target_unreachable / rank scale_unreachable（上限运行并记录）。当前 S2（5k，三臂×三 seed，density-preserving joint 3,750 更新）在跑；S3（20k，joint 15,000 更新）待 S2 通过后授权。任务合同 [MoveProcessContract v1](docs/contracts/PES2TS_MoveProcessContract_v1.md)；文档门 `--strict` 训练前强制。
 
-**2026-10-22 V5.3-MP S0 完成（全部门通过，S1 待 λ 探针 + 授权）**：[S0 数据建库与资格报告](docs/reports/PES2TS_V53MP_S0_数据建库与资格报告_20261022.md)——20,000 合格反应冻结池（2k⊂5k⊂20k 嵌套）+ dev 589 + confirm 2,000（仅列名封存）；S0-B 经审计 truth bridge 建库 26,038 曲线/5.96M 样本；endpoint_label_spec_v1 硬门全过（TS/起点 0% 正例，覆盖 99.62%）；S0-F 就绪 7/7 + 表校验 10/10。当前任务合同 [MoveProcessContract v1](docs/contracts/PES2TS_MoveProcessContract_v1.md)；实施层全部落地（heads/loss/trainer/driver/loader/labels/export + λ 探针）。S1 2k 冒烟：λ gradient-share 探针回填 config → `s1_authorized` 翻转 → plan-init → 3 臂 × seed17。GPU 在 S0 通过前保持 0；本轮 S0 完成后方启动 S1。
+**2026-10-22 V5.3-MP S0 完成（全部门通过，S1 待 λ 探针 + 授权）**：[S0 数据建库与资格报告](docs/archive_tree/50_p5_v53mp_20261021_20261027/E12_v53mp_scale_training.md)——20,000 合格反应冻结池（2k⊂5k⊂20k 嵌套）+ dev 589 + confirm 2,000（仅列名封存）；S0-B 经审计 truth bridge 建库 26,038 曲线/5.96M 样本；endpoint_label_spec_v1 硬门全过（TS/起点 0% 正例，覆盖 99.62%）；S0-F 就绪 7/7 + 表校验 10/10。当前任务合同 [MoveProcessContract v1](docs/contracts/PES2TS_MoveProcessContract_v1.md)；实施层全部落地（heads/loss/trainer/driver/loader/labels/export + λ 探针）。S1 2k 冒烟：λ gradient-share 探针回填 config → `s1_authorized` 翻转 → plan-init → 3 臂 × seed17。GPU 在 S0 通过前保持 0；本轮 S0 完成后方启动 S1。
 
 **2026-10-21 V5.3-MP MOVE–PROCESS（ADR-0031，当前）**：V5.2 / V5.2-R 已关闭（D2-G STOP，T1 不授权，负结果归档）。当前唯一任务合同为 [MoveProcessContract v1](docs/contracts/PES2TS_MoveProcessContract_v1.md)：一个共享 EGNN，两个头——MOVE（关键原子位移，跨越 TS）+ PROCESS（有向进度 q、端点完成置信度 p_end、ordering）；No-Move = p_end ≥ τ_end 且目标化学状态一致；q 仅辅助/诊断，TS 永远继续 MOVE。输入边界不变（当前单帧 + 合法有向拓扑；禁止参考端点 XYZ/历史/真值）。执行计划 [V5.3-MP](docs/plans/PES2TS_V5.3-MP_大规模MOVE-PROCESS联合训练计划_v1_20261021.md)：S0 数据资格/建库（CPU）→ S1 2k 冒烟 → S2 5k → S3 20k 正式。实测：当前六表仅 50 曲线/12,034 行；~200k 反应库尚未转 V5 六表，S0 是真实建库而非配置开关。S0 通过前 GPU=0；S1 需单独授权。文档门 `python scripts/agent_ops/docs_consistency.py --strict` 训练前强制。
 
@@ -171,30 +171,30 @@ R/P与H → 化学控制模板 → ReactiveState → Classic/残差候选
 
 **2026-10-17 v4.1 收口**：[v4.1 阶段最终报告与下一阶段决策包](docs/reports/PES2TS_v4.1阶段训练_修复输入语义与最小实验矩阵_最终报告_20261017.md)——输入语义修复（观测-only 5 通道/ADR-0022）+ A/B/C×3 种子矩阵收口；注册门 REGISTER_ABLATION，B NOT EFFECTIVE、D 跳过；附包归因/扩数据/架构增强三选项决策包。报告只读，不改写冻结件。
 
-**2026-10-15 当前训练入口**：[双端训练与项目进度统一方案v4](docs/plans/PES2TS_双端拓扑条件训练与项目进度统一方案_v4_20261015.md)、[ADR-0021](docs/design/decisions/ADR-0021-无序双端拓扑与完整双侧TS教师主线.md)、[合同v2草案](docs/contracts/PES2TS_双端TS教师与相容转移合同_v2.md)。当前采用无序双端完整拓扑→完整A→TS/B→TS教师→逐点xTB→规范化EGNN→BC→相容IQL。WP0–WP7映射G0/G1增量、G3.P/G3.2研究及G4.0，G2/X严格链并行，SAC后置；研究适用见宪法v2.7 §6.7。首轮0.1Å；旧100步/产物势不截断教师；500/2k依新门和完整路径定价。新版本尚无实现/数据/训练验收，WP0本次仅文档登记完成；既有能力不因规划升级。
+**2026-10-15 当前训练入口**：[双端训练与项目进度统一方案v4](docs/archive_tree/30_p3_v4x_20261015_20261018/E07_v40_v41_input_semantics.md)、[ADR-0021](docs/design/decisions/ADR-0021-无序双端拓扑与完整双侧TS教师主线.md)、[合同v2草案](docs/contracts/PES2TS_双端TS教师与相容转移合同_v2.md)。当前采用无序双端完整拓扑→完整A→TS/B→TS教师→逐点xTB→规范化EGNN→BC→相容IQL。WP0–WP7映射G0/G1增量、G3.P/G3.2研究及G4.0，G2/X严格链并行，SAC后置；研究适用见宪法v2.7 §6.7。首轮0.1Å；旧100步/产物势不截断教师；500/2k依新门和完整路径定价。新版本尚无实现/数据/训练验收，WP0本次仅文档登记完成；既有能力不因规划升级。
 
 **以下为旧版本证据及历史指针**：与上段排期冲突时按v4；旧fit50、σ修复及真实运行证据仍有效于旧任务，旧合同/终态/权重不转写为新任务。旧记录“未训练/未实现”和“当前下一阶段”等表述仅限其当时版本，不作本日总进度。
 
 
-WSL专项/训练链路：实施计划v3.4 §11.9–11.11。GPU环境与P0/P1已完成；批次1–6 direct链路已实现并真实执行：合同/split冻结（fit 4,964组）、共享推进器、ACP E/g接缝、fit50 50/50真实制备（3,612转移、3,662 QC、0失败、验收pass）、EGNN/径向策略/概率合同、BC/IQL训练器。fit50训练表征（[分析](docs/reports/PES2TS_Direct_fit50训练表征分析_20261015.md)）：BC修复σ钳位饱和缺陷后150-epoch NLL −78.4（每原子+4.99，oracle +7.10，仍上升）；方向余弦0.163（NLL方向信号0.2%→辅助方向损失版本有据）；IQL 3,000更新ESS≈均匀（重加权无信号）。全仓2052测试通过。待决：a_max校准决策（0.2候选投影几何可达54%）、fit500/2k定价放行（500≈70.2h串行/35.1h二路）、三seed正式训练、严格链与SAC。
+WSL专项/训练链路：实施计划v3.4 §11.9–11.11。GPU环境与P0/P1已完成；批次1–6 direct链路已实现并真实执行：合同/split冻结（fit 4,964组）、共享推进器、ACP E/g接缝、fit50 50/50真实制备（3,612转移、3,662 QC、0失败、验收pass）、EGNN/径向策略/概率合同、BC/IQL训练器。fit50训练表征（[分析](docs/archive_tree/30_p3_v4x_20261015_20261018/E07_v40_v41_input_semantics.md)）：BC修复σ钳位饱和缺陷后150-epoch NLL −78.4（每原子+4.99，oracle +7.10，仍上升）；方向余弦0.163（NLL方向信号0.2%→辅助方向损失版本有据）；IQL 3,000更新ESS≈均匀（重加权无信号）。全仓2052测试通过。待决：a_max校准决策（0.2候选投影几何可达54%）、fit500/2k定价放行（500≈70.2h串行/35.1h二路）、三seed正式训练、严格链与SAC。
 
 基础设施增补：实施计划现为v3.1（§11.3–11.8），含本机资源核查、单GPU训练/多环境采集、ACP全局QC配额、内存/显存保护、WP-INFRA0–3与Gate-INFRA。起点2×2 QC线程；旧训练CUDA接线与实际运行环境待验收，未启动训练/QC。
 
 
-- 最新用户确认研究方向：[EGNN→IRC-BC→IQL→真实SAC实施与训练计划v3](docs/plans/PES2TS_EGNN_BC_IQL_SAC实施与训练计划_v3_20261015.md)/[ADR-0020草案v1.3](docs/design/decisions/ADR-0020-EGNN直接位移与BC-IQL-SAC研究主线.md)。本轮2k独立fit主训练、50/500前置、fit12真实SAC，文件级代码/预算/目标明确；共享推进器和严格链适配先于扩量。元数据审计已交付，旧5k去重/开发排除后4,977候选，正式族/用途资格待验收。新训练业务WP仍planned；WP0先登记动作/教师用途及规范适用，不扩guard、不改生产默认。旧证据保持原身份。
+- 最新用户确认研究方向：[EGNN→IRC-BC→IQL→真实SAC实施与训练计划v3](docs/archive_tree/30_p3_v4x_20261015_20261018/E07_v40_v41_input_semantics.md)/[ADR-0020草案v1.3](docs/design/decisions/ADR-0020-EGNN直接位移与BC-IQL-SAC研究主线.md)。本轮2k独立fit主训练、50/500前置、fit12真实SAC，文件级代码/预算/目标明确；共享推进器和严格链适配先于扩量。元数据审计已交付，旧5k去重/开发排除后4,977候选，正式族/用途资格待验收。新训练业务WP仍planned；WP0先登记动作/教师用途及规范适用，不扩guard、不改生产默认。旧证据保持原身份。
 
-- 当前下一阶段：[IRC20k与RL2000详细方案v1.0](docs/plans/PES2TS_IRC20k与RL2000下一阶段详细方案_v1_20261008.md)/[ADR-0019规划](docs/design/decisions/ADR-0019-IRC20k与RL2000分阶段扩量.md)。IRC按20k独立fit反应、RL按新2k反应主episode计数；先补四项审核缺陷、多episode/回放与跨反应支持，再分批50/200/500/1000/2000。新任务均planned；模型、能力和收益另验收，主实验QC包络982小时15分，训练/制备/严格验证另列。
-- 上一轮纠错：[方案v1.1](docs/plans/PES2TS_RL下一轮代码修复训练与调整方案_v1_20261008.md)/[ADR-0018草案](docs/design/decisions/ADR-0018-RL纠错与动作支持研究计划.md)。第一批BC模式修复与纠错权重证据成立，CQL复现旧权重；独立审核27通过/1跳过，未重跑声称的全量1966。context匹配、TD白名单、registry贯穿和审计缺源四项未关闭；WP-2不能全验收，真实配对/新采集/收益尚未成立。round0与纠错包/报告保留，实施前正式接口登记继续适用。
+- 当前下一阶段：[IRC20k与RL2000详细方案v1.0](docs/archive_tree/20_p2_pesn_20261005_20261014/E06_light_control_unified_residual.md)/[ADR-0019规划](docs/design/decisions/ADR-0019-IRC20k与RL2000分阶段扩量.md)。IRC按20k独立fit反应、RL按新2k反应主episode计数；先补四项审核缺陷、多episode/回放与跨反应支持，再分批50/200/500/1000/2000。新任务均planned；模型、能力和收益另验收，主实验QC包络982小时15分，训练/制备/严格验证另列。
+- 上一轮纠错：[方案v1.1](docs/archive_tree/20_p2_pesn_20261005_20261014/E06_light_control_unified_residual.md)/[ADR-0018草案](docs/design/decisions/ADR-0018-RL纠错与动作支持研究计划.md)。第一批BC模式修复与纠错权重证据成立，CQL复现旧权重；独立审核27通过/1跳过，未重跑声称的全量1966。context匹配、TD白名单、registry贯穿和审计缺源四项未关闭；WP-2不能全验收，真实配对/新采集/收益尚未成立。round0与纠错包/报告保留，实施前正式接口登记继续适用。
 
 - 已完成：G0；G1 图/审计/统计/v2 导出；G2.0 装配；ACP 接缝 + xTB PATH ACP 化 + `--register`。
 - 进行中：G1 边界 v2；G2.2–2.3 分支稳定与严格验证；G2.4 执行统一收尾；G2.T 24 条。
 - 设计已登记：G3.P/G3-P1 并行 IRC 教师预训练、模型目标 `pesn-irc-v0.1.0` 与合同草案；见[ADR-0013](docs/design/decisions/ADR-0013-G3并行IRC预训练与模型版本体系.md)。
-- 本期代码任务按[G3-P1 v1.2](docs/plans/PES2TS_G3_P1_IRC教师预训练与模型版本计划_v1_20261006.md)和[模块划分 B0–B7](docs/design/PES2TS_预测器产品与G3代码模块划分_v1_20261007.md)推进；ADR-0014仅调整产品归属，真值窄桥登记在B2实现时另验收，本次规划未改guard。
+- 本期代码任务按[G3-P1 v1.2](docs/archive_tree/20_p2_pesn_20261005_20261014/E04_g2t_ab3_ab4_g3p.md)和[模块划分 B0–B7](docs/design/PES2TS_预测器产品与G3代码模块划分_v1_20261007.md)推进；ADR-0014仅调整产品归属，真值窄桥登记在B2实现时另验收，本次规划未改guard。
 - G3-P1：用户确认实施进行中，pesn/config/tests目录已存在；继续原B0–B7，具体数据/权重/硬件/评测以该任务证据更新，本次未重新验收。正式G3价值头及G4策略收益未由本计划证明。
-- 当前未来开发计划：[PES-N v2](docs/plans/PES2TS_PES-N未来开发计划_v2_20261005.md)。
-- 当前 Classic：[G2-AB3 功能整合与原生扫描](docs/plans/PES2TS_G2_AB3功能整合与原生扫描改造方案_20261006.md)已实现并有24例真实产物（13 complete/9 partial/2 rejected，validated=0）；`g2t-native-run`显式分支，未切生产默认。算法见[设计](docs/design/PES2TS_Classic图论驱动与xTB原生约束扫描设计_v1_20261006.md)/[ADR-0012](docs/design/decisions/ADR-0012-Classic图论驱动与xTB原生约束扫描.md)。
+- 当前未来开发计划：[PES-N v2](docs/archive_tree/20_p2_pesn_20261005_20261014/E03_pesn_kernel_ssot.md)。
+- 当前 Classic：[G2-AB3 功能整合与原生扫描](docs/archive_tree/20_p2_pesn_20261005_20261014/E04_g2t_ab3_ab4_g3p.md)已实现并有24例真实产物（13 complete/9 partial/2 rejected，validated=0）；`g2t-native-run`显式分支，未切生产默认。算法见[设计](docs/design/PES2TS_Classic图论驱动与xTB原生约束扫描设计_v1_20261006.md)/[ADR-0012](docs/design/decisions/ADR-0012-Classic图论驱动与xTB原生约束扫描.md)。
 - 统一基线：[统一实施方案 v1.1](docs/plans/PES2TS_统一残差决策与G2有限回退实施方案_v1_20261007.md)/[ADR-0017](docs/design/decisions/ADR-0017-统一残差决策与G2有限回退.md)：包 A/B/C 的合同、G2共享单步/宏步、残差/Q、训练器及CLI已有fixture证据；真实round0及训练模式/动作支持缺陷见当前下一轮指针。AB4包D独立门、正式阶段与默认门仍按宪法；新修复/注意力/扩量须另验收。
-- 当前小批设计：[G2-AB4 ORCA驱动xTB试点](docs/plans/PES2TS_G2_AB4_ORCA驱动xTB约束优化试点方案_20261007.md)/[ADR-0016](docs/design/decisions/ADR-0016-ORCA驱动xTB硬约束优化试点.md)：3失败点+1正常点已冻结源产物hash；先公开工作流与4点对照，再考虑共享预算的有限回退。设计已完成，接口/回退/真实试点未实施，不修改G3或默认。
+- 当前小批设计：[G2-AB4 ORCA驱动xTB试点](docs/archive_tree/20_p2_pesn_20261005_20261014/E04_g2t_ab3_ab4_g3p.md)/[ADR-0016](docs/design/decisions/ADR-0016-ORCA驱动xTB硬约束优化试点.md)：3失败点+1正常点已冻结源产物hash；先公开工作流与4点对照，再考虑共享预算的有限回退。设计已完成，接口/回退/真实试点未实施，不修改G3或默认。
 
 ---
 

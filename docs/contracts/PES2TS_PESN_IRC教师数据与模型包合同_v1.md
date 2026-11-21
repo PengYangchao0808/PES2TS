@@ -7,7 +7,7 @@
 > 状态：已登记设计草案；字段语义供 G3-P1 实现，正式 schema/validator/fixture 尚未发布
 > 层级：G3.P；数据/特征/标签/run/bundle 接口；规范效力以宪法 §9.6 登记及实现验收为准
 > 取代关系：新增隔离教师合同；细化 PESNModelBundle 家族，不重定义旧 ReactiveState/Action/Transition/label_state
-> 上游依赖：[开发宪法](../PES2TS_开发宪法_v1.md)、[ADR-0013](../design/decisions/ADR-0013-G3并行IRC预训练与模型版本体系.md)、[G3-P1 方案](../plans/PES2TS_G3_P1_IRC教师预训练与模型版本计划_v1_20261006.md)
+> 上游依赖：[开发宪法](../PES2TS_开发宪法_v1.md)、[ADR-0013](../design/decisions/ADR-0013-G3并行IRC预训练与模型版本体系.md)、[G3-P1 方案](../archive_tree/20_p2_pesn_20261005_20261014/E04_g2t_ab3_ab4_g3p.md)
 > 下游消费者：离线构建器、dataset loader、特征/训练/隔离评测与模型包校验
 > 当前版本：草案内容 v1.1 @ 2026-10-07（新增研究预测及产品依赖边界）；原payload schema v1仍待实现
 

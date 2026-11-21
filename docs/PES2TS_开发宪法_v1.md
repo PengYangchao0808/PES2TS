@@ -6,11 +6,11 @@
 > 上游依赖：无（本文件是规范根）
 > 下游消费者：`AGENT.md`、`docs/README.md`、`docs/plans/PES2TS_文档修订台账.md`、所有 plan/design/contracts、实验与发布流程
 > 当前版本：内容 v2.9 @ 2026-10-21（ADR-0031 MOVE–PROCESS 统一学习增量）；文件名保留 `_v1` 以兼容既有链接
-> 决策记录：[ADR-0010](design/decisions/ADR-0010-PES-N反应状态价值与STOP-MOVE统一决策.md)、[ADR-0011](design/decisions/ADR-0011-三模块产品架构与统一可视化.md)、[ADR-0013](design/decisions/ADR-0013-G3并行IRC预训练与模型版本体系.md)；计划：[PES-N 未来开发计划](plans/PES2TS_PES-N未来开发计划_v2_20261005.md)、[G3-P1](plans/PES2TS_G3_P1_IRC教师预训练与模型版本计划_v1_20261006.md)
+> 决策记录：[ADR-0010](design/decisions/ADR-0010-PES-N反应状态价值与STOP-MOVE统一决策.md)、[ADR-0011](design/decisions/ADR-0011-三模块产品架构与统一可视化.md)、[ADR-0013](design/decisions/ADR-0013-G3并行IRC预训练与模型版本体系.md)；计划：[PES-N 未来开发计划](archive_tree/20_p2_pesn_20261005_20261014/E03_pesn_kernel_ssot.md)、[G3-P1](archive_tree/20_p2_pesn_20261005_20261014/E04_g2t_ab3_ab4_g3p.md)
 > 生效边界：开发规范与规划方向生效；实现、模型、真实能力和生产默认不因本次文档变更升级
 > v2.9 增量（2026-10-21）：[ADR-0031](design/decisions/ADR-0031-MOVE-PROCESS统一学习合同.md) + [MoveProcessContract v1](contracts/PES2TS_MoveProcessContract_v1.md)：V5.3-MP 的任务定为 **MOVE + PROCESS**——一个共享 EGNN，两个功能头；MOVE 输出关键原子位移并跨越 TS；PROCESS 输出有向进度 q、目标端点完成置信度 p_end 与排序分数；**No-Move = p_end ≥ τ_end 且目标化学状态一致**，q 仅辅助/诊断，不得单独触发停止；TS 永远是途经点。输入边界不变（当前单帧 + 合法有向拓扑；禁止参考端点 XYZ/历史/真值）。旧 FullPathNavigationContract v1 的 Endpoint Stop 单一 d_end 语义被本增量取代；D2-G 对旧 T1 的负结论继续有效，V5.3-MP 是独立预注册战役。§6.7 的 V5.2+ 注记自本版起仅保留为历史；任务语义以 MoveProcessContract v1 为唯一真相。
 > v2.8 增量（2026-10-21）：[ADR-0030](design/decisions/ADR-0030-V5.2全路径导航与端点停止.md) + [FullPathNavigationContract v1](contracts/PES2TS_FullPathNavigationContract_v1.md)：V5.2+ 策略任务定为 **Full-Path Navigation**（R→TS→P / P→TS→R）——Move 沿完整 canonical IRC 教师推进并**跨越 TS**；No-Move = **Endpoint Stop**（目标端点到达，d_end 候选窗口 0.10/0.30 Å）；TS 是途经点，不触发停止；q 为分段归一化辅助量（A=−1/TS=0/B=+1）。§6.7 的"完整 A→TS 与 B→TS、不跨 TS 串接"自本增量起**仅保留为 V5.1a/V4 历史教师隔离语义**，不再是 V5.2+ 训练依据。任务语义的单一真相为上述合同；文档一致性由 `scripts/agent_ops/docs_consistency.py --strict` 强制。
-> v2.7 增量：[ADR-0021](design/decisions/ADR-0021-无序双端拓扑与完整双侧TS教师主线.md)、[统一训练与进度方案v4](plans/PES2TS_双端拓扑条件训练与项目进度统一方案_v4_20261015.md)：登记无序双端点、完整双侧TS教师及相容研究转移的适用范围；未发布schema、未升级能力或生产默认
+> v2.7 增量：[ADR-0021](design/decisions/ADR-0021-无序双端拓扑与完整双侧TS教师主线.md)、[统一训练与进度方案v4](archive_tree/30_p3_v4x_20261015_20261018/E07_v40_v41_input_semantics.md)：登记无序双端点、完整双侧TS教师及相容研究转移的适用范围；未发布schema、未升级能力或生产默认
 > v2.7 映射补充（2026-10-18）：G = 代码/物理能力，V = 训练/测试战役；V5–V7 不是新 G 阶段。见 [ADR-0025](design/decisions/ADR-0025-G-V双轴映射与战役注册.md) 与 [G–V 映射](design/PES2TS_G_V_MAPPING_v1_20261018.md)；本补充只登记治理规则，不改写正文规范。
 > v2.6 增量：[ADR-0017](design/decisions/ADR-0017-统一残差决策与G2有限回退.md)、[统一实施方案](plans/PES2TS_统一残差决策与G2有限回退实施方案_v1_20261007.md)；承接ADR-0015研究入口和ADR-0016/AB4有限回退门，先接通RL再扩量
 > 效力：本文件约束**后续所有开发行为**（代码、文档、实验、评测、发布）。与任何其他文档冲突时，一律以本文件为准。
@@ -350,7 +350,7 @@ ADR-0010 登记待实施接口存在性：ChemicalControlSpec、ReactiveState、
 
 [ADR-0015](design/decisions/ADR-0015-G2稳定底座与轻量RL研究入口.md)在Action/Transition族补登记 `pes2ts_control_action_v1`、`pes2ts_control_transition_v1`、`pes2ts_policy_reward_spec_v1` 草案；状态/命令/响应/终态/全费用/父哈希及研究奖励资格见[轻量计划§3–4](plans/PES2TS_轻量控制与RL衔接计划_v1_20261007.md)。模型扩展沿PESNModelBundle能力表，新研究策略不冒充正式价值头。正式schema/validator随实现验收，旧固定网格和新变步长协议分开保留。
 
-[ADR-0016](design/decisions/ADR-0016-ORCA驱动xTB硬约束优化试点.md)在ACP请求/收据与原生结果族登记 `pes2ts_orca_xtb_constrained_opt_request_v1`、`pes2ts_orca_xtb_constrained_opt_evidence_v1`、混合`pes2ts_native_scan_result_v2`及trace v2草案。硬/软约束、优化器/方法、父几何/请求hash、能量/收敛与全费用语义见[G2-AB4方案](plans/PES2TS_G2_AB4_ORCA驱动xTB约束优化试点方案_20261007.md)；只登记接口和设计，未发布schema/validator或冒烟能力，不覆盖旧结果、不修改R1–R6或阶段出口。
+[ADR-0016](design/decisions/ADR-0016-ORCA驱动xTB硬约束优化试点.md)在ACP请求/收据与原生结果族登记 `pes2ts_orca_xtb_constrained_opt_request_v1`、`pes2ts_orca_xtb_constrained_opt_evidence_v1`、混合`pes2ts_native_scan_result_v2`及trace v2草案。硬/软约束、优化器/方法、父几何/请求hash、能量/收敛与全费用语义见[G2-AB4方案](archive_tree/20_p2_pesn_20261005_20261014/E04_g2t_ab3_ab4_g3p.md)；只登记接口和设计，未发布schema/validator或冒烟能力，不覆盖旧结果、不修改R1–R6或阶段出口。
 
 [ADR-0017](design/decisions/ADR-0017-统一残差决策与G2有限回退.md)登记 `pesn_control_input_v1`、`pesn_control_prediction_v1`、`pes2ts_control_action_v2`、`pes2ts_control_transition_v2`、`pes2ts_policy_reward_spec_v2`、`pesn_model_bundle_v2`、学习`pes2ts_native_scan_result_v3`/`trace_v3`草案。位移提案/合法命令/实际响应、宏步恢复/终止/费用、环境身份/剩余预算及统一研究能力见[实施方案§2–6](plans/PES2TS_统一残差决策与G2有限回退实施方案_v1_20261007.md#6-合同草案与代码所有权)。v1教师与AB4固定网格混合v2保持原义，正式payload/validator待实现；本次不扩大truth/subprocess权限、不把规划升级为业务能力。
 
