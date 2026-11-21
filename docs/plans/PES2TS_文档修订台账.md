@@ -1,5 +1,14 @@
 # PES2TS 文档修订台账（协同性）
 
+## 2026-11-22 增量登记：V5–V7 全阶段研发与 Benchmark 方案 v2.0（路线重规划）入库
+
+- **新增** [PES2TS V5–V7 全阶段研发与 Benchmark 方案（修订版 v2.0）](PES2TS_V5-V7_全阶段研发与Benchmark方案_v2.0_20261121.md)（**Active-Proposed**；文档日期 2026-11-21，2026-11-22 按治理入库）。
+- **核心变更（相对 V5–V7 v3.0 的 V5.5–V5.8 规划）**：三阶段严格解耦——**V5 只做纯离线架构 Benchmark**（MLP/Window-MLP/GRU/CfC/Selective SSM/Tiny Causal Transformer，18+9=27 次训练）；**V6 做真实 xTB 闭环与监督校准**（安全层、Closed-loop Pilot 20–30 反应、SFT 三轮、Physical Benchmark 与 `C_valid`）；**V7 做 RL 成本优化**（预算约束 MDP、分层奖励、受限策略、自适应反应坐标 Fixed-k/Step-RL/Subspace-RL/Joint-RL）。原 V5.7（物理约束优化）与 V5.8（DFT 验证）**迁入 V6**；新增 H5-A/B/C 三假设、V5.7 三类离线测试与防未来信息泄漏约束、V5.8 三层筛选与"一主一对照"冻结交付、12 项里程碑与 Go/No-Go、五个冻结接口（ReactionSpec/Observation/ActionProposal/StepResult/TSValidation）与 ACP3 对接、P0–P3 近期优先级。
+- **取代边界**：仅修订 `PES2TS_V5-V7_反应意图条件化与低维生长方案_v3.0_20261020.md` 的 V5.5–V5.8 路线与验收部分；v3.0 的 V5 反应意图条件化主线、`ADR-0030`/`ADR-0031`、`MoveProcessContract v1` 语义不变。不改变 G0–G4 阶段边界与 R1–R6 红线。
+- **需另立 ADR 的触发点**：五接口冻结（建议 ADR-0036）、动态反应坐标进入正式任务合同（`MoveProcessContract` 换版）、`C_valid` 成为正式验收口径。
+- **待所有者裁决**：① 是否正式采纳本 v2.0 路线；② 五接口是否冻结并立 ADR-0036；③ V5.5 数据工程是否以本方案 P0 清单为唯一输入；④ `C_valid` 是否预注册为 V6 主指标。
+- **索引**：已登记 `docs/README.md`"现行计划与设计"表；本文档与 `PES2TS_V5-V7_反应意图条件化与低维生长方案_v3.0_20261020.md` 并列，后者 V5.5–V5.8 规划部分以本文档为准。
+
 ## 2026-11-22 增量登记：文档清理执行（standard 档 D1+D2；退役 107 份 + 档案树落成）
 
 - **治理前置（同日完成）**：新增 [ADR-0035 文档生命周期与退役政策](../design/decisions/ADR-0035-文档生命周期与退役政策.md)（Accepted）；修订 [AGENT.md](../../AGENT.md) §9.4 增加"可退役"例外与 §9.6 文档生命周期；本台账新增"退役"动作。

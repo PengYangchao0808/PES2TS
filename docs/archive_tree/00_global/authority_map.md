@@ -16,4 +16,6 @@
 | 文档治理 | `docs/infra/PES2TS_开发文档规范化归档方案_v2_20261121.md` + `ADR-0035` | 状态机/命名/退役政策 |
 | G–V 映射 | `docs/design/PES2TS_G_V_MAPPING_v1_20261018.md`（生成物） | 源 `config/registry/g_v_map.yaml`，禁止手改 |
 | 代码地图 | `docs/design/PES2TS_CODE_MAP_v2_20261018.md` | 新会话先读 |
+| V5–V7 研发路线 | `docs/plans/PES2TS_V5-V7_全阶段研发与Benchmark方案_v2.0_20261121.md` | **Active-Proposed** 路线重规划；签认前不作训练依据（V5 离线/V6 闭环/V7 RL） |
+| V5 反应意图主线 | `docs/plans/PES2TS_V5-V7_反应意图条件化与低维生长方案_v3.0_20261020.md` | 反应意图条件化输入表示；其 V5.5–V5.8 规划被上一行修订 |
 | 索引/台账 | `docs/README.md` + `docs/plans/PES2TS_文档修订台账.md` | 人工导航 + 变更流水 |
