@@ -1,5 +1,16 @@
 # PES2TS 文档修订台账（协同性）
 
+## 2026-11-22 增量登记：V5 深度模型架构 Benchmark 方案 v2.1（V5 详细实验路线）入库
+
+- **新增** [PES2TS V5 深度模型架构 Benchmark：完整阶段性实验方案（v2.1）](PES2TS_V5_深度模型架构Benchmark方案_v2.1_20261122.md)（**Active-Proposed**；文档日期 2026-11-22，按治理入库）。
+- **核心变更（相对 v2.0 的 V5 章）**：V5 从"6 架构/三网络对照"升级为**五大范式 14 类网络的 Architecture Benchmark**（M01–M14：Stateless MLP / Window-MLP / Causal TCN / GRU / Time-aware GRU / LSTM / xLSTM / CfC / LTC / Latent Neural ODE / Tiny Causal Transformer / Diagonal Selective SSM / S4D / Mamba-2 Small）；新增**三层公平对照**（参数量/训练预算/部署 CPU）、**四测试集协议**（ID / Scaffold-OOD / Family-OOD / Size-OOD）、**G0/G1 输入模式分离**、**两层筛选机制**（14→8→4）、**R0/R1 双 Rollout 赛道**、**122 次训练预算表**与三张核心图（Pareto/Rollout/非均匀采样）。
+- **数学定义修正**：明确 IRC 不能提供"最优步长/启动 OptTS 时点"监督；V5 学习目标拆为 `Move`（局部方向与指定路径间隔位移）/`Process`（阶段与参考 TS 邻域）/`Trust`（离线风险代理），最优步长/回退/成功率留待 V6 真实闭环标定；Move 采用 **Residual Behavior Cloning**（`v̂ = v_C + f_θ(S_t)`，`Δq̂ = Δs·v̂`）。
+- **取代边界**：**细化并取代** `PES2TS_V5-V7_全阶段研发与Benchmark方案_v2.0_20261121.md` 的 **V5 章（V5.5–V5.8 全部内容）**；v2.0 的 V6/V7 部分继续有效；v3.0 反应意图条件化主线、`ADR-0026` 帧契约、`MoveProcessContract v1` 语义不变；不改变 G0–G4 与 R1–R6。
+- **仓库落地映射（§8）**：复用 `data/manifests/v5/frame_contract.json`（ADR-0026）、`v53mp_cohort_20k/50k_ids`、`/pes2ts_data/v53mp_50k_data`（r3 6 表 + 251 shards）、WSL `pes2ts-gpu` 环境；V5.3–V5.4 路线降为历史基线；目标工程结构为新建 `pes2ts_v5/`（与 `pes2ts_core` 并列）。
+- **需另立 ADR 的触发点**：五接口冻结（建议 ADR-0036）、V5.5 轨迹级数据集与四测试集划分协议（建议 ADR-0037）、动态反应坐标入合同、`C_valid` 成为验收口径。
+- **待所有者裁决**：① 是否正式采纳 v2.1 作为 V5.5–V5.8 唯一执行路线；② 是否新建 `pes2ts_v5/` 包；③ V5.5 是否以现有 50k 表 + 旧 frame contract 为唯一输入起点；④ 是否以 14 架构 × 1 seed 初筛作为 V5.6-A 第一个正式批次。
+- **索引**：已登记 `docs/README.md`"现行计划与设计"表（v2.0 行同步标注 V5 章已被 v2.1 取代）。
+
 ## 2026-11-22 增量登记：V5–V7 全阶段研发与 Benchmark 方案 v2.0（路线重规划）入库
 
 - **新增** [PES2TS V5–V7 全阶段研发与 Benchmark 方案（修订版 v2.0）](PES2TS_V5-V7_全阶段研发与Benchmark方案_v2.0_20261121.md)（**Active-Proposed**；文档日期 2026-11-21，2026-11-22 按治理入库）。

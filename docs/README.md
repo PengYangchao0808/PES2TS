@@ -42,8 +42,9 @@
 
 | 文档 | 说明 |
 |---|---|
-| `docs/plans/PES2TS_V5-V7_全阶段研发与Benchmark方案_v2.0_20261121.md` | **路线重规划（Active-Proposed）**：V5 离线架构 Benchmark / V6 真实闭环校准 / V7 RL 成本优化；12 里程碑 + Go/No-Go |
-| `docs/plans/PES2TS_V5-V7_反应意图条件化与低维生长方案_v3.0_20261020.md` | V5 反应意图条件化主线（V5.5–V5.8 规划由上一行修订） |
+| `docs/plans/PES2TS_V5-V7_全阶段研发与Benchmark方案_v2.0_20261121.md` | **路线重规划（Active-Proposed）**：V5 离线架构 Benchmark / V6 真实闭环校准 / V7 RL 成本优化；12 里程碑 + Go/No-Go（V5 章已由下一行 v2.1 细化取代） |
+| `docs/plans/PES2TS_V5_深度模型架构Benchmark方案_v2.1_20261122.md` | **V5 详细实验方案（Active-Proposed）**：14 架构/五大范式、V5.5 轨迹级数据冻结、四测试集 OOD、三层公平对照、122 次训练预算 |
+| `docs/plans/PES2TS_V5-V7_反应意图条件化与低维生长方案_v3.0_20261020.md` | V5 反应意图条件化主线（V5.5–V5.8 规划由 v2.0/v2.1 修订） |
 | `docs/plans/PES2TS_V5.4.3_双Decoder_50K_全面开发与训练方案_v1.0_20261102.md` | 最近已执行战役方案（状态见文件头） |
 | `docs/plans/PES2TS_V5.4.3_WP执行清单_v1.0_20261102.md` | 最近战役 WP 清单 |
 | `docs/plans/PES2TS_V5.3-MP_大规模MOVE-PROCESS联合训练计划_v1_20261021.md` | V5.3-MP 战役（已执行） |
