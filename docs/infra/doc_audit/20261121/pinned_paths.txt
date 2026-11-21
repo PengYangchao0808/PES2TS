@@ -1,0 +1,110 @@
+# 钉死路径清单（extract_rules.py 自动生成）
+
+来源：`scripts/agent_ops/docs_consistency_config.json`、`config/registry/g_v_map.yaml`
+
+## docs_consistency_config.json
+
+- historical（17 条；移至他处/重命名 => `historical_missing_file`，`--strict` 退出 1）：
+  - `docs/contracts/PES2TS_ReactionIntent_Contract_v1.md`（存在=True，ADR-0030 横幅=True）
+  - `docs/contracts/PES2TS_GeometryPolicyContract_v1.md`（存在=True，ADR-0030 横幅=True）
+  - `docs/contracts/PES2TS_双端TS教师与相容转移合同_v2.md`（存在=True，ADR-0030 横幅=True）
+  - `docs/design/decisions/ADR-0021-无序双端拓扑与完整双侧TS教师主线.md`（存在=True，ADR-0030 横幅=True）
+  - `docs/design/decisions/ADR-0028-关键原子几何策略合同与V5-V7任务拆分.md`（存在=True，ADR-0030 横幅=True）
+  - `docs/design/decisions/ADR-0029-V5.2+双门评估与封存边界.md`（存在=True，ADR-0030 横幅=True）
+  - `docs/plans/PES2TS_30h_R3_V52_V53_分层训练与验收计划_v1.1_20261020.md`（存在=True，ADR-0030 横幅=True）
+  - `docs/plans/PES2TS_V5-V7_三阶段研究与架构修订方案_v2.0_20261020.md`（存在=True，ADR-0030 横幅=True）
+  - `docs/plans/PES2TS_V5.0-V5.2_十小时冲刺训练与验证执行方案_v1_20261018.md`（存在=True，ADR-0030 横幅=True）
+  - `docs/plans/PES2TS_V5.1-R2_损失尺度与数据完整性修复方案_v1_20261020.md`（存在=True，ADR-0030 横幅=True）
+  - `docs/plans/PES2TS_PES-N_V5-V7架构调整与实施计划_v1.2_20261018.md`（存在=True，ADR-0030 横幅=True）
+  - `V52_PROGRESS_STOP_REPORT.md`（存在=True，ADR-0030 横幅=True）
+  - `NEXT_DAY_DECISION_MEMO.md`（存在=True，ADR-0030 横幅=True）
+  - `FAILURE_AND_REMAINING_WORK.md`（存在=True，ADR-0030 横幅=True）
+  - `24H_FINAL_REPORT.md`（存在=True，ADR-0030 横幅=True）
+  - `24H_EXECUTION_TIMELINE.md`（存在=True，ADR-0030 横幅=True）
+  - `docs/contracts/PES2TS_FullPathNavigationContract_v1.md`（存在=True，ADR-0030 横幅=True）
+- root_scope（9 条；参与禁用语扫描；其中 5 条同时属 historical）：
+  - `README.md`（存在=True）
+  - `AGENT.md`（存在=True）
+  - `V52_PROGRESS_STOP_REPORT.md`（存在=True）
+  - `NEXT_DAY_DECISION_MEMO.md`（存在=True）
+  - `FAILURE_AND_REMAINING_WORK.md`（存在=True）
+  - `24H_FINAL_REPORT.md`（存在=True）
+  - `24H_EXECUTION_TIMELINE.md`（存在=True）
+  - `R3_RESULT_SUMMARY.md`（存在=True）
+  - `V53_ROLLOUT_REPORT.md`（存在=True）
+- required_files（27 条；移动/改名 => `required_missing_file`，`--strict` 退出 1）：
+  - `docs/design/decisions/ADR-0030-V5.2全路径导航与端点停止.md`（4 个必须子串，缺失=无）
+  - `docs/contracts/PES2TS_FullPathNavigationContract_v1.md`（6 个必须子串，缺失=无）
+  - `docs/reports/PES2TS_V52_任务纠偏审计_20261021.md`（4 个必须子串，缺失=无）
+  - `docs/design/decisions/ADR-0031-MOVE-PROCESS统一学习合同.md`（4 个必须子串，缺失=无）
+  - `docs/contracts/PES2TS_MoveProcessContract_v1.md`（5 个必须子串，缺失=无）
+  - `docs/plans/PES2TS_V5.3-MP_大规模MOVE-PROCESS联合训练计划_v1_20261021.md`（6 个必须子串，缺失=无）
+  - `docs/design/decisions/ADR-0032-V5.4.1-Embedding接口扩展与预注册治理.md`（9 个必须子串，缺失=无）
+  - `docs/plans/PES2TS_V5.4.1_Embedding_50K_详细阶段实施方案_v1.0_20261027.md`（5 个必须子串，缺失=无）
+  - `config/campaigns/pes2ts_v541_embed_50k.yaml`（7 个必须子串，缺失=无）
+  - `docs/design/decisions/ADR-0033-V5.4.2-Backbone接口与预注册治理.md`（38 个必须子串，缺失=无）
+  - `docs/plans/PES2TS_V5.4.2_Backbone_50K_详细阶段实施方案_v1.0_20261029.md`（21 个必须子串，缺失=无）
+  - `config/campaigns/pes2ts_v542_backbone_50k.yaml`（44 个必须子串，缺失=无）
+  - `config/campaigns/v542_templates/parity_certificate.template.json`（11 个必须子串，缺失=无）
+  - `config/campaigns/v542_templates/runplan_pin.template.json`（13 个必须子串，缺失=无）
+  - `config/campaigns/v542_templates/preregistration_signoff.template.json`（17 个必须子串，缺失=无）
+  - `config/campaigns/v542_templates/a0_reuse_decision.template.json`（10 个必须子串，缺失=无）
+  - `docs/reports/PES2TS_V542_Backbone_50K_实施与训练报告_20261031.md`（6 个必须子串，缺失=无）
+  - `docs/design/decisions/ADR-0034-V5.4.3-双Decoder与DecoderContextV1.md`（5 个必须子串，缺失=无）
+  - `docs/plans/PES2TS_V5.4.3_双Decoder_50K_全面开发与训练方案_v1.0_20261102.md`（11 个必须子串，缺失=无）
+  - `docs/plans/PES2TS_V5.4.3_WP执行清单_v1.0_20261102.md`（3 个必须子串，缺失=无）
+  - `config/campaigns/pes2ts_v543_dual_decoder_50k.yaml`（20 个必须子串，缺失=无）
+  - `scripts/agent_ops/v543_config_schema.py`（13 个必须子串，缺失=无）
+  - `config/campaigns/v543_templates/preregistration_signoff.template.json`（8 个必须子串，缺失=无）
+  - `config/campaigns/v543_templates/runplan_pin.template.json`（8 个必须子串，缺失=无）
+  - `config/campaigns/v543_templates/budget_policy.template.json`（9 个必须子串，缺失=无）
+  - `config/campaigns/v543_templates/parity_certificate.template.json`（12 个必须子串，缺失=无）
+  - `config/campaigns/v543_templates/decoder_context.template.json`（8 个必须子串，缺失=无）
+
+## g_v_map.yaml 引用的 docs/文档路径
+
+  - L3 `docs/design/PES2TS_G_V_MAPPING_v1_20261018.md` [gate_note/title 等文本引用]
+  - L7 `docs/reports/PES2TS_V542_Backbone_50K_实施与训练报告_20261031.md` [gate_note/title 等文本引用]
+  - L7 `docs/reports/PES2TS_V541_Embedding_50K_实施与训练报告_20261029.md` [gate_note/title 等文本引用]
+  - L12 `docs/plans/PES2TS_阶段定义_G0-G3.md` [stage_doc（渲染进 G–V 文档）]
+  - L16 `docs/plans/PES2TS_阶段定义_G0-G3.md` [stage_doc（渲染进 G–V 文档）]
+  - L20 `docs/plans/PES2TS_阶段定义_G0-G3.md` [stage_doc（渲染进 G–V 文档）]
+  - L24 `docs/plans/PES2TS_阶段定义_G0-G3.md` [stage_doc（渲染进 G–V 文档）]
+  - L28 `docs/plans/PES2TS_阶段定义_G0-G3.md` [stage_doc（渲染进 G–V 文档）]
+  - L32 `docs/plans/PES2TS_阶段定义_G0-G3.md` [stage_doc（渲染进 G–V 文档）]
+  - L36 `docs/plans/PES2TS_阶段定义_G0-G3.md` [stage_doc（渲染进 G–V 文档）]
+  - L40 `docs/plans/PES2TS_阶段定义_G0-G3.md` [stage_doc（渲染进 G–V 文档）]
+  - L44 `docs/plans/PES2TS_阶段定义_G0-G3.md` [stage_doc（渲染进 G–V 文档）]
+  - L48 `docs/plans/PES2TS_阶段定义_G0-G3.md` [stage_doc（渲染进 G–V 文档）]
+  - L52 `docs/plans/PES2TS_阶段定义_G0-G3.md` [stage_doc（渲染进 G–V 文档）]
+  - L56 `docs/plans/PES2TS_阶段定义_G0-G3.md` [stage_doc（渲染进 G–V 文档）]
+  - L60 `docs/plans/PES2TS_阶段定义_G0-G3.md` [stage_doc（渲染进 G–V 文档）]
+  - L79 `docs/reports/PES2TS_实现报告_20261018.md` [evidence] ← campaigns V4.2（active/executed => 存在性强校验）
+  - L96 `docs/reports/PES2TS_实现报告_20261018.md` [evidence] ← campaigns V4.3（active/executed => 存在性强校验）
+  - L112 `docs/reports/PES2TS_实现报告_20261018.md` [evidence] ← campaigns V4.4（active/executed => 存在性强校验）
+  - L127 `docs/reports/PES2TS_实现报告_20261018.md` [evidence] ← campaigns V4.5（active/executed => 存在性强校验）
+  - L143 `docs/reports/PES2TS_实现报告_20261018.md` [evidence] ← campaigns V4.6（active/executed => 存在性强校验）
+  - L159 `docs/reports/PES2TS_实现报告_20261018.md` [evidence] ← campaigns V4.7（active/executed => 存在性强校验）
+  - L181 `docs/plans/PES2TS_V5.0-V5.2_十小时冲刺训练与验证执行方案_v1_20261018.md` [evidence] ← campaigns V5.0（proposed/archived => 不强制存在）
+  - L197 `docs/plans/PES2TS_V5.0-V5.2_十小时冲刺训练与验证执行方案_v1_20261018.md` [evidence] ← campaigns V5.1（proposed/archived => 不强制存在）
+  - L216 `docs/plans/PES2TS_V5.1-R2_损失尺度与数据完整性修复方案_v1_20261020.md` [evidence] ← campaigns V5.1-R2（proposed/archived => 不强制存在）
+  - L237 `docs/plans/PES2TS_V5.1-R3_反应意图条件化与端点标签不变重训方案_v3_20261020.md` [evidence] ← campaigns V5.1-R3（proposed/archived => 不强制存在）
+  - L262 `docs/plans/PES2TS_30h_R3_V52_V53_分层训练与验收计划_v1.1_20261020.md` [evidence] ← campaigns V5.2（active/executed => 存在性强校验）
+  - L282 `docs/reports/PES2TS_V52R_输入充分性决策记录_20261021.md` [evidence] ← campaigns V5.2-R（proposed/archived => 不强制存在）
+  - L301 `V53_ROLLOUT_REPORT.md` [evidence] ← campaigns V5.3-ENG（active/executed => 存在性强校验）
+  - L329 `docs/plans/PES2TS_V5.3-MP_大规模MOVE-PROCESS联合训练计划_v1_20261021.md` [evidence] ← campaigns V5.3-MP（proposed/archived => 不强制存在）
+  - L347 `docs/plans/PES2TS_V5-V7_反应意图条件化与低维生长方案_v3.0_20261020.md` [evidence] ← campaigns V5.4（proposed/archived => 不强制存在）
+  - L374 `docs/reports/PES2TS_V541_Embedding_50K_实施与训练报告_20261029.md` [evidence] ← campaigns V5.4.1（active/executed => 存在性强校验）
+  - L396 `docs/reports/PES2TS_V542_Backbone_50K_实施与训练报告_20261031.md` [evidence] ← campaigns V5.4.2（active/executed => 存在性强校验）
+  - L397 `docs/reports/PES2TS_V542_Backbone_50K_实施与训练报告_20261031.md` [gate_note/title 等文本引用]
+  - L418 `docs/design/decisions/ADR-0034-V5.4.3-双Decoder与DecoderContextV1.md` [evidence] ← campaigns V5.4.3（proposed/archived => 不强制存在）
+  - L444 `docs/design/decisions/ADR-0026-V5冲刺key-atom位移合同与OOF语义.md` [evidence] ← campaigns V5_SPRINT（active/executed => 存在性强校验）
+  - L471 `docs/plans/PES2TS_V5.1_修复冲刺与扩量准入方案_v1_20261019.md` [evidence] ← campaigns V5_1A_SPRINT（active/executed => 存在性强校验）
+  - L489 `docs/plans/PES2TS_PES-N_V5-V7架构调整与实施计划_v1.2_20261018.md` [evidence] ← campaigns V6.0（proposed/archived => 不强制存在）
+  - L504 `docs/plans/PES2TS_PES-N_V5-V7架构调整与实施计划_v1.2_20261018.md` [evidence] ← campaigns V6.1（proposed/archived => 不强制存在）
+  - L519 `docs/plans/PES2TS_PES-N_V5-V7架构调整与实施计划_v1.2_20261018.md` [evidence] ← campaigns V6.2（proposed/archived => 不强制存在）
+  - L536 `docs/plans/PES2TS_PES-N_V5-V7架构调整与实施计划_v1.2_20261018.md` [evidence] ← campaigns V7-A（proposed/archived => 不强制存在）
+  - L552 `docs/plans/PES2TS_PES-N_V5-V7架构调整与实施计划_v1.2_20261018.md` [evidence] ← campaigns V7-B（proposed/archived => 不强制存在）
+  - L568 `docs/plans/PES2TS_PES-N_V5-V7架构调整与实施计划_v1.2_20261018.md` [evidence] ← campaigns V7-C（proposed/archived => 不强制存在）
+
+- render_gv_map.py 目标：`docs/design/PES2TS_G_V_MAPPING_v1_20261018.md`

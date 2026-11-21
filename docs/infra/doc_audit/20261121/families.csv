@@ -1,0 +1,54 @@
+﻿family,family_title,path,role,exists,bucket,action,inbound_refs,gate_locked,head_status,self_declared_superseded,verdict
+F01,单端点 IRC 生成控制器·产品设计,docs/superseded/PES2TS_单端点IRC生成控制器_产品设计_v1_20261020.md,superseded,True,已取代计划,原地保留(已归档),1,,Superseded;Proposed,1,①可立即归位已完成（v1/v2 已在 superseded）；v3 留 plans/（Active-Proposed）
+F01,单端点 IRC 生成控制器·产品设计,docs/superseded/PES2TS_单端点IRC生成控制器_产品设计_v2_20261020.md,superseded,True,已取代计划,原地保留(已归档),1,,Superseded;Proposed,1,①可立即归位已完成（v1/v2 已在 superseded）；v3 留 plans/（Active-Proposed）
+F01,单端点 IRC 生成控制器·产品设计,docs/plans/PES2TS_单端点IRC生成控制器_产品设计_v3_20261020.md,current,True,活跃计划,原地保留(SSOT/索引),7,,Proposed;取代,0,①可立即归位已完成（v1/v2 已在 superseded）；v3 留 plans/（Active-Proposed）
+F02,V5.1-R3 端点对称特征与损失重训（R3 前身）,docs/superseded/PES2TS_V5.1-R3_端点对称特征与损失重训方案_v1_20261020.md,superseded,True,已取代计划,原地保留(已归档),1,,Superseded;Proposed;冻结,1,①已归位；R3 v3 留 plans/（Active-Proposed）
+F02,V5.1-R3 端点对称特征与损失重训（R3 前身）,docs/superseded/PES2TS_V5.1-R3_端点对称特征与损失重训方案_v2_20261020.md,superseded,True,已取代计划,原地保留(已归档),1,,Superseded;Proposed;冻结,1,①已归位；R3 v3 留 plans/（Active-Proposed）
+F02,V5.1-R3 端点对称特征与损失重训（R3 前身）,docs/plans/PES2TS_V5.1-R3_反应意图条件化与端点标签不变重训方案_v3_20261020.md,current,True,活跃计划,原地保留(SSOT/索引),11,,Proposed;取代;冻结,0,①已归位；R3 v3 留 plans/（Active-Proposed）
+F03,V5.1-R3 数据库+特征+损失三位一体修复（执行细化）,docs/plans/PES2TS_V5.1-R3_数据库特征损失三位一体修复方案_v1_20261020.md,current,True,活跃计划,原地保留(SSOT/索引),3,,Proposed;冻结,0,②留原地；文件名 _v1 与 v3 家族并列但并非被取代 → 需所有者确认是否并入 R3 v3 家族
+F04,V5–V7 三阶段研究方案（v1.2 / v2.0 / v3.0 三代）,docs/plans/PES2TS_PES-N_V5-V7架构调整与实施计划_v1.2_20261018.md,superseded,True,已取代计划,原地保留(门禁钉死),9,historical,Proposed;历史;草案,0,②仅加横幅/已在原地；①不可迁（门禁钉死）：v1.2、v2.0
+F04,V5–V7 三阶段研究方案（v1.2 / v2.0 / v3.0 三代）,docs/plans/PES2TS_V5-V7_三阶段研究与架构修订方案_v2.0_20261020.md,superseded,True,已取代计划,原地保留(门禁钉死),14,historical,Superseded;Proposed,1,②仅加横幅/已在原地；①不可迁（门禁钉死）：v1.2、v2.0
+F04,V5–V7 三阶段研究方案（v1.2 / v2.0 / v3.0 三代）,docs/plans/PES2TS_V5-V7_反应意图条件化与低维生长方案_v3.0_20261020.md,current,True,活跃计划,原地保留(SSOT/索引),12,,Proposed;取代,0,②仅加横幅/已在原地；①不可迁（门禁钉死）：v1.2、v2.0
+F05,PES-N 未来开发计划（v2 → V5–V7 三代）,docs/plans/PES2TS_PES-N未来开发计划_v2_20261005.md,superseded,True,已取代计划,仅加历史横幅,26,,Superseded;Historical;取代;当前,0,②PES-N v2 正文有横幅但被 26 处引用、未在门禁名单 → 若迁 superseded 需先改 26 处链接，建议仅加横幅
+F05,PES-N 未来开发计划（v2 → V5–V7 三代）,docs/plans/PES2TS_PES-N_V5-V7架构调整与实施计划_v1.2_20261018.md,superseded,True,已取代计划,原地保留(门禁钉死),9,historical,Proposed;历史;草案,0,②PES-N v2 正文有横幅但被 26 处引用、未在门禁名单 → 若迁 superseded 需先改 26 处链接，建议仅加横幅
+F05,PES-N 未来开发计划（v2 → V5–V7 三代）,docs/plans/PES2TS_V5-V7_反应意图条件化与低维生长方案_v3.0_20261020.md,current,True,活跃计划,原地保留(SSOT/索引),12,,Proposed;取代,0,②PES-N v2 正文有横幅但被 26 处引用、未在门禁名单 → 若迁 superseded 需先改 26 处链接，建议仅加横幅
+F06,GeometryPolicyContract v1 / v2,docs/contracts/PES2TS_GeometryPolicyContract_v1.md,partial,True,合同,原地保留(门禁钉死),7,historical,Proposed;冻结,0,②部分取代：v1 留原地 + 横幅（门禁 historical 钉死，不得移动）；v2 为当前合同
+F06,GeometryPolicyContract v1 / v2,docs/contracts/PES2TS_GeometryPolicyContract_v2.md,current,True,合同,原地保留(SSOT/索引),7,,Active-Normative;Active;取代,0,②部分取代：v1 留原地 + 横幅（门禁 historical 钉死，不得移动）；v2 为当前合同
+F07,ReactionIntent Contract v1 / v2,docs/contracts/PES2TS_ReactionIntent_Contract_v1.md,partial,True,合同,原地保留(门禁钉死),15,historical,Proposed;冻结,0,②部分取代：v1 原地保留 + 横幅；v2 当前 Active
+F07,ReactionIntent Contract v1 / v2,docs/contracts/PES2TS_ReactionIntent_Contract_v2.md,current,True,合同,原地保留(SSOT/索引),8,,Active-Normative;Active;取代,0,②部分取代：v1 原地保留 + 横幅；v2 当前 Active
+F08,FullPathNavigationContract v1 → MoveProcessContract v1（任务合同换代）,docs/contracts/PES2TS_FullPathNavigationContract_v1.md,superseded,True,合同,原地保留(门禁钉死),16,historical;required_files,SUPERSEDED;历史,0,②v1 门禁钉死（historical+required_files），仅加横幅；MoveProcessContract v1 当前权威
+F08,FullPathNavigationContract v1 → MoveProcessContract v1（任务合同换代）,docs/contracts/PES2TS_MoveProcessContract_v1.md,current,True,合同,原地保留(门禁钉死),25,required_files,Active-Normative;Active,0,②v1 门禁钉死（historical+required_files），仅加横幅；MoveProcessContract v1 当前权威
+F09,V4.2–V4.7 十小时战役（方案 + 合同 + 报告）,docs/plans/PES2TS_V4.2-V4.7_十小时训练实验方案_20261017.md,historical,True,冻结计划,原地保留(只读证据),5,,Executed-Frozen;Executed;Frozen;冻结;已执行,0,②全部原地保留（报告只读 + 冻结证据）；不迁 superseded
+F09,V4.2–V4.7 十小时战役（方案 + 合同 + 报告）,docs/contracts/PES2TS_V4.2-V4.7_实施合同与战役冻结_v1.md,historical,True,合同,原地保留(SSOT/索引),3,,Frozen;冻结,0,②全部原地保留（报告只读 + 冻结证据）；不迁 superseded
+F09,V4.2–V4.7 十小时战役（方案 + 合同 + 报告）,docs/reports/PES2TS_实现报告_20261018.md,historical,True,证据报告,原地保留(只读证据),2,,只读,0,②全部原地保留（报告只读 + 冻结证据）；不迁 superseded
+F09,V4.2–V4.7 十小时战役（方案 + 合同 + 报告）,docs/reports/PES2TS_V4.2-V4.7_过夜战役汇总_20261018.md,historical,True,证据报告,原地保留(只读证据),2,,,0,②全部原地保留（报告只读 + 冻结证据）；不迁 superseded
+F10,V5.4.1 Embedding-50K（方案 + ADR + 报告 + registry）,docs/plans/PES2TS_V5.4.1_Embedding_50K_详细阶段实施方案_v1.0_20261027.md,current,True,冻结计划,原地保留(门禁钉死),5,required_files,Executed-Frozen;Executed;Frozen;执行完毕;已执行,0,②原地保留（门禁 required_files）；文件名 v1.0 vs 内容 v1.2 → 命名异常 P2
+F10,V5.4.1 Embedding-50K（方案 + ADR + 报告 + registry）,docs/design/decisions/ADR-0032-V5.4.1-Embedding接口扩展与预注册治理.md,current,True,ADR,原地保留(SSOT/索引),6,required_files,Accepted,0,②原地保留（门禁 required_files）；文件名 v1.0 vs 内容 v1.2 → 命名异常 P2
+F10,V5.4.1 Embedding-50K（方案 + ADR + 报告 + registry）,docs/reports/PES2TS_V541_Embedding_50K_实施与训练报告_20261029.md,current,True,证据报告,原地保留(只读证据),6,,Executed-Frozen;Executed;Frozen;当前;只读,0,②原地保留（门禁 required_files）；文件名 v1.0 vs 内容 v1.2 → 命名异常 P2
+F11,V5.4.2 Backbone-50K（方案 + ADR + 报告）,docs/plans/PES2TS_V5.4.2_Backbone_50K_详细阶段实施方案_v1.0_20261029.md,contradictory,True,活跃计划,原地保留(SSOT/索引),3,required_files,Active-Proposed;Proposed;Active;预注册,0,③需所有者裁决：状态自相矛盾（计划 Active-Proposed vs 报告已 EXECUTED）
+F11,V5.4.2 Backbone-50K（方案 + ADR + 报告）,docs/design/decisions/ADR-0033-V5.4.2-Backbone接口与预注册治理.md,current,True,ADR,原地保留(SSOT/索引),5,required_files,Accepted,0,③需所有者裁决：状态自相矛盾（计划 Active-Proposed vs 报告已 EXECUTED）
+F11,V5.4.2 Backbone-50K（方案 + ADR + 报告）,docs/reports/PES2TS_V542_Backbone_50K_实施与训练报告_20261031.md,current,True,证据报告,原地保留(只读证据),3,required_files,Executed-Frozen;Executed;Frozen,0,③需所有者裁决：状态自相矛盾（计划 Active-Proposed vs 报告已 EXECUTED）
+F12,V5.4.3 双 Decoder-50K（方案+清单+ADR+报告）,docs/plans/PES2TS_V5.4.3_双Decoder_50K_全面开发与训练方案_v1.0_20261102.md,current,True,冻结计划,原地保留(门禁钉死),6,required_files,Frozen-Preregistered;Frozen;预注册;草案,0,②原地保留（不改冻结原文是明示规则）；docs/README 缺 2026-11-06 条目 → 索引滞后 P1
+F12,V5.4.3 双 Decoder-50K（方案+清单+ADR+报告）,docs/plans/PES2TS_V5.4.3_WP执行清单_v1.0_20261102.md,current,True,冻结计划,原地保留(门禁钉死),4,required_files,Frozen-Preregistered;Frozen,0,②原地保留（不改冻结原文是明示规则）；docs/README 缺 2026-11-06 条目 → 索引滞后 P1
+F12,V5.4.3 双 Decoder-50K（方案+清单+ADR+报告）,docs/design/decisions/ADR-0034-V5.4.3-双Decoder与DecoderContextV1.md,current,True,ADR,原地保留(SSOT/索引),5,required_files,Proposed;冻结;预注册,0,②原地保留（不改冻结原文是明示规则）；docs/README 缺 2026-11-06 条目 → 索引滞后 P1
+F12,V5.4.3 双 Decoder-50K（方案+清单+ADR+报告）,docs/reports/PES2TS_V543_双Decoder_50K_实施与训练报告_20261106.md,current,True,证据报告,原地保留(只读证据),1,,,0,②原地保留（不改冻结原文是明示规则）；docs/README 缺 2026-11-06 条目 → 索引滞后 P1
+F13,V5.4.3 之前的 V5.4 剩余架构工作方案,docs/plans/PES2TS_V5.4_剩余架构研究工作方案_v1.0_20261029.md,unknown,True,活跃计划,需所有者裁决,0,,Active-Proposed;Proposed;Active;预注册,0,③需所有者裁决：0 引用 + 非正式状态
+F14,V5.3-MP 大规模 MOVE–PROCESS（计划 + S0–S4 报告）,docs/plans/PES2TS_V5.3-MP_大规模MOVE-PROCESS联合训练计划_v1_20261021.md,contradictory,True,活跃计划,原地保留(SSOT/索引),18,required_files,Proposed,0,③需所有者裁决：状态头 Proposed vs 已执行；报告只读不动
+F14,V5.3-MP 大规模 MOVE–PROCESS（计划 + S0–S4 报告）,docs/plans/PES2TS_V5.3-MP_文档同步清单_v1_20261021.md,historical,True,冻结计划,原地保留(只读证据),3,,Active,0,③需所有者裁决：状态头 Proposed vs 已执行；报告只读不动
+F14,V5.3-MP 大规模 MOVE–PROCESS（计划 + S0–S4 报告）,docs/reports/PES2TS_V53MP_S0_数据建库与资格报告_20261022.md,historical,True,证据报告,原地保留(只读证据),8,,,0,③需所有者裁决：状态头 Proposed vs 已执行；报告只读不动
+F14,V5.3-MP 大规模 MOVE–PROCESS（计划 + S0–S4 报告）,docs/reports/PES2TS_V53MP_S1_2k冒烟报告_20261022.md,historical,True,证据报告,原地保留(只读证据),9,,,0,③需所有者裁决：状态头 Proposed vs 已执行；报告只读不动
+F14,V5.3-MP 大规模 MOVE–PROCESS（计划 + S0–S4 报告）,docs/reports/PES2TS_V53MP_S3_20k主结果报告_20261023.md,historical,True,证据报告,原地保留(只读证据),8,,,0,③需所有者裁决：状态头 Proposed vs 已执行；报告只读不动
+F14,V5.3-MP 大规模 MOVE–PROCESS（计划 + S0–S4 报告）,docs/reports/PES2TS_V53MP_S4_50k_单路正式训练报告_20261027.md,historical,True,证据报告,原地保留(只读证据),2,,,0,③需所有者裁决：状态头 Proposed vs 已执行；报告只读不动
+F15,30h R3→V5.2→V5.3 分层训练与验收计划,docs/plans/PES2TS_30h_R3_V52_V53_分层训练与验收计划_v1.1_20261020.md,contradictory,True,冻结计划,原地保留(门禁钉死),9,historical,冻结,0,③需所有者裁决：同文件两处状态声明矛盾（且门禁 historical 钉死不可移动）
+F16,V5.0–V5.2 十小时冲刺（方案 + 执行报告）,docs/plans/PES2TS_V5.0-V5.2_十小时冲刺训练与验证执行方案_v1_20261018.md,historical,True,历史提案,原地保留(门禁钉死),7,historical,Proposed,0,②原地保留（门禁 historical 钉死；报告只读）
+F16,V5.0–V5.2 十小时冲刺（方案 + 执行报告）,docs/reports/PES2TS_V5第一阶段冲刺执行报告_20261018.md,historical,True,证据报告,原地保留(只读证据),1,,,0,②原地保留（门禁 historical 钉死；报告只读）
+F17,V5.1 修复冲刺与扩量准入 / V5.1-R2 损失尺度修复,docs/plans/PES2TS_V5.1_修复冲刺与扩量准入方案_v1_20261019.md,unknown,True,活跃计划,需所有者裁决,1,,,0,②R2 原地+横幅（门禁钉死）；③V5.1 修复冲刺需裁决（无状态头、1 引用）
+F17,V5.1 修复冲刺与扩量准入 / V5.1-R2 损失尺度修复,docs/plans/PES2TS_V5.1-R2_损失尺度与数据完整性修复方案_v1_20261020.md,superseded,True,已取代计划,原地保留(门禁钉死),7,historical,Proposed;冻结,0,②R2 原地+横幅（门禁钉死）；③V5.1 修复冲刺需裁决（无状态头、1 引用）
+F18,V52R 全路径导航与端点停止修复（方案 + 输入充分性）,docs/plans/PES2TS_V52R_全路径导航与端点停止修复方案_v1_20261021.md,historical,True,冻结计划,原地保留(只读证据),4,,Closed,0,②原地保留（负结果证据；报告只读）
+F18,V52R 全路径导航与端点停止修复（方案 + 输入充分性）,docs/plans/PES2TS_V52R_输入充分性与化学终点识别优化方案_v1_20261021.md,historical,True,冻结计划,原地保留(只读证据),2,,Executed;Closed,0,②原地保留（负结果证据；报告只读）
+F18,V52R 全路径导航与端点停止修复（方案 + 输入充分性）,docs/reports/PES2TS_V52R_输入充分性决策记录_20261021.md,historical,True,证据报告,原地保留(只读证据),6,,预注册,0,②原地保留（负结果证据；报告只读）
+F19,EGNN→BC→IQL→SAC 训练方案三代（v2 / v3 / IRC 直接位移 v1）,docs/plans/PES2TS_EGNN_BC_IQL_SAC下一步完整训练方案_v2_20261015.md,superseded,True,已取代计划,需所有者裁决,3,,取代;当前;被取代;已被取代,1,③需所有者裁决：可迁 superseded（自声明）但有引用；建议先加'已被取代'指针再迁
+F19,EGNN→BC→IQL→SAC 训练方案三代（v2 / v3 / IRC 直接位移 v1）,docs/plans/PES2TS_EGNN_BC_IQL_SAC实施与训练计划_v3_20261015.md,superseded,True,已取代计划,需所有者裁决,7,,取代;当前;被取代;已被取代,1,③需所有者裁决：可迁 superseded（自声明）但有引用；建议先加'已被取代'指针再迁
+F19,EGNN→BC→IQL→SAC 训练方案三代（v2 / v3 / IRC 直接位移 v1）,docs/plans/PES2TS_IRC_BC_IQL_SAC直接位移研究方案_v1_20261015.md,superseded,True,已取代计划,需所有者裁决,2,,取代;当前;被取代;已被取代,1,③需所有者裁决：可迁 superseded（自声明）但有引用；建议先加'已被取代'指针再迁
+F20,训练/测试集划分与数据来源方案（同文件名 v1→v1.1）,docs/plans/PES2TS_训练测试集划分标准_v1_20261120.md,current,True,设计,原地保留(SSOT/索引),2,,,0,②原地保留；文件名 v1 vs 内容 v1.1 → 命名异常 P2
+F21,仓库归档与清理方案 v1（治理/操作规则）,docs/infra/PES2TS_仓库归档与清理方案_v1_20261120.md,current,True,治理规范,原地保留(SSOT/索引),2,,,0,②原地保留（docs/infra 操作规则来源）

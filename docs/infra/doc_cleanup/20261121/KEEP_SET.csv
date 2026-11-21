@@ -1,0 +1,102 @@
+path,layer,duty,maintenance,owner_role,in_archive_tree
+AGENT.md,L0,仓库入口/执行投影,事件驱动（规范变更即更新）,仓库所有者,是（常青层指针）
+CONTRIBUTING.md,L4,贡献指南,季度,Agent 会话,否（现行件）
+LICENSE,L4,许可,季度,Agent 会话,否（现行件）
+README.md,L0,仓库入口/执行投影,事件驱动（规范变更即更新）,仓库所有者,是（常青层指针）
+V53_ROLLOUT_REPORT.md,L4,保留件,季度,Agent 会话,否（现行件）
+artifacts/pesn/pesn-control-demo24-bc-v0.1.0/model_card.md,L2,模型卡（只读证据）,只读不改（新证据另立）,科学负责人,否（现行件）
+artifacts/pesn/pesn-control-demo24-bc-v0.1.1-rlrepair1/model_card.md,L2,模型卡（只读证据）,只读不改（新证据另立）,科学负责人,否（现行件）
+artifacts/pesn/pesn-control-demo24-cql-v0.1.1-rlrepair1/model_card.md,L2,模型卡（只读证据）,只读不改（新证据另立）,科学负责人,否（现行件）
+artifacts/pesn/pesn-control-demo24-v0.1.0/model_card.md,L2,模型卡（只读证据）,只读不改（新证据另立）,科学负责人,否（现行件）
+artifacts/pesn/pesn-control-scale-bc-v0.1.0-rl50/model_card.md,L2,模型卡（只读证据）,只读不改（新证据另立）,科学负责人,否（现行件）
+artifacts/pesn/pesn-control-scale-cql-v0.1.0-rl50/model_card.md,L2,模型卡（只读证据）,只读不改（新证据另立）,科学负责人,否（现行件）
+artifacts/pesn/pesn-irc-scale5k-v0.1.0-rc.1/model_card.md,L2,模型卡（只读证据）,只读不改（新证据另立）,科学负责人,否（现行件）
+artifacts/pesn/pesn-irc-v0.1.0-rc.1/model_card.md,L2,模型卡（只读证据）,只读不改（新证据另立）,科学负责人,否（现行件）
+data/README.md,L4,外部/目录说明,季度,Agent 会话,否（现行件）
+docs/PES2TS_开发宪法_v1.md,L0,唯一规范来源 SSOT,事件驱动（规范变更即更新）,仓库所有者,是（常青层指针）
+docs/README.md,L0,文档索引,事件驱动（规范变更即更新）,Agent 会话,是（常青层指针）
+docs/agent_runs/README.md,L3,运营记录区索引,季度（快照新增时）,Agent 会话,否（现行件）
+docs/archive/20261005_pre_pesn/README.md,L3,快照 manifest（只读索引）,季度（快照新增时）,档案管理员（Agent 会话）,是（节点/manifest）
+docs/archive/20261006_pre_g3p/README.md,L3,快照 manifest（只读索引）,季度（快照新增时）,档案管理员（Agent 会话）,是（节点/manifest）
+docs/archive/20261007_pre_light_policy/README.md,L3,快照 manifest（只读索引）,季度（快照新增时）,档案管理员（Agent 会话）,是（节点/manifest）
+docs/archive/20261007_pre_orca_xtb_pilot/README.md,L3,快照 manifest（只读索引）,季度（快照新增时）,档案管理员（Agent 会话）,是（节点/manifest）
+docs/archive/20261007_pre_predictor_scope/README.md,L3,快照 manifest（只读索引）,季度（快照新增时）,档案管理员（Agent 会话）,是（节点/manifest）
+docs/archive/20261007_pre_unified_residual_rl/README.md,L3,快照 manifest（只读索引）,季度（快照新增时）,档案管理员（Agent 会话）,是（节点/manifest）
+docs/archive/20261008_pre_scale20k_rl2k/README.md,L3,快照 manifest（只读索引）,季度（快照新增时）,档案管理员（Agent 会话）,是（节点/manifest）
+docs/archive/README.md,L3,快照 manifest（只读索引）,季度（快照新增时）,档案管理员（Agent 会话）,是（节点/manifest）
+docs/contracts/PES2TS_ACP字段映射_v1.md,L1,现行合同/接口,里程碑/战役结束,科学负责人+工程负责人,否（现行件）
+docs/contracts/PES2TS_GeometryPolicyContract_v2.md,L1,现行合同/接口,里程碑/战役结束,科学负责人+工程负责人,否（现行件）
+docs/contracts/PES2TS_MoveProcessContract_v1.md,L1,现行合同/接口,里程碑/战役结束,科学负责人+工程负责人,否（现行件）
+docs/contracts/PES2TS_ReactionIntent_Contract_v2.md,L1,现行合同/接口,里程碑/战役结束,科学负责人+工程负责人,否（现行件）
+docs/contracts/PES2TS_contracts_v1.md,L1,现行合同/接口,里程碑/战役结束,科学负责人+工程负责人,否（现行件）
+docs/contracts/PES2TS_数据规范与ACP对接优化方案.md,L1,现行合同/接口,里程碑/战役结束,科学负责人+工程负责人,否（现行件）
+docs/design/PES2TS_CODE_MAP_v2_20261018.md,L1,保留件,里程碑/战役结束,工程负责人,否（现行件）
+docs/design/PES2TS_Classic图论驱动与xTB原生约束扫描设计_v1_20261006.md,L1,保留件,里程碑/战役结束,工程负责人,否（现行件）
+docs/design/PES2TS_G_V_MAPPING_v1_20261018.md,L1,G–V 映射渲染件（禁止手改）,里程碑/战役结束,工程负责人,否（现行件）
+docs/design/PES2TS_三模块与可视化产品架构_v1_20261005.md,L1,保留件,里程碑/战役结束,工程负责人,否（现行件）
+docs/design/PES2TS_预测器产品与G3代码模块划分_v1_20261007.md,L1,保留件,里程碑/战役结束,工程负责人,否（现行件）
+docs/design/decisions/ADR-0010-PES-N反应状态价值与STOP-MOVE统一决策.md,L1,现行 ADR 决策记录,里程碑/战役结束,科学负责人+工程负责人,否（现行件）
+docs/design/decisions/ADR-0011-三模块产品架构与统一可视化.md,L1,现行 ADR 决策记录,里程碑/战役结束,科学负责人+工程负责人,否（现行件）
+docs/design/decisions/ADR-0025-G-V双轴映射与战役注册.md,L1,现行 ADR 决策记录,里程碑/战役结束,科学负责人+工程负责人,否（现行件）
+docs/design/decisions/ADR-0026-V5冲刺key-atom位移合同与OOF语义.md,L1,现行 ADR 决策记录,里程碑/战役结束,科学负责人+工程负责人,否（现行件）
+docs/design/decisions/ADR-0030-V5.2全路径导航与端点停止.md,L1,现行 ADR 决策记录,里程碑/战役结束,科学负责人+工程负责人,否（现行件）
+docs/design/decisions/ADR-0031-MOVE-PROCESS统一学习合同.md,L1,现行 ADR 决策记录,里程碑/战役结束,科学负责人+工程负责人,否（现行件）
+docs/design/decisions/ADR-0032-V5.4.1-Embedding接口扩展与预注册治理.md,L1,现行 ADR 决策记录,里程碑/战役结束,科学负责人+工程负责人,否（现行件）
+docs/design/decisions/ADR-0033-V5.4.2-Backbone接口与预注册治理.md,L1,现行 ADR 决策记录,里程碑/战役结束,科学负责人+工程负责人,否（现行件）
+docs/design/decisions/ADR-0034-V5.4.3-双Decoder与DecoderContextV1.md,L1,现行 ADR 决策记录,里程碑/战役结束,科学负责人+工程负责人,否（现行件）
+docs/infra/PES2TS_开发文档规范化归档方案_v2_20261121.md,L1,现行文档治理方案 v2,里程碑/战役结束,文档审计员/Agent 会话,否（现行件）
+docs/infra/doc_audit/20261121/GOVERNANCE_CONSTRAINTS.md,L0,本次审计证据（只读）,事件驱动（规范变更即更新）,文档审计员/Agent 会话,是（常青层指针）
+docs/infra/doc_audit/20261121/MIGRATION_LOG.md,L1,本次审计证据（只读）,里程碑/战役结束,文档审计员/Agent 会话,否（现行件）
+docs/infra/doc_audit/20261121/README.md,L0,本次审计证据（只读）,事件驱动（规范变更即更新）,文档审计员/Agent 会话,是（常青层指针）
+docs/plans/PES2TS_V5-V7_反应意图条件化与低维生长方案_v3.0_20261020.md,L1,活跃研究计划,里程碑/战役结束,工程负责人,否（现行件）
+docs/plans/PES2TS_V5.1-R3_反应意图条件化与端点标签不变重训方案_v3_20261020.md,L1,活跃研究计划,里程碑/战役结束,工程负责人,否（现行件）
+docs/plans/PES2TS_V5.3-MP_大规模MOVE-PROCESS联合训练计划_v1_20261021.md,L1,V5.3-MP 联合训练计划,里程碑/战役结束,工程负责人,否（现行件）
+docs/plans/PES2TS_V5.4.1_Embedding_50K_详细阶段实施方案_v1.0_20261027.md,L1,当前战役预注册/执行方案,里程碑/战役结束,工程负责人,否（现行件）
+docs/plans/PES2TS_V5.4.2_Backbone_50K_详细阶段实施方案_v1.0_20261029.md,L1,当前战役预注册/执行方案,里程碑/战役结束,工程负责人,否（现行件）
+docs/plans/PES2TS_V5.4.3_WP执行清单_v1.0_20261102.md,L1,当前战役预注册/执行方案,里程碑/战役结束,工程负责人,否（现行件）
+docs/plans/PES2TS_V5.4.3_双Decoder_50K_全面开发与训练方案_v1.0_20261102.md,L1,当前战役预注册/执行方案,里程碑/战役结束,工程负责人,否（现行件）
+docs/plans/PES2TS_完整开发流方案_整合版_v1.md,L0,流程总纲,事件驱动（规范变更即更新）,工程负责人,是（常青层指针）
+docs/plans/PES2TS_整体开发与发布方案_v2.md,L0,项目级开发与发布纲领,事件驱动（规范变更即更新）,工程负责人,是（常青层指针）
+docs/plans/PES2TS_文档修订台账.md,L0,文档修订台账（增量登记）,事件驱动（规范变更即更新）,工程负责人,是（常青层指针）
+docs/plans/PES2TS_训练测试集划分标准_v1_20261120.md,L1,训练测试集划分说明,里程碑/战役结束,工程负责人,否（现行件）
+docs/plans/PES2TS_阶段定义_G0-G3.md,L0,G0–G4 阶段与边界唯一来源,事件驱动（规范变更即更新）,工程负责人,是（常青层指针）
+docs/reports/PES2TS_V52_任务纠偏审计_20261021.md,L2,只读执行证据（g_v_map evidence/终报）,只读不改（新证据另立）,科学负责人,否（现行件）
+docs/reports/PES2TS_V541_Embedding_50K_实施与训练报告_20261029.md,L2,只读执行证据（g_v_map evidence/终报）,只读不改（新证据另立）,科学负责人,否（现行件）
+docs/reports/PES2TS_V542_Backbone_50K_实施与训练报告_20261031.md,L2,只读执行证据（g_v_map evidence/终报）,只读不改（新证据另立）,科学负责人,否（现行件）
+docs/reports/PES2TS_V543_双Decoder_50K_实施与训练报告_20261106.md,L2,只读执行证据（g_v_map evidence/终报）,只读不改（新证据另立）,科学负责人,否（现行件）
+docs/reports/PES2TS_实现报告_20261018.md,L2,只读执行证据（g_v_map evidence/终报）,只读不改（新证据另立）,科学负责人,否（现行件）
+docs/superseded/README.md,L3,已取代区索引,季度（快照新增时）,Agent 会话,否（现行件）
+examples/contracts_v1/README.md,L4,外部/目录说明,季度,Agent 会话,否（现行件）
+examples/contracts_v1/path_viewer.html,L4,外部/目录说明,季度,Agent 会话,否（现行件）
+examples/m1_first_plan/README.md,L4,外部/目录说明,季度,Agent 会话,否（现行件）
+outputs/README.md,L4,外部/目录说明,季度,Agent 会话,否（现行件）
+requirements-pesn-runtime.txt,L4,运行时依赖清单,季度,Agent 会话,否（现行件）
+requirements-pesn-training.txt,L4,运行时依赖清单,季度,Agent 会话,否（现行件）
+requirements.txt,L4,运行时依赖清单,季度,Agent 会话,否（现行件）
+scripts/README.md,L4,外部/目录说明,季度,Agent 会话,否（现行件）
+scripts/archive/README.md,L4,外部/目录说明,季度,Agent 会话,否（现行件）
+docs/design/decisions/ADR-0001-统一执行后端接缝.md,L1,架构/接口/科学路线决策留痕（决策+依据+被放弃方案）,状态头与编号连续性；活跃 6 份双周，其余季度抽 1/3,科学负责人,是（X0 / decision_index）
+docs/design/decisions/ADR-0002-计算后端统一经ACP执行.md,L1,架构/接口/科学路线决策留痕（决策+依据+被放弃方案）,状态头与编号连续性；活跃 6 份双周，其余季度抽 1/3,科学负责人,是（X0 / decision_index）
+docs/design/decisions/ADR-0003-G2-AB1接口登记.md,L1,架构/接口/科学路线决策留痕（决策+依据+被放弃方案）,状态头与编号连续性；活跃 6 份双周，其余季度抽 1/3,科学负责人,是（X0 / decision_index）
+docs/design/decisions/ADR-0004-G2-AB2接口登记.md,L1,架构/接口/科学路线决策留痕（决策+依据+被放弃方案）,状态头与编号连续性；活跃 6 份双周，其余季度抽 1/3,科学负责人,是（X0 / decision_index）
+docs/design/decisions/ADR-0005-G2-AB2执行前判定器与恢复修补.md,L1,架构/接口/科学路线决策留痕（决策+依据+被放弃方案）,状态头与编号连续性；活跃 6 份双周，其余季度抽 1/3,科学负责人,是（X0 / decision_index）
+docs/design/decisions/ADR-0006-ORCA原生约束优化与控制策略分离.md,L1,架构/接口/科学路线决策留痕（决策+依据+被放弃方案）,状态头与编号连续性；活跃 6 份双周，其余季度抽 1/3,科学负责人,是（X0 / decision_index）
+docs/design/decisions/ADR-0007-统一价值模型与搜索内生选点.md,L1,架构/接口/科学路线决策留痕（决策+依据+被放弃方案）,状态头与编号连续性；活跃 6 份双周，其余季度抽 1/3,科学负责人,是（X0 / decision_index）
+docs/design/decisions/ADR-0008-拓扑约束下的距离与位移联合预测.md,L1,架构/接口/科学路线决策留痕（决策+依据+被放弃方案）,状态头与编号连续性；活跃 6 份双周，其余季度抽 1/3,科学负责人,是（X0 / decision_index）
+docs/design/decisions/ADR-0009-G阶段下的统一模型开发框架.md,L1,架构/接口/科学路线决策留痕（决策+依据+被放弃方案）,状态头与编号连续性；活跃 6 份双周，其余季度抽 1/3,科学负责人,是（X0 / decision_index）
+docs/design/decisions/ADR-0012-Classic图论驱动与xTB原生约束扫描.md,L1,架构/接口/科学路线决策留痕（决策+依据+被放弃方案）,状态头与编号连续性；活跃 6 份双周，其余季度抽 1/3,科学负责人,是（X0 / decision_index）
+docs/design/decisions/ADR-0013-G3并行IRC预训练与模型版本体系.md,L1,架构/接口/科学路线决策留痕（决策+依据+被放弃方案）,状态头与编号连续性；活跃 6 份双周，其余季度抽 1/3,科学负责人,是（X0 / decision_index）
+docs/design/decisions/ADR-0014-预测器产品归属与G3代码范围.md,L1,架构/接口/科学路线决策留痕（决策+依据+被放弃方案）,状态头与编号连续性；活跃 6 份双周，其余季度抽 1/3,科学负责人,是（X0 / decision_index）
+docs/design/decisions/ADR-0015-G2稳定底座与轻量RL研究入口.md,L1,架构/接口/科学路线决策留痕（决策+依据+被放弃方案）,状态头与编号连续性；活跃 6 份双周，其余季度抽 1/3,科学负责人,是（X0 / decision_index）
+docs/design/decisions/ADR-0016-ORCA驱动xTB硬约束优化试点.md,L1,架构/接口/科学路线决策留痕（决策+依据+被放弃方案）,状态头与编号连续性；活跃 6 份双周，其余季度抽 1/3,科学负责人,是（X0 / decision_index）
+docs/design/decisions/ADR-0017-统一残差决策与G2有限回退.md,L1,架构/接口/科学路线决策留痕（决策+依据+被放弃方案）,状态头与编号连续性；活跃 6 份双周，其余季度抽 1/3,科学负责人,是（X0 / decision_index）
+docs/design/decisions/ADR-0018-RL纠错与动作支持研究计划.md,L1,架构/接口/科学路线决策留痕（决策+依据+被放弃方案）,状态头与编号连续性；活跃 6 份双周，其余季度抽 1/3,科学负责人,是（X0 / decision_index）
+docs/design/decisions/ADR-0019-IRC20k与RL2000分阶段扩量.md,L1,架构/接口/科学路线决策留痕（决策+依据+被放弃方案）,状态头与编号连续性；活跃 6 份双周，其余季度抽 1/3,科学负责人,是（X0 / decision_index）
+docs/design/decisions/ADR-0020-EGNN直接位移与BC-IQL-SAC研究主线.md,L1,架构/接口/科学路线决策留痕（决策+依据+被放弃方案）,状态头与编号连续性；活跃 6 份双周，其余季度抽 1/3,科学负责人,是（X0 / decision_index）
+docs/design/decisions/ADR-0021-无序双端拓扑与完整双侧TS教师主线.md,L1,架构/接口/科学路线决策留痕（决策+依据+被放弃方案）,状态头与编号连续性；活跃 6 份双周，其余季度抽 1/3,科学负责人,是（X0 / decision_index）
+docs/design/decisions/ADR-0022-v4.1因果输入合同与特征v3.md,L1,架构/接口/科学路线决策留痕（决策+依据+被放弃方案）,状态头与编号连续性；活跃 6 份双周，其余季度抽 1/3,科学负责人,是（X0 / decision_index）
+docs/design/decisions/ADR-0023-V4.2原生重连数据与内部开发划分.md,L1,架构/接口/科学路线决策留痕（决策+依据+被放弃方案）,状态头与编号连续性；活跃 6 份双周，其余季度抽 1/3,科学负责人,是（X0 / decision_index）
+docs/design/decisions/ADR-0024-V4.2无界位移模型与战役训练协议.md,L1,架构/接口/科学路线决策留痕（决策+依据+被放弃方案）,状态头与编号连续性；活跃 6 份双周，其余季度抽 1/3,科学负责人,是（X0 / decision_index）
+docs/design/decisions/ADR-0027-V5.1参考架fallback与双分母评估.md,L1,架构/接口/科学路线决策留痕（决策+依据+被放弃方案）,状态头与编号连续性；活跃 6 份双周，其余季度抽 1/3,科学负责人,是（X0 / decision_index）
+docs/design/decisions/ADR-0028-关键原子几何策略合同与V5-V7任务拆分.md,L1,架构/接口/科学路线决策留痕（决策+依据+被放弃方案）,状态头与编号连续性；活跃 6 份双周，其余季度抽 1/3,科学负责人,是（X0 / decision_index）
+docs/design/decisions/ADR-0029-V5.2+双门评估与封存边界.md,L1,架构/接口/科学路线决策留痕（决策+依据+被放弃方案）,状态头与编号连续性；活跃 6 份双周，其余季度抽 1/3,科学负责人,是（X0 / decision_index）

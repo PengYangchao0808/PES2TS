@@ -1,0 +1,103 @@
+# 索引覆盖统计（extract_rules.py 自动生成）
+
+docs/ 全库 md 216 份；排除 docs/archive/ 后 live 180 份。`docs/README.md` 解析到 145 个相对链接目标，`PES2TS_文档修订台账.md` 解析到 120 个。
+
+- 被 README 索引：133；被台账索引：100；两处都有：93；两处都没有：40
+- 仅 README 有：40；仅台账有：7
+- 两处都没有，按目录：reports 19，agent_runs 12，plans 4，superseded 4，infra 1
+
+## 两处都没有（全部）
+
+- `docs/agent_runs/E0_SIGNOFF_REPORT.md`
+- `docs/agent_runs/handoffs/W-DATA_E1_sixtables.md`
+- `docs/agent_runs/handoffs/W-DATA_E7_stats.md`
+- `docs/agent_runs/handoffs/W-FEAT_E2_v3_stack.md`
+- `docs/agent_runs/handoffs/W-FEAT_E4_v52labels.md`
+- `docs/agent_runs/handoffs/W-FEAT_E6_v53exec.md`
+- `docs/agent_runs/handoffs/W-FEAT_E6_v53prep.md`
+- `docs/agent_runs/handoffs/W-LOSS_E3_BVL_arms.md`
+- `docs/agent_runs/handoffs/W-LOSS_E3_trainer_and_runs.md`
+- `docs/agent_runs/handoffs/W-LOSS_E5_v52.md`
+- `docs/agent_runs/handoffs/W-LOSS_WP-L3_ledger_hardening.md`
+- `docs/agent_runs/README.md`
+- `docs/infra/wsl_memory_governance.md`
+- `docs/plans/PES2TS_V5.1_修复冲刺与扩量准入方案_v1_20261019.md`
+- `docs/plans/PES2TS_V5.4_剩余架构研究工作方案_v1.0_20261029.md`
+- `docs/plans/PES2TS_V52R_输入充分性与化学终点识别优化方案_v1_20261021.md`
+- `docs/plans/V541_WP7_frozen_dev_eval_设计方案_v1.0_20261028.md`
+- `docs/reports/PES2TS_Demo24_ACP首批计算_20261001.md`
+- `docs/reports/PES2TS_Demo24_TS_IRC算法诊断_20261001.md`
+- `docs/reports/PES2TS_Demo24_多坐标全批计算结果_20261002.md`
+- `docs/reports/PES2TS_Demo24_端点与TS几何核查_20261001.md`
+- `docs/reports/PES2TS_Demo24_第二轮修改与实测_20261002.md`
+- `docs/reports/PES2TS_generation关键问题与根因分析_20261002.md`
+- `docs/reports/PES2TS_V52R_输入充分性决策记录_20261021.md`
+- `docs/reports/PES2TS_V53MP_S2_5k规模报告_20261022.md`
+- `docs/reports/PES2TS_V53MP_S3_20k主结果报告_20261023.md`
+- `docs/reports/PES2TS_V53MP_S3_闭环评估报告_20261023.md`
+- `docs/reports/PES2TS_V53MP_S4_20k_vs_50k_配对统计与C臂导出_20261027.md`
+- `docs/reports/PES2TS_V53MP_S4_50k_单路正式训练报告_20261027.md`
+- `docs/reports/PES2TS_V53MP_规模训练收益报告_2k_to_50k_20261027.md`
+- `docs/reports/PES2TS_多坐标PES逐步实施方案_20261001.md`
+- `docs/reports/PES2TS_多坐标同步第一轮实现与实测_20261002.md`
+- `docs/reports/PES2TS_多键同步一维扫描全面问题报告_20261001.md`
+- `docs/reports/PES2TS_对话与现有任务完整总结报告_20261002.md`
+- `docs/reports/PES_GENERATION_单端预测校正延续可行性分析_20261002.md`
+- `docs/reports/PES_generation_多坐标约束学习_ORCA能力与数学方案_20261001.md`
+- `docs/superseded/PES2TS_V5.1-R3_端点对称特征与损失重训方案_v1_20261020.md`
+- `docs/superseded/PES2TS_V5.1-R3_端点对称特征与损失重训方案_v2_20261020.md`
+- `docs/superseded/PES2TS_单端点IRC生成控制器_产品设计_v1_20261020.md`
+- `docs/superseded/PES2TS_单端点IRC生成控制器_产品设计_v2_20261020.md`
+
+## 仅 README 索引（台账缺口）
+
+- `docs/contracts/PES2TS_ACP字段映射_v1.md`
+- `docs/contracts/PES2TS_ReactionIntent_Contract_v1.md`
+- `docs/contracts/PES2TS_V4.2-V4.7_实施合同与战役冻结_v1.md`
+- `docs/contracts/PES2TS_contracts_v1.md`
+- `docs/contracts/PES2TS_数据规范与ACP对接优化方案.md`
+- `docs/demo/PES2TS_Demo实现审核与架构解读_20260930.md`
+- `docs/demo/PES2TS_Demo评估指标_v1.md`
+- `docs/demo/PES2TS_demo24_反应挑选与复核方案.md`
+- `docs/design/G1_TS_IRC_映射与反应归簇实现方案.md`
+- `docs/design/G1_v2_L0到G2扫描策略设计.md`
+- `docs/design/G1_v2_ORCA扫描模式识别与计划.md`
+- `docs/design/G1_v2_一维优先与xTB二维成本策略.md`
+- `docs/design/G1_v2_产物成键逆向扫描优先策略.md`
+- `docs/design/G1_v2_多成键与少成键方向对比.md`
+- `docs/design/G1_v2_方向无关成键锚点与双向扫描策略.md`
+- `docs/design/G1_v2_补全实施总方案.md`
+- `docs/design/PES2TS_PES-C到PES-G架构与迁移方案_v1_20261004.md`
+- `docs/design/PES_GENERATION_图论扫描策略选择器设计_v1.md`
+- `docs/design/decisions/ADR-0001-统一执行后端接缝.md`
+- `docs/design/decisions/ADR-0002-计算后端统一经ACP执行.md`
+- `docs/design/decisions/ADR-0006-ORCA原生约束优化与控制策略分离.md`
+- `docs/design/decisions/ADR-0023-V4.2原生重连数据与内部开发划分.md`
+- `docs/design/decisions/ADR-0024-V4.2无界位移模型与战役训练协议.md`
+- `docs/plans/PES2TS_ACP执行统一与旧代码清理方案_20261003.md`
+- `docs/plans/PES2TS_G2_ACP能力补齐与联合验收计划_20261003.md`
+- `docs/plans/PES2TS_G2后续开发方案_Classic到Rank到Gen_20261003.md`
+- `docs/plans/PES2TS_V5.1-R3_反应意图条件化与端点标签不变重训方案_v3_20261020.md`
+- `docs/plans/PES2TS_V5.1-R3_数据库特征损失三位一体修复方案_v1_20261020.md`
+- `docs/plans/PES2TS_双项目开发与Demo方案.md`
+- `docs/plans/PES2TS_图论立体先验与单端协同延续优化方案_v2_20261002.md`
+- `docs/plans/PES2TS_扫描规划谱系合并方案_20260930.md`
+- `docs/plans/PES2TS_文档修订台账.md`
+- `docs/plans/PES2TS_第二轮修改最终方案_仅完全成断键_20261002.md`
+- `docs/plans/PES2TS_统一开发顺序与阶段验收.md`
+- `docs/plans/PES2TS_逐步实施与验证方案.md`
+- `docs/reports/PES2TS_PES-C-G架构审核与创新性可行性分析_20261004.md`
+- `docs/reports/PES2TS_V4.2-V4.7_过夜战役汇总_20261018.md`
+- `docs/reports/PES2TS_V542_Backbone_50K_实施与训练报告_20261031.md`
+- `docs/reports/PES2TS_实现报告_20261018.md`
+- `docs/reports/PES2TS_开发阶段性报告_20260930.md`
+
+## 仅台账索引（README 缺口）
+
+- `docs/README.md`
+- `docs/plans/PES2TS_EGNN_BC_IQL_SAC下一步完整训练方案_v2_20261015.md`
+- `docs/plans/PES2TS_V5.4.2_Backbone_50K_详细阶段实施方案_v1.0_20261029.md`
+- `docs/reports/PES2TS_Direct批次1-6实施记录_20261015.md`
+- `docs/reports/PES2TS_GPU环境与磁盘预算执行记录_20261015.md`
+- `docs/reports/PES2TS_V543_双Decoder_50K_实施与训练报告_20261106.md`
+- `docs/reports/PES2TS_V5第一阶段冲刺执行报告_20261018.md`

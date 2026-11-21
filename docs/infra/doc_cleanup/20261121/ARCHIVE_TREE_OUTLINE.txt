@@ -1,0 +1,110 @@
+PES2TS 开发档案树 —— 拟建 docs/archive_tree/ 文件树草案（task-6, 2026-11-21）
+================================================================================
+设计原则：
+  1. 只新增、不移动：docs/archive_tree/ 是"压缩后的时间线叙事层"，不是目录搬家区；
+     既有 docs/plans|design|reports|contracts|agent_runs|infra|archive|superseded 全部原地保留。
+  2. 分区依据 = 7 期（P1–P7，ARCHIVE_TREE.md §1 有边界证据）；每期含 1–4 个条目文件；
+     条目编号 E01–E17 一经分配不复用；横切常青层编号 X0。
+  3. 命名：目录 NN_p<期号>_<主题>_<起YYYYMMDD>_<止YYYYMMDD>/；文件 E##_<主题>.md。
+  4. 冻结规则：条目冻结后只可追加"后续指针"，不可改写；档案树自身变更登记 CHANGELOG.md。
+  5. 本树不进入 docs/reports/（只读证据区），不进入 docs/archive/（快照区）。
+  6. md 内文件引用一律用反引号 inline code（链接门禁扫描），不写 markdown 链接。
+
+================================================================================
+文件树（拟建）
+================================================================================
+
+docs/archive_tree/
+│
+├── README.md                                   # 总纲：定位/读者与用法/与四个既有目录边界/证据纪律
+│                                               # 来源：ARCHIVE_TREE.md §0（约 120 行）
+├── _TEMPLATE.md                                # 条目模板（9 字段 + 填写规则 + 四级完成度词表）
+│                                               # 来源：ARCHIVE_TREE.md §2
+├── _INDEX.md                                   # 分期×条目总表 + 主题交叉索引 + 负结果总索引
+│                                               # 来源：ARCHIVE_TREE.md §1 + §4
+├── CHANGELOG.md                                # 档案树自身变更记录（append-only；首条=2026-11-21 建立）
+│
+├── 00_global/                                  # 横切常青层 X0（只更新、不归档）
+│   ├── README.md                               # X0 规则与 18 条清单（ARCHIVE_TREE.md 附录 B）
+│   ├── authority_map.md                        # 宪法 v2.9 / AGENT / 阶段定义 / G–V 映射 / CODE_MAP 的"当前权威"指针
+│   └── timeline_evidence.md                    # 期边界证据：git 提交日分布 + 台账日期 + 快照时点（附录 A）
+│
+├── 10_p1_baseline_20260925_20261004/           # P1 基础期 G0–G2
+│   ├── E01_data_contract_v1.md                 # 数据底座与契约 v1（09-25→09-30）
+│   └── E02_g1_mapping_g2_classic_demo24.md     # G1 映射 + G2 Classic/Demo24 + 24 例战役准备（09-30→10-04）
+│
+├── 20_p2_pesn_20261005_20261014/               # P2 PES-N 立项期
+│   ├── E03_pesn_kernel_ssot.md                 # PES-N 立项与 SSOT 重构（10-05→10-07）
+│   ├── E04_g2t_ab3_ab4_g3p.md                  # G2.T 24 例 / AB3 / AB4 / G3.P 立项（10-05→10-08）
+│   ├── E05_three_module_architecture.md        # 三模块产品架构与预测器归属（10-05→10-07）
+│   └── E06_light_control_unified_residual.md   # 轻量控制 / 统一残差 / 扩量入口（10-07→10-14）
+│
+├── 30_p3_v4x_20261015_20261018/                # P3 V4.x 训练实验期
+│   ├── E07_v40_v41_input_semantics.md          # V4.0/V4.1 输入语义修复与双端 v4（10-15→10-17）
+│   └── E08_v42_v47_ten_hour_campaign.md        # V4.2–V4.7 十小时战役（负结果；10-17→10-18）
+│
+├── 40_p4_v5sprint_24h_20261018_20261021/       # P4 V5 冲刺与 24H 战役期
+│   ├── E09_v50_v52_sprint_r3.md                # V5.0–V5.2 冲刺与 R3 首轮（10-18→10-19）
+│   ├── E10_24h_campaign.md                     # 24H 自主战役 R3→V5.2→V5.3-ENG（10-20→10-21）
+│   └── E11_v52_task_correction_adr0030_0031.md # V5.2 任务纠偏与 ADR-0030/0031（10-21）
+│
+├── 50_p5_v53mp_20261021_20261027/              # P5 V5.3-MP 规模联合训练期
+│   └── E12_v53mp_scale_training.md             # V5.3-MP 规模联合训练与 2k→50k 收益结论（10-21→10-27）
+│
+├── 60_p6_v54x_20261027_20261106/               # P6 V5.4.x 三阶段期
+│   ├── E13_v541_embedding_50k.md               # V5.4.1 Embedding-50K（E0 留任；10-27→10-29）
+│   ├── E14_v542_backbone_50k.md                # V5.4.2 Backbone-50K（no_backbone_winner；10-29→10-31）
+│   └── E15_v543_dual_decoder_50k.md            # V5.4.3 双 Decoder-50K（双轨冠军；11-02→11-06）
+│
+├── 70_p7_governance_20261120_20261121/         # P7 治理归档与公开化期
+│   ├── E16_archive_release_governance.md       # 归档治理与公开化（LICENSE/划分名单/superseded 区；11-20）
+│   └── E17_doc_audit_normalization_plan.md     # 文档规范化归档方案 v2.0 与全量审计（11-21）
+│
+├── 90_evidence/                                # 证据指针层（不复制原报告正文，只存结构化指针）
+│   ├── README.md                               # 证据层规则：路径必须存在；报告只读；大文件只存指针
+│   ├── archive_map.csv                         # 本任务 ARCHIVE_MAP.csv 的落位副本（253 条 → E## / X0）
+│   ├── negative_results.md                     # 跨期负结果总表 N01–N21（ARCHIVE_TREE.md §4 落位）
+│   ├── metrics_ledger.csv                      # 跨期量化指标账本（指标/值/口径/证据路径/日期）
+│   └── decision_index.md                       # ADR-0001…0034 × 条目号 × 状态 × 日期 交叉索引
+│
+└── 99_meta/
+    ├── entry_template.md                       # 与 _TEMPLATE.md 同源；供脚本/批量填写用
+    ├── naming_rules.md                         # 目录/文件命名与编号规则（E## 不复用；X0 横切）
+    └── build_plan.md                           # 后续执行清单（ARCHIVE_TREE.md §6）与待补清单
+
+================================================================================
+17 条条目 × 期号 × 时间范围 × 一句话主题 × 主导 ADR × 核心负结果索引
+================================================================================
+E01 P1 2026-09-25→09-30 数据底座与契约 v1（G0/G1 第一批可复现证据）          ADR-0001        N01
+E02 P1 2026-09-30→10-04 G1 映射 + G2 Classic/Demo24 + 24 例战役准备         ADR-0002~0005   N02
+E03 P2 2026-10-05→10-07 PES-N 立项与 SSOT 重构（宪法/阶段定义/内核抽象）      ADR-0010        N03
+E04 P2 2026-10-05→10-08 G2.T 24 例真实战役 / AB3 / AB4 / G3.P 立项           ADR-0012/13/16  N04,N05
+E05 P2 2026-10-05→10-07 三模块产品架构与预测器代码归属                       ADR-0011/0014   —
+E06 P2 2026-10-07→10-14 轻量控制 / 统一残差 / IRC20k-RL2000 扩量入口         ADR-0015/17/18/19 N06
+E07 P3 2026-10-15→10-17 V4.0/V4.1 输入语义修复与双端 v4 主线                 ADR-0021/0022   N07
+E08 P3 2026-10-17→10-18 V4.2–V4.7 十小时战役（Executed-Frozen 负结果）       ADR-0022/23/24  N08,N09
+E09 P4 2026-10-18→10-19 V5.0–V5.2 十小时冲刺与 R3 首轮                       ADR-0026        —
+E10 P4 2026-10-20→10-21 24H 自主战役 R3→V5.2→V5.3-ENG（★示范成稿）          ADR-0027/28/29  N10,N11,N12
+E11 P4 2026-10-21       V5.2 任务纠偏与 ADR-0030/0031 两次语义修订           ADR-0030/0031   N13,N14
+E12 P5 2026-10-21→10-27 V5.3-MP 规模联合训练与 2k→50k 收益结论               ADR-0031        N15,N16
+E13 P6 2026-10-27→10-29 V5.4.1 Embedding-50K 执行（E0 留任）                 ADR-0032        N17
+E14 P6 2026-10-29→10-31 V5.4.2 Backbone-50K（no_backbone_winner）            ADR-0033        N18
+E15 P6 2026-11-02→11-06 V5.4.3 双 Decoder-50K（双轨冠军，★示范成稿）        ADR-0034        N19
+E16 P7 2026-11-20       归档治理与公开化（LICENSE/划分名单/superseded 区）   无新 ADR         N20
+E17 P7 2026-11-21       文档规范化归档方案 v2.0 与 253 条全量审计            无新 ADR         N21
+X0  横切  全期有效      宪法/AGENT/阶段定义/G–V 映射/CODE_MAP/README/台账     ADR-0025        —
+
+注：E10 与 E15 为 ARCHIVE_TREE.md 中的"完整示范成稿"（全字段写满）；其余条目同样按模板
+    完整成稿，后续抽取正文时以 ARCHIVE_MAP.csv 的 extract_content 为提纲（67 条 Y）。
+
+================================================================================
+落位与门禁注意事项
+================================================================================
+1. 复制到 docs/ 后需同 PR 更新：docs/README.md 索引 + docs/plans/PES2TS_文档修订台账.md 增量。
+2. 本树 md 内不得写 markdown 超链接；文件引用用反引号 inline code（check_docs_links.py 扫描）。
+3. 不修改 docs/consistency_config.json 的 historical/required_files 名单（52 条硬钉死路径；
+   本树只新增 docs/archive_tree/**，不移动既有文件，因此不触碰门禁）。
+4. 若接 G5 门禁（doc_manifest --check），按归档方案 v2.0 §G5 规格增量接入；不要一次改 52 条路径。
+5. 体量预算：17 条目正文目标合计 ≤120 KB；证据走 90_evidence/ 指针，不复制原报告大段正文。
+
+（草案结束；task-6 交付：ARCHIVE_TREE.md / ARCHIVE_MAP.csv / ARCHIVE_TREE_OUTLINE.txt）

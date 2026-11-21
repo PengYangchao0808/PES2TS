@@ -1,5 +1,23 @@
 # PES2TS 文档修订台账（协同性）
 
+## 2026-11-21 增量登记：开发档案树与文档清理方案 v1.0（系统性瘦身提案）
+
+- **新增** [PES2TS 开发档案树与文档清理方案 v1.0](../infra/PES2TS_开发档案树与文档清理方案_v1_20261121.md)（**Active-Proposed；提案 + 执行方案**）。背景：仓库所有者判断"大量开发文档已无保留价值"，要求系统性清理并归档为开发档案树；本方案是其可执行化。**扩展** [归档方案 v2.0](../infra/PES2TS_开发文档规范化归档方案_v2_20261121.md)，并**部分变更**其 §7.3"删除红线"（仅对过程性文档开放"可恢复退役"，SSOT/合同/ADR/模型卡/门禁证据仍永不删除）。
+- **两部分产出**：①**开发档案树** `docs/archive_tree/`（**7 期 / 17 条目 / 1 横切层，共 32 份**），记录每期核心思路/关键决策/量化成果/**负结果**/证据指针；②**核心文档集 44 个受管单元（≈98 份文件）** + owner 制 + 双周 30 分钟同步 + 讨论→文档五类落点判定树 + 48h 落档 + 季度档案刷新。
+- **清理规模（三档，ADR 全留裁决后）**：`safe` 删 **63**；**`standard`（推荐）删 116 / 留 137**（活跃面 180 → ≈102，含新建档案树 32；`docs/` 体积 4.74 MiB → ≤1.5 MiB）；`aggressive` 删 **152 / 留 101**。**ADR-0001…0034 全留**（档案树决策链与门禁 required_files 依据）；需先抽结论 **88 条**，门禁配置同 PR 受审变更 **15 条**。逐条候选与安全性见 [doc_cleanup/20261121/](../infra/doc_cleanup/20261121/README.md)。
+- **执行顺序**：Phase 0 治理修订（**前置**：新增 ADR-0035 文档生命周期与退役政策 + `AGENT.md` §9.4 例外 + 台账"退役"动作 + 门禁配置预改）→ Phase 1 保护性快照（`git tag pre-doc-purge-20261121` + `git bundle` + docs tar + 恢复演练）→ Phase 2 档案树落成 → Phase 3 D1/D2/D3 三批删除（每批独立 PR，门禁全绿）→ Phase 4 索引/门禁收敛（`docs/README` 收为 4 入口短索引 + G5）→ Phase 5 维护机制启动。
+- **安全机制**：删除前必须完成"结论抽取 → 档案条目评审 → tag/bundle 恢复演练"；52 条门禁钉死路径中，D1/D2 不碰、D3 才同 PR 改 `docs_consistency_config.json`/`g_v_map.yaml` 并重渲染 G–V 文档；任一阶段可 `git reset --hard <tag>` 回滚。
+- **执行状态（本次）**：**未删除/未移动任何既有文件**；仅新增本方案与配套材料，并在 `docs/README.md` 登记。**Phase 0 治理修订与 C1–C8 八项裁决待所有者签认**。
+
+## 2026-11-21 增量登记：开发文档规范化归档方案 v2.0 + 全量文档审计
+
+- **新增** [PES2TS 开发文档规范化归档方案 v2.0](../infra/PES2TS_开发文档规范化归档方案_v2_20261121.md)（**Active-Proposed；规范性方案**）。定位：面向**全部开发文档**（253 条记录）的分类法 + 状态机 + 命名/元数据/目录规范 + 归档判定与处置映射 + 分批执行手册 + 索引三件套与 **G5 门禁规格**。**扩展并部分取代** [仓库归档与清理方案 v1](../infra/PES2TS_仓库归档与清理方案_v1_20261120.md) 的"文档"部分（其 §3-B1/B3、§4-P2/P3）；不取代其脚本/缓存/推送 checklist 部分；服从 `docs/archive/README.md`、`docs/superseded/README.md`、`AGENT.md` §9、宪法 §0/§12/§14。
+- **全量审计证据目录** `docs/infra/doc_audit/20261121/`（**Evidence-ReadOnly**）：全量清单 `doc_inventory.csv`（**审计启动时点快照**：253 条 / 4.97 MB / 55,452 行；249 已跟踪 + 本轮新增 4 条未跟踪；审计目录自身后续新增的 7 份证据 md 按证据目录规则管理、不纳入处置映射，见方案 §3.1 口径声明）、处置映射 `DISPOSITION.csv`、现行约束基线 `GOVERNANCE_CONSTRAINTS.md`（30 条规则 G-xx、52 条硬钉死路径、12 项冲突 C-01…C-12、22 条禁止破坏项 D-01…D-22）、异常清单 `ANOMALIES.md`（32 条精编：P0 2 / P1 10 / P2 20；机械候选 60 条见 `anomalies.csv`）、家族清单 `FAMILIES.md`（21 家族/53 成员）、分类桶 `classification_mapping.csv`（253 条全覆盖）、处置建议 `RECOMMENDATIONS.md`（可立即归位 0 / 加横幅 7 / 需裁决 19）、迁移批次手册 `BATCH_PLAN.md`、独立复核 `VERIFICATION_REPORT.md`；审计脚本 `collect_inventory.py` / `anomaly_scan.py` / `families_scan.py` / `make_classification.py` / `build_disposition.py` / `validate_mapping.py` 可复跑（口径见该目录 `README.md`）。
+- **体检结论（2026-11-21 实测）**：`docs/**/*.md` **216** 份（活跃 180 / archive 36）；顶部有状态块 **167/216**（活跃面 42 份缺失）；状态取值归一化后 **17 个归并桶 / 40+ 原始值**（官方图例仅 5 值）；状态头书写格式 **5 变体**；索引覆盖：`docs/README.md` 133 / 台账 100 / **双缺 40**（reports 19、agent_runs 12、plans 4、superseded 4、infra 1）；版本家族 **21 组 / 53 成员**（6 组需所有者裁决）；门禁钉死 **52 条**（31 docs + 8 根 md + 13 非文档；按 historical 17 / required_files 27 / root_scope 9 / g_v_map 43 条引用去重合并计；另 1 条软登记 `R3_RESULT_SUMMARY.md`）。
+- **根因判断**：不是"文档太多"，而是**状态未成为契约**——宪法 §12.4 要求的状态头/单权威/索引校验**从未进入 CI**（`ci.yml` 仅 G–V map、链接、registry、pytest），故 12 项冲突在 `docs_consistency --strict` CLEAN 基线下长期并存（C-09）。方案给出 G5 门禁规格与 M4a/M4b 两步接入计划。
+- **执行状态（本次）**：**未移动/删除任何既有文件、未改门禁配置、未改 `docs/reports/**`、未改 `g_v_map.yaml` 与冻结件**。B0 中"本方案登记索引 + 台账 + 审计证据落盘"已完成；B0-5~B0-13、B1′、B2 待所有者批准；状态矛盾与治理选择列入方案 §14（12 个议题）与 `BATCH_PLAN.md` §5（19 条文档级裁决）待裁决。
+- **门禁结果**：见 `docs/infra/doc_audit/20261121/baseline_gate_outputs.txt` 与 `VERIFICATION_REPORT.md`（新增本方案与审计目录后复跑 4 门；`scanned`/`checked` 数量增加属预期，violation/error 必须为 0，warning 不高于基线 172）。
+
 ## 2026-11-20 增量登记：划分名单发布（修复"仓库不含反应名单"）
 
 - **触发**：队友复刻时发现仓库里没有任何反应 ID 名单（此前只有**计数型** manifest）。核实属实：`data/manifests/split_manifest.json` 仅 8.4 KB（counts/audit，无 id 列表），真正的名单全在 `outputs/**`（整目录 gitignored）与 WSL。

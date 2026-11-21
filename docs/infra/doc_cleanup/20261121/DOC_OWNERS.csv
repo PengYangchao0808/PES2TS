@@ -1,0 +1,66 @@
+编号,路径或目录,核心集分组,类型,owner角色,复核角色,更新频率,下次审查日,状态,备注
+G1,docs/PES2TS_开发宪法_v1.md,治理根,规范根SSOT,仓库所有者,科学负责人,双周抽检+里程碑全读,2026-11-27,生效,冲突以本文件为准；修订走宪法§12
+G2,AGENT.md,治理根,执行投影,仓库所有者,工程负责人,双周,2026-11-27,生效,宪法修订后同步；Phase0将修订§9.4退役例外
+G3,docs/plans/PES2TS_阶段定义_G0-G3.md,治理根,阶段定义,仓库所有者,科学负责人,里程碑,2026-12-31,生效,文件名历史名保留；改名另立受审改动
+G4,docs/plans/PES2TS_完整开发流方案_整合版_v1.md,治理根,流程总纲,科学负责人,仓库所有者,里程碑,2026-12-31,生效,G0-G4阶段流/双轨/文档地图
+G5,docs/plans/PES2TS_文档修订台账.md,治理根,追加流水,Agent 会话,仓库所有者,事件驱动当日+双周抽检,2026-11-27,生效,只追加；每次文档动作当日登记；Phase0新增退役动作
+G6,docs/README.md,治理根,人工导航索引,Agent 会话,仓库所有者,事件驱动同PR+双周,2026-11-27,生效,Phase4收敛为4入口短索引；与台账/清单三件套一致
+G7,docs/infra/PES2TS_开发文档规范化归档方案_v2_20261121.md,治理根,治理规范,仓库所有者,科学负责人,里程碑+季度,2026-12-31,待签认,状态词表/元数据头/G5规格；签认后转Canonical
+G8,docs/infra/PES2TS_开发档案树与文档清理方案_v1_20261121.md,治理根,治理规范,仓库所有者,工程负责人,里程碑,2026-12-31,待签认,退役政策/Phase0-5/回滚；Phase0签认后生效
+G9,docs/design/PES2TS_G_V_MAPPING_v1_20261018.md,治理根,生成物,Agent 会话,工程负责人,事件驱动+双周核对,2026-11-27,生成物,源为config/registry/g_v_map.yaml；禁止手改；--check须current
+G10,docs/agent_runs/FAQ.md,治理根,运营问答(非规范),Agent 会话,科学负责人,双周,2026-11-27,待建,FAQ落点；L4豁免状态头；每条带依据/失效条件/复审日
+G11,docs/infra/doc_cleanup/20261121/RETIRE_LOG.md,治理根,退役流水,Agent 会话,仓库所有者,每批退役当日,2026-12-31,待建,由MIGRATION_LOG升级；追加式；与档案条目+恢复tag对应
+C1,docs/contracts/PES2TS_MoveProcessContract_v1.md,现行合同与接口,任务合同,科学负责人,仓库所有者,双周,2026-11-27,生效,唯一任务合同；required_files钉死；语义变更先ADR再发v2
+C2,docs/contracts/PES2TS_ReactionIntent_Contract_v2.md,现行合同与接口,输入合同,科学负责人,工程负责人,双周,2026-11-27,生效,取代v1的Stop/q条款；须写明未继承条款
+C3,docs/contracts/PES2TS_GeometryPolicyContract_v2.md,现行合同与接口,几何合同,科学负责人,工程负责人,双周,2026-11-27,生效,v1条款未继承者须显式标注
+C4,docs/contracts/PES2TS_contracts_v1.md,现行合同与接口,契约总表,工程负责人,科学负责人,双周,2026-11-27,生效,schema身份/字段演进入口；新schema须登记
+C5,docs/contracts/PES2TS_ACP字段映射_v1.md,现行合同与接口,接口映射,工程负责人,科学负责人,事件驱动+双周,2026-11-27,生效,ACP请求/响应/收据字段；外部后端唯一入口
+C8,docs/contracts/PES2TS_数据规范与ACP对接优化方案.md,现行合同与接口,数据规范说明,工程负责人,科学负责人,季度,2026-12-31,生效,与C4/C5交叉引用不复制
+D1,docs/design/PES2TS_CODE_MAP_v2_20261018.md,现行设计与计划,代码地图,工程负责人,科学负责人,事件驱动+双周,2026-11-27,生效,新会话第一个读的代码导航
+D3,docs/design/PES2TS_三模块与可视化产品架构_v1_20261005.md,现行设计与计划,产品架构设计,工程负责人,科学负责人,里程碑,2026-12-31,生效,schema/UI能力须声明未验收
+D4,docs/design/PES2TS_预测器产品与G3代码模块划分_v1_20261007.md,现行设计与计划,模块划分设计,工程负责人,科学负责人,里程碑,2026-12-31,生效,B0-B7划分；随ADR-0014同步
+D5,docs/design/PES2TS_Classic图论驱动与xTB原生约束扫描设计_v1_20261006.md,现行设计与计划,算法设计,科学负责人,工程负责人,季度,2026-12-31,生效,生产默认门状态须写明
+P1,docs/plans/PES2TS_V5-V7_反应意图条件化与低维生长方案_v3.0_20261020.md,现行设计与计划,阶段研究计划,科学负责人,仓库所有者,双周,2026-11-27,生效,V5/V6/V7；版本号在元数据头不进状态
+P2,docs/plans/PES2TS_V5.3-MP_大规模MOVE-PROCESS联合训练计划_v1_20261021.md,现行设计与计划,战役计划,科学负责人,仓库所有者,双周,2026-11-27,待裁决(P0),状态矛盾A02/Q2；required_files只改状态不移动
+P3,docs/plans/PES2TS_V5.4.2_Backbone_50K_详细阶段实施方案_v1.0_20261029.md,现行设计与计划,战役计划,科学负责人,仓库所有者,双周,2026-11-27,待裁决(P0),状态矛盾A01/Q1；required_files
+P4,docs/plans/PES2TS_V5.4.3_双Decoder_50K_全面开发与训练方案_v1.0_20261102.md,现行设计与计划,战役计划,科学负责人,仓库所有者,双周,2026-11-27,待转态,2026-11-06已执行；Frozen-Preregistered→Executed-Frozen+执行指针
+P5,docs/plans/PES2TS_V5.4.3_WP执行清单_v1.0_20261102.md,现行设计与计划,WP清单,科学负责人,仓库所有者,双周,2026-11-27,待转态,同P4同步转态；required_files
+P6,docs/plans/PES2TS_整体开发与发布方案_v2.md,现行设计与计划,发布主方案,仓库所有者,科学负责人,里程碑,2026-12-31,生效,发布门/交付物/外部可见性
+P7,docs/plans/PES2TS_训练测试集划分标准_v1_20261120.md,现行设计与计划,数据划分说明,科学负责人,工程负责人,季度（数据发布前必读）,2026-12-31,生效,说明性汇总非规范；升格规范须走ADR
+A1,docs/design/decisions/,现行设计与计划,ADR集(34份),科学负责人,仓库所有者,活跃6份双周+其余季度抽1/3,2026-11-27,生效,全留(C3-A)；ADR只加不改；编号唯一连续；0030-0034为required_files
+A1a,docs/design/decisions/ADR-0025-G-V双轴映射与战役注册.md,现行设计与计划,活跃ADR,科学负责人,工程负责人,双周,2026-11-27,生效,检查g_v_map与G9一致
+A1b,docs/design/decisions/ADR-0030-V5.2全路径导航与端点停止.md,现行设计与计划,活跃ADR(旧语义),科学负责人,工程负责人,双周,2026-11-27,生效,required_files；防被误当现语义
+A1c,docs/design/decisions/ADR-0031-MOVE-PROCESS统一学习合同.md,现行设计与计划,活跃ADR,科学负责人,工程负责人,双周,2026-11-27,生效,required_files；与C1条款一一对应
+A1d,docs/design/decisions/ADR-0032-V5.4.1-Embedding接口扩展与预注册治理.md,现行设计与计划,活跃ADR,科学负责人,工程负责人,双周,2026-11-27,生效,required_files；§6执行附录与报告链接有效
+A1e,docs/design/decisions/ADR-0033-V5.4.2-Backbone接口与预注册治理.md,现行设计与计划,活跃ADR,科学负责人,工程负责人,双周,2026-11-27,生效,required_files；与报告/registry状态一致
+A1f,docs/design/decisions/ADR-0034-V5.4.3-双Decoder与DecoderContextV1.md,现行设计与计划,活跃ADR,科学负责人,仓库所有者,双周,2026-11-27,待裁决(P1),Q4-A：保留冻结原文+台账/README指针；不改正文
+T1,docs/archive_tree/README.md,档案树入口,档案总纲,仓库所有者,Agent 会话,里程碑+季度,2026-12-31,待建（依赖task-6）,怎么读/分期索引/新增一期/与docs/archive区别
+T2,docs/archive_tree/_INDEX.md,档案树入口,全期索引,Agent 会话,科学负责人,事件驱动+双周,2026-11-27,待建（依赖task-6）,期号/时间/主题/一句话结论/关联ADR
+T3,docs/archive_tree/_TEMPLATE.md,档案树入口,条目模板,仓库所有者,Agent 会话,季度,2026-12-31,待建（依赖task-6）,八段模板；与方案§2.1同源
+T4,docs/archive_tree/CHANGELOG.md,档案树入口,变更流水,Agent 会话,仓库所有者,事件驱动当日,2026-11-27,待建（依赖task-6）,追加式
+T5,docs/archive_tree/00_global.md,档案树入口,全局条目,科学负责人,仓库所有者,季度,2026-12-31,待建（依赖task-6）,项目定位/最终形态/技术栈；冻结
+T6,docs/archive_tree/01_到14_期条目,档案树入口,分期条目集(15份),科学负责人,仓库所有者,里程碑+季度抽读3期,2026-12-31,待建（依赖task-6）,结论化叙述；§5负结果必填；定稿Frozen
+T7,docs/archive/README.md + docs/superseded/README.md,档案树入口,存量归档索引,Agent 会话,仓库所有者,季度,2026-12-31,只读,快照禁当墓地；Phase3后仅留manifest/README
+E1,README.md,产品与外部说明,仓库门面,仓库所有者,科学负责人,里程碑+季度,2026-12-31,生效,首屏第一段=最新已执行事实；历史段落下移
+E2,CONTRIBUTING.md,产品与外部说明,贡献流程,仓库所有者,工程负责人,季度,2026-12-31,生效,分支/PR/门禁/提交规范
+E3,examples/contracts_v1/README.md,产品与外部说明,示例说明,工程负责人,科学负责人,季度,2026-12-31,生效,demo bundle/viewer用法
+E4,examples/m1_first_plan/README.md,产品与外部说明,示例说明,工程负责人,科学负责人,季度,2026-12-31,生效,预检示例说明
+E5,scripts/README.md,产品与外部说明,脚本入口,工程负责人,科学负责人,季度,2026-12-31,生效,常用命令；挡一次性脚本
+E6,data/README.md,产品与外部说明,数据说明,科学负责人,工程负责人,里程碑（数据发布）+季度,2026-12-31,生效,大文件不入库；manifests名单例外+sha规则
+E7,outputs/README.md,产品与外部说明,产物说明,工程负责人,科学负责人,季度,2026-12-31,生效,本地/不入库/可重生成边界
+E8,artifacts/**/model_card.md,产品与外部说明,模型卡集(8份),科学负责人,仓库所有者,季度抽检,2026-12-31,只读,每次新bundle必更新；Evidence-ReadOnly；禁与报告数字矛盾
+W1,docs/plans/,目录巡检（清理后保留集）,计划目录,科学负责人,仓库所有者,季度,2026-12-31,生效,目标≤12份计划/设计；新增前先过判定树
+W2,docs/reports/,目录巡检（关键终报+负结果）,证据目录,Agent 会话,科学负责人,季度巡检,2026-12-31,只读,Evidence-ReadOnly永不改内容；目标≤10份；删前先抽取档案
+W3,docs/design/（decisions除外）,目录巡检,设计目录,工程负责人,科学负责人,季度,2026-12-31,生效,与D1-D5一致；新增设计走SOP-1
+W4,docs/contracts/,目录巡检,合同目录,科学负责人,仓库所有者,双周,2026-11-27,生效,同合同族最多1份Active-Normative
+W5,docs/infra/,目录巡检,工程治理目录,仓库所有者,工程负责人,季度,2026-12-31,生效,本期治理/清理方案所在；doc_audit为只读证据
+W6,docs/agent_runs/state/gates/,目录巡检,门禁证据JSON,Agent 会话,仓库所有者,只读不审查,2026-12-31,只读,永不删；审计豁免
+W7,docs/agent_runs/handoffs/,目录巡检,会话交接,Agent 会话,工程负责人,季度,2026-12-31,生效,交接协议载体；目标≤3份/季
+W8,docs/agent_runs/discussions/,目录巡检,讨论记录(新建),Agent 会话,科学负责人,双周,2026-11-27,待建,DISC-YYYYMMDD-NN；是落点载体不是落点
+W9,docs/agent_runs/sessions/,目录巡检,同步会/冻结评审记录(新建),Agent 会话,仓库所有者,双周,2026-11-27,待建,一页记录；含4度量+门禁输出
+W10,docs/archive/**,目录巡检,版本快照,Agent 会话,仓库所有者,季度,2026-12-31,只读,只增不改不移动；链接检查排除
+W11,docs/superseded/,目录巡检,已取代文档区,Agent 会话,科学负责人,季度,2026-12-31,只读,正文不改；仅链接/横幅；Phase3可能退役
+W12,docs/demo/,目录巡检,Demo专题,工程负责人,科学负责人,季度,2026-12-31,生效,Demo24方案与指标；非其他战役内容
+W13,config/registry/g_v_map.yaml,目录巡检,战役注册源,工程负责人,科学负责人,事件驱动,2026-11-27,生效,变更后必须重渲染G9并过--check与registry tests
+W14,.github/workflows/ci.yml,目录巡检,CI门禁配置,工程负责人,仓库所有者,事件驱动（门禁变更）,2026-12-31,生效,M4a/M4b接入doc_manifest与strict；变更需OWNER批准
+W15,artifacts/,目录巡检,产物与模型卡,科学负责人,工程负责人,季度,2026-12-31,只读,model_card为对外说明书；产物目录不入库原则见outputs/README

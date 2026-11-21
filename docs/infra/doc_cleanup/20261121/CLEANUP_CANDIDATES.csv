@@ -1,0 +1,254 @@
+path,zone,doc_type,current_action,decision,intensity,reason,unique_value,gate_locked,referrers,recovery,target,phase
+24H_EXECUTION_TIMELINE.md,根目录,运营记录,keep,GATE_CONFIG_MUST_CHANGE,aggressive,门禁钉死；仅在 D3 同 PR 改配置并重渲染后删除，否则保留,高,historical;root_scope,6,git blob,E10 + 门禁配置 diff,D3
+24H_FINAL_REPORT.md,根目录,报告,keep,GATE_CONFIG_MUST_CHANGE,aggressive,门禁钉死；仅在 D3 同 PR 改配置并重渲染后删除，否则保留,高,historical;root_scope,8,git blob,E10 + 门禁配置 diff,D3
+AGENT.md,根目录,治理规范,keep,KEEP,-,核心保留：原地保留(门禁钉死),高,root_scope,141,git blob,常青层,D0
+CONTRIBUTING.md,根目录,外部说明,keep,KEEP,-,核心保留：原地保留(SSOT/索引),高,,3,git blob,档案树节点,D0
+FAILURE_AND_REMAINING_WORK.md,根目录,运营记录,keep,GATE_CONFIG_MUST_CHANGE,aggressive,门禁钉死；仅在 D3 同 PR 改配置并重渲染后删除，否则保留,高,historical;root_scope,7,git blob,E10 + 门禁配置 diff,D3
+LICENSE,根目录,外部说明,keep,KEEP,-,核心保留：需所有者裁决,高,,27,git blob,档案树节点,D0
+NEXT_DAY_DECISION_MEMO.md,根目录,运营记录,keep,GATE_CONFIG_MUST_CHANGE,aggressive,门禁钉死；仅在 D3 同 PR 改配置并重渲染后删除，否则保留,高,historical;root_scope,7,git blob,E10 + 门禁配置 diff,D3
+R3_RESULT_SUMMARY.md,根目录,报告,keep,GATE_CONFIG_MUST_CHANGE,aggressive,门禁钉死；仅在 D3 同 PR 改配置并重渲染后删除，否则保留,高,root_scope,9,git blob,E10 + 门禁配置 diff,D3
+README.md,根目录,产品文档,keep,KEEP,-,核心保留：原地保留(SSOT/索引),高,root_scope,237,git blob,常青层,D0
+V52_PROGRESS_STOP_REPORT.md,根目录,报告,keep,GATE_CONFIG_MUST_CHANGE,aggressive,门禁钉死；仅在 D3 同 PR 改配置并重渲染后删除，否则保留,高,historical;root_scope,6,git blob,E10 + 门禁配置 diff,D3
+V53MP_RESUME_20261022.md,根目录,运营记录,keep,DELETE,safe,原地保留(门禁钉死),中,,0,git blob,E12（重复副本，结论已存在于现行件）,D1
+V53_ROLLOUT_REPORT.md,根目录,报告,keep,KEEP,-,核心保留：原地保留(门禁钉死),高,root_scope,12,git blob,档案树节点,D0
+artifacts/pesn/pesn-control-demo24-bc-v0.1.0/model_card.md,artifacts,产品文档,retain-readonly,KEEP,-,核心保留：原地保留(只读证据),高,,75,git blob,档案树节点,D0
+artifacts/pesn/pesn-control-demo24-bc-v0.1.1-rlrepair1/model_card.md,artifacts,产品文档,retain-readonly,KEEP,-,核心保留：原地保留(只读证据),高,,75,git blob,档案树节点,D0
+artifacts/pesn/pesn-control-demo24-cql-v0.1.1-rlrepair1/model_card.md,artifacts,产品文档,retain-readonly,KEEP,-,核心保留：原地保留(只读证据),高,,75,git blob,档案树节点,D0
+artifacts/pesn/pesn-control-demo24-v0.1.0/model_card.md,artifacts,产品文档,retain-readonly,KEEP,-,核心保留：原地保留(只读证据),高,,75,git blob,档案树节点,D0
+artifacts/pesn/pesn-control-scale-bc-v0.1.0-rl50/model_card.md,artifacts,产品文档,retain-readonly,KEEP,-,核心保留：原地保留(只读证据),高,,75,git blob,档案树节点,D0
+artifacts/pesn/pesn-control-scale-cql-v0.1.0-rl50/model_card.md,artifacts,产品文档,retain-readonly,KEEP,-,核心保留：原地保留(只读证据),高,,75,git blob,档案树节点,D0
+artifacts/pesn/pesn-irc-scale5k-v0.1.0-rc.1/model_card.md,artifacts,产品文档,retain-readonly,KEEP,-,核心保留：原地保留(只读证据),高,,75,git blob,档案树节点,D0
+artifacts/pesn/pesn-irc-v0.1.0-rc.1/model_card.md,artifacts,产品文档,retain-readonly,KEEP,-,核心保留：原地保留(只读证据),高,,75,git blob,档案树节点,D0
+data/README.md,data/outputs,索引,keep,KEEP,-,核心保留：需所有者裁决,高,,237,git blob,档案树节点,D0
+docs/PES2TS_开发宪法_v1.md,docs/根,治理规范,keep,KEEP,-,核心保留：原地保留(SSOT/索引),高,,128,git blob,常青层,D0
+docs/README.md,docs/根,索引,keep,KEEP,-,核心保留：原地保留(SSOT/索引),高,,237,git blob,常青层,D0
+docs/agent_runs/BOOTSTRAP_REVIEW.md,docs/agent_runs,报告,retain-readonly,ARCHIVE_EXTRACT_THEN_DELETE,standard,过程性报告/一次性计划；结论抽入档案树后删除,中,,9,git blob,E10,D2
+docs/agent_runs/E0_SIGNOFF_REPORT.md,docs/agent_runs,报告,retain-readonly,DELETE,safe,原地保留(只读证据),中,,0,git blob,E10（重复副本，结论已存在于现行件）,D1
+docs/agent_runs/PARALLEL_EXECUTION_PLAN.md,docs/agent_runs,阶段计划,retain-readonly,MERGE_INTO,standard,过程性报告/一次性计划；结论抽入档案树后删除,中,,8,git blob,docs/plans/PES2TS_完整开发流方案_整合版_v1.md,D2
+docs/agent_runs/README.md,docs/agent_runs,索引,retain-readonly,KEEP,-,核心保留：原地保留(只读证据),高,,237,git blob,档案树节点,D0
+docs/agent_runs/handoffs/W-DATA_E1_sixtables.md,docs/agent_runs,运营记录,retain-readonly,ARCHIVE_EXTRACT_THEN_DELETE,standard,过程性报告/一次性计划；结论抽入档案树后删除,中,,1,git blob,E10,D2
+docs/agent_runs/handoffs/W-DATA_E7_stats.md,docs/agent_runs,运营记录,retain-readonly,DELETE,safe,原地保留(只读证据),中,,0,git blob,E10（重复副本，结论已存在于现行件）,D1
+docs/agent_runs/handoffs/W-FEAT_E2_v3_stack.md,docs/agent_runs,运营记录,retain-readonly,ARCHIVE_EXTRACT_THEN_DELETE,standard,过程性报告/一次性计划；结论抽入档案树后删除,中,,2,git blob,E10,D2
+docs/agent_runs/handoffs/W-FEAT_E4_v52labels.md,docs/agent_runs,运营记录,retain-readonly,DELETE,safe,原地保留(只读证据),中,,0,git blob,E10（重复副本，结论已存在于现行件）,D1
+docs/agent_runs/handoffs/W-FEAT_E6_v53exec.md,docs/agent_runs,运营记录,retain-readonly,DELETE,safe,原地保留(只读证据),中,,0,git blob,E10（重复副本，结论已存在于现行件）,D1
+docs/agent_runs/handoffs/W-FEAT_E6_v53prep.md,docs/agent_runs,运营记录,retain-readonly,DELETE,safe,原地保留(只读证据),中,,0,git blob,E10（重复副本，结论已存在于现行件）,D1
+docs/agent_runs/handoffs/W-LOSS_E3_BVL_arms.md,docs/agent_runs,运营记录,retain-readonly,ARCHIVE_EXTRACT_THEN_DELETE,standard,过程性报告/一次性计划；结论抽入档案树后删除,中,,2,git blob,E10,D2
+docs/agent_runs/handoffs/W-LOSS_E3_trainer_and_runs.md,docs/agent_runs,运营记录,retain-readonly,ARCHIVE_EXTRACT_THEN_DELETE,standard,过程性报告/一次性计划；结论抽入档案树后删除,中,,2,git blob,E10,D2
+docs/agent_runs/handoffs/W-LOSS_E5_v52.md,docs/agent_runs,运营记录,retain-readonly,ARCHIVE_EXTRACT_THEN_DELETE,standard,过程性报告/一次性计划；结论抽入档案树后删除,中,,1,git blob,E10,D2
+docs/agent_runs/handoffs/W-LOSS_WP-L3_ledger_hardening.md,docs/agent_runs,运营记录,retain-readonly,ARCHIVE_EXTRACT_THEN_DELETE,standard,过程性报告/一次性计划；结论抽入档案树后删除,中,,1,git blob,E10,D2
+docs/archive/20261005_pre_pesn/README.md,docs/archive,快照,retain-readonly,KEEP,-,核心保留：原地保留(快照),高,,237,git blob,档案树节点,D0
+docs/archive/20261006_pre_g3p/README.md,docs/archive,快照,retain-readonly,KEEP,-,核心保留：原地保留(快照),高,,237,git blob,档案树节点,D0
+docs/archive/20261007_pre_light_policy/AGENT.md,docs/archive,快照,retain-readonly,DELETE,safe,原地保留(快照),无,,141,git blob,E06（重复副本，结论已存在于现行件）,D1
+docs/archive/20261007_pre_light_policy/README.md,docs/archive,快照,retain-readonly,KEEP,-,核心保留：原地保留(快照),高,,237,git blob,档案树节点,D0
+docs/archive/20261007_pre_light_policy/docs/PES2TS_开发宪法_v1.md,docs/archive,快照,retain-readonly,DELETE,safe,原地保留(快照),无,,128,git blob,E06（重复副本，结论已存在于现行件）,D1
+docs/archive/20261007_pre_light_policy/docs/README.md,docs/archive,快照,retain-readonly,DELETE,safe,原地保留(快照),无,,237,git blob,E06（重复副本，结论已存在于现行件）,D1
+docs/archive/20261007_pre_light_policy/docs/plans/PES2TS_G3_P1_IRC教师预训练与模型版本计划_v1_20261006.md,docs/archive,快照,retain-readonly,DELETE,safe,原地保留(快照),无,,28,git blob,E06（重复副本，结论已存在于现行件）,D1
+docs/archive/20261007_pre_light_policy/docs/plans/PES2TS_PES-N未来开发计划_v2_20261005.md,docs/archive,快照,retain-readonly,DELETE,safe,原地保留(快照),无,,32,git blob,E06（重复副本，结论已存在于现行件）,D1
+docs/archive/20261007_pre_light_policy/docs/plans/PES2TS_完整开发流方案_整合版_v1.md,docs/archive,快照,retain-readonly,DELETE,safe,原地保留(快照),无,,17,git blob,E06（重复副本，结论已存在于现行件）,D1
+docs/archive/20261007_pre_light_policy/docs/plans/PES2TS_整体开发与发布方案_v2.md,docs/archive,快照,retain-readonly,DELETE,safe,原地保留(快照),无,,21,git blob,E06（重复副本，结论已存在于现行件）,D1
+docs/archive/20261007_pre_light_policy/docs/plans/PES2TS_文档修订台账.md,docs/archive,快照,retain-readonly,DELETE,safe,原地保留(快照),无,,56,git blob,E06（重复副本，结论已存在于现行件）,D1
+docs/archive/20261007_pre_light_policy/docs/plans/PES2TS_阶段定义_G0-G3.md,docs/archive,快照,retain-readonly,DELETE,safe,原地保留(快照),无,,95,git blob,E06（重复副本，结论已存在于现行件）,D1
+docs/archive/20261007_pre_light_policy/source_README.md,docs/archive,快照,retain-readonly,DELETE,safe,原地保留(快照),无,,0,git blob,E06（重复副本，结论已存在于现行件）,D1
+docs/archive/20261007_pre_orca_xtb_pilot/README.md,docs/archive,快照,retain-readonly,KEEP,-,核心保留：原地保留(快照),高,,237,git blob,档案树节点,D0
+docs/archive/20261007_pre_orca_xtb_pilot/files/AGENT.md,docs/archive,快照,retain-readonly,DELETE,safe,原地保留(快照),无,,141,git blob,E04（重复副本，结论已存在于现行件）,D1
+docs/archive/20261007_pre_orca_xtb_pilot/files/README.md,docs/archive,快照,retain-readonly,DELETE,safe,原地保留(快照),无,,237,git blob,E04（重复副本，结论已存在于现行件）,D1
+docs/archive/20261007_pre_orca_xtb_pilot/files/docs/PES2TS_开发宪法_v1.md,docs/archive,快照,retain-readonly,DELETE,safe,原地保留(快照),无,,128,git blob,E04（重复副本，结论已存在于现行件）,D1
+docs/archive/20261007_pre_orca_xtb_pilot/files/docs/README.md,docs/archive,快照,retain-readonly,DELETE,safe,原地保留(快照),无,,237,git blob,E04（重复副本，结论已存在于现行件）,D1
+docs/archive/20261007_pre_orca_xtb_pilot/files/docs/plans/PES2TS_文档修订台账.md,docs/archive,快照,retain-readonly,DELETE,safe,原地保留(快照),无,,56,git blob,E04（重复副本，结论已存在于现行件）,D1
+docs/archive/20261007_pre_orca_xtb_pilot/files/docs/plans/PES2TS_轻量控制与RL衔接计划_v1_20261007.md,docs/archive,快照,retain-readonly,DELETE,safe,原地保留(快照),无,,18,git blob,E04（重复副本，结论已存在于现行件）,D1
+docs/archive/20261007_pre_predictor_scope/README.md,docs/archive,快照,retain-readonly,KEEP,-,核心保留：原地保留(快照),高,,237,git blob,档案树节点,D0
+docs/archive/20261007_pre_unified_residual_rl/AGENT.md,docs/archive,快照,retain-readonly,DELETE,safe,原地保留(快照),无,,141,git blob,E06（重复副本，结论已存在于现行件）,D1
+docs/archive/20261007_pre_unified_residual_rl/README.md,docs/archive,快照,retain-readonly,KEEP,-,核心保留：原地保留(快照),高,,237,git blob,档案树节点,D0
+docs/archive/20261007_pre_unified_residual_rl/docs__PES2TS_开发宪法_v1.md,docs/archive,快照,retain-readonly,DELETE,safe,原地保留(快照),无,,0,git blob,E06（重复副本，结论已存在于现行件）,D1
+docs/archive/20261007_pre_unified_residual_rl/docs__README.md,docs/archive,快照,retain-readonly,DELETE,safe,原地保留(快照),无,,0,git blob,E06（重复副本，结论已存在于现行件）,D1
+docs/archive/20261007_pre_unified_residual_rl/docs__plans__PES2TS_G2_AB4_ORCA驱动xTB约束优化试点方案_20261007.md,docs/archive,快照,retain-readonly,DELETE,safe,原地保留(快照),无,,0,git blob,E06（重复副本，结论已存在于现行件）,D1
+docs/archive/20261007_pre_unified_residual_rl/docs__plans__PES2TS_PES-N未来开发计划_v2_20261005.md,docs/archive,快照,retain-readonly,DELETE,safe,原地保留(快照),无,,0,git blob,E06（重复副本，结论已存在于现行件）,D1
+docs/archive/20261007_pre_unified_residual_rl/docs__plans__PES2TS_文档修订台账.md,docs/archive,快照,retain-readonly,DELETE,safe,原地保留(快照),无,,0,git blob,E06（重复副本，结论已存在于现行件）,D1
+docs/archive/20261007_pre_unified_residual_rl/docs__plans__PES2TS_轻量控制与RL衔接计划_v1_20261007.md,docs/archive,快照,retain-readonly,DELETE,safe,原地保留(快照),无,,0,git blob,E06（重复副本，结论已存在于现行件）,D1
+docs/archive/20261007_pre_unified_residual_rl/docs__plans__PES2TS_阶段定义_G0-G3.md,docs/archive,快照,retain-readonly,DELETE,safe,原地保留(快照),无,,0,git blob,E06（重复副本，结论已存在于现行件）,D1
+docs/archive/20261008_pre_scale20k_rl2k/AGENT.md,docs/archive,快照,retain-readonly,DELETE,safe,原地保留(快照),无,,141,git blob,E06（重复副本，结论已存在于现行件）,D1
+docs/archive/20261008_pre_scale20k_rl2k/README.md,docs/archive,快照,retain-readonly,KEEP,-,核心保留：原地保留(快照),高,,237,git blob,档案树节点,D0
+docs/archive/20261008_pre_scale20k_rl2k/docs/README.md,docs/archive,快照,retain-readonly,DELETE,safe,原地保留(快照),无,,237,git blob,E06（重复副本，结论已存在于现行件）,D1
+docs/archive/20261008_pre_scale20k_rl2k/docs/plans/PES2TS_RL下一轮代码修复训练与调整方案_v1_20261008.md,docs/archive,快照,retain-readonly,DELETE,safe,原地保留(快照),无,,8,git blob,E06（重复副本，结论已存在于现行件）,D1
+docs/archive/20261008_pre_scale20k_rl2k/docs/plans/PES2TS_文档修订台账.md,docs/archive,快照,retain-readonly,DELETE,safe,原地保留(快照),无,,56,git blob,E06（重复副本，结论已存在于现行件）,D1
+docs/archive/README.md,docs/archive,快照,retain-readonly,KEEP,-,核心保留：原地保留(快照),高,,237,git blob,常青层,D0
+docs/contracts/PES2TS_ACP字段映射_v1.md,docs/contracts,合同,keep,KEEP,-,核心保留：原地保留(SSOT/索引),高,,7,git blob,档案树节点,D0
+docs/contracts/PES2TS_FullPathNavigationContract_v1.md,docs/contracts,合同,keep,GATE_CONFIG_MUST_CHANGE,aggressive,门禁钉死；仅在 D3 同 PR 改配置并重渲染后删除，否则保留,高,historical;required_files,34,git blob,E11 + 门禁配置 diff,D3
+docs/contracts/PES2TS_G2T_战役合同字段字典_v1.md,docs/contracts,合同,keep,ARCHIVE_EXTRACT_THEN_DELETE,standard,过程性报告/一次性计划；结论抽入档案树后删除,中,,4,git blob,E02,D2
+docs/contracts/PES2TS_GeometryPolicyContract_v1.md,docs/contracts,合同,keep,GATE_CONFIG_MUST_CHANGE,aggressive,门禁钉死；仅在 D3 同 PR 改配置并重渲染后删除，否则保留,高,historical,16,git blob,E11 + 门禁配置 diff,D3
+docs/contracts/PES2TS_GeometryPolicyContract_v2.md,docs/contracts,合同,keep,KEEP,-,核心保留：原地保留(SSOT/索引),高,,18,git blob,档案树节点,D0
+docs/contracts/PES2TS_MoveProcessContract_v1.md,docs/contracts,合同,keep,KEEP,-,核心保留：原地保留(门禁钉死),高,required_files,45,git blob,档案树节点,D0
+docs/contracts/PES2TS_PESN_IRC教师数据与模型包合同_v1.md,docs/contracts,合同,keep,ARCHIVE_EXTRACT_THEN_DELETE,aggressive,仅在 aggressive 删；先抽结论入档案树,高,,12,git blob,E04,D3
+docs/contracts/PES2TS_ReactionIntent_Contract_v1.md,docs/contracts,合同,keep,GATE_CONFIG_MUST_CHANGE,aggressive,门禁钉死；仅在 D3 同 PR 改配置并重渲染后删除，否则保留,高,historical,26,git blob,E11 + 门禁配置 diff,D3
+docs/contracts/PES2TS_ReactionIntent_Contract_v2.md,docs/contracts,合同,keep,KEEP,-,核心保留：原地保留(SSOT/索引),高,,20,git blob,档案树节点,D0
+docs/contracts/PES2TS_V4.2-V4.7_实施合同与战役冻结_v1.md,docs/contracts,合同,keep,ARCHIVE_EXTRACT_THEN_DELETE,standard,过程性报告/一次性计划；结论抽入档案树后删除,中,,3,git blob,E08,D2
+docs/contracts/PES2TS_contracts_v1.md,docs/contracts,合同,keep,KEEP,-,核心保留：原地保留(SSOT/索引),高,,7,git blob,档案树节点,D0
+docs/contracts/PES2TS_双端TS教师与相容转移合同_v2.md,docs/contracts,合同,keep,GATE_CONFIG_MUST_CHANGE,aggressive,门禁钉死；仅在 D3 同 PR 改配置并重渲染后删除，否则保留,高,historical,13,git blob,E07 + 门禁配置 diff,D3
+docs/contracts/PES2TS_数据规范与ACP对接优化方案.md,docs/contracts,合同,keep,KEEP,-,核心保留：原地保留(SSOT/索引),高,,7,git blob,档案树节点,D0
+docs/demo/PES2TS_Demo实现审核与架构解读_20260930.md,docs/demo,报告,retain-readonly,DELETE,safe,原地保留(只读证据),中,,5,git blob,E02（重复副本，结论已存在于现行件）,D1
+docs/demo/PES2TS_Demo评估指标_v1.md,docs/demo,设计,retain-readonly,MERGE_INTO,safe,原地保留(只读证据),中,,5,git blob,docs/reports/PES2TS_V543_双Decoder_50K_实施与训练报告_20261106.md,D1
+docs/demo/PES2TS_demo24_反应挑选与复核方案.md,docs/demo,设计,retain-readonly,DELETE,safe,原地保留(只读证据),中,,10,git blob,E02（重复副本，结论已存在于现行件）,D1
+docs/design/G1_TS_IRC_映射与反应归簇实现方案.md,docs/design,设计,keep,ARCHIVE_EXTRACT_THEN_DELETE,standard,过程性报告/一次性计划；结论抽入档案树后删除,中,,4,git blob,E01,D2
+docs/design/G1_v2_L0到G2扫描策略设计.md,docs/design,设计,keep,ARCHIVE_EXTRACT_THEN_DELETE,standard,过程性报告/一次性计划；结论抽入档案树后删除,中,,5,git blob,E02,D2
+docs/design/G1_v2_ORCA扫描模式识别与计划.md,docs/design,设计,keep,ARCHIVE_EXTRACT_THEN_DELETE,standard,过程性报告/一次性计划；结论抽入档案树后删除,中,,8,git blob,E02,D2
+docs/design/G1_v2_一维优先与xTB二维成本策略.md,docs/design,设计,keep,ARCHIVE_EXTRACT_THEN_DELETE,standard,过程性报告/一次性计划；结论抽入档案树后删除,中,,6,git blob,E02,D2
+docs/design/G1_v2_产物成键逆向扫描优先策略.md,docs/design,设计,keep,ARCHIVE_EXTRACT_THEN_DELETE,standard,过程性报告/一次性计划；结论抽入档案树后删除,中,,5,git blob,E02,D2
+docs/design/G1_v2_多成键与少成键方向对比.md,docs/design,设计,keep,ARCHIVE_EXTRACT_THEN_DELETE,standard,过程性报告/一次性计划；结论抽入档案树后删除,中,,11,git blob,E02,D2
+docs/design/G1_v2_成断键扫描方向选择可视化.html,docs/design,设计,keep,ARCHIVE_EXTRACT_THEN_DELETE,standard,过程性报告/一次性计划；结论抽入档案树后删除,中,,6,git blob,E02,D2
+docs/design/G1_v2_方向无关成键锚点与双向扫描策略.md,docs/design,设计,keep,ARCHIVE_EXTRACT_THEN_DELETE,standard,过程性报告/一次性计划；结论抽入档案树后删除,中,,8,git blob,E02,D2
+docs/design/G1_v2_补全实施总方案.md,docs/design,设计,keep,ARCHIVE_EXTRACT_THEN_DELETE,standard,过程性报告/一次性计划；结论抽入档案树后删除,中,,11,git blob,E02,D2
+docs/design/PES2TS_CODE_MAP_v2_20261018.md,docs/design,设计,keep,KEEP,-,核心保留：原地保留(SSOT/索引),高,,6,git blob,常青层,D0
+docs/design/PES2TS_Classic图论驱动与xTB原生约束扫描设计_v1_20261006.md,docs/design,设计,keep,KEEP,-,核心保留：原地保留(SSOT/索引),高,,10,git blob,档案树节点,D0
+docs/design/PES2TS_G_V_MAPPING_v1_20261018.md,docs/design,设计,keep,KEEP,-,核心保留：原地保留(SSOT/索引),高,,27,git blob,常青层,D0
+docs/design/PES2TS_PES-C到PES-G架构与迁移方案_v1_20261004.md,docs/design,设计,keep,ARCHIVE_EXTRACT_THEN_DELETE,standard,过程性报告/一次性计划；结论抽入档案树后删除,中,,8,git blob,E03,D2
+docs/design/PES2TS_三模块与可视化产品架构_v1_20261005.md,docs/design,设计,keep,KEEP,-,核心保留：原地保留(SSOT/索引),高,,12,git blob,档案树节点,D0
+docs/design/PES2TS_预测器产品与G3代码模块划分_v1_20261007.md,docs/design,设计,keep,KEEP,-,核心保留：原地保留(SSOT/索引),高,,18,git blob,档案树节点,D0
+docs/design/PES_GENERATION_图论扫描策略选择器设计_v1.md,docs/design,设计,keep,ARCHIVE_EXTRACT_THEN_DELETE,standard,过程性报告/一次性计划；结论抽入档案树后删除,中,,32,git blob,E02,D2
+docs/design/decisions/ADR-0001-统一执行后端接缝.md,docs/design/decisions,ADR,keep,KEEP,-,Lead 裁决：ADR 全留（34 份）——档案树「关键决策」字段与负结果追溯的唯一锚点；冻结后不可改写，编号=决策指纹,高,,5,git blob,E01,D0
+docs/design/decisions/ADR-0002-计算后端统一经ACP执行.md,docs/design/decisions,ADR,keep,KEEP,-,Lead 裁决：ADR 全留（34 份）——档案树「关键决策」字段与负结果追溯的唯一锚点；冻结后不可改写，编号=决策指纹,高,,19,git blob,E02,D0
+docs/design/decisions/ADR-0003-G2-AB1接口登记.md,docs/design/decisions,ADR,keep,KEEP,-,Lead 裁决：ADR 全留（34 份）——档案树「关键决策」字段与负结果追溯的唯一锚点；冻结后不可改写，编号=决策指纹,中,,7,git blob,E02,D0
+docs/design/decisions/ADR-0004-G2-AB2接口登记.md,docs/design/decisions,ADR,keep,KEEP,-,Lead 裁决：ADR 全留（34 份）——档案树「关键决策」字段与负结果追溯的唯一锚点；冻结后不可改写，编号=决策指纹,中,,7,git blob,E02,D0
+docs/design/decisions/ADR-0005-G2-AB2执行前判定器与恢复修补.md,docs/design/decisions,ADR,keep,KEEP,-,Lead 裁决：ADR 全留（34 份）——档案树「关键决策」字段与负结果追溯的唯一锚点；冻结后不可改写，编号=决策指纹,中,,7,git blob,E02,D0
+docs/design/decisions/ADR-0006-ORCA原生约束优化与控制策略分离.md,docs/design/decisions,ADR,keep,KEEP,-,Lead 裁决：ADR 全留（34 份）——档案树「关键决策」字段与负结果追溯的唯一锚点；冻结后不可改写，编号=决策指纹,高,,9,git blob,E04,D0
+docs/design/decisions/ADR-0007-统一价值模型与搜索内生选点.md,docs/design/decisions,ADR,banner,KEEP,-,Lead 裁决：ADR 全留（34 份）——档案树「关键决策」字段与负结果追溯的唯一锚点；冻结后不可改写，编号=决策指纹,高,,10,git blob,E03（重复副本，结论已存在于现行件）,D0
+docs/design/decisions/ADR-0008-拓扑约束下的距离与位移联合预测.md,docs/design/decisions,ADR,banner,KEEP,-,Lead 裁决：ADR 全留（34 份）——档案树「关键决策」字段与负结果追溯的唯一锚点；冻结后不可改写，编号=决策指纹,高,,8,git blob,E03（重复副本，结论已存在于现行件）,D0
+docs/design/decisions/ADR-0009-G阶段下的统一模型开发框架.md,docs/design/decisions,ADR,banner,KEEP,-,Lead 裁决：ADR 全留（34 份）——档案树「关键决策」字段与负结果追溯的唯一锚点；冻结后不可改写，编号=决策指纹,高,,7,git blob,E03（重复副本，结论已存在于现行件）,D0
+docs/design/decisions/ADR-0010-PES-N反应状态价值与STOP-MOVE统一决策.md,docs/design/decisions,ADR,keep,KEEP,-,核心保留：原地保留(SSOT/索引),高,,30,git blob,档案树节点,D0
+docs/design/decisions/ADR-0011-三模块产品架构与统一可视化.md,docs/design/decisions,ADR,keep,KEEP,-,核心保留：原地保留(SSOT/索引),高,,15,git blob,档案树节点,D0
+docs/design/decisions/ADR-0012-Classic图论驱动与xTB原生约束扫描.md,docs/design/decisions,ADR,keep,KEEP,-,Lead 裁决：ADR 全留（34 份）——档案树「关键决策」字段与负结果追溯的唯一锚点；冻结后不可改写，编号=决策指纹,高,,14,git blob,E04,D0
+docs/design/decisions/ADR-0013-G3并行IRC预训练与模型版本体系.md,docs/design/decisions,ADR,keep,KEEP,-,Lead 裁决：ADR 全留（34 份）——档案树「关键决策」字段与负结果追溯的唯一锚点；冻结后不可改写，编号=决策指纹,高,,16,git blob,E04,D0
+docs/design/decisions/ADR-0014-预测器产品归属与G3代码范围.md,docs/design/decisions,ADR,keep,KEEP,-,Lead 裁决：ADR 全留（34 份）——档案树「关键决策」字段与负结果追溯的唯一锚点；冻结后不可改写，编号=决策指纹,高,,16,git blob,E05,D0
+docs/design/decisions/ADR-0015-G2稳定底座与轻量RL研究入口.md,docs/design/decisions,ADR,keep,KEEP,-,Lead 裁决：ADR 全留（34 份）——档案树「关键决策」字段与负结果追溯的唯一锚点；冻结后不可改写，编号=决策指纹,高,,14,git blob,E06,D0
+docs/design/decisions/ADR-0016-ORCA驱动xTB硬约束优化试点.md,docs/design/decisions,ADR,keep,KEEP,-,Lead 裁决：ADR 全留（34 份）——档案树「关键决策」字段与负结果追溯的唯一锚点；冻结后不可改写，编号=决策指纹,高,,10,git blob,E04,D0
+docs/design/decisions/ADR-0017-统一残差决策与G2有限回退.md,docs/design/decisions,ADR,keep,KEEP,-,Lead 裁决：ADR 全留（34 份）——档案树「关键决策」字段与负结果追溯的唯一锚点；冻结后不可改写，编号=决策指纹,高,,17,git blob,E06,D0
+docs/design/decisions/ADR-0018-RL纠错与动作支持研究计划.md,docs/design/decisions,ADR,keep,KEEP,-,Lead 裁决：ADR 全留（34 份）——档案树「关键决策」字段与负结果追溯的唯一锚点；冻结后不可改写，编号=决策指纹,中,,9,git blob,E06,D0
+docs/design/decisions/ADR-0019-IRC20k与RL2000分阶段扩量.md,docs/design/decisions,ADR,keep,KEEP,-,Lead 裁决：ADR 全留（34 份）——档案树「关键决策」字段与负结果追溯的唯一锚点；冻结后不可改写，编号=决策指纹,中,,8,git blob,E06,D0
+docs/design/decisions/ADR-0020-EGNN直接位移与BC-IQL-SAC研究主线.md,docs/design/decisions,ADR,banner,KEEP,-,Lead 裁决：ADR 全留（34 份）——档案树「关键决策」字段与负结果追溯的唯一锚点；冻结后不可改写，编号=决策指纹,高,,8,git blob,E07（重复副本，结论已存在于现行件）,D0
+docs/design/decisions/ADR-0021-无序双端拓扑与完整双侧TS教师主线.md,docs/design/decisions,ADR,keep,KEEP,-,Lead 裁决：ADR 全留（34 份）——档案树「关键决策」字段与负结果追溯的唯一锚点；冻结后不可改写，编号=决策指纹,高,historical,11,git blob,E07 + 门禁配置 diff,D0
+docs/design/decisions/ADR-0022-v4.1因果输入合同与特征v3.md,docs/design/decisions,ADR,keep,KEEP,-,Lead 裁决：ADR 全留（34 份）——档案树「关键决策」字段与负结果追溯的唯一锚点；冻结后不可改写，编号=决策指纹,中,,3,git blob,E08,D0
+docs/design/decisions/ADR-0023-V4.2原生重连数据与内部开发划分.md,docs/design/decisions,ADR,banner,KEEP,-,Lead 裁决：ADR 全留（34 份）——档案树「关键决策」字段与负结果追溯的唯一锚点；冻结后不可改写，编号=决策指纹,中,,4,git blob,E08,D0
+docs/design/decisions/ADR-0024-V4.2无界位移模型与战役训练协议.md,docs/design/decisions,ADR,banner,KEEP,-,Lead 裁决：ADR 全留（34 份）——档案树「关键决策」字段与负结果追溯的唯一锚点；冻结后不可改写，编号=决策指纹,中,,2,git blob,E08,D0
+docs/design/decisions/ADR-0025-G-V双轴映射与战役注册.md,docs/design/decisions,ADR,keep,KEEP,-,核心保留：原地保留(SSOT/索引),高,,6,git blob,常青层,D0
+docs/design/decisions/ADR-0026-V5冲刺key-atom位移合同与OOF语义.md,docs/design/decisions,ADR,keep,KEEP,-,核心保留：原地保留(SSOT/索引),高,,11,git blob,档案树节点,D0
+docs/design/decisions/ADR-0027-V5.1参考架fallback与双分母评估.md,docs/design/decisions,ADR,keep,KEEP,-,Lead 裁决：ADR 全留（34 份）——档案树「关键决策」字段与负结果追溯的唯一锚点；冻结后不可改写，编号=决策指纹,中,,8,git blob,E10,D0
+docs/design/decisions/ADR-0028-关键原子几何策略合同与V5-V7任务拆分.md,docs/design/decisions,ADR,keep,KEEP,-,Lead 裁决：ADR 全留（34 份）——档案树「关键决策」字段与负结果追溯的唯一锚点；冻结后不可改写，编号=决策指纹,高,historical,15,git blob,E10 + 门禁配置 diff,D0
+docs/design/decisions/ADR-0029-V5.2+双门评估与封存边界.md,docs/design/decisions,ADR,keep,KEEP,-,Lead 裁决：ADR 全留（34 份）——档案树「关键决策」字段与负结果追溯的唯一锚点；冻结后不可改写，编号=决策指纹,高,historical,10,git blob,E10 + 门禁配置 diff,D0
+docs/design/decisions/ADR-0030-V5.2全路径导航与端点停止.md,docs/design/decisions,ADR,keep,KEEP,-,核心保留：原地保留(SSOT/索引),高,required_files,31,git blob,档案树节点,D0
+docs/design/decisions/ADR-0031-MOVE-PROCESS统一学习合同.md,docs/design/decisions,ADR,keep,KEEP,-,核心保留：原地保留(SSOT/索引),高,required_files,28,git blob,档案树节点,D0
+docs/design/decisions/ADR-0032-V5.4.1-Embedding接口扩展与预注册治理.md,docs/design/decisions,ADR,keep,KEEP,-,核心保留：原地保留(SSOT/索引),高,required_files,11,git blob,档案树节点,D0
+docs/design/decisions/ADR-0033-V5.4.2-Backbone接口与预注册治理.md,docs/design/decisions,ADR,keep,KEEP,-,核心保留：原地保留(SSOT/索引),高,required_files,9,git blob,档案树节点,D0
+docs/design/decisions/ADR-0034-V5.4.3-双Decoder与DecoderContextV1.md,docs/design/decisions,ADR,keep,KEEP,-,核心保留：原地保留(SSOT/索引),高,required_files,14,git blob,档案树节点,D0
+docs/infra/PES2TS_仓库归档与清理方案_v1_20261120.md,docs/infra,运营记录,keep,MERGE_INTO,safe,原地保留(SSOT/索引),中,,7,git blob,docs/infra/PES2TS_开发文档规范化归档方案_v2_20261121.md,D1
+docs/infra/PES2TS_开发文档规范化归档方案_v2_20261121.md,docs/infra,运营记录,keep,KEEP,-,核心保留：需所有者裁决,高,,6,"无(未跟踪,需先归档)",档案树节点,D0
+docs/infra/doc_audit/20261121/GOVERNANCE_CONSTRAINTS.md,docs/infra,运营记录,keep,KEEP,-,核心保留：需所有者裁决,高,,14,"无(未跟踪,需先归档)",档案树节点,D0
+docs/infra/doc_audit/20261121/MIGRATION_LOG.md,docs/infra,运营记录,keep,KEEP,-,核心保留：需所有者裁决,高,,4,"无(未跟踪,需先归档)",档案树节点,D0
+docs/infra/doc_audit/20261121/README.md,docs/infra,索引,keep,KEEP,-,核心保留：需所有者裁决,高,,237,"无(未跟踪,需先归档)",档案树节点,D0
+docs/infra/wsl_memory_governance.md,docs/infra,运营记录,keep,ARCHIVE_EXTRACT_THEN_DELETE,standard,过程性报告/一次性计划；结论抽入档案树后删除,中,,1,git blob,E12,D2
+docs/plans/PES2TS_30h_R3_V52_V53_分层训练与验收计划_v1.1_20261020.md,docs/plans,阶段计划,keep,GATE_CONFIG_MUST_CHANGE,aggressive,门禁钉死；仅在 D3 同 PR 改配置并重渲染后删除，否则保留,高,historical,22,git blob,E10 + 门禁配置 diff,D3
+docs/plans/PES2TS_ACP执行统一与旧代码清理方案_20261003.md,docs/plans,阶段计划,keep,ARCHIVE_EXTRACT_THEN_DELETE,standard,过程性报告/一次性计划；结论抽入档案树后删除,中,,14,git blob,E02,D2
+docs/plans/PES2TS_Demo24_真实RL闭环与对照实施方案_v1_20261007.md,docs/plans,阶段计划,retain-readonly,MERGE_INTO,safe,原地保留(只读证据),中,,6,git blob,docs/plans/PES2TS_G2T真实战役执行方案_20261004.md,D1
+docs/plans/PES2TS_EGNN_BC_IQL_SAC下一步完整训练方案_v2_20261015.md,docs/plans,阶段计划,move,DELETE,safe,自身已声明被 v4 取代；引用 3 处需先修链；迁 superseded 需所有者批准,中,,3,git blob,E07（重复副本，结论已存在于现行件）,D1
+docs/plans/PES2TS_EGNN_BC_IQL_SAC实施与训练计划_v3_20261015.md,docs/plans,阶段计划,move,DELETE,safe,自身已声明被 v4 取代；引用 7 处需先修链；迁 superseded 需所有者批准,中,,8,git blob,E07（重复副本，结论已存在于现行件）,D1
+docs/plans/PES2TS_G0-G4整体开发框架修改方案_v1_20261005.md,docs/plans,阶段计划,banner,DELETE,safe,降级为历史提案(不移动),中,,9,git blob,E03（重复副本，结论已存在于现行件）,D1
+docs/plans/PES2TS_G1_G2边界审计与补齐任务_20261003.md,docs/plans,阶段计划,banner,DELETE,safe,降级为历史提案(不移动),中,,11,git blob,E02（重复副本，结论已存在于现行件）,D1
+docs/plans/PES2TS_G2T真实战役执行方案_20261004.md,docs/plans,阶段计划,retain-readonly,ARCHIVE_EXTRACT_THEN_DELETE,standard,过程性报告/一次性计划；结论抽入档案树后删除,中,,6,git blob,E04,D2
+docs/plans/PES2TS_G2_AB3功能整合与原生扫描改造方案_20261006.md,docs/plans,阶段计划,keep,ARCHIVE_EXTRACT_THEN_DELETE,standard,过程性报告/一次性计划；结论抽入档案树后删除,中,,13,git blob,E04,D2
+docs/plans/PES2TS_G2_AB4_ORCA驱动xTB约束优化试点方案_20261007.md,docs/plans,阶段计划,keep,ARCHIVE_EXTRACT_THEN_DELETE,standard,过程性报告/一次性计划；结论抽入档案树后删除,中,,10,git blob,E04,D2
+docs/plans/PES2TS_G2_ACP能力补齐与联合验收计划_20261003.md,docs/plans,阶段计划,keep,ARCHIVE_EXTRACT_THEN_DELETE,standard,过程性报告/一次性计划；结论抽入档案树后删除,中,,14,git blob,E02,D2
+docs/plans/PES2TS_G2_PESG收紧算法迭代方案_20261003.md,docs/plans,阶段计划,keep,ARCHIVE_EXTRACT_THEN_DELETE,standard,过程性报告/一次性计划；结论抽入档案树后删除,中,,12,git blob,E02,D2
+docs/plans/PES2TS_G2_下一批实现方案_真引擎接通与验收_20261004.md,docs/plans,阶段计划,retain-readonly,ARCHIVE_EXTRACT_THEN_DELETE,standard,过程性报告/一次性计划；结论抽入档案树后删除,中,,9,git blob,E04,D2
+docs/plans/PES2TS_G2_下一批算法调整与测试方案_20261003.md,docs/plans,阶段计划,keep,ARCHIVE_EXTRACT_THEN_DELETE,standard,过程性报告/一次性计划；结论抽入档案树后删除,中,,10,git blob,E02,D2
+docs/plans/PES2TS_G2后续开发方案_Classic到Rank到Gen_20261003.md,docs/plans,阶段计划,keep,ARCHIVE_EXTRACT_THEN_DELETE,standard,过程性报告/一次性计划；结论抽入档案树后删除,中,,12,git blob,E02,D2
+docs/plans/PES2TS_G3_P1_IRC教师预训练与模型版本计划_v1_20261006.md,docs/plans,阶段计划,keep,ARCHIVE_EXTRACT_THEN_DELETE,standard,过程性报告/一次性计划；结论抽入档案树后删除,中,,28,git blob,E04,D2
+docs/plans/PES2TS_IRC20k与RL2000下一阶段详细方案_v1_20261008.md,docs/plans,阶段计划,keep,ARCHIVE_EXTRACT_THEN_DELETE,standard,过程性报告/一次性计划；结论抽入档案树后删除,中,,10,git blob,E06,D2
+docs/plans/PES2TS_IRC_BC_IQL_SAC直接位移研究方案_v1_20261015.md,docs/plans,阶段计划,move,DELETE,safe,自身已声明被 v4 取代；引用 2 处需先修链；迁 superseded 需所有者批准,中,,2,git blob,E07（重复副本，结论已存在于现行件）,D1
+docs/plans/PES2TS_PES-N_V5-V7架构调整与实施计划_v1.2_20261018.md,docs/plans,阶段计划,keep,GATE_CONFIG_MUST_CHANGE,aggressive,门禁钉死；仅在 D3 同 PR 改配置并重渲染后删除，否则保留,高,historical,22,git blob,E11 + 门禁配置 diff,D3
+docs/plans/PES2TS_PES-N未来开发计划_v2_20261005.md,docs/plans,阶段计划,banner,DELETE,safe,仅加历史横幅,中,,32,git blob,E03（重复副本，结论已存在于现行件）,D1
+docs/plans/PES2TS_RL下一轮代码修复训练与调整方案_v1_20261008.md,docs/plans,阶段计划,keep,ARCHIVE_EXTRACT_THEN_DELETE,standard,过程性报告/一次性计划；结论抽入档案树后删除,中,,8,git blob,E06,D2
+docs/plans/PES2TS_RL自适应路径生长与IRC验证研究方案_v1_20261009.md,docs/plans,阶段计划,keep,ARCHIVE_EXTRACT_THEN_DELETE,standard,过程性报告/一次性计划；结论抽入档案树后删除,中,,2,git blob,E06,D2
+docs/plans/PES2TS_V4.2-V4.7_十小时训练实验方案_20261017.md,docs/plans,阶段计划,retain-readonly,ARCHIVE_EXTRACT_THEN_DELETE,aggressive,仅在 aggressive 删；先抽结论入档案树,中,,8,git blob,E08,D3
+docs/plans/PES2TS_V5-V7_三阶段研究与架构修订方案_v2.0_20261020.md,docs/plans,阶段计划,keep,GATE_CONFIG_MUST_CHANGE,aggressive,门禁钉死；仅在 D3 同 PR 改配置并重渲染后删除，否则保留,高,historical,18,git blob,E11 + 门禁配置 diff,D3
+docs/plans/PES2TS_V5-V7_反应意图条件化与低维生长方案_v3.0_20261020.md,docs/plans,阶段计划,keep,KEEP,-,核心保留：原地保留(SSOT/索引),高,,19,git blob,档案树节点,D0
+docs/plans/PES2TS_V5.0-V5.2_十小时冲刺训练与验证执行方案_v1_20261018.md,docs/plans,阶段计划,keep,GATE_CONFIG_MUST_CHANGE,aggressive,门禁钉死；仅在 D3 同 PR 改配置并重渲染后删除，否则保留,高,historical,18,git blob,E09 + 门禁配置 diff,D3
+docs/plans/PES2TS_V5.1-R2_损失尺度与数据完整性修复方案_v1_20261020.md,docs/plans,阶段计划,keep,GATE_CONFIG_MUST_CHANGE,aggressive,门禁钉死；仅在 D3 同 PR 改配置并重渲染后删除，否则保留,高,historical,16,git blob,E10 + 门禁配置 diff,D3
+docs/plans/PES2TS_V5.1-R3_反应意图条件化与端点标签不变重训方案_v3_20261020.md,docs/plans,阶段计划,keep,KEEP,-,核心保留：原地保留(SSOT/索引),高,,19,git blob,档案树节点,D0
+docs/plans/PES2TS_V5.1-R3_数据库特征损失三位一体修复方案_v1_20261020.md,docs/plans,阶段计划,keep,ARCHIVE_EXTRACT_THEN_DELETE,aggressive,仅在 aggressive 删；先抽结论入档案树,中,,6,git blob,E10,D3
+docs/plans/PES2TS_V5.1_修复冲刺与扩量准入方案_v1_20261019.md,docs/plans,阶段计划,keep,ARCHIVE_EXTRACT_THEN_DELETE,aggressive,仅在 aggressive 删；先抽结论入档案树,中,,6,git blob,E09,D3
+docs/plans/PES2TS_V5.3-MP_大规模MOVE-PROCESS联合训练计划_v1_20261021.md,docs/plans,阶段计划,keep,KEEP,-,核心保留：原地保留(SSOT/索引),高,required_files,28,git blob,档案树节点,D0
+docs/plans/PES2TS_V5.3-MP_文档同步清单_v1_20261021.md,docs/plans,阶段计划,retain-readonly,MERGE_INTO,safe,原地保留(只读证据),中,,4,git blob,docs/plans/PES2TS_V5.3-MP_大规模MOVE-PROCESS联合训练计划_v1_20261021.md,D1
+docs/plans/PES2TS_V5.4.1_Embedding_50K_详细阶段实施方案_v1.0_20261027.md,docs/plans,阶段计划,keep,KEEP,-,核心保留：原地保留(门禁钉死),高,required_files,13,git blob,档案树节点,D0
+docs/plans/PES2TS_V5.4.2_Backbone_50K_详细阶段实施方案_v1.0_20261029.md,docs/plans,阶段计划,keep,KEEP,-,核心保留：原地保留(SSOT/索引),高,required_files,10,git blob,档案树节点,D0
+docs/plans/PES2TS_V5.4.3_WP执行清单_v1.0_20261102.md,docs/plans,阶段计划,keep,KEEP,-,核心保留：原地保留(门禁钉死),高,required_files,13,git blob,档案树节点,D0
+docs/plans/PES2TS_V5.4.3_双Decoder_50K_全面开发与训练方案_v1.0_20261102.md,docs/plans,阶段计划,keep,KEEP,-,核心保留：原地保留(门禁钉死),高,required_files,17,git blob,档案树节点,D0
+docs/plans/PES2TS_V5.4_剩余架构研究工作方案_v1.0_20261029.md,docs/plans,阶段计划,keep,MERGE_INTO,safe,需所有者裁决,中,,0,git blob,docs/plans/PES2TS_V5.4.3_WP执行清单_v1.0_20261102.md,D1
+docs/plans/PES2TS_V52R_全路径导航与端点停止修复方案_v1_20261021.md,docs/plans,阶段计划,retain-readonly,ARCHIVE_EXTRACT_THEN_DELETE,aggressive,仅在 aggressive 删；先抽结论入档案树,中,,7,git blob,E11,D3
+docs/plans/PES2TS_V52R_输入充分性与化学终点识别优化方案_v1_20261021.md,docs/plans,阶段计划,retain-readonly,ARCHIVE_EXTRACT_THEN_DELETE,aggressive,仅在 aggressive 删；先抽结论入档案树,中,,7,git blob,E11,D3
+docs/plans/PES2TS_单端点IRC生成控制器_产品设计_v3_20261020.md,docs/plans,阶段计划,keep,ARCHIVE_EXTRACT_THEN_DELETE,aggressive,仅在 aggressive 删；先抽结论入档案树,中,,9,git blob,E10,D3
+docs/plans/PES2TS_双端拓扑条件训练与项目进度统一方案_v4_20261015.md,docs/plans,阶段计划,banner,DELETE,safe,降级为历史提案(不移动),中,,15,git blob,E07（重复副本，结论已存在于现行件）,D1
+docs/plans/PES2TS_双项目开发与Demo方案.md,docs/plans,阶段计划,retain-readonly,MERGE_INTO,safe,原地保留(只读证据),中,,7,git blob,docs/design/PES2TS_三模块与可视化产品架构_v1_20261005.md,D1
+docs/plans/PES2TS_图论立体先验与单端协同延续优化方案_v2_20261002.md,docs/plans,阶段计划,banner,DELETE,safe,降级为历史提案(不移动),中,,4,git blob,E02（重复副本，结论已存在于现行件）,D1
+docs/plans/PES2TS_完整开发流方案_整合版_v1.md,docs/plans,阶段计划,keep,KEEP,-,核心保留：原地保留(SSOT/索引),高,,17,git blob,常青层,D0
+docs/plans/PES2TS_实施路线图.html,docs/plans,阶段计划,retain-readonly,MERGE_INTO,safe,原地保留(只读证据),中,,3,git blob,docs/plans/PES2TS_V5-V7_反应意图条件化与低维生长方案_v3.0_20261020.md,D1
+docs/plans/PES2TS_扫描规划谱系合并方案_20260930.md,docs/plans,阶段计划,banner,DELETE,safe,降级为历史提案(不移动),中,,6,git blob,E02（重复副本，结论已存在于现行件）,D1
+docs/plans/PES2TS_拓扑约束TS接近度与位移联合学习方案_v2_20261004.md,docs/plans,阶段计划,banner,DELETE,safe,降级为历史提案(不移动),中,,8,git blob,E03（重复副本，结论已存在于现行件）,D1
+docs/plans/PES2TS_整体开发与发布方案_v2.md,docs/plans,阶段计划,keep,KEEP,-,核心保留：原地保留(SSOT/索引),高,,21,git blob,常青层,D0
+docs/plans/PES2TS_文档修订台账.md,docs/plans,运营记录,keep,KEEP,-,核心保留：原地保留(SSOT/索引),高,,56,git blob,常青层,D0
+docs/plans/PES2TS_第二轮修改最终方案_仅完全成断键_20261002.md,docs/plans,阶段计划,keep,ARCHIVE_EXTRACT_THEN_DELETE,aggressive,仅在 aggressive 删；先抽结论入档案树,中,,6,git blob,E02,D3
+docs/plans/PES2TS_统一价值模型与搜索排序一体化发展方案_v1_20261004.md,docs/plans,阶段计划,banner,DELETE,safe,降级为历史提案(不移动),中,,8,git blob,E03（重复副本，结论已存在于现行件）,D1
+docs/plans/PES2TS_统一开发顺序与阶段验收.md,docs/plans,阶段计划,banner,DELETE,safe,降级为历史提案(不移动),中,,8,git blob,E02（重复副本，结论已存在于现行件）,D1
+docs/plans/PES2TS_统一残差决策与G2有限回退实施方案_v1_20261007.md,docs/plans,阶段计划,keep,ARCHIVE_EXTRACT_THEN_DELETE,aggressive,仅在 aggressive 删；先抽结论入档案树,中,,17,git blob,E06,D3
+docs/plans/PES2TS_训练测试集划分标准_v1_20261120.md,docs/plans,阶段计划,keep,KEEP,-,核心保留：原地保留(SSOT/索引),高,,4,git blob,档案树节点,D0
+docs/plans/PES2TS_轻量控制与RL衔接计划_v1_20261007.md,docs/plans,阶段计划,keep,ARCHIVE_EXTRACT_THEN_DELETE,aggressive,仅在 aggressive 删；先抽结论入档案树,中,,18,git blob,E06,D3
+docs/plans/PES2TS_逐步实施与验证方案.md,docs/plans,阶段计划,banner,DELETE,safe,降级为历史提案(不移动),中,,5,git blob,E01（重复副本，结论已存在于现行件）,D1
+docs/plans/PES2TS_阶段定义_G0-G3.md,docs/plans,阶段计划,keep,KEEP,-,核心保留：原地保留(SSOT/索引),高,,95,git blob,常青层,D0
+docs/plans/V541_WP7_frozen_dev_eval_设计方案_v1.0_20261028.md,docs/plans,阶段计划,keep,ARCHIVE_EXTRACT_THEN_DELETE,aggressive,仅在 aggressive 删；先抽结论入档案树,中,,3,git blob,E13,D3
+docs/reports/PES2TS_Demo24_ACP首批计算_20261001.md,docs/reports,报告,retain-readonly,ARCHIVE_EXTRACT_THEN_DELETE,standard,过程性报告/一次性计划；结论抽入档案树后删除,中,,2,git blob,E02,D2
+docs/reports/PES2TS_Demo24_TS_IRC算法诊断_20261001.md,docs/reports,报告,retain-readonly,ARCHIVE_EXTRACT_THEN_DELETE,standard,过程性报告/一次性计划；结论抽入档案树后删除,中,,1,git blob,E02,D2
+docs/reports/PES2TS_Demo24_多坐标全批计算结果_20261002.md,docs/reports,报告,retain-readonly,ARCHIVE_EXTRACT_THEN_DELETE,standard,过程性报告/一次性计划；结论抽入档案树后删除,中,,3,git blob,E02,D2
+docs/reports/PES2TS_Demo24_端点与TS几何核查_20261001.md,docs/reports,报告,retain-readonly,ARCHIVE_EXTRACT_THEN_DELETE,standard,过程性报告/一次性计划；结论抽入档案树后删除,中,,3,git blob,E02,D2
+docs/reports/PES2TS_Demo24_第二轮修改与实测_20261002.md,docs/reports,报告,retain-readonly,ARCHIVE_EXTRACT_THEN_DELETE,standard,过程性报告/一次性计划；结论抽入档案树后删除,中,,2,git blob,E02,D2
+docs/reports/PES2TS_Direct_fit50训练表征分析_20261015.md,docs/reports,报告,retain-readonly,ARCHIVE_EXTRACT_THEN_DELETE,standard,过程性报告/一次性计划；结论抽入档案树后删除,中,,6,git blob,E07,D2
+docs/reports/PES2TS_Direct批次1-6实施记录_20261015.md,docs/reports,报告,retain-readonly,ARCHIVE_EXTRACT_THEN_DELETE,standard,过程性报告/一次性计划；结论抽入档案树后删除,中,,4,git blob,E07,D2
+docs/reports/PES2TS_GPU环境与磁盘预算执行记录_20261015.md,docs/reports,报告,retain-readonly,ARCHIVE_EXTRACT_THEN_DELETE,standard,过程性报告/一次性计划；结论抽入档案树后删除,中,,6,git blob,E07,D2
+docs/reports/PES2TS_PES-C-G架构审核与创新性可行性分析_20261004.md,docs/reports,报告,retain-readonly,ARCHIVE_EXTRACT_THEN_DELETE,standard,过程性报告/一次性计划；结论抽入档案树后删除,中,,6,git blob,E03,D2
+docs/reports/PES2TS_V4.2-V4.7_过夜战役汇总_20261018.md,docs/reports,报告,retain-readonly,ARCHIVE_EXTRACT_THEN_DELETE,standard,过程性报告/一次性计划；结论抽入档案树后删除,中,,4,git blob,E08,D2
+docs/reports/PES2TS_V52R_输入充分性决策记录_20261021.md,docs/reports,报告,retain-readonly,ARCHIVE_EXTRACT_THEN_DELETE,standard,过程性报告/一次性计划；结论抽入档案树后删除,中,,10,git blob,E11,D2
+docs/reports/PES2TS_V52_任务纠偏审计_20261021.md,docs/reports,报告,retain-readonly,KEEP,-,核心保留：原地保留(只读证据),高,required_files,17,git blob,档案树节点,D0
+docs/reports/PES2TS_V53MP_S0_数据建库与资格报告_20261022.md,docs/reports,报告,retain-readonly,ARCHIVE_EXTRACT_THEN_DELETE,standard,过程性报告/一次性计划；结论抽入档案树后删除,中,,9,git blob,E12,D2
+docs/reports/PES2TS_V53MP_S1_2k冒烟报告_20261022.md,docs/reports,报告,retain-readonly,ARCHIVE_EXTRACT_THEN_DELETE,standard,过程性报告/一次性计划；结论抽入档案树后删除,中,,8,git blob,E12,D2
+docs/reports/PES2TS_V53MP_S2_5k规模报告_20261022.md,docs/reports,报告,retain-readonly,ARCHIVE_EXTRACT_THEN_DELETE,standard,过程性报告/一次性计划；结论抽入档案树后删除,中,,6,git blob,E12,D2
+docs/reports/PES2TS_V53MP_S3_20k主结果报告_20261023.md,docs/reports,报告,retain-readonly,ARCHIVE_EXTRACT_THEN_DELETE,standard,过程性报告/一次性计划；结论抽入档案树后删除,中,,8,git blob,E12,D2
+docs/reports/PES2TS_V53MP_S3_闭环评估报告_20261023.md,docs/reports,报告,retain-readonly,ARCHIVE_EXTRACT_THEN_DELETE,standard,过程性报告/一次性计划；结论抽入档案树后删除,中,,2,git blob,E12,D2
+docs/reports/PES2TS_V53MP_S4_20k_vs_50k_配对统计与C臂导出_20261027.md,docs/reports,报告,retain-readonly,ARCHIVE_EXTRACT_THEN_DELETE,standard,过程性报告/一次性计划；结论抽入档案树后删除,中,,3,git blob,E12,D2
+docs/reports/PES2TS_V53MP_S4_50k_单路正式训练报告_20261027.md,docs/reports,报告,retain-readonly,ARCHIVE_EXTRACT_THEN_DELETE,standard,过程性报告/一次性计划；结论抽入档案树后删除,中,,2,git blob,E12,D2
+docs/reports/PES2TS_V53MP_规模训练收益报告_2k_to_50k_20261027.md,docs/reports,报告,retain-readonly,ARCHIVE_EXTRACT_THEN_DELETE,aggressive,仅在 aggressive 删；先抽结论入档案树,中,,1,git blob,E12,D3
+docs/reports/PES2TS_V53MP_训练过程可视化报告_20261023.html,docs/reports,报告,retain-readonly,ARCHIVE_EXTRACT_THEN_DELETE,aggressive,仅在 aggressive 删；先抽结论入档案树,中,,1,git blob,E12,D3
+docs/reports/PES2TS_V541_Embedding_50K_实施与训练报告_20261029.md,docs/reports,报告,retain-readonly,KEEP,-,核心保留：原地保留(只读证据),高,,14,git blob,档案树节点,D0
+docs/reports/PES2TS_V542_Backbone_50K_实施与训练报告_20261031.md,docs/reports,报告,retain-readonly,KEEP,-,核心保留：原地保留(只读证据),高,required_files,14,git blob,档案树节点,D0
+docs/reports/PES2TS_V543_双Decoder_50K_实施与训练报告_20261106.md,docs/reports,报告,retain-readonly,KEEP,-,核心保留：原地保留(只读证据),高,,4,git blob,档案树节点,D0
+docs/reports/PES2TS_V5第一阶段冲刺执行报告_20261018.md,docs/reports,报告,retain-readonly,DELETE,safe,原地保留(只读证据),中,,1,git blob,E09（重复副本，结论已存在于现行件）,D1
+docs/reports/PES2TS_generation关键问题与根因分析_20261002.md,docs/reports,报告,retain-readonly,ARCHIVE_EXTRACT_THEN_DELETE,aggressive,仅在 aggressive 删；先抽结论入档案树,中,,3,git blob,E02,D3
+docs/reports/PES2TS_v4.1阶段训练_修复输入语义与最小实验矩阵_最终报告_20261017.md,docs/reports,报告,retain-readonly,ARCHIVE_EXTRACT_THEN_DELETE,aggressive,仅在 aggressive 删；先抽结论入档案树,中,,5,git blob,E07,D3
+docs/reports/PES2TS_v4阶段训练_最终报告与问题复核_20261017.md,docs/reports,报告,retain-readonly,ARCHIVE_EXTRACT_THEN_DELETE,aggressive,仅在 aggressive 删；先抽结论入档案树,中,,6,git blob,E07,D3
+docs/reports/PES2TS_多坐标PES逐步实施方案_20261001.md,docs/reports,报告,retain-readonly,ARCHIVE_EXTRACT_THEN_DELETE,aggressive,仅在 aggressive 删；先抽结论入档案树,中,,2,git blob,E02,D3
+docs/reports/PES2TS_多坐标同步第一轮实现与实测_20261002.md,docs/reports,报告,retain-readonly,ARCHIVE_EXTRACT_THEN_DELETE,aggressive,仅在 aggressive 删；先抽结论入档案树,中,,2,git blob,E02,D3
+docs/reports/PES2TS_多键同步一维扫描全面问题报告_20261001.md,docs/reports,报告,retain-readonly,ARCHIVE_EXTRACT_THEN_DELETE,aggressive,仅在 aggressive 删；先抽结论入档案树,中,,4,git blob,E02,D3
+docs/reports/PES2TS_实现报告_20261018.md,docs/reports,报告,retain-readonly,KEEP,-,核心保留：原地保留(只读证据),高,,12,git blob,档案树节点,D0
+docs/reports/PES2TS_对话与现有任务完整总结报告_20261002.md,docs/reports,报告,retain-readonly,DELETE,safe,原地保留(只读证据),中,,0,git blob,E02（重复副本，结论已存在于现行件）,D1
+docs/reports/PES2TS_开发阶段性报告_20260930.md,docs/reports,报告,retain-readonly,DELETE,safe,原地保留(只读证据),中,,3,git blob,E01（重复副本，结论已存在于现行件）,D1
+docs/reports/PES_GENERATION_单端预测校正延续可行性分析_20261002.md,docs/reports,报告,retain-readonly,ARCHIVE_EXTRACT_THEN_DELETE,aggressive,仅在 aggressive 删；先抽结论入档案树,中,,1,git blob,E02,D3
+docs/reports/PES_generation_多坐标约束学习_ORCA能力与数学方案_20261001.md,docs/reports,报告,retain-readonly,ARCHIVE_EXTRACT_THEN_DELETE,aggressive,仅在 aggressive 删；先抽结论入档案树,中,,3,git blob,E02,D3
+docs/superseded/PES2TS_V5.1-R3_端点对称特征与损失重训方案_v1_20261020.md,docs/superseded,阶段计划,keep,DELETE,safe,原地保留(已归档),中,,2,git blob,E11（重复副本，结论已存在于现行件）,D1
+docs/superseded/PES2TS_V5.1-R3_端点对称特征与损失重训方案_v2_20261020.md,docs/superseded,阶段计划,keep,DELETE,safe,原地保留(已归档),中,,2,git blob,E11（重复副本，结论已存在于现行件）,D1
+docs/superseded/PES2TS_单端点IRC生成控制器_产品设计_v1_20261020.md,docs/superseded,设计,keep,DELETE,safe,原地保留(已归档),中,,2,git blob,E11（重复副本，结论已存在于现行件）,D1
+docs/superseded/PES2TS_单端点IRC生成控制器_产品设计_v2_20261020.md,docs/superseded,设计,keep,DELETE,safe,原地保留(已归档),中,,2,git blob,E11（重复副本，结论已存在于现行件）,D1
+docs/superseded/README.md,docs/superseded,索引,keep,KEEP,-,核心保留：原地保留(已归档),高,,237,git blob,常青层,D0
+examples/contracts_v1/README.md,examples,产品文档,keep,KEEP,-,核心保留：原地保留(SSOT/索引),高,,237,git blob,档案树节点,D0
+examples/contracts_v1/path_viewer.html,examples,产品文档,keep,KEEP,-,核心保留：需所有者裁决,高,,6,git blob,档案树节点,D0
+examples/m1_first_plan/README.md,examples,产品文档,keep,KEEP,-,核心保留：原地保留(SSOT/索引),高,,237,git blob,档案树节点,D0
+outputs/README.md,data/outputs,索引,keep,KEEP,-,核心保留：需所有者裁决,高,,237,git blob,常青层,D0
+requirements-pesn-runtime.txt,根目录,其它,retain-readonly,KEEP,-,核心保留：原地保留(只读证据),高,,12,git blob,常青层,D0
+requirements-pesn-training.txt,根目录,其它,retain-readonly,KEEP,-,核心保留：原地保留(只读证据),高,,16,git blob,常青层,D0
+requirements.txt,根目录,其它,retain-readonly,KEEP,-,核心保留：原地保留(只读证据),高,,22,git blob,常青层,D0
+scripts/README.md,scripts,索引,keep,KEEP,-,核心保留：原地保留(SSOT/索引),高,,237,git blob,常青层,D0
+scripts/archive/README.md,scripts,索引,keep,KEEP,-,核心保留：需所有者裁决,高,,237,git blob,档案树节点,D0

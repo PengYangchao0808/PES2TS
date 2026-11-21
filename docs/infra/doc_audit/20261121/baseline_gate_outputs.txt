@@ -1,0 +1,255 @@
+PES2TS 文档治理门禁基线输出（task-2 交付物 · 只读取证）
+==============================================================================
+生成时间：2026-11-21T22:27:31+08:00
+仓库根：E:/Calculations/AI4S_ML_Studys/PES2TS
+git 分支：master
+git HEAD：2f1d3baff574936cf6ee044798cfd006f908c0d5
+git 工作树：clean
+python：3.12.7（Windows-11-10.0.26200-SP0）
+说明：全部命令在仓库根执行；stdout/stderr 为原样捕获（UTF-8）。退出码 0 = 通过。
+
+##############################################################################
+[门禁 1/4 · docs_consistency --strict] 文档一致性门（禁用语 / historical 横幅 / required_files 子串）
+命令：E:\Anaconda\python.exe scripts/agent_ops/docs_consistency.py --strict
+工作目录：E:/Calculations/AI4S_ML_Studys/PES2TS
+开始时间：2026-11-21T22:27:31+08:00；耗时 0.2s
+退出码：0
+---- stdout ----
+docs_consistency: scanned 158 file(s); 0 violation(s); CLEAN
+---- stderr ----
+(empty)
+
+
+##############################################################################
+[门禁 2/4 · check_docs_links] 相对链接存在性门（README/AGENT/docs 排除 archive；E:/ 绝对路径仅 warning）
+命令：E:\Anaconda\python.exe scripts/check_docs_links.py
+工作目录：E:/Calculations/AI4S_ML_Studys/PES2TS
+开始时间：2026-11-21T22:27:31+08:00；耗时 0.2s
+退出码：0
+---- stdout ----
+WARN README.md: local-only link outputs/reviews/G2_real_campaign_review_20261006.md
+WARN README.md: local-only link outputs/g2t_campaign_s3_20261004/feedback_report_final_v1.json
+WARN README.md: local-only link outputs/01a0ed78-73eb-7833-b3c1-4a6c0733a397/Demo24_双人化学复核.xlsx
+WARN docs\demo\PES2TS_Demo实现审核与架构解读_20260930.md: local-only link ../../outputs/01a0ed78-73eb-7833-b3c1-4a6c0733a397/Demo24_双人化学复核.xlsx
+WARN docs\design\decisions\ADR-0027-V5.1参考架fallback与双分母评估.md: local-only link ../../../outputs/pesn/v5_1_r1/final_report.md
+WARN docs\design\decisions\ADR-0027-V5.1参考架fallback与双分母评估.md: local-only link ../../../outputs/pesn/v5_1/diagnostics/gauge_analysis.json
+WARN docs\design\decisions\ADR-0028-关键原子几何策略合同与V5-V7任务拆分.md: local-only link ../../../outputs/pesn/v5_1_r1/final_report.md
+WARN docs\design\PES2TS_Classic图论驱动与xTB原生约束扫描设计_v1_20261006.md: local-only link ../../outputs/reviews/G2_real_campaign_review_20261006.md
+WARN docs\design\PES2TS_PES-C到PES-G架构与迁移方案_v1_20261004.md: local-only link ../../outputs/acp_synchronized_capability_20261002/receipts.json
+WARN docs\design\PES_GENERATION_图论扫描策略选择器设计_v1.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/outputs/pes_generation_strategy_design_v1/Demo24_逐条扫描策略建议.md
+WARN docs\design\PES_GENERATION_图论扫描策略选择器设计_v1.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/outputs/pes_generation_strategy_design_v1/demo24_strategy_evidence.json
+WARN docs\design\PES_GENERATION_图论扫描策略选择器设计_v1.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/pes2ts_core/planning.py
+WARN docs\design\PES_GENERATION_图论扫描策略选择器设计_v1.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/pes2ts_core/g1/reaction_case.py
+WARN docs\design\PES_GENERATION_图论扫描策略选择器设计_v1.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/pes2ts_core/contracts.py
+WARN docs\design\PES_GENERATION_图论扫描策略选择器设计_v1.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/pes2ts_core/integration/acp/adapter.py
+WARN docs\design\PES_GENERATION_图论扫描策略选择器设计_v1.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/pes2ts_core/integration/acp/trajectory.py
+WARN docs\design\PES_GENERATION_图论扫描策略选择器设计_v1.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/pes2ts_core/integration/acp/quality.py
+WARN docs\design\PES_GENERATION_图论扫描策略选择器设计_v1.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/data/manifests/demo24_reaction_case_manifest_v1.json
+WARN docs\infra\PES2TS_仓库归档与清理方案_v1_20261120.md: local-only link ../../outputs/README.md
+WARN docs\plans\PES2TS_G1_G2边界审计与补齐任务_20261003.md: local-only link ../../outputs/g2_pesg_design_audit_20261003/context_audit.json
+WARN docs\plans\PES2TS_G1_G2边界审计与补齐任务_20261003.md: local-only link ../../outputs/g2_pesg_design_audit_20261003/audit_design.py
+WARN docs\plans\PES2TS_G2_PESG收紧算法迭代方案_20261003.md: local-only link ../../outputs/g2_pesg_design_audit_20261003/context_audit.json
+WARN docs\plans\PES2TS_G2_PESG收紧算法迭代方案_20261003.md: local-only link ../../outputs/g2_pesg_design_audit_20261003/audit_design.py
+WARN docs\plans\PES2TS_G2_PESG收紧算法迭代方案_20261003.md: local-only link ../../outputs/g2_pesg_design_audit_20261003/math_checks.json
+WARN docs\plans\PES2TS_IRC20k与RL2000下一阶段详细方案_v1_20261008.md: local-only link ../../outputs/reviews/rl_repair_batch1_20261008/review.md
+WARN docs\plans\PES2TS_RL下一轮代码修复训练与调整方案_v1_20261008.md: local-only link ../../outputs/reviews/rl_repair_batch1_20261008/review.md
+WARN docs\plans\PES2TS_RL自适应路径生长与IRC验证研究方案_v1_20261009.md: local-only link ../../outputs/pesn/scale20k_rl2000_v1_20261008/reports/first_batch_report_v1.json
+WARN docs\plans\PES2TS_RL自适应路径生长与IRC验证研究方案_v1_20261009.md: local-only link ../../outputs/pesn/scale20k_rl2000_v1_20261008/dev/dev50_round/reports/compare_report_v1.json
+WARN docs\plans\PES2TS_V4.2-V4.7_十小时训练实验方案_20261017.md: local-only link ../../outputs/pesn/dual_ts_v2_20261015/wp41_diagnostics/matrix_summary.md
+WARN docs\plans\PES2TS_V4.2-V4.7_十小时训练实验方案_20261017.md: local-only link ../../outputs/pesn/dual_ts_v2_20261015/wp41_diagnostics/v41_raw_vs_interp.md
+WARN docs\plans\PES2TS_V4.2-V4.7_十小时训练实验方案_20261017.md: local-only link ../../outputs/pesn/dual_ts_v2_20261015/wp41_diagnostics/v41_action_boundary.md
+WARN docs\plans\PES2TS_V5-V7_三阶段研究与架构修订方案_v2.0_20261020.md: local-only link ../../outputs/pesn/v5_1/gate_report_v51.md
+WARN docs\plans\PES2TS_V5-V7_三阶段研究与架构修订方案_v2.0_20261020.md: local-only link ../../outputs/pesn/v5_1_r1/final_report.md
+WARN docs\plans\PES2TS_V5-V7_三阶段研究与架构修订方案_v2.0_20261020.md: local-only link ../../outputs/pesn/v5_1/gate_report_v51.md
+WARN docs\plans\PES2TS_V5-V7_三阶段研究与架构修订方案_v2.0_20261020.md: local-only link ../../outputs/pesn/v5_1_r1/final_report.md
+WARN docs\plans\PES2TS_V5-V7_三阶段研究与架构修订方案_v2.0_20261020.md: local-only link ../../outputs/pesn/v5_1_r1/protocol_r1.json
+WARN docs\plans\PES2TS_V5.1-R2_损失尺度与数据完整性修复方案_v1_20261020.md: local-only link ../../outputs/pesn/v5_1_r1/final_report.md
+WARN docs\plans\PES2TS_V5.1-R2_损失尺度与数据完整性修复方案_v1_20261020.md: local-only link ../../outputs/pesn/v5_1_r1/protocol_r1.json
+WARN docs\plans\PES2TS_V5.1-R2_损失尺度与数据完整性修复方案_v1_20261020.md: local-only link ../../outputs/pesn/v5_1_r1/calibration/calibration_report.md
+WARN docs\plans\PES2TS_V5.1-R2_损失尺度与数据完整性修复方案_v1_20261020.md: local-only link ../../outputs/pesn/v5_1_r1/pair_errors/pair_error_report.md
+WARN docs\plans\PES2TS_V52R_输入充分性与化学终点识别优化方案_v1_20261021.md: local-only link ../../outputs/pesn/v52r/d0/D0_AUDIT.md
+WARN docs\plans\PES2TS_V52R_输入充分性与化学终点识别优化方案_v1_20261021.md: local-only link ../../outputs/pesn/v52r/d1/D1_PROBE.md
+WARN docs\plans\PES2TS_训练测试集划分标准_v1_20261120.md: local-only link ../../outputs/README.md
+WARN docs\plans\PES2TS_训练测试集划分标准_v1_20261120.md: local-only link ../../outputs/README.md
+WARN docs\plans\PES2TS_轻量控制与RL衔接计划_v1_20261007.md: local-only link ../../outputs/g2_ab3_native_xtb_run1_20261007/native_comparison_report_v1.json
+WARN docs\reports\PES2TS_Demo24_多坐标全批计算结果_20261002.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/outputs/PES2TS_Demo24_synchronized_reference_20261002/completed_batch_summary.json
+WARN docs\reports\PES2TS_Demo24_多坐标全批计算结果_20261002.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/outputs/PES2TS_Demo24_synchronized_reference_20261002/quality_summary.json
+WARN docs\reports\PES2TS_Demo24_多坐标全批计算结果_20261002.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/outputs/PES2TS_Demo24_synchronized_reference_20261002/endpoint_bond_audit.json
+WARN docs\reports\PES2TS_Demo24_多坐标全批计算结果_20261002.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/outputs/PES2TS_Demo24_synchronized_reference_20261002/RXN_0000155302/boundary_proposal/proposal.json
+WARN docs\reports\PES2TS_generation关键问题与根因分析_20261002.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/docs/reports/PES2TS_Demo24_第二轮修改与实测_20261002.md
+WARN docs\reports\PES2TS_generation关键问题与根因分析_20261002.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/docs/reports/PES2TS_Demo24_多坐标全批计算结果_20261002.md
+WARN docs\reports\PES2TS_generation关键问题与根因分析_20261002.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/pes2ts_core/scan_strategy/continuation.py:207
+WARN docs\reports\PES2TS_generation关键问题与根因分析_20261002.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/pes2ts_core/scan_strategy/continuation.py:183
+WARN docs\reports\PES2TS_generation关键问题与根因分析_20261002.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/pes2ts_core/scan_strategy/connectivity_plan.py:58
+WARN docs\reports\PES2TS_generation关键问题与根因分析_20261002.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/docs/reports/PES2TS_Demo24_TS_IRC算法诊断_20261001.md
+WARN docs\reports\PES2TS_generation关键问题与根因分析_20261002.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/pes2ts_core/scan_strategy/connectivity_plan.py:13
+WARN docs\reports\PES2TS_generation关键问题与根因分析_20261002.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/scripts/run_demo24_continuation_round2.py:93
+WARN docs\reports\PES2TS_generation关键问题与根因分析_20261002.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/scripts/report_demo24_continuation_round2.py:34
+WARN docs\reports\PES2TS_generation关键问题与根因分析_20261002.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/scripts/report_demo24_continuation_round2.py:91
+WARN docs\reports\PES2TS_generation关键问题与根因分析_20261002.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/scripts/report_demo24_continuation_round2.py:85
+WARN docs\reports\PES2TS_generation关键问题与根因分析_20261002.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/scripts/validate_round2_candidates.py:18
+WARN docs\reports\PES2TS_generation关键问题与根因分析_20261002.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/outputs/generation_root_cause_analysis_20261002/evidence.json
+WARN docs\reports\PES2TS_generation关键问题与根因分析_20261002.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/outputs/PES2TS_Demo24_continuation_round2_20261002/endpoint_summary.json
+WARN docs\reports\PES2TS_generation关键问题与根因分析_20261002.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/outputs/PES2TS_Demo24_continuation_round2_20261002/fixed_control_summary.json
+WARN docs\reports\PES2TS_generation关键问题与根因分析_20261002.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/outputs/PES2TS_Demo24_continuation_round2_20261002/comparison.json
+WARN docs\reports\PES2TS_generation关键问题与根因分析_20261002.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/docs/plans/PES2TS_第二轮修改最终方案_仅完全成断键_20261002.md
+WARN docs\reports\PES2TS_PES-C-G架构审核与创新性可行性分析_20261004.md: local-only link ../../outputs/acp_synchronized_capability_20261002/receipts.json
+WARN docs\reports\PES2TS_v4.1阶段训练_修复输入语义与最小实验矩阵_最终报告_20261017.md: local-only link ../../.slim/deepwork/pes2ts-dualts-v41/progress.md
+WARN docs\reports\PES2TS_v4.1阶段训练_修复输入语义与最小实验矩阵_最终报告_20261017.md: local-only link ../../.slim/deepwork/pes2ts-dualts-v41/g3-oracle-review.md
+WARN docs\reports\PES2TS_v4.1阶段训练_修复输入语义与最小实验矩阵_最终报告_20261017.md: local-only link ../../.slim/deepwork/pes2ts-dualts-v41/g3-closeout-report.md
+WARN docs\reports\PES2TS_v4.1阶段训练_修复输入语义与最小实验矩阵_最终报告_20261017.md: local-only link ../../outputs/pesn/dual_ts_v2_20261015/wp41_diagnostics/matrix_summary.json
+WARN docs\reports\PES2TS_v4.1阶段训练_修复输入语义与最小实验矩阵_最终报告_20261017.md: local-only link ../../outputs/pesn/dual_ts_v2_20261015/wp41_diagnostics/matrix_summary.md
+WARN docs\reports\PES2TS_v4.1阶段训练_修复输入语义与最小实验矩阵_最终报告_20261017.md: local-only link ../../outputs/pesn/dual_ts_v2_20261015/wp41_diagnostics/a45_vs_a50.md
+WARN docs\reports\PES2TS_v4.1阶段训练_修复输入语义与最小实验矩阵_最终报告_20261017.md: local-only link ../../outputs/pesn/dual_ts_v2_20261015/wp41_diagnostics/alpha_formal.json
+WARN docs\reports\PES2TS_v4.1阶段训练_修复输入语义与最小实验矩阵_最终报告_20261017.md: local-only link ../../outputs/pesn/dual_ts_v2_20261015/wp41_diagnostics/alpha_formal.md
+WARN docs\reports\PES2TS_v4.1阶段训练_修复输入语义与最小实验矩阵_最终报告_20261017.md: local-only link ../../.slim/deepwork/pes2ts-dualts-v41/wp4b-matrix-report.md
+WARN docs\reports\PES2TS_v4.1阶段训练_修复输入语义与最小实验矩阵_最终报告_20261017.md: local-only link ../../.slim/deepwork/pes2ts-dualts-v41/wp4a-staging-report.md
+WARN docs\reports\PES2TS_v4.1阶段训练_修复输入语义与最小实验矩阵_最终报告_20261017.md: local-only link ../../.slim/deepwork/pes2ts-dualts-v41/wp3-diagnostics-report.md
+WARN docs\reports\PES2TS_v4.1阶段训练_修复输入语义与最小实验矩阵_最终报告_20261017.md: local-only link ../../outputs/pesn/dual_ts_v2_20261015/wp41_bc/selection_record_v41.json
+WARN docs\reports\PES2TS_v4.1阶段训练_修复输入语义与最小实验矩阵_最终报告_20261017.md: local-only link ../../outputs/pesn/dual_ts_v2_20261015/wp4_bc/monitor_prereg_v1_erratum_v41.md
+WARN docs\reports\PES2TS_v4.1阶段训练_修复输入语义与最小实验矩阵_最终报告_20261017.md: local-only link ../../outputs/pesn/dual_ts_v2_20261015/wp4_bc/monitor_thresholds_v1.json
+WARN docs\reports\PES2TS_v4.1阶段训练_修复输入语义与最小实验矩阵_最终报告_20261017.md: local-only link ../../outputs/pesn/dual_ts_v2_20261015/wp4_bc/protocol_v41_r2.json
+WARN docs\reports\PES2TS_v4阶段训练_最终报告与问题复核_20261017.md: local-only link ../../.slim/deepwork/pes2ts-dualts-v4/progress.md
+WARN docs\reports\PES2TS_v4阶段训练_最终报告与问题复核_20261017.md: local-only link ../../.slim/deepwork/pes2ts-dualts-v4/g4-oracle-review.md
+WARN docs\reports\PES2TS_v4阶段训练_最终报告与问题复核_20261017.md: local-only link ../../.slim/deepwork/pes2ts-dualts-v4/g5-oracle-review.md
+WARN docs\reports\PES2TS_v4阶段训练_最终报告与问题复核_20261017.md: local-only link ../../outputs/pesn/dual_ts_v2_20261015/wp4_bc/g5_closure_record.json
+WARN docs\reports\PES2TS_v4阶段训练_最终报告与问题复核_20261017.md: local-only link ../../outputs/pesn/dual_ts_v2_20261015/wp4_bc/monitor_thresholds_v1.json
+WARN docs\reports\PES2TS_v4阶段训练_最终报告与问题复核_20261017.md: local-only link ../../outputs/pesn/dual_ts_v2_20261015/wp2_fit50_observed/wp2_manifest.json
+WARN docs\reports\PES2TS_v4阶段训练_最终报告与问题复核_20261017.md: local-only link ../../.slim/deepwork/pes2ts-dualts-v4/wp2-assemble-report.md
+WARN docs\reports\PES2TS_v4阶段训练_最终报告与问题复核_20261017.md: local-only link ../../.slim/deepwork/pes2ts-dualts-v4/wp3-model-report.md
+WARN docs\reports\PES2TS_v4阶段训练_最终报告与问题复核_20261017.md: local-only link ../../.slim/deepwork/pes2ts-dualts-v4/wp4-bc-report.md
+WARN docs\reports\PES2TS_v4阶段训练_最终报告与问题复核_20261017.md: local-only link ../../.slim/deepwork/pes2ts-dualts-v4/wp4-final-arm-report.md
+WARN docs\reports\PES2TS_v4阶段训练_最终报告与问题复核_20261017.md: local-only link ../../.slim/deepwork/pes2ts-dualts-v4/wp5-prep-report.md
+WARN docs\reports\PES2TS_v4阶段训练_最终报告与问题复核_20261017.md: local-only link ../../outputs/pesn/dual_ts_v2_20261015/wp4_freerun/freerun_record.json
+WARN docs\reports\PES2TS_v4阶段训练_最终报告与问题复核_20261017.md: local-only link ../../.slim/deepwork/pes2ts-dualts-v4/wp4-freerun-report.md
+WARN docs\reports\PES2TS_v4阶段训练_最终报告与问题复核_20261017.md: local-only link ../../outputs/pesn/dual_ts_v2_20261015/wp4_freerun_smoke/observations/compute_ledger.json
+WARN docs\reports\PES2TS_v4阶段训练_最终报告与问题复核_20261017.md: local-only link ../../artifacts/wp2_16x1/compute_16x1.log
+WARN docs\reports\PES2TS_v4阶段训练_最终报告与问题复核_20261017.md: local-only link ../../.slim/deepwork/pes2ts-dualts-v4/wp2-obs-driver-report.md
+WARN docs\reports\PES2TS_V52R_输入充分性决策记录_20261021.md: local-only link ../../outputs/pesn/v52r/d0_1/evidence_pack.json
+WARN docs\reports\PES2TS_V52R_输入充分性决策记录_20261021.md: local-only link ../../outputs/pesn/v52r/d2/evidence_pack.json
+WARN docs\reports\PES2TS_V53MP_S2_5k规模报告_20261022.md: local-only link ../../outputs/pesn/v53mp/reports/S2_resource_diagnosis_20261022.md
+WARN docs\reports\PES2TS_多坐标PES逐步实施方案_20261001.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/pes2ts_core/scan_strategy/primary.py:18
+WARN docs\reports\PES2TS_多坐标PES逐步实施方案_20261001.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/scripts/run_demo24_acp_primary.py:32
+WARN docs\reports\PES2TS_多坐标PES逐步实施方案_20261001.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/pes2ts_core/integration/acp/scheduler_backend.py
+WARN docs\reports\PES2TS_多坐标PES逐步实施方案_20261001.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/pes2ts_core/scan_strategy/contracts_v2.py
+WARN docs\reports\PES2TS_多坐标PES逐步实施方案_20261001.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/pes2ts_core/scan_strategy/plan_freeze.py:895
+WARN docs\reports\PES2TS_多坐标PES逐步实施方案_20261001.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/pes2ts_core/integration/acp/multicoord.py:435
+WARN docs\reports\PES2TS_多坐标PES逐步实施方案_20261001.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/pes2ts_core/scan_strategy/coordinate_pool.py:367
+WARN docs\reports\PES2TS_多坐标PES逐步实施方案_20261001.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/pes2ts_core/scan_strategy/geometry_feasibility.py
+WARN docs\reports\PES2TS_多坐标PES逐步实施方案_20261001.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/pes2ts_core/scan_strategy/selector.py:910
+WARN docs\reports\PES2TS_多坐标PES逐步实施方案_20261001.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/pes2ts_core/scan_strategy/contracts_v2.py:113
+WARN docs\reports\PES2TS_多坐标PES逐步实施方案_20261001.md: local E:/ link E:/Calculations/Common_Script/Auto_Calc_Platform/ACP_V1_20260811/src/acp/calculations/pes/contracts.py:136
+WARN docs\reports\PES2TS_多坐标PES逐步实施方案_20261001.md: local E:/ link E:/Calculations/Common_Script/Auto_Calc_Platform/ACP_V1_20260811/src/cccp/qc/interfaces/constraints.py:99
+WARN docs\reports\PES2TS_多坐标PES逐步实施方案_20261001.md: local E:/ link E:/Calculations/Common_Script/Auto_Calc_Platform/ACP_V1_20260811/src/acp/calculations/pes/scan.py:134
+WARN docs\reports\PES2TS_多坐标PES逐步实施方案_20261001.md: local E:/ link E:/Calculations/Common_Script/Auto_Calc_Platform/ACP_V1_20260811/src/cccp/qc/interfaces/orca.py:2175
+WARN docs\reports\PES2TS_多坐标PES逐步实施方案_20261001.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/pes2ts_core/scan_strategy/compile_orca.py:580
+WARN docs\reports\PES2TS_多坐标PES逐步实施方案_20261001.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/pes2ts_core/integration/acp/multicoord.py:435
+WARN docs\reports\PES2TS_多坐标PES逐步实施方案_20261001.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/pes2ts_core/scan_strategy/orca_capabilities_v1.json
+WARN docs\reports\PES2TS_多坐标PES逐步实施方案_20261001.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/pes2ts_core/integration/acp/scheduler_backend.py
+WARN docs\reports\PES2TS_多坐标PES逐步实施方案_20261001.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/pes2ts_core/scan_strategy/target_path.py
+WARN docs\reports\PES2TS_多坐标PES逐步实施方案_20261001.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/docs/reports/PES2TS_多键同步一维扫描全面问题报告_20261001.md
+WARN docs\reports\PES2TS_多坐标PES逐步实施方案_20261001.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/docs/reports/PES_generation_多坐标约束学习_ORCA能力与数学方案_20261001.md
+WARN docs\reports\PES2TS_多坐标同步第一轮实现与实测_20261002.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/outputs/PES2TS_Demo24_synchronized_reference_20261002/batch_manifest.json
+WARN docs\reports\PES2TS_多坐标同步第一轮实现与实测_20261002.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/outputs/PES2TS_Demo24_synchronized_reference_20261002/quality_summary.json
+WARN docs\reports\PES2TS_多坐标同步第一轮实现与实测_20261002.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/outputs/PES2TS_Demo24_synchronized_reference_20261002/endpoint_bond_audit.json
+WARN docs\reports\PES2TS_多坐标同步第一轮实现与实测_20261002.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/outputs/PES2TS_Demo24_synchronized_reference_20261002/execution_ledger.json
+WARN docs\reports\PES2TS_多坐标同步第一轮实现与实测_20261002.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/outputs/PES2TS_Demo24_synchronized_reference_20261002/RXN_0000155302/boundary_proposal/proposal.json
+WARN docs\reports\PES2TS_多坐标同步第一轮实现与实测_20261002.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/outputs/PES2TS_Demo24_synchronized_reference_20261002/RXN_0000155302/boundary_proposal/R_proposed.xyz
+WARN docs\reports\PES2TS_多坐标同步第一轮实现与实测_20261002.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/outputs/PES2TS_Demo24_synchronized_reference_20261002/RXN_0000155302/boundary_proposal/P_proposed.xyz
+WARN docs\reports\PES2TS_多坐标同步第一轮实现与实测_20261002.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/outputs/acp_synchronized_capability_20261002/receipts.json
+WARN docs\reports\PES2TS_多坐标同步第一轮实现与实测_20261002.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/pes2ts_core/scan_strategy/synchronized_path.py
+WARN docs\reports\PES2TS_多坐标同步第一轮实现与实测_20261002.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/scripts/run_demo24_synchronized.py
+WARN docs\reports\PES2TS_多坐标同步第一轮实现与实测_20261002.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/outputs/acp_synchronized_patch_20261002/manifest.json
+WARN docs\reports\PES2TS_多键同步一维扫描全面问题报告_20261001.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/pes2ts_core/scan_strategy/primary.py:98
+WARN docs\reports\PES2TS_多键同步一维扫描全面问题报告_20261001.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/pes2ts_core/scan_strategy/primary.py:119
+WARN docs\reports\PES2TS_多键同步一维扫描全面问题报告_20261001.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/pes2ts_core/scan_strategy/primary.py:52
+WARN docs\reports\PES2TS_多键同步一维扫描全面问题报告_20261001.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/pes2ts_core/scan_strategy/primary.py:105
+WARN docs\reports\PES2TS_多键同步一维扫描全面问题报告_20261001.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/pes2ts_core/scan_strategy/coordinate_pool.py:986
+WARN docs\reports\PES2TS_多键同步一维扫描全面问题报告_20261001.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/scripts/run_demo24_acp_primary.py:63
+WARN docs\reports\PES2TS_多键同步一维扫描全面问题报告_20261001.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/scripts/run_demo24_acp_primary.py:87
+WARN docs\reports\PES2TS_多键同步一维扫描全面问题报告_20261001.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/scripts/run_demo24_acp_primary.py:51
+WARN docs\reports\PES2TS_多键同步一维扫描全面问题报告_20261001.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/scripts/run_demo24_acp_primary.py:208
+WARN docs\reports\PES2TS_多键同步一维扫描全面问题报告_20261001.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/pes2ts_core/integration/acp/multicoord.py:405
+WARN docs\reports\PES2TS_多键同步一维扫描全面问题报告_20261001.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/pes2ts_core/integration/acp/multicoord.py:435
+WARN docs\reports\PES2TS_多键同步一维扫描全面问题报告_20261001.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/docs/design/PES_GENERATION_图论扫描策略选择器设计_v1.md:15
+WARN docs\reports\PES2TS_多键同步一维扫描全面问题报告_20261001.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/docs/reports/PES2TS_Demo24_端点与TS几何核查_20261001.md
+WARN docs\reports\PES2TS_多键同步一维扫描全面问题报告_20261001.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/outputs/demo24_acp_geometry_audit_20261001/summary.json
+WARN docs\reports\PES2TS_多键同步一维扫描全面问题报告_20261001.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/outputs/demo24_acp_geometry_audit_20261001/multibond_requirement_audit.json
+WARN docs\reports\PES2TS_多键同步一维扫描全面问题报告_20261001.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/outputs/demo24_acp_geometry_audit_20261001/graph_requirement_summary.json
+WARN docs\reports\PES2TS_多键同步一维扫描全面问题报告_20261001.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/outputs/PES2TS_Demo24_primary_20261001/submission_receipt.json
+WARN docs\reports\PES2TS_多键同步一维扫描全面问题报告_20261001.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/scripts/audit_demo24_graph_requirements.py
+WARN docs\reports\PES2TS_多键同步一维扫描全面问题报告_20261001.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/scripts/analyze_demo24_acp_geometry.py
+WARN docs\reports\PES2TS_对话与现有任务完整总结报告_20261002.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/docs/reports/PES2TS_Demo24_多坐标全批计算结果_20261002.md
+WARN docs\reports\PES2TS_对话与现有任务完整总结报告_20261002.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/outputs/PES2TS_Demo24_synchronized_reference_20261002/completed_batch_summary.json
+WARN docs\reports\PES2TS_对话与现有任务完整总结报告_20261002.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/outputs/PES2TS_Demo24_synchronized_reference_20261002/execution_ledger.json
+WARN docs\reports\PES2TS_对话与现有任务完整总结报告_20261002.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/outputs/PES2TS_Demo24_synchronized_reference_20261002/batch_manifest.json
+WARN docs\reports\PES2TS_对话与现有任务完整总结报告_20261002.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/outputs/PES2TS_Demo24_synchronized_reference_20261002/quality_summary.json
+WARN docs\reports\PES2TS_对话与现有任务完整总结报告_20261002.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/outputs/PES2TS_Demo24_synchronized_reference_20261002/endpoint_bond_audit.json
+WARN docs\reports\PES2TS_对话与现有任务完整总结报告_20261002.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/outputs/PES2TS_Demo24_synchronized_reference_20261002/RXN_0000155302/boundary_proposal/proposal.json
+WARN docs\reports\PES2TS_对话与现有任务完整总结报告_20261002.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/docs/reports/PES2TS_多坐标同步第一轮实现与实测_20261002.md
+WARN docs\reports\PES2TS_对话与现有任务完整总结报告_20261002.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/docs/reports/PES2TS_多坐标PES逐步实施方案_20261001.md
+WARN docs\reports\PES2TS_对话与现有任务完整总结报告_20261002.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/docs/reports/PES2TS_多键同步一维扫描全面问题报告_20261001.md
+WARN docs\reports\PES2TS_对话与现有任务完整总结报告_20261002.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/docs/reports/PES_generation_多坐标约束学习_ORCA能力与数学方案_20261001.md
+WARN docs\reports\PES2TS_对话与现有任务完整总结报告_20261002.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/pes2ts_core/scan_strategy/synchronized_path.py
+WARN docs\reports\PES2TS_对话与现有任务完整总结报告_20261002.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/scripts/run_demo24_synchronized.py
+WARN docs\reports\PES2TS_对话与现有任务完整总结报告_20261002.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/outputs/acp_synchronized_patch_20261002/manifest.json
+WARN docs\reports\PES_generation_多坐标约束学习_ORCA能力与数学方案_20261001.md: local E:/ link E:/Calculations/Common_Script/Auto_Calc_Platform/ACP_V1_20260811/src/acp/calculations/pes/contracts.py:45
+WARN docs\reports\PES_generation_多坐标约束学习_ORCA能力与数学方案_20261001.md: local E:/ link E:/Calculations/Common_Script/Auto_Calc_Platform/ACP_V1_20260811/src/cccp/qc/interfaces/constraints.py:99
+WARN docs\reports\PES_generation_多坐标约束学习_ORCA能力与数学方案_20261001.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/pes2ts_core/integration/acp/multicoord.py:405
+WARN docs\reports\PES_generation_多坐标约束学习_ORCA能力与数学方案_20261001.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/pes2ts_core/scan_strategy/compile_orca.py:799
+WARN docs\reports\PES_generation_多坐标约束学习_ORCA能力与数学方案_20261001.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/docs/reports/PES2TS_多键同步一维扫描全面问题报告_20261001.md
+WARN docs\reports\PES_generation_多坐标约束学习_ORCA能力与数学方案_20261001.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/outputs/demo24_acp_geometry_audit_20261001/RXN_0000007104.json
+checked 182 docs; 0 error(s), 172 warning(s)
+---- stderr ----
+(empty)
+
+
+##############################################################################
+[门禁 3/4 · render_gv_map --check] G–V 映射生成文档时效门（YAML 为 SSOT，文档须与渲染结果逐字节一致）
+命令：E:\Anaconda\python.exe scripts/render_gv_map.py --check
+工作目录：E:/Calculations/AI4S_ML_Studys/PES2TS
+开始时间：2026-11-21T22:27:31+08:00；耗时 0.2s
+退出码：0
+---- stdout ----
+G–V mapping doc is current
+---- stderr ----
+(empty)
+
+
+##############################################################################
+[门禁 4/4 · registry tests] CI 直接跑的 registry/config 测试（tests/test_gv_registry.py + tests/test_config_env.py）
+命令：E:\Anaconda\python.exe -m pytest -q tests/test_gv_registry.py tests/test_config_env.py
+工作目录：E:/Calculations/AI4S_ML_Studys/PES2TS
+开始时间：2026-11-21T22:27:31+08:00；耗时 1.6s
+退出码：0
+---- stdout ----
+..........................                                               [100%]
+26 passed in 1.01s
+---- stderr ----
+(empty)
+
+
+##############################################################################
+[补充] docs_consistency 模式语义（源码事实，未产生不同输出）
+实现：scripts/agent_ops/docs_consistency.py:288-302 —— 默认 advisory 模式打印 VIOLATION 但始终 return 0；--strict 时只要 clean 为假即 return 1；配置文件缺失/不可读统一 return 2（第 275-279 行）。
+
+
+##############################################################################
+[审计后复核 · 共享工作区并发变化，2026-11-21T22:34+08:00]
+说明：以上 4 类门禁原始输出为 task-2 审计时点基线（2026-11-21T22:27:31，git 工作树 clean）。
+基线完成后，共享工作区出现一份**非 task-2** 的并发新增未跟踪文档：
+  docs/infra/PES2TS_开发文档规范化归档方案_v2_20261121.md（22:29:27，58,064 B）
+该文件由并行任务写入；task-2 只写 .slim/deepwork/20261121_docaudit/rules/，未修改/新增 docs/ 下文件。
+复核结果（用于区分"审计基线"与"与 task-2 无关的后续变化"）：
+- docs_consistency --strict：scanned 159 file(s); 0 violation(s); CLEAN; exit 0
+  （比基线多 1 份 = 上述新文档；违规仍为 0）
+- check_docs_links：checked 183 docs; 10 error(s), 172 warning(s); exit 1
+  10 条 error 全部来自上述新文档中指向 doc_audit/20261121/... 的相对链接
+  （目标目录尚未创建）：doc_audit/20261121/{README.md, GOVERNANCE_CONSTRAINTS.md,
+  doc_inventory.csv, DISPOSITION.csv, ANOMALIES.md, BATCH_PLAN.md} 的 10 处引用。
+  → 该 10 error 不是 task-2 产物造成的；审计基线时点为 0 error。
+- render_gv_map.py --check：G–V mapping doc is current；exit 0（复核时）
+- pytest tests/test_gv_registry.py tests/test_config_env.py：26 passed；exit 0（复核时）
+结论：本文档治理审计基线以 22:27:31 数字为准（158 文件 / 182 docs / 0 error / 172 warning /
+26 passed）；最终验收前，需由该并发方案负责人修复链接或同步创建 doc_audit/20261121/ 目标目录。
+

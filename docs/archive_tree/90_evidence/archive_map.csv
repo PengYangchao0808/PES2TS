@@ -1,0 +1,254 @@
+﻿path,current_action,archive_entry,extract_needed,extract_content,keep_reason
+docs/contracts/PES2TS_ACP字段映射_v1.md,keep（保留）,E01,N,,合同历史指针；不抽取
+docs/contracts/PES2TS_contracts_v1.md,keep（保留）,E01,N,,合同历史指针；不抽取
+docs/contracts/PES2TS_数据规范与ACP对接优化方案.md,keep（保留）,E01,N,,合同历史指针；不抽取
+docs/design/G1_TS_IRC_映射与反应归簇实现方案.md,keep（保留）,E01,Y,Batches A–E 落地并通过 355 项测试；Batch F 全量运行受阻（负结果留档）,只读证据；条目指针
+docs/design/decisions/ADR-0001-统一执行后端接缝.md,keep（保留）,E01,N,,ADR 历史指针；不抽取
+docs/plans/PES2TS_实施路线图.html,retain-readonly（只读保留）,E01,N,,方案历史指针；不抽取
+docs/plans/PES2TS_逐步实施与验证方案.md,banner（保留+横幅）,E01,N,,方案历史指针；不抽取
+docs/reports/PES2TS_开发阶段性报告_20260930.md,retain-readonly（只读保留）,E01,Y,首阶段完成度与遗留问题；早期 G0/G1/G2 能力边界（哪层已验收、哪层仅设计）,只读证据；条目量化结论来源
+examples/contracts_v1/README.md,keep（保留）,E01,N,,只读证据；条目指针
+examples/contracts_v1/path_viewer.html,keep（保留）,E01,N,,只读证据；条目指针
+examples/m1_first_plan/README.md,keep（保留）,E01,N,,只读证据；条目指针
+docs/contracts/PES2TS_G2T_战役合同字段字典_v1.md,keep（保留）,E02,Y,G2.T 四类终态（rejected_typed/partial_prefix/complete_path/validated）字段口径,合同正文；条目任务语义来源
+docs/demo/PES2TS_Demo实现审核与架构解读_20260930.md,retain-readonly（只读保留）,E02,N,,只读证据；条目指针
+docs/demo/PES2TS_Demo评估指标_v1.md,retain-readonly（只读保留）,E02,N,,只读证据；条目指针
+docs/demo/PES2TS_demo24_反应挑选与复核方案.md,retain-readonly（只读保留）,E02,N,,只读证据；条目指针
+docs/design/G1_v2_L0到G2扫描策略设计.md,keep（保留）,E02,N,,只读证据；条目指针
+docs/design/G1_v2_ORCA扫描模式识别与计划.md,keep（保留）,E02,N,,只读证据；条目指针
+docs/design/G1_v2_一维优先与xTB二维成本策略.md,keep（保留）,E02,N,,只读证据；条目指针
+docs/design/G1_v2_产物成键逆向扫描优先策略.md,keep（保留）,E02,N,,只读证据；条目指针
+docs/design/G1_v2_多成键与少成键方向对比.md,keep（保留）,E02,N,,只读证据；条目指针
+docs/design/G1_v2_成断键扫描方向选择可视化.html,keep（保留）,E02,N,,只读证据；条目指针
+docs/design/G1_v2_方向无关成键锚点与双向扫描策略.md,keep（保留）,E02,N,,只读证据；条目指针
+docs/design/G1_v2_补全实施总方案.md,keep（保留）,E02,N,,只读证据；条目指针
+docs/design/PES_GENERATION_图论扫描策略选择器设计_v1.md,keep（保留）,E02,N,,只读证据；条目指针
+docs/design/decisions/ADR-0002-计算后端统一经ACP执行.md,keep（保留）,E02,N,,ADR 历史指针；不抽取
+docs/design/decisions/ADR-0003-G2-AB1接口登记.md,keep（保留）,E02,N,,ADR 历史指针；不抽取
+docs/design/decisions/ADR-0004-G2-AB2接口登记.md,keep（保留）,E02,N,,ADR 历史指针；不抽取
+docs/design/decisions/ADR-0005-G2-AB2执行前判定器与恢复修补.md,keep（保留）,E02,N,,ADR 历史指针；不抽取
+docs/plans/PES2TS_ACP执行统一与旧代码清理方案_20261003.md,keep（保留）,E02,N,,方案历史指针；不抽取
+docs/plans/PES2TS_G1_G2边界审计与补齐任务_20261003.md,banner（保留+横幅）,E02,N,,方案历史指针；不抽取
+docs/plans/PES2TS_G2_ACP能力补齐与联合验收计划_20261003.md,keep（保留）,E02,N,,方案历史指针；不抽取
+docs/plans/PES2TS_G2_PESG收紧算法迭代方案_20261003.md,keep（保留）,E02,N,,方案历史指针；不抽取
+docs/plans/PES2TS_G2_下一批算法调整与测试方案_20261003.md,keep（保留）,E02,N,,方案历史指针；不抽取
+docs/plans/PES2TS_G2后续开发方案_Classic到Rank到Gen_20261003.md,keep（保留）,E02,N,,方案历史指针；不抽取
+docs/plans/PES2TS_双项目开发与Demo方案.md,retain-readonly（只读保留）,E02,N,,方案历史指针；不抽取
+docs/plans/PES2TS_图论立体先验与单端协同延续优化方案_v2_20261002.md,banner（保留+横幅）,E02,N,,方案历史指针；不抽取
+docs/plans/PES2TS_扫描规划谱系合并方案_20260930.md,banner（保留+横幅）,E02,N,,方案历史指针；不抽取
+docs/plans/PES2TS_第二轮修改最终方案_仅完全成断键_20261002.md,keep（保留）,E02,N,,方案历史指针；不抽取
+docs/plans/PES2TS_统一开发顺序与阶段验收.md,banner（保留+横幅）,E02,N,,方案历史指针；不抽取
+docs/reports/PES2TS_Demo24_ACP首批计算_20261001.md,retain-readonly（只读保留）,E02,N,,只读证据；条目指针（不抽取）
+docs/reports/PES2TS_Demo24_TS_IRC算法诊断_20261001.md,retain-readonly（只读保留）,E02,N,,只读证据；条目指针（不抽取）
+docs/reports/PES2TS_Demo24_多坐标全批计算结果_20261002.md,retain-readonly（只读保留）,E02,N,,只读证据；条目指针（不抽取）
+docs/reports/PES2TS_Demo24_端点与TS几何核查_20261001.md,retain-readonly（只读保留）,E02,N,,只读证据；条目指针（不抽取）
+docs/reports/PES2TS_Demo24_第二轮修改与实测_20261002.md,retain-readonly（只读保留）,E02,N,,只读证据；条目指针（不抽取）
+docs/reports/PES2TS_generation关键问题与根因分析_20261002.md,retain-readonly（只读保留）,E02,Y,generation 阶段关键缺陷与根因分类；决定第二轮修改方向,只读证据；条目量化结论来源
+docs/reports/PES2TS_多坐标PES逐步实施方案_20261001.md,retain-readonly（只读保留）,E02,N,,只读证据；条目指针（不抽取）
+docs/reports/PES2TS_多坐标同步第一轮实现与实测_20261002.md,retain-readonly（只读保留）,E02,N,,只读证据；条目指针（不抽取）
+docs/reports/PES2TS_多键同步一维扫描全面问题报告_20261001.md,retain-readonly（只读保留）,E02,Y,多键同步一维扫描缺陷清单与根因（早期负结果，为避免重复踩坑的资产）,只读证据；条目量化结论来源
+docs/reports/PES2TS_对话与现有任务完整总结报告_20261002.md,retain-readonly（只读保留）,E02,N,,只读证据；条目指针（不抽取）
+docs/reports/PES_GENERATION_单端预测校正延续可行性分析_20261002.md,retain-readonly（只读保留）,E02,N,,只读证据；条目指针（不抽取）
+docs/reports/PES_generation_多坐标约束学习_ORCA能力与数学方案_20261001.md,retain-readonly（只读保留）,E02,N,,只读证据；条目指针（不抽取）
+docs/archive/20261005_pre_pesn/README.md,retain-readonly（只读保留）,E03,N,,时点快照（只读）；条目时间证据，不入正文
+docs/design/PES2TS_PES-C到PES-G架构与迁移方案_v1_20261004.md,keep（保留）,E03,N,,只读证据；条目指针
+docs/design/decisions/ADR-0007-统一价值模型与搜索内生选点.md,banner（保留+横幅）,E03,N,,ADR 历史指针；不抽取
+docs/design/decisions/ADR-0008-拓扑约束下的距离与位移联合预测.md,banner（保留+横幅）,E03,N,,ADR 历史指针；不抽取
+docs/design/decisions/ADR-0009-G阶段下的统一模型开发框架.md,banner（保留+横幅）,E03,N,,ADR 历史指针；不抽取
+docs/design/decisions/ADR-0010-PES-N反应状态价值与STOP-MOVE统一决策.md,keep（保留）,E03,Y,PES-N 反应状态价值 + STOP/MOVE 统一决策（取代 ADR-0007/0008/0009 的价值模型路线）,关键决策证据；关联 ADR 指针
+docs/plans/PES2TS_G0-G4整体开发框架修改方案_v1_20261005.md,banner（保留+横幅）,E03,N,,方案历史指针；不抽取
+docs/plans/PES2TS_PES-N未来开发计划_v2_20261005.md,banner（保留+横幅）,E03,Y,PES-N 内核定义：ranking 评 STOP_OPTTS，navigation 比较 STOP/MOVE/fallback；G3/G4 分层,方案正文；当期核心思路来源
+docs/plans/PES2TS_拓扑约束TS接近度与位移联合学习方案_v2_20261004.md,banner（保留+横幅）,E03,N,,方案历史指针；不抽取
+docs/plans/PES2TS_统一价值模型与搜索排序一体化发展方案_v1_20261004.md,banner（保留+横幅）,E03,N,,方案历史指针；不抽取
+docs/reports/PES2TS_PES-C-G架构审核与创新性可行性分析_20261004.md,retain-readonly（只读保留）,E03,Y,PES-C→G 架构审核结论与创新性/可行性判断（只读评审意见，不自动生效）,只读证据；条目量化结论来源
+artifacts/pesn/pesn-irc-scale5k-v0.1.0-rc.1/model_card.md,retain-readonly（只读保留）,E04,N,,模型卡证据；只读指针
+artifacts/pesn/pesn-irc-v0.1.0-rc.1/model_card.md,retain-readonly（只读保留）,E04,N,,模型卡证据；只读指针
+docs/archive/20261006_pre_g3p/README.md,retain-readonly（只读保留）,E04,N,,时点快照（只读）；条目时间证据，不入正文
+docs/archive/20261007_pre_orca_xtb_pilot/README.md,retain-readonly（只读保留）,E04,N,,时点快照（只读）；条目时间证据，不入正文
+docs/archive/20261007_pre_orca_xtb_pilot/files/AGENT.md,retain-readonly（只读保留）,E04,N,,时点快照（只读）；条目时间证据，不入正文
+docs/archive/20261007_pre_orca_xtb_pilot/files/README.md,retain-readonly（只读保留）,E04,N,,时点快照（只读）；条目时间证据，不入正文
+docs/archive/20261007_pre_orca_xtb_pilot/files/docs/PES2TS_开发宪法_v1.md,retain-readonly（只读保留）,E04,N,,时点快照（只读）；条目时间证据，不入正文
+docs/archive/20261007_pre_orca_xtb_pilot/files/docs/README.md,retain-readonly（只读保留）,E04,N,,时点快照（只读）；条目时间证据，不入正文
+docs/archive/20261007_pre_orca_xtb_pilot/files/docs/plans/PES2TS_文档修订台账.md,retain-readonly（只读保留）,E04,N,,时点快照（只读）；条目时间证据，不入正文
+docs/archive/20261007_pre_orca_xtb_pilot/files/docs/plans/PES2TS_轻量控制与RL衔接计划_v1_20261007.md,retain-readonly（只读保留）,E04,N,,时点快照（只读）；条目时间证据，不入正文
+docs/contracts/PES2TS_PESN_IRC教师数据与模型包合同_v1.md,keep（保留）,E04,N,,合同历史指针；不抽取
+docs/design/PES2TS_Classic图论驱动与xTB原生约束扫描设计_v1_20261006.md,keep（保留）,E04,N,,只读证据；条目指针
+docs/design/decisions/ADR-0006-ORCA原生约束优化与控制策略分离.md,keep（保留）,E04,N,,ADR 历史指针；不抽取
+docs/design/decisions/ADR-0012-Classic图论驱动与xTB原生约束扫描.md,keep（保留）,E04,N,,ADR 历史指针；不抽取
+docs/design/decisions/ADR-0013-G3并行IRC预训练与模型版本体系.md,keep（保留）,E04,N,,ADR 历史指针；不抽取
+docs/design/decisions/ADR-0016-ORCA驱动xTB硬约束优化试点.md,keep（保留）,E04,N,,ADR 历史指针；不抽取
+docs/plans/PES2TS_G2T真实战役执行方案_20261004.md,retain-readonly（只读保留）,E04,N,,方案历史指针；不抽取
+docs/plans/PES2TS_G2_AB3功能整合与原生扫描改造方案_20261006.md,keep（保留）,E04,Y,AB3 原生 24 例：13 complete_path / 9 partial_prefix / 2 rejected_typed；scan 阶段中位加速约 61×，validated=0,方案正文；当期核心思路来源
+docs/plans/PES2TS_G2_AB4_ORCA驱动xTB约束优化试点方案_20261007.md,keep（保留）,E04,Y,AB4 四点试点：ORCA-xTB 硬约束可行性门与有界救援；真实试点未实施前不宣称能力,方案正文；当期核心思路来源
+docs/plans/PES2TS_G2_下一批实现方案_真引擎接通与验收_20261004.md,retain-readonly（只读保留）,E04,N,,方案历史指针；不抽取
+docs/plans/PES2TS_G3_P1_IRC教师预训练与模型版本计划_v1_20261006.md,keep（保留）,E04,Y,G3.P/P1 立项：研究模型 pesn-irc-v0.1.0，教师数据/分裂/版本体系，STOP/MOVE/QC 全禁用,方案正文；当期核心思路来源
+docs/archive/20261007_pre_predictor_scope/README.md,retain-readonly（只读保留）,E05,N,,时点快照（只读）；条目时间证据，不入正文
+docs/design/PES2TS_三模块与可视化产品架构_v1_20261005.md,keep（保留）,E05,N,,只读证据；条目指针
+docs/design/PES2TS_预测器产品与G3代码模块划分_v1_20261007.md,keep（保留）,E05,N,,只读证据；条目指针
+docs/design/decisions/ADR-0011-三模块产品架构与统一可视化.md,keep（保留）,E05,N,,ADR 历史指针；不抽取
+docs/design/decisions/ADR-0014-预测器产品归属与G3代码范围.md,keep（保留）,E05,Y,新业务代码统一 pes2ts_core/pesn/；预测器/训练/评测/导出在产品内隔离，B0–B7 范围,关键决策证据；关联 ADR 指针
+artifacts/pesn/pesn-control-demo24-bc-v0.1.0/model_card.md,retain-readonly（只读保留）,E06,N,,模型卡证据；只读指针
+artifacts/pesn/pesn-control-demo24-bc-v0.1.1-rlrepair1/model_card.md,retain-readonly（只读保留）,E06,N,,模型卡证据；只读指针
+artifacts/pesn/pesn-control-demo24-cql-v0.1.1-rlrepair1/model_card.md,retain-readonly（只读保留）,E06,N,,模型卡证据；只读指针
+artifacts/pesn/pesn-control-demo24-v0.1.0/model_card.md,retain-readonly（只读保留）,E06,N,,模型卡证据；只读指针
+artifacts/pesn/pesn-control-scale-bc-v0.1.0-rl50/model_card.md,retain-readonly（只读保留）,E06,N,,模型卡证据；只读指针
+artifacts/pesn/pesn-control-scale-cql-v0.1.0-rl50/model_card.md,retain-readonly（只读保留）,E06,N,,模型卡证据；只读指针
+docs/archive/20261007_pre_light_policy/AGENT.md,retain-readonly（只读保留）,E06,N,,时点快照（只读）；条目时间证据，不入正文
+docs/archive/20261007_pre_light_policy/README.md,retain-readonly（只读保留）,E06,N,,时点快照（只读）；条目时间证据，不入正文
+docs/archive/20261007_pre_light_policy/docs/PES2TS_开发宪法_v1.md,retain-readonly（只读保留）,E06,N,,时点快照（只读）；条目时间证据，不入正文
+docs/archive/20261007_pre_light_policy/docs/README.md,retain-readonly（只读保留）,E06,N,,时点快照（只读）；条目时间证据，不入正文
+docs/archive/20261007_pre_light_policy/docs/plans/PES2TS_G3_P1_IRC教师预训练与模型版本计划_v1_20261006.md,retain-readonly（只读保留）,E06,N,,时点快照（只读）；条目时间证据，不入正文
+docs/archive/20261007_pre_light_policy/docs/plans/PES2TS_PES-N未来开发计划_v2_20261005.md,retain-readonly（只读保留）,E06,N,,时点快照（只读）；条目时间证据，不入正文
+docs/archive/20261007_pre_light_policy/docs/plans/PES2TS_完整开发流方案_整合版_v1.md,retain-readonly（只读保留）,E06,N,,时点快照（只读）；条目时间证据，不入正文
+docs/archive/20261007_pre_light_policy/docs/plans/PES2TS_整体开发与发布方案_v2.md,retain-readonly（只读保留）,E06,N,,时点快照（只读）；条目时间证据，不入正文
+docs/archive/20261007_pre_light_policy/docs/plans/PES2TS_文档修订台账.md,retain-readonly（只读保留）,E06,N,,时点快照（只读）；条目时间证据，不入正文
+docs/archive/20261007_pre_light_policy/docs/plans/PES2TS_阶段定义_G0-G3.md,retain-readonly（只读保留）,E06,N,,时点快照（只读）；条目时间证据，不入正文
+docs/archive/20261007_pre_light_policy/source_README.md,retain-readonly（只读保留）,E06,N,,时点快照（只读）；条目时间证据，不入正文
+docs/archive/20261007_pre_unified_residual_rl/AGENT.md,retain-readonly（只读保留）,E06,N,,时点快照（只读）；条目时间证据，不入正文
+docs/archive/20261007_pre_unified_residual_rl/README.md,retain-readonly（只读保留）,E06,N,,时点快照（只读）；条目时间证据，不入正文
+docs/archive/20261007_pre_unified_residual_rl/docs__PES2TS_开发宪法_v1.md,retain-readonly（只读保留）,E06,N,,时点快照（只读）；条目时间证据，不入正文
+docs/archive/20261007_pre_unified_residual_rl/docs__README.md,retain-readonly（只读保留）,E06,N,,时点快照（只读）；条目时间证据，不入正文
+docs/archive/20261007_pre_unified_residual_rl/docs__plans__PES2TS_G2_AB4_ORCA驱动xTB约束优化试点方案_20261007.md,retain-readonly（只读保留）,E06,N,,时点快照（只读）；条目时间证据，不入正文
+docs/archive/20261007_pre_unified_residual_rl/docs__plans__PES2TS_PES-N未来开发计划_v2_20261005.md,retain-readonly（只读保留）,E06,N,,时点快照（只读）；条目时间证据，不入正文
+docs/archive/20261007_pre_unified_residual_rl/docs__plans__PES2TS_文档修订台账.md,retain-readonly（只读保留）,E06,N,,时点快照（只读）；条目时间证据，不入正文
+docs/archive/20261007_pre_unified_residual_rl/docs__plans__PES2TS_轻量控制与RL衔接计划_v1_20261007.md,retain-readonly（只读保留）,E06,N,,时点快照（只读）；条目时间证据，不入正文
+docs/archive/20261007_pre_unified_residual_rl/docs__plans__PES2TS_阶段定义_G0-G3.md,retain-readonly（只读保留）,E06,N,,时点快照（只读）；条目时间证据，不入正文
+docs/archive/20261008_pre_scale20k_rl2k/AGENT.md,retain-readonly（只读保留）,E06,N,,时点快照（只读）；条目时间证据，不入正文
+docs/archive/20261008_pre_scale20k_rl2k/README.md,retain-readonly（只读保留）,E06,N,,时点快照（只读）；条目时间证据，不入正文
+docs/archive/20261008_pre_scale20k_rl2k/docs/README.md,retain-readonly（只读保留）,E06,N,,时点快照（只读）；条目时间证据，不入正文
+docs/archive/20261008_pre_scale20k_rl2k/docs/plans/PES2TS_RL下一轮代码修复训练与调整方案_v1_20261008.md,retain-readonly（只读保留）,E06,N,,时点快照（只读）；条目时间证据，不入正文
+docs/archive/20261008_pre_scale20k_rl2k/docs/plans/PES2TS_文档修订台账.md,retain-readonly（只读保留）,E06,N,,时点快照（只读）；条目时间证据，不入正文
+docs/design/decisions/ADR-0015-G2稳定底座与轻量RL研究入口.md,keep（保留）,E06,N,,ADR 历史指针；不抽取
+docs/design/decisions/ADR-0017-统一残差决策与G2有限回退.md,keep（保留）,E06,Y,以有界逐坐标残差提案+动作条件 Q 取代步长分类优先；同冻结环境同预算比较,关键决策证据；关联 ADR 指针
+docs/design/decisions/ADR-0018-RL纠错与动作支持研究计划.md,keep（保留）,E06,N,,ADR 历史指针；不抽取
+docs/design/decisions/ADR-0019-IRC20k与RL2000分阶段扩量.md,keep（保留）,E06,N,,ADR 历史指针；不抽取
+docs/plans/PES2TS_Demo24_真实RL闭环与对照实施方案_v1_20261007.md,retain-readonly（只读保留）,E06,N,,方案历史指针；不抽取
+docs/plans/PES2TS_IRC20k与RL2000下一阶段详细方案_v1_20261008.md,keep（保留）,E06,N,,方案历史指针；不抽取
+docs/plans/PES2TS_RL下一轮代码修复训练与调整方案_v1_20261008.md,keep（保留）,E06,N,,方案历史指针；不抽取
+docs/plans/PES2TS_RL自适应路径生长与IRC验证研究方案_v1_20261009.md,keep（保留）,E06,N,,方案历史指针；不抽取
+docs/plans/PES2TS_统一残差决策与G2有限回退实施方案_v1_20261007.md,keep（保留）,E06,Y,统一残差 + 动作条件 Q 单一模型；AB4 四点门与有界救援在策略动作空间之外,方案正文；当期核心思路来源
+docs/plans/PES2TS_轻量控制与RL衔接计划_v1_20261007.md,keep（保留）,E06,Y,轻量控制路线：候选效率代理奖励与严格 TS 成功分离；真实转移先行、不承诺 RL 收益,方案正文；当期核心思路来源
+docs/contracts/PES2TS_双端TS教师与相容转移合同_v2.md,keep（保留）,E07,N,,合同历史指针；不抽取
+docs/design/decisions/ADR-0020-EGNN直接位移与BC-IQL-SAC研究主线.md,banner（保留+横幅）,E07,N,,ADR 历史指针；不抽取
+docs/design/decisions/ADR-0021-无序双端拓扑与完整双侧TS教师主线.md,keep（保留）,E07,N,,ADR 历史指针；不抽取
+docs/plans/PES2TS_EGNN_BC_IQL_SAC下一步完整训练方案_v2_20261015.md,move（迁 superseded）,E07,N,,方案历史指针；不抽取
+docs/plans/PES2TS_EGNN_BC_IQL_SAC实施与训练计划_v3_20261015.md,move（迁 superseded）,E07,N,,方案历史指针；不抽取
+docs/plans/PES2TS_IRC_BC_IQL_SAC直接位移研究方案_v1_20261015.md,move（迁 superseded）,E07,N,,方案历史指针；不抽取
+docs/plans/PES2TS_双端拓扑条件训练与项目进度统一方案_v4_20261015.md,banner（保留+横幅）,E07,Y,v4 排期：无序双端拓扑→完整双侧 TS 教师→规范化 EGNN→BC→相容 IQL；SAC 后置,方案正文；当期核心思路来源
+docs/reports/PES2TS_Direct_fit50训练表征分析_20261015.md,retain-readonly（只读保留）,E07,N,,只读证据；条目指针（不抽取）
+docs/reports/PES2TS_Direct批次1-6实施记录_20261015.md,retain-readonly（只读保留）,E07,N,,只读证据；条目指针（不抽取）
+docs/reports/PES2TS_GPU环境与磁盘预算执行记录_20261015.md,retain-readonly（只读保留）,E07,N,,只读证据；条目指针（不抽取）
+docs/reports/PES2TS_v4.1阶段训练_修复输入语义与最小实验矩阵_最终报告_20261017.md,retain-readonly（只读保留）,E07,Y,V4.1 纯因果输入三臂：A 1.0817/0.1186、B 1.0984/0.1910、C 1.0555/0.1466；四门 <1.0/≥6/8/≥0.30/≥0.40 未过,只读证据；条目量化结论来源
+docs/reports/PES2TS_v4阶段训练_最终报告与问题复核_20261017.md,retain-readonly（只读保留）,E07,Y,V4.0 单种子基线：BC-NLL RMSE/zero 0.9443、cos 0.1578、近 TS 0.2614（含标签派生输入）,只读证据；条目量化结论来源
+docs/contracts/PES2TS_V4.2-V4.7_实施合同与战役冻结_v1.md,keep（保留）,E08,N,,合同历史指针；不抽取
+docs/design/decisions/ADR-0022-v4.1因果输入合同与特征v3.md,keep（保留）,E08,N,,ADR 历史指针；不抽取
+docs/design/decisions/ADR-0023-V4.2原生重连数据与内部开发划分.md,banner（保留+横幅）,E08,N,,ADR 历史指针；不抽取
+docs/design/decisions/ADR-0024-V4.2无界位移模型与战役训练协议.md,banner（保留+横幅）,E08,N,,ADR 历史指针；不抽取
+docs/plans/PES2TS_V4.2-V4.7_十小时训练实验方案_20261017.md,retain-readonly（只读保留）,E08,Y,V4.2–V4.6 五组实验 + V4.7 三种子定稿；主口径 native_full 与四门冻结（1.0/6-of-8/0.30/0.40）,方案正文；当期核心思路来源
+docs/reports/PES2TS_V4.2-V4.7_过夜战役汇总_20261018.md,retain-readonly（只读保留）,E08,Y,23 个正式 run 全部 completed；三口径协议评测表；E2 MODEL_LOAD_FAILED 跳过,只读证据；条目量化结论来源
+docs/reports/PES2TS_实现报告_20261018.md,retain-readonly（只读保留）,E08,Y,V4.7 FINAL 负结果：MSE/zero 1.132、优于零步 0/8、cos 0.180、near-TS 0.248，四项全未过门；fit 降 dev 升,只读证据；条目量化结论来源
+docs/design/decisions/ADR-0026-V5冲刺key-atom位移合同与OOF语义.md,keep（保留）,E09,N,,ADR 历史指针；不抽取
+docs/plans/PES2TS_V5.0-V5.2_十小时冲刺训练与验证执行方案_v1_20261018.md,keep（保留）,E09,Y,V5.0–V5.2 冲刺计划；V5.1a 门与扩量准入条件（预注册）,方案正文；当期核心思路来源
+docs/plans/PES2TS_V5.1_修复冲刺与扩量准入方案_v1_20261019.md,keep（保留）,E09,Y,V5.1 修复冲刺口径与扩量准入；无状态头（P2 异常 A14），内容需按历史执行记录解读,方案正文；当期核心思路来源
+docs/reports/PES2TS_V5第一阶段冲刺执行报告_20261018.md,retain-readonly（只读保留）,E09,Y,sprint complete_oof_1seed；封存评测 REFUSED(sealed_confirm_not_opened)；复核稳定配方 A05,只读证据；条目量化结论来源
+24H_EXECUTION_TIMELINE.md,keep（保留）,E10,N,,只读证据；条目指针
+24H_FINAL_REPORT.md,keep（保留）,E10,Y,11 工作包六门终态；R3 F2-bidir 0.910[0.884–0.949] sign 0.888 6/6；V5.2 q 不可学习/stop 随机、Move +5.5% 破防；V5.3-ENG 216 episodes 仅工程闭环,只读证据；条目指针
+FAILURE_AND_REMAINING_WORK.md,keep（保留）,E10,Y,24H 8 项已修复 + 6 项科学负结果保存 + 4 类按设计阻塞（confirm/R1R2/余量/封存折）,只读证据；条目指针
+NEXT_DAY_DECISION_MEMO.md,keep（保留）,E10,Y,24H 后次日决策：V5.2 任务定义纠偏方向与授权边界,只读证据；条目指针
+R3_RESULT_SUMMARY.md,keep（保留）,E10,Y,R3 阶段关闭：dev-positive（双向 intent 唯一有效）/confirm-blocked；负结果保留,只读证据；条目指针
+V52_PROGRESS_STOP_REPORT.md,keep（保留）,E10,Y,V5.2 早期进度与 STOP 记录；q 头 corr≈0、stop 头 AUC≈0.5（后被 ADR-0030 判定为标签-任务错配）,只读证据；条目指针
+V53_ROLLOUT_REPORT.md,keep（保留）,E10,Y,V5.3-ENG rollout：216 episodes + 36 次真实 xtb，工程闭环 PASS；无任何 TS 科学主张,只读证据；条目指针
+docs/agent_runs/BOOTSTRAP_REVIEW.md,retain-readonly（只读保留）,E10,N,,运营记录；不抽取
+docs/agent_runs/E0_SIGNOFF_REPORT.md,retain-readonly（只读保留）,E10,N,,运营记录；不抽取
+docs/agent_runs/PARALLEL_EXECUTION_PLAN.md,retain-readonly（只读保留）,E10,N,,运营记录；不抽取
+docs/agent_runs/README.md,retain-readonly（只读保留）,E10,Y,24H 三 lane 并行（DATA/FEAT/LOSS）运营纪律与 handoff 索引（非科学结论）,运营记录；24H 战役 lane 证据
+docs/agent_runs/handoffs/W-DATA_E1_sixtables.md,retain-readonly（只读保留）,E10,N,,运营记录；不抽取
+docs/agent_runs/handoffs/W-DATA_E7_stats.md,retain-readonly（只读保留）,E10,N,,运营记录；不抽取
+docs/agent_runs/handoffs/W-FEAT_E2_v3_stack.md,retain-readonly（只读保留）,E10,N,,运营记录；不抽取
+docs/agent_runs/handoffs/W-FEAT_E4_v52labels.md,retain-readonly（只读保留）,E10,N,,运营记录；不抽取
+docs/agent_runs/handoffs/W-FEAT_E6_v53exec.md,retain-readonly（只读保留）,E10,N,,运营记录；不抽取
+docs/agent_runs/handoffs/W-FEAT_E6_v53prep.md,retain-readonly（只读保留）,E10,N,,运营记录；不抽取
+docs/agent_runs/handoffs/W-LOSS_E3_BVL_arms.md,retain-readonly（只读保留）,E10,N,,运营记录；不抽取
+docs/agent_runs/handoffs/W-LOSS_E3_trainer_and_runs.md,retain-readonly（只读保留）,E10,N,,运营记录；不抽取
+docs/agent_runs/handoffs/W-LOSS_E5_v52.md,retain-readonly（只读保留）,E10,N,,运营记录；不抽取
+docs/agent_runs/handoffs/W-LOSS_WP-L3_ledger_hardening.md,retain-readonly（只读保留）,E10,N,,运营记录；不抽取
+docs/design/decisions/ADR-0027-V5.1参考架fallback与双分母评估.md,keep（保留）,E10,N,,ADR 历史指针；不抽取
+docs/design/decisions/ADR-0028-关键原子几何策略合同与V5-V7任务拆分.md,keep（保留）,E10,N,,ADR 历史指针；不抽取
+docs/design/decisions/ADR-0029-V5.2+双门评估与封存边界.md,keep（保留）,E10,N,,ADR 历史指针；不抽取
+docs/plans/PES2TS_30h_R3_V52_V53_分层训练与验收计划_v1.1_20261020.md,keep（保留）,E10,Y,30h 分层：R3 66 runs + V5.2 33 runs；Stop 语义章节（§5.3/§5.6/T3.2）已于 10-21 被 ADR-0030 取代,方案正文；当期核心思路来源
+docs/plans/PES2TS_V5.1-R2_损失尺度与数据完整性修复方案_v1_20261020.md,keep（保留）,E10,N,,方案历史指针；不抽取
+docs/plans/PES2TS_V5.1-R3_反应意图条件化与端点标签不变重训方案_v3_20261020.md,keep（保留）,E10,Y,R3 winer：intent_directed_irc_step，F2-bidir 三 seed 0.884/0.896/0.949、sign 0.888、6/6 优于零步,方案正文；当期核心思路来源
+docs/plans/PES2TS_V5.1-R3_数据库特征损失三位一体修复方案_v1_20261020.md,keep（保留）,E10,N,,方案历史指针；不抽取
+docs/plans/PES2TS_单端点IRC生成控制器_产品设计_v3_20261020.md,keep（保留）,E10,N,,方案历史指针；不抽取
+docs/contracts/PES2TS_FullPathNavigationContract_v1.md,keep（保留）,E11,N,,合同历史指针；不抽取
+docs/contracts/PES2TS_GeometryPolicyContract_v1.md,keep（保留）,E11,N,,合同历史指针；不抽取
+docs/contracts/PES2TS_GeometryPolicyContract_v2.md,keep（保留）,E11,N,,合同历史指针；不抽取
+docs/contracts/PES2TS_ReactionIntent_Contract_v1.md,keep（保留）,E11,N,,合同历史指针；不抽取
+docs/contracts/PES2TS_ReactionIntent_Contract_v2.md,keep（保留）,E11,Y,"Stop/q 条款由 v2 取代（ADR-0030）；π(X_t,G_rxn)→(ΔX_K,q̂,m̂) 语义边界",合同正文；条目任务语义来源
+docs/design/decisions/ADR-0030-V5.2全路径导航与端点停止.md,keep（保留）,E11,Y,撤回 TS 邻域 Stop 旧定义：Full-Path Navigation + Endpoint Stop；条款级取代 ADR-0021/0028/0029 相关语义,关键决策证据；关联 ADR 指针
+docs/plans/PES2TS_PES-N_V5-V7架构调整与实施计划_v1.2_20261018.md,keep（保留）,E11,N,,方案历史指针；不抽取
+docs/plans/PES2TS_V5-V7_三阶段研究与架构修订方案_v2.0_20261020.md,keep（保留）,E11,N,,方案历史指针；不抽取
+docs/plans/PES2TS_V5-V7_反应意图条件化与低维生长方案_v3.0_20261020.md,keep（保留）,E11,Y,V5/V6/V7 三阶段重定义（反应意图条件化→物理修正→成本感知自主探索）；取代 v2.0,方案正文；当期核心思路来源
+docs/plans/PES2TS_V52R_全路径导航与端点停止修复方案_v1_20261021.md,retain-readonly（只读保留）,E11,Y,D0 PASS/D1 FAIL/D0.1 PASS/D2 P1 PASS+P4P5 FAIL；T1 不授权，Closed — D2-G STOP,方案正文；当期核心思路来源
+docs/plans/PES2TS_V52R_输入充分性与化学终点识别优化方案_v1_20261021.md,retain-readonly（只读保留）,E11,N,,方案历史指针；不抽取
+docs/reports/PES2TS_V52R_输入充分性决策记录_20261021.md,retain-readonly（只读保留）,E11,Y,D0.1 PASS：22 异常全部 T→Mask；输入充分性判定与化学终点识别口径,只读证据；条目量化结论来源
+docs/reports/PES2TS_V52_任务纠偏审计_20261021.md,retain-readonly（只读保留）,E11,Y,核心发现：92 个到达端点行被 terminal 排除；旧 Stop 正例 196/405 全在 TS 附近（d_key_TS 中位 0.021Å）→ 标签-任务错配,只读证据；条目量化结论来源
+docs/superseded/PES2TS_V5.1-R3_端点对称特征与损失重训方案_v1_20261020.md,keep（保留）,E11,N,,已取代文档；取代链证据（只读）
+docs/superseded/PES2TS_V5.1-R3_端点对称特征与损失重训方案_v2_20261020.md,keep（保留）,E11,N,,已取代文档；取代链证据（只读）
+docs/superseded/PES2TS_单端点IRC生成控制器_产品设计_v1_20261020.md,keep（保留）,E11,N,,已取代文档；取代链证据（只读）
+docs/superseded/PES2TS_单端点IRC生成控制器_产品设计_v2_20261020.md,keep（保留）,E11,N,,已取代文档；取代链证据（只读）
+V53MP_RESUME_20261022.md,keep（保留）,E12,N,,只读证据；条目指针
+docs/contracts/PES2TS_MoveProcessContract_v1.md,keep（保留）,E12,Y,MOVE/PROCESS/No-Move/TS 唯一任务合同；输入仍为当前单帧+合法有向拓扑，禁参考端点/历史/真值,合同正文；条目任务语义来源
+docs/design/decisions/ADR-0031-MOVE-PROCESS统一学习合同.md,keep（保留）,E12,Y,一个共享 EGNN + MOVE/PROCESS 两头；No-Move=p_end≥τ_end 且目标化学状态一致；q 仅辅助；TS 永远继续 MOVE,关键决策证据；关联 ADR 指针
+docs/infra/wsl_memory_governance.md,keep（保留）,E12,N,,只读证据；条目指针
+docs/plans/PES2TS_V5.3-MP_大规模MOVE-PROCESS联合训练计划_v1_20261021.md,keep（保留）,E12,Y,S0 20k 建库→S1 2k→S2 5k→S3 20k→S4 条件扩量；三臂 A/B/C；GPU=0 直到就绪门通过,方案正文；当期核心思路来源
+docs/plans/PES2TS_V5.3-MP_文档同步清单_v1_20261021.md,retain-readonly（只读保留）,E12,N,,方案历史指针；不抽取
+docs/reports/PES2TS_V53MP_S0_数据建库与资格报告_20261022.md,retain-readonly（只读保留）,E12,Y,"20,000 条合格独立反应冻结池（2k⊂5k⊂20k）+dev 589+confirm 2,000 仅列名；S0 全部门通过",只读证据；条目量化结论来源
+docs/reports/PES2TS_V53MP_S1_2k冒烟报告_20261022.md,retain-readonly（只读保留）,E12,Y,"S1 三臂 ok、Move guard 全过、GPU 1,829s≤3,600s 上限；2k 只作链路验证",只读证据；条目量化结论来源
+docs/reports/PES2TS_V53MP_S2_5k规模报告_20261022.md,retain-readonly（只读保留）,E12,Y,"S2 9/9 done、Move guard 全过、零 NaN、GPU 合计 13,048s（规模阶梯中间点）",只读证据；条目量化结论来源
+docs/reports/PES2TS_V53MP_S3_20k主结果报告_20261023.md,retain-readonly（只读保留）,E12,Y,9/9 done，Move guard 全负退化(−9.9%~−12.0%)；ordering cross-TS 0.80；endpoint AUROC 0.597；C_s29 误停率 0.63,只读证据；条目量化结论来源
+docs/reports/PES2TS_V53MP_S3_闭环评估报告_20261023.md,retain-readonly（只读保留）,E12,Y,闭环门 V53MP-S3-closed-loop 通过；声明限 TS_candidate/endpoint_reached，reference-normalized 与 autonomous 分开报告,只读证据；条目量化结论来源
+docs/reports/PES2TS_V53MP_S4_20k_vs_50k_配对统计与C臂导出_20261027.md,retain-readonly（只读保留）,E12,Y,50k vs 20k 配对统计口径与 C 臂导出；哪些指标 CI 不含 0,只读证据；条目量化结论来源
+docs/reports/PES2TS_V53MP_S4_50k_单路正式训练报告_20261027.md,retain-readonly（只读保留）,E12,Y,"50k 单路正式训练执行事实与成本（37,900 updates；跨档代码演进故精度可比、成本不可比）",只读证据；条目量化结论来源
+docs/reports/PES2TS_V53MP_规模训练收益报告_2k_to_50k_20261027.md,retain-readonly（只读保留）,E12,Y,规模收益几乎全在 process 头：q corr 0.05→0.30→0.40、AUPRC 0.210→0.244→0.300；Move 20k 即饱和、50k sign 降 1.7–2.2pp,只读证据；条目量化结论来源
+docs/reports/PES2TS_V53MP_训练过程可视化报告_20261023.html,retain-readonly（只读保留）,E12,N,,只读证据；条目指针（不抽取）
+docs/design/decisions/ADR-0032-V5.4.1-Embedding接口扩展与预注册治理.md,keep（保留）,E13,Y,Embedding 残差接口扩展与预注册治理（schema/validator/阈值冻结）；任务语义不变,关键决策证据；关联 ADR 指针
+docs/plans/PES2TS_V5.4.1_Embedding_50K_详细阶段实施方案_v1.0_20261027.md,keep（保留）,E13,Y,"V5.4.1 规划：固定 50K、三层 StarEGNNV3 core、MOVE+PROCESS、37,900 updates、E0–E5 候选与成本门 2.0",方案正文；当期核心思路来源
+docs/plans/V541_WP7_frozen_dev_eval_设计方案_v1.0_20261028.md,keep（保留）,E13,N,,方案历史指针；不抽取
+docs/reports/PES2TS_V541_Embedding_50K_实施与训练报告_20261029.md,retain-readonly（只读保留）,E13,Y,E*=E0 留任；E1/E2 H2 sign guard 失败、E3 sign+dead 失败→scientific_failure；E4 成本门 3.6455>2.0 被 gate_skipped；confirm 未读,只读证据；条目量化结论来源
+docs/design/decisions/ADR-0033-V5.4.2-Backbone接口与预注册治理.md,keep（保留）,E14,Y,Backbone 接口与预注册治理；A0 legacy adapter 迁移不变量；H2 继承/H3 matched-A0 + Holm 统计合同,关键决策证据；关联 ADR 指针
+docs/plans/PES2TS_V5.4.2_Backbone_50K_详细阶段实施方案_v1.0_20261029.md,keep（保留）,E14,Y,V5.4.2 规划：Backbone 接口 z/edge_msg、共享 DirectMoveDecoder(49)、A0–A5 候选、H2/H3 合同；状态头 Active-Proposed 滞后（A01/P0）,方案正文；当期核心思路来源
+docs/plans/PES2TS_V5.4_剩余架构研究工作方案_v1.0_20261029.md,keep（保留）,E14,Y,V5.4 剩余架构研究草案（0 引用、未正式登记状态，A13/P2）,方案正文；当期核心思路来源
+docs/reports/PES2TS_V542_Backbone_50K_实施与训练报告_20261031.md,retain-readonly（只读保留）,E14,Y,no_backbone_winner：H3 eligible=[]、A0 留任；A2/A3 的 seed43 触发 H2 breach（MOVE sign/direction 退化）→scientific_failure,只读证据；条目量化结论来源
+docs/design/decisions/ADR-0034-V5.4.3-双Decoder与DecoderContextV1.md,keep（保留）,E15,Y,"双 Decoder 基准与 DecoderContextV1 接口/只读视图/禁读清单；提案 F1–F8 修正与 37,900+400 训练合同",关键决策证据；关联 ADR 指针
+docs/plans/PES2TS_V5.4.3_WP执行清单_v1.0_20261102.md,keep（保留）,E15,Y,D1–D8 签认值、WP0–WP9 验收、18-run 追踪与冻结交付清单,方案正文；当期核心思路来源
+docs/plans/PES2TS_V5.4.3_双Decoder_50K_全面开发与训练方案_v1.0_20261102.md,keep（保留）,E15,Y,Frozen-Preregistered：固定 A0 Encoder+DecoderContextV1+MOVE/PROCESS 双轨，7 候选、18-run 上限、H0–H3 统计合同,方案正文；当期核心思路来源
+docs/reports/PES2TS_V543_双Decoder_50K_实施与训练报告_20261106.md,retain-readonly（只读保留）,E15,Y,双轨冠军：MOVE=M1(+4.77% rmse_zero)、PROCESS=P3(AUPRC+0.283)；M3 被 H2 排除、M2 seed43 复现失败；dev 一次性访问已用,只读证据；条目量化结论来源
+CONTRIBUTING.md,keep（保留）,E16,N,,公开化/归档治理证据
+LICENSE,keep（保留）,E16,N,,公开化/归档治理证据
+data/README.md,keep（保留）,E16,N,,公开化/归档治理证据
+docs/infra/PES2TS_仓库归档与清理方案_v1_20261120.md,keep（保留）,E16,Y,推 GitHub 前体检：data/12.15GB 与 outputs/ 已被 gitignore；四道 CI 门；archive 非墓地；7 份根 memo 不移动只加索引,公开化/归档治理证据
+docs/plans/PES2TS_训练测试集划分标准_v1_20261120.md,keep（保留）,E16,Y,划分链 L0–L4（G0 split→pesn_irc_split_v1→cohort/50K manifest→池内 inner-val）；Zenodo 12.15GB 六文件；5 份名单 15.2MB 入库,方案正文；当期核心思路来源
+scripts/archive/README.md,keep（保留）,E16,N,,只读证据；条目指针
+docs/infra/PES2TS_开发文档规范化归档方案_v2_20261121.md,keep（保留）,E17,Y,五层分类法+11 状态词表+元数据头 v2+归档三问；253 条处置映射与 B0–B3；G5 门禁规格,只读证据；条目指针
+docs/infra/doc_audit/20261121/GOVERNANCE_CONSTRAINTS.md,keep（保留）,E17,Y,30 条约束 G-xx、52 条硬钉死路径、12 项冲突 C-01…C-12、22 条禁止破坏项 D-01…D-22,审计输入；档案化依据
+docs/infra/doc_audit/20261121/MIGRATION_LOG.md,keep（保留）,E17,Y,执行流水模板（只许追加）；本任务不执行迁移，仅登记档案化结果,审计输入；档案化依据
+docs/infra/doc_audit/20261121/README.md,keep（保留）,E17,Y,审计口径：253 条/216 docs md/活跃 180/archive 36；状态块 167/216；索引双缺 40；门禁基线 0 error,审计输入；档案化依据
+AGENT.md,keep（保留）,X0,N,,横切常青权威；档案树入口指针，不随期归档
+README.md,keep（保留）,X0,N,,横切常青权威；档案树入口指针，不随期归档
+docs/PES2TS_开发宪法_v1.md,keep（保留）,X0,N,,横切常青权威；档案树入口指针，不随期归档
+docs/README.md,keep（保留）,X0,N,,横切常青权威；档案树入口指针，不随期归档
+docs/archive/README.md,retain-readonly（只读保留）,X0,N,,时点快照（只读）；条目时间证据，不入正文
+docs/design/PES2TS_CODE_MAP_v2_20261018.md,keep（保留）,X0,N,,横切常青权威；档案树入口指针，不随期归档
+docs/design/PES2TS_G_V_MAPPING_v1_20261018.md,keep（保留）,X0,N,,横切常青权威；档案树入口指针，不随期归档
+docs/design/decisions/ADR-0025-G-V双轴映射与战役注册.md,keep（保留）,X0,N,,ADR 历史指针；不抽取
+docs/plans/PES2TS_完整开发流方案_整合版_v1.md,keep（保留）,X0,N,,方案历史指针；不抽取
+docs/plans/PES2TS_整体开发与发布方案_v2.md,keep（保留）,X0,N,,方案历史指针；不抽取
+docs/plans/PES2TS_文档修订台账.md,keep（保留）,X0,N,,方案历史指针；不抽取
+docs/plans/PES2TS_阶段定义_G0-G3.md,keep（保留）,X0,N,,方案历史指针；不抽取
+docs/superseded/README.md,keep（保留）,X0,N,,已取代文档；取代链证据（只读）
+outputs/README.md,keep（保留）,X0,N,,只读证据；条目指针
+requirements-pesn-runtime.txt,retain-readonly（只读保留）,X0,N,,只读证据；条目指针
+requirements-pesn-training.txt,retain-readonly（只读保留）,X0,N,,只读证据；条目指针
+requirements.txt,retain-readonly（只读保留）,X0,N,,只读证据；条目指针
+scripts/README.md,keep（保留）,X0,N,,只读证据；条目指针

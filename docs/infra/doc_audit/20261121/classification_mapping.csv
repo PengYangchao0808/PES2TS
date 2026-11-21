@@ -1,0 +1,254 @@
+﻿path,class_bucket,suggested_action,gate_locked,inbound_refs,inventory_doc_type,inventory_declared_status,evidence_note
+24H_EXECUTION_TIMELINE.md,运营记录,原地保留(门禁钉死),historical;root_scope,2,运营记录,,根目录战役 memo（historical/root_scope 门禁输入，移动即红）
+24H_FINAL_REPORT.md,运营记录,原地保留(门禁钉死),historical;root_scope,4,报告,,根目录战役 memo（historical/root_scope 门禁输入，移动即红）
+AGENT.md,治理规范,原地保留(门禁钉死),root_scope,8,治理规范,权威（执行投影，非独立规范）,宪法执行投影（根 13 份之一）；门禁名单(root_scope)
+CONTRIBUTING.md,外部说明,原地保留(SSOT/索引),,1,外部说明,,仓库对外说明
+FAILURE_AND_REMAINING_WORK.md,运营记录,原地保留(门禁钉死),historical;root_scope,3,运营记录,,根目录战役 memo（historical/root_scope 门禁输入，移动即红）
+LICENSE,未分类-需裁决,需所有者裁决,,27,外部说明,,task-1 清单有记录但本任务扫描域未覆盖（可能为 docs 外文件），需人工确认
+NEXT_DAY_DECISION_MEMO.md,运营记录,原地保留(门禁钉死),historical;root_scope,3,运营记录,,根目录战役 memo（historical/root_scope 门禁输入，移动即红）
+R3_RESULT_SUMMARY.md,运营记录,原地保留(门禁钉死),root_scope,2,报告,R3 阶段关闭（dev-positive / confirm-blocked）,根目录战役 memo（historical/root_scope 门禁输入，移动即红）
+README.md,外部说明,原地保留(SSOT/索引),root_scope,1,产品文档,,仓库门面 README（root_scope 门禁输入；104KB 超大，建议拆分子目录索引）
+V52_PROGRESS_STOP_REPORT.md,运营记录,原地保留(门禁钉死),historical;root_scope,2,报告,,根目录战役 memo（historical/root_scope 门禁输入，移动即红）
+V53MP_RESUME_20261022.md,运营记录,原地保留(门禁钉死),,0,运营记录,,根目录战役 memo（historical/root_scope 门禁输入，移动即红）
+V53_ROLLOUT_REPORT.md,运营记录,原地保留(门禁钉死),root_scope,4,报告,历史命名（V5.3-ENG）,根目录战役 memo（historical/root_scope 门禁输入，移动即红）
+artifacts/pesn/pesn-control-demo24-bc-v0.1.0/model_card.md,产品文档,原地保留(只读证据),,0,产品文档,,artifacts model_card 属模型产物证据，原地只读
+artifacts/pesn/pesn-control-demo24-bc-v0.1.1-rlrepair1/model_card.md,产品文档,原地保留(只读证据),,0,产品文档,,artifacts model_card 属模型产物证据，原地只读
+artifacts/pesn/pesn-control-demo24-cql-v0.1.1-rlrepair1/model_card.md,产品文档,原地保留(只读证据),,0,产品文档,,artifacts model_card 属模型产物证据，原地只读
+artifacts/pesn/pesn-control-demo24-v0.1.0/model_card.md,产品文档,原地保留(只读证据),,0,产品文档,,artifacts model_card 属模型产物证据，原地只读
+artifacts/pesn/pesn-control-scale-bc-v0.1.0-rl50/model_card.md,产品文档,原地保留(只读证据),,0,产品文档,,artifacts model_card 属模型产物证据，原地只读
+artifacts/pesn/pesn-control-scale-cql-v0.1.0-rl50/model_card.md,产品文档,原地保留(只读证据),,0,产品文档,,artifacts model_card 属模型产物证据，原地只读
+artifacts/pesn/pesn-irc-scale5k-v0.1.0-rc.1/model_card.md,产品文档,原地保留(只读证据),,0,产品文档,,artifacts model_card 属模型产物证据，原地只读
+artifacts/pesn/pesn-irc-v0.1.0-rc.1/model_card.md,产品文档,原地保留(只读证据),,0,产品文档,,artifacts model_card 属模型产物证据，原地只读
+data/README.md,未分类-需裁决,需所有者裁决,,237,索引,,task-1 清单有记录但本任务扫描域未覆盖（可能为 docs 外文件），需人工确认
+docs/PES2TS_开发宪法_v1.md,治理规范,原地保留(SSOT/索引),,62,治理规范,权威（唯一规范来源 / SSOT）,宪法 SSOT（AGENT.md 头部与 §9 指定规范根）
+docs/README.md,治理规范,原地保留(SSOT/索引),,3,索引,,人工文档索引（AGENT.md §9.3 强制同步）
+docs/agent_runs/BOOTSTRAP_REVIEW.md,运营记录,原地保留(只读证据),,4,报告,Review（提交用户决策；未授权训练）,agent_runs 运营编排记录；docs_consistency token_exempt_prefix
+docs/agent_runs/E0_SIGNOFF_REPORT.md,运营记录,原地保留(只读证据),,0,报告,ASSEMBLED — 待人工签认,agent_runs 运营编排记录；docs_consistency token_exempt_prefix
+docs/agent_runs/PARALLEL_EXECUTION_PLAN.md,运营记录,原地保留(只读证据),,4,阶段计划,Draft（并行 dry-run 进行中；未授权启动正式训练）,agent_runs 运营编排记录；docs_consistency token_exempt_prefix
+docs/agent_runs/README.md,运营记录,原地保留(只读证据),,0,索引,Active（并行 dry-run 已过；正式启动待用户授权）,agent_runs 运营编排记录；docs_consistency token_exempt_prefix
+docs/agent_runs/handoffs/W-DATA_E1_sixtables.md,运营记录,原地保留(只读证据),,1,运营记录,,agent_runs 运营编排记录；docs_consistency token_exempt_prefix
+docs/agent_runs/handoffs/W-DATA_E7_stats.md,运营记录,原地保留(只读证据),,0,运营记录,,agent_runs 运营编排记录；docs_consistency token_exempt_prefix
+docs/agent_runs/handoffs/W-FEAT_E2_v3_stack.md,运营记录,原地保留(只读证据),,1,运营记录,fixture_passed — 全部结果 not_admissible_until_gate_pass，需 G0+G1 在真实数据上通过后方可采信（预期状态，,agent_runs 运营编排记录；docs_consistency token_exempt_prefix
+docs/agent_runs/handoffs/W-FEAT_E4_v52labels.md,运营记录,原地保留(只读证据),,0,运营记录,,agent_runs 运营编排记录；docs_consistency token_exempt_prefix
+docs/agent_runs/handoffs/W-FEAT_E6_v53exec.md,运营记录,原地保留(只读证据),,0,运营记录,,agent_runs 运营编排记录；docs_consistency token_exempt_prefix
+docs/agent_runs/handoffs/W-FEAT_E6_v53prep.md,运营记录,原地保留(只读证据),,0,运营记录,,agent_runs 运营编排记录；docs_consistency token_exempt_prefix
+docs/agent_runs/handoffs/W-LOSS_E3_BVL_arms.md,运营记录,原地保留(只读证据),,1,运营记录,IMPLEMENTED + EXECUTED · 2026-10-20T19:10Z · 分支 ops/e3-cont · lane W-LOSS wave 3,agent_runs 运营编排记录；docs_consistency token_exempt_prefix
+docs/agent_runs/handoffs/W-LOSS_E3_trainer_and_runs.md,运营记录,原地保留(只读证据),,1,运营记录,IMPLEMENTED + EXECUTED (fixture_passed → real runs done) · 2026-10-20T17:12Z · 分,agent_runs 运营编排记录；docs_consistency token_exempt_prefix
+docs/agent_runs/handoffs/W-LOSS_E5_v52.md,运营记录,原地保留(只读证据),,1,运营记录,IMPLEMENTED + PARTIALLY EXECUTED（预注册抢救集完成） · 2026-10-20T20:45Z · 分支 ops/e5-v52 ·,agent_runs 运营编排记录；docs_consistency token_exempt_prefix
+docs/agent_runs/handoffs/W-LOSS_WP-L3_ledger_hardening.md,运营记录,原地保留(只读证据),,1,运营记录,IMPLEMENTED + FIXTURE_PASSED,agent_runs 运营编排记录；docs_consistency token_exempt_prefix
+docs/archive/20261005_pre_pesn/README.md,快照,原地保留(快照),,11,快照,只读历史快照,docs/archive 版本快照，archive/README 规则2 明文禁止搬入/移动
+docs/archive/20261006_pre_g3p/README.md,快照,原地保留(快照),,8,快照,只读历史快照，非当前规范或计划,docs/archive 版本快照，archive/README 规则2 明文禁止搬入/移动
+docs/archive/20261007_pre_light_policy/AGENT.md,快照,原地保留(快照),,4,快照,权威（执行投影，非独立规范）,docs/archive 版本快照，archive/README 规则2 明文禁止搬入/移动
+docs/archive/20261007_pre_light_policy/README.md,快照,原地保留(快照),,8,快照,只读历史快照,docs/archive 版本快照，archive/README 规则2 明文禁止搬入/移动
+docs/archive/20261007_pre_light_policy/docs/PES2TS_开发宪法_v1.md,快照,原地保留(快照),,9,快照,权威（唯一规范来源 / SSOT）,docs/archive 版本快照，archive/README 规则2 明文禁止搬入/移动
+docs/archive/20261007_pre_light_policy/docs/README.md,快照,原地保留(快照),,2,快照,,docs/archive 版本快照，archive/README 规则2 明文禁止搬入/移动
+docs/archive/20261007_pre_light_policy/docs/plans/PES2TS_G3_P1_IRC教师预训练与模型版本计划_v1_20261006.md,快照,原地保留(快照),,9,快照,当前第一期训练实施方案（设计完成，数据构建/训练/权重/硬件验收未启动）,docs/archive 版本快照，archive/README 规则2 明文禁止搬入/移动
+docs/archive/20261007_pre_light_policy/docs/plans/PES2TS_PES-N未来开发计划_v2_20261005.md,快照,原地保留(快照),,9,快照,当前未来开发计划,docs/archive 版本快照，archive/README 规则2 明文禁止搬入/移动
+docs/archive/20261007_pre_light_policy/docs/plans/PES2TS_完整开发流方案_整合版_v1.md,快照,原地保留(快照),,3,快照,权威整合稿（流程总入口；阶段定义与规范不在本文重复立法）,docs/archive 版本快照，archive/README 规则2 明文禁止搬入/移动
+docs/archive/20261007_pre_light_policy/docs/plans/PES2TS_整体开发与发布方案_v2.md,快照,原地保留(快照),,4,快照,权威（项目级开发与发布；能力状态按独立证据验收）,docs/archive 版本快照，archive/README 规则2 明文禁止搬入/移动
+docs/archive/20261007_pre_light_policy/docs/plans/PES2TS_文档修订台账.md,快照,原地保留(快照),,3,快照,权威（文档治理）,docs/archive 版本快照，archive/README 规则2 明文禁止搬入/移动
+docs/archive/20261007_pre_light_policy/docs/plans/PES2TS_阶段定义_G0-G3.md,快照,原地保留(快照),,8,快照,权威（阶段与边界定义的唯一来源）,docs/archive 版本快照，archive/README 规则2 明文禁止搬入/移动
+docs/archive/20261007_pre_light_policy/source_README.md,快照,原地保留(快照),,1,快照,,docs/archive 版本快照，archive/README 规则2 明文禁止搬入/移动
+docs/archive/20261007_pre_orca_xtb_pilot/README.md,快照,原地保留(快照),,3,快照,只读历史快照,docs/archive 版本快照，archive/README 规则2 明文禁止搬入/移动
+docs/archive/20261007_pre_orca_xtb_pilot/files/AGENT.md,快照,原地保留(快照),,3,快照,权威（执行投影，非独立规范）,docs/archive 版本快照，archive/README 规则2 明文禁止搬入/移动
+docs/archive/20261007_pre_orca_xtb_pilot/files/README.md,快照,原地保留(快照),,1,快照,,docs/archive 版本快照，archive/README 规则2 明文禁止搬入/移动
+docs/archive/20261007_pre_orca_xtb_pilot/files/docs/PES2TS_开发宪法_v1.md,快照,原地保留(快照),,5,快照,权威（唯一规范来源 / SSOT）,docs/archive 版本快照，archive/README 规则2 明文禁止搬入/移动
+docs/archive/20261007_pre_orca_xtb_pilot/files/docs/README.md,快照,原地保留(快照),,2,快照,,docs/archive 版本快照，archive/README 规则2 明文禁止搬入/移动
+docs/archive/20261007_pre_orca_xtb_pilot/files/docs/plans/PES2TS_文档修订台账.md,快照,原地保留(快照),,2,快照,权威（文档治理）,docs/archive 版本快照，archive/README 规则2 明文禁止搬入/移动
+docs/archive/20261007_pre_orca_xtb_pilot/files/docs/plans/PES2TS_轻量控制与RL衔接计划_v1_20261007.md,快照,原地保留(快照),,5,快照,当前增量计划（用户授权简化路线；本文完成设计，策略接入与 RL 收益待验收）,docs/archive 版本快照，archive/README 规则2 明文禁止搬入/移动
+docs/archive/20261007_pre_predictor_scope/README.md,快照,原地保留(快照),,9,快照,只读历史快照，非当前规范,docs/archive 版本快照，archive/README 规则2 明文禁止搬入/移动
+docs/archive/20261007_pre_unified_residual_rl/AGENT.md,快照,原地保留(快照),,0,快照,权威（执行投影，非独立规范）,docs/archive 版本快照，archive/README 规则2 明文禁止搬入/移动
+docs/archive/20261007_pre_unified_residual_rl/README.md,快照,原地保留(快照),,6,快照,只读历史快照与本次规划验证记录,docs/archive 版本快照，archive/README 规则2 明文禁止搬入/移动
+docs/archive/20261007_pre_unified_residual_rl/docs__PES2TS_开发宪法_v1.md,快照,原地保留(快照),,0,快照,权威（唯一规范来源 / SSOT）,docs/archive 版本快照，archive/README 规则2 明文禁止搬入/移动
+docs/archive/20261007_pre_unified_residual_rl/docs__README.md,快照,原地保留(快照),,0,快照,,docs/archive 版本快照，archive/README 规则2 明文禁止搬入/移动
+docs/archive/20261007_pre_unified_residual_rl/docs__plans__PES2TS_G2_AB4_ORCA驱动xTB约束优化试点方案_20261007.md,快照,原地保留(快照),,0,快照,当前小批优化方案（设计完成；工作流、回退和真实试点尚未实施）,docs/archive 版本快照，archive/README 规则2 明文禁止搬入/移动
+docs/archive/20261007_pre_unified_residual_rl/docs__plans__PES2TS_PES-N未来开发计划_v2_20261005.md,快照,原地保留(快照),,0,快照,当前未来开发计划,docs/archive 版本快照，archive/README 规则2 明文禁止搬入/移动
+docs/archive/20261007_pre_unified_residual_rl/docs__plans__PES2TS_文档修订台账.md,快照,原地保留(快照),,0,快照,权威（文档治理）,docs/archive 版本快照，archive/README 规则2 明文禁止搬入/移动
+docs/archive/20261007_pre_unified_residual_rl/docs__plans__PES2TS_轻量控制与RL衔接计划_v1_20261007.md,快照,原地保留(快照),,0,快照,当前增量计划（用户授权简化路线；本文完成设计，策略接入与 RL 收益待验收）,docs/archive 版本快照，archive/README 规则2 明文禁止搬入/移动
+docs/archive/20261007_pre_unified_residual_rl/docs__plans__PES2TS_阶段定义_G0-G3.md,快照,原地保留(快照),,0,快照,权威（阶段与边界定义的唯一来源）,docs/archive 版本快照，archive/README 规则2 明文禁止搬入/移动
+docs/archive/20261008_pre_scale20k_rl2k/AGENT.md,快照,原地保留(快照),,2,快照,权威（执行投影，非独立规范）,docs/archive 版本快照，archive/README 规则2 明文禁止搬入/移动
+docs/archive/20261008_pre_scale20k_rl2k/README.md,快照,原地保留(快照),,3,快照,只读历史快照,docs/archive 版本快照，archive/README 规则2 明文禁止搬入/移动
+docs/archive/20261008_pre_scale20k_rl2k/docs/README.md,快照,原地保留(快照),,2,快照,,docs/archive 版本快照，archive/README 规则2 明文禁止搬入/移动
+docs/archive/20261008_pre_scale20k_rl2k/docs/plans/PES2TS_RL下一轮代码修复训练与调整方案_v1_20261008.md,快照,原地保留(快照),,3,快照,规划已完成,docs/archive 版本快照，archive/README 规则2 明文禁止搬入/移动
+docs/archive/20261008_pre_scale20k_rl2k/docs/plans/PES2TS_文档修订台账.md,快照,原地保留(快照),,2,快照,权威（文档治理）,docs/archive 版本快照，archive/README 规则2 明文禁止搬入/移动
+docs/archive/README.md,快照,原地保留(快照),,4,快照,,docs/archive 版本快照，archive/README 规则2 明文禁止搬入/移动
+docs/contracts/PES2TS_ACP字段映射_v1.md,合同,原地保留(SSOT/索引),,14,合同,,合同/字段字典为接口依据；AGENT.md §9 单一主干编号
+docs/contracts/PES2TS_FullPathNavigationContract_v1.md,合同,原地保留(门禁钉死),historical;required_files,16,合同,SUPERSEDED（2026-10-21，ADR-0031 / MoveProcessContract v1）,"合同/字段字典为接口依据；AGENT.md §9 单一主干编号；门禁名单historical,required_files"
+docs/contracts/PES2TS_G2T_战役合同字段字典_v1.md,合同,原地保留(SSOT/索引),,10,合同,离线 V0 已验证（默认测试套件）,合同/字段字典为接口依据；AGENT.md §9 单一主干编号
+docs/contracts/PES2TS_GeometryPolicyContract_v1.md,合同,原地保留(门禁钉死),historical,7,合同,SUPERSEDED （2026-10-21）,合同/字段字典为接口依据；AGENT.md §9 单一主干编号；门禁名单historical
+docs/contracts/PES2TS_GeometryPolicyContract_v2.md,合同,原地保留(SSOT/索引),,7,合同,Active-Normative（2026-10-21；No-Move/Stop 条款由 ADR-0031 取代）,合同/字段字典为接口依据；AGENT.md §9 单一主干编号
+docs/contracts/PES2TS_MoveProcessContract_v1.md,合同,原地保留(门禁钉死),required_files,25,合同,Active-Normative（2026-10-21 起为 V5.3-MP 的唯一 Move/Process/Stop 任务合同）,合同/字段字典为接口依据；AGENT.md §9 单一主干编号；门禁名单required_files
+docs/contracts/PES2TS_PESN_IRC教师数据与模型包合同_v1.md,合同,原地保留(SSOT/索引),,26,合同,已登记设计草案,合同/字段字典为接口依据；AGENT.md §9 单一主干编号
+docs/contracts/PES2TS_ReactionIntent_Contract_v1.md,合同,原地保留(门禁钉死),historical,15,合同,SUPERSEDED （2026-10-21）,合同/字段字典为接口依据；AGENT.md §9 单一主干编号；门禁名单historical
+docs/contracts/PES2TS_ReactionIntent_Contract_v2.md,合同,原地保留(SSOT/索引),,8,合同,Active-Normative（2026-10-21；Stop/q 条款由 ADR-0031 取代）,合同/字段字典为接口依据；AGENT.md §9 单一主干编号
+docs/contracts/PES2TS_V4.2-V4.7_实施合同与战役冻结_v1.md,合同,原地保留(SSOT/索引),,3,合同,Frozen（实现批次合同；启动正式训练前冻结，训练开始后不得修改）,合同/字段字典为接口依据；AGENT.md §9 单一主干编号
+docs/contracts/PES2TS_contracts_v1.md,合同,原地保留(SSOT/索引),,14,合同,,合同/字段字典为接口依据；AGENT.md §9 单一主干编号
+docs/contracts/PES2TS_双端TS教师与相容转移合同_v2.md,合同,原地保留(门禁钉死),historical,8,合同,HISTORICAL / LEGACY（2026-10-21）,合同/字段字典为接口依据；AGENT.md §9 单一主干编号；门禁名单historical
+docs/contracts/PES2TS_数据规范与ACP对接优化方案.md,合同,原地保留(SSOT/索引),,12,合同,设计建议，尚未实施,合同/字段字典为接口依据；AGENT.md §9 单一主干编号
+docs/demo/PES2TS_Demo实现审核与架构解读_20260930.md,设计,原地保留(只读证据),,11,报告,,Demo 流程设计/指标/审核文档
+docs/demo/PES2TS_Demo评估指标_v1.md,设计,原地保留(只读证据),,11,设计,,Demo 流程设计/指标/审核文档
+docs/demo/PES2TS_demo24_反应挑选与复核方案.md,设计,原地保留(只读证据),,16,设计,,Demo 流程设计/指标/审核文档
+docs/design/G1_TS_IRC_映射与反应归簇实现方案.md,设计,原地保留(SSOT/索引),,13,设计,已实现（Batches A–E 全部落地并通过 355 项测试；Batch F 全量运行经,阶段设计文档（非 ADR 决策记录）
+docs/design/G1_v2_L0到G2扫描策略设计.md,设计,原地保留(SSOT/索引),,13,设计,设计稿，2026-09-27,阶段设计文档（非 ADR 决策记录）
+docs/design/G1_v2_ORCA扫描模式识别与计划.md,设计,原地保留(SSOT/索引),,17,设计,,阶段设计文档（非 ADR 决策记录）
+docs/design/G1_v2_一维优先与xTB二维成本策略.md,设计,原地保留(SSOT/索引),,15,设计,,阶段设计文档（非 ADR 决策记录）
+docs/design/G1_v2_产物成键逆向扫描优先策略.md,设计,原地保留(SSOT/索引),,14,设计,,阶段设计文档（非 ADR 决策记录）
+docs/design/G1_v2_多成键与少成键方向对比.md,设计,原地保留(SSOT/索引),,17,设计,,阶段设计文档（非 ADR 决策记录）
+docs/design/G1_v2_成断键扫描方向选择可视化.html,设计,原地保留(SSOT/索引),,5,设计,,阶段设计文档（非 ADR 决策记录）
+docs/design/G1_v2_方向无关成键锚点与双向扫描策略.md,设计,原地保留(SSOT/索引),,16,设计,,阶段设计文档（非 ADR 决策记录）
+docs/design/G1_v2_补全实施总方案.md,设计,原地保留(SSOT/索引),,18,设计,,阶段设计文档（非 ADR 决策记录）
+docs/design/PES2TS_CODE_MAP_v2_20261018.md,设计,原地保留(SSOT/索引),,3,设计,参考（非规范）,阶段设计文档（非 ADR 决策记录）
+docs/design/PES2TS_Classic图论驱动与xTB原生约束扫描设计_v1_20261006.md,设计,原地保留(SSOT/索引),,24,设计,设计完成,阶段设计文档（非 ADR 决策记录）
+docs/design/PES2TS_G_V_MAPPING_v1_20261018.md,设计,原地保留(SSOT/索引),,11,设计,权威（机器可读源：config/registry/g_v_map.yaml）,阶段设计文档（非 ADR 决策记录）
+docs/design/PES2TS_PES-C到PES-G架构与迁移方案_v1_20261004.md,设计,原地保留(SSOT/索引),,15,设计,设计提案（已汇总本轮用户选择；尚未实施、未改变生产默认或能力状态）,阶段设计文档（非 ADR 决策记录）
+docs/design/PES2TS_三模块与可视化产品架构_v1_20261005.md,设计,原地保留(SSOT/索引),,27,设计,当前产品架构设计,阶段设计文档（非 ADR 决策记录）
+docs/design/PES2TS_预测器产品与G3代码模块划分_v1_20261007.md,设计,原地保留(SSOT/索引),,38,设计,当前代码范围与实施设计,阶段设计文档（非 ADR 决策记录）
+docs/design/PES_GENERATION_图论扫描策略选择器设计_v1.md,设计,原地保留(SSOT/索引),,20,设计,,阶段设计文档（非 ADR 决策记录）
+docs/design/decisions/ADR-0001-统一执行后端接缝.md,ADR,原地保留(SSOT/索引),,11,ADR,已接受（Accepted）,决策记录，一文档一职责（AGENT.md §9.1）
+docs/design/decisions/ADR-0002-计算后端统一经ACP执行.md,ADR,原地保留(SSOT/索引),,26,ADR,已接受（Accepted）,决策记录，一文档一职责（AGENT.md §9.1）
+docs/design/decisions/ADR-0003-G2-AB1接口登记.md,ADR,原地保留(SSOT/索引),,12,ADR,已接受（Accepted）,决策记录，一文档一职责（AGENT.md §9.1）
+docs/design/decisions/ADR-0004-G2-AB2接口登记.md,ADR,原地保留(SSOT/索引),,14,ADR,已接受（Accepted，离线 V0 已验证；gated 真实引擎项见状态列）,决策记录，一文档一职责（AGENT.md §9.1）
+docs/design/decisions/ADR-0005-G2-AB2执行前判定器与恢复修补.md,ADR,原地保留(SSOT/索引),,11,ADR,已接受（Accepted，2026-10-04；判定器 v2 与三项恢复/适配修补均在 S2 真实执行之前登记并锁定）,决策记录，一文档一职责（AGENT.md §9.1）
+docs/design/decisions/ADR-0006-ORCA原生约束优化与控制策略分离.md,ADR,原地保留(SSOT/索引),,15,ADR,Proposed（用户已提出并支持设计方向；本记录不宣布生产切换或能力验收）,决策记录，一文档一职责（AGENT.md §9.1）
+docs/design/decisions/ADR-0007-统一价值模型与搜索内生选点.md,ADR,仅加历史横幅,,15,ADR,历史提案，当前方向已由 ADR-0010/PES-N 计划取代,ADR 历史/被取代（README 状态列或头部）；ADR 不原地改写结论
+docs/design/decisions/ADR-0008-拓扑约束下的距离与位移联合预测.md,ADR,仅加历史横幅,,13,ADR,历史提案，当前方向已由 ADR-0010/PES-N 计划取代,ADR 历史/被取代（README 状态列或头部）；ADR 不原地改写结论
+docs/design/decisions/ADR-0009-G阶段下的统一模型开发框架.md,ADR,仅加历史横幅,,12,ADR,历史提案，当前方向已由 ADR-0010/PES-N 计划取代,ADR 历史/被取代（README 状态列或头部）；ADR 不原地改写结论
+docs/design/decisions/ADR-0010-PES-N反应状态价值与STOP-MOVE统一决策.md,ADR,原地保留(SSOT/索引),,43,ADR,Accepted（用户明确要求按最新开发哲学修改未来计划；开发方向及文档同步生效，代码/模型/生产切换另按证据验收）,决策记录，一文档一职责（AGENT.md §9.1）
+docs/design/decisions/ADR-0011-三模块产品架构与统一可视化.md,ADR,原地保留(SSOT/索引),,22,ADR,Accepted（用户要求的产品架构与开发方向；统一代码模块、接口schema、UI和真实能力另验收）,决策记录，一文档一职责（AGENT.md §9.1）
+docs/design/decisions/ADR-0012-Classic图论驱动与xTB原生约束扫描.md,ADR,原地保留(SSOT/索引),,27,ADR,Accepted（用户指定的设计方向；代码、正式schema、真实能力及默认切换待验收）,决策记录，一文档一职责（AGENT.md §9.1）
+docs/design/decisions/ADR-0013-G3并行IRC预训练与模型版本体系.md,ADR,原地保留(SSOT/索引),,35,ADR,Accepted（用户授权调整阶段规划；设计生效，训练实现与权重未交付）,决策记录，一文档一职责（AGENT.md §9.1）
+docs/design/decisions/ADR-0014-预测器产品归属与G3代码范围.md,ADR,原地保留(SSOT/索引),,32,ADR,Accepted（用户授权按产品细分开发范围；设计生效，代码/包/权限未实施）,决策记录，一文档一职责（AGENT.md §9.1）
+docs/design/decisions/ADR-0015-G2稳定底座与轻量RL研究入口.md,ADR,原地保留(SSOT/索引),,28,ADR,Accepted（用户授权简化近期路线；规划生效，策略/RL 能力待实现验收）,决策记录，一文档一职责（AGENT.md §9.1）
+docs/design/decisions/ADR-0016-ORCA驱动xTB硬约束优化试点.md,ADR,原地保留(SSOT/索引),,18,ADR,Accepted（用户授权尝试并要求优化方案；设计生效，实现/真实能力待验收）,决策记录，一文档一职责（AGENT.md §9.1）
+docs/design/decisions/ADR-0017-统一残差决策与G2有限回退.md,ADR,原地保留(SSOT/索引),,16,ADR,Accepted（用户授权规划；实现与真实能力待验收）,决策记录，一文档一职责（AGENT.md §9.1）
+docs/design/decisions/ADR-0018-RL纠错与动作支持研究计划.md,ADR,原地保留(SSOT/索引),,10,ADR,Proposed（用户要求的下一轮方案已登记；接口/算法实施与能力验收待完成）,决策记录，一文档一职责（AGENT.md §9.1）
+docs/design/decisions/ADR-0019-IRC20k与RL2000分阶段扩量.md,ADR,原地保留(SSOT/索引),,4,ADR,Proposed（详细规划已完成；接口实施/训练/真实计算未启动）,决策记录，一文档一职责（AGENT.md §9.1）
+docs/design/decisions/ADR-0020-EGNN直接位移与BC-IQL-SAC研究主线.md,ADR,仅加历史横幅,,6,ADR,前版记录,ADR 历史/被取代（README 状态列或头部）；ADR 不原地改写结论
+docs/design/decisions/ADR-0021-无序双端拓扑与完整双侧TS教师主线.md,ADR,原地保留(SSOT/索引),historical,8,ADR,Superseded for V5.2+（2026-10-21）,决策记录，一文档一职责（AGENT.md §9.1）
+docs/design/decisions/ADR-0022-v4.1因果输入合同与特征v3.md,ADR,原地保留(SSOT/索引),,3,ADR,Accepted（用户下达的 v4.1 P01 修复；可执行接口、数据重建与验收测试另验收）,决策记录，一文档一职责（AGENT.md §9.1）
+docs/design/decisions/ADR-0023-V4.2原生重连数据与内部开发划分.md,ADR,仅加历史横幅,,4,ADR,Accepted（实现批次合同；能力状态按四层纪律另记）,ADR 历史/被取代（README 状态列或头部）；ADR 不原地改写结论
+docs/design/decisions/ADR-0024-V4.2无界位移模型与战役训练协议.md,ADR,仅加历史横幅,,2,ADR,Accepted（实现批次合同；能力状态按四层纪律另记）,ADR 历史/被取代（README 状态列或头部）；ADR 不原地改写结论
+docs/design/decisions/ADR-0025-G-V双轴映射与战役注册.md,ADR,原地保留(SSOT/索引),,5,ADR,Accepted,决策记录，一文档一职责（AGENT.md §9.1）
+docs/design/decisions/ADR-0026-V5冲刺key-atom位移合同与OOF语义.md,ADR,原地保留(SSOT/索引),,7,ADR,Accepted（实现交付中；能力状态按四层纪律单列，见 §7）,决策记录，一文档一职责（AGENT.md §9.1）
+docs/design/decisions/ADR-0027-V5.1参考架fallback与双分母评估.md,ADR,原地保留(SSOT/索引),,5,ADR,Proposed（研究门；不实现新 fallback）,决策记录，一文档一职责（AGENT.md §9.1）
+docs/design/decisions/ADR-0028-关键原子几何策略合同与V5-V7任务拆分.md,ADR,原地保留(门禁钉死),historical,10,ADR,Proposed（设计冻结；实现前需签认）,ADR 历史/被取代（README 状态列或头部）；门禁名单historical
+docs/design/decisions/ADR-0029-V5.2+双门评估与封存边界.md,ADR,原地保留(SSOT/索引),historical,5,ADR,Proposed（评估设计冻结；阈值待 V5.2 数据校准后预注册）,决策记录，一文档一职责（AGENT.md §9.1）
+docs/design/decisions/ADR-0030-V5.2全路径导航与端点停止.md,ADR,原地保留(SSOT/索引),required_files,23,ADR,Accepted（2026-10-21；部分被 ADR-0031 取代）,决策记录，一文档一职责（AGENT.md §9.1）
+docs/design/decisions/ADR-0031-MOVE-PROCESS统一学习合同.md,ADR,原地保留(SSOT/索引),required_files,24,ADR,Accepted（2026-10-21 用户裁定：V5.2 关闭，正式进入 V5.3-MP 大规模联合训练）,决策记录，一文档一职责（AGENT.md §9.1）
+docs/design/decisions/ADR-0032-V5.4.1-Embedding接口扩展与预注册治理.md,ADR,原地保留(SSOT/索引),required_files,6,ADR,Accepted（2026-10-27 用户指令：「完成5.4.1的代码生成和训练工作」→ 按既有方案开展 implementation + formal tr,决策记录，一文档一职责（AGENT.md §9.1）
+docs/design/decisions/ADR-0033-V5.4.2-Backbone接口与预注册治理.md,ADR,原地保留(SSOT/索引),required_files,5,ADR,Accepted（2026-10-29 用户指令：「请完成5.4.2阶段代码修改与训练工作」→ 按既有方案开展 implementation + gated f,决策记录，一文档一职责（AGENT.md §9.1）
+docs/design/decisions/ADR-0034-V5.4.3-双Decoder与DecoderContextV1.md,ADR,原地保留(SSOT/索引),required_files,5,ADR,Proposed（D1–D8 已于 2026-11-02 由仓库所有者经 DSH 编排会话明确签认；本 ADR 只完成 WP0 治理落地与预注册冻结，不含代码实,决策记录，一文档一职责（AGENT.md §9.1）
+docs/infra/PES2TS_仓库归档与清理方案_v1_20261120.md,治理规范,原地保留(SSOT/索引),,2,运营记录,操作性方案（Operational，非规范）,基础设施治理/归档操作规则来源
+docs/infra/PES2TS_开发文档规范化归档方案_v2_20261121.md,未分类-需裁决,需所有者裁决,,6,运营记录,Active-Proposed（规范性方案；经仓库所有者签认后转 Canonical 并纳入文档门禁 G5）,task-1 清单有记录但本任务扫描域未覆盖（可能为 docs 外文件），需人工确认
+docs/infra/doc_audit/20261121/GOVERNANCE_CONSTRAINTS.md,未分类-需裁决,需所有者裁决,,14,运营记录,审计基线（只读取证，不构成新规范；规范冲突一律以宪法为准）,task-1 清单有记录但本任务扫描域未覆盖（可能为 docs 外文件），需人工确认
+docs/infra/doc_audit/20261121/MIGRATION_LOG.md,未分类-需裁决,需所有者裁决,,4,运营记录,Evidence-ReadOnly（执行流水模板；本文件只允许追加，不允许改写已发生的记录）,task-1 清单有记录但本任务扫描域未覆盖（可能为 docs 外文件），需人工确认
+docs/infra/doc_audit/20261121/README.md,未分类-需裁决,需所有者裁决,,237,索引,Evidence-ReadOnly（只读证据；结论与规则以 开发文档规范化归档方案 v2.0 为准，本目录只提供可复跑的原始数据）,task-1 清单有记录但本任务扫描域未覆盖（可能为 docs 外文件），需人工确认
+docs/infra/wsl_memory_governance.md,治理规范,原地保留(SSOT/索引),,1,运营记录,随 S4 infra 工具链落地（scripts/infra/）,基础设施治理规范
+docs/plans/PES2TS_30h_R3_V52_V53_分层训练与验收计划_v1.1_20261020.md,冻结计划,原地保留(门禁钉死),historical,9,阶段计划,EXECUTED-FROZEN / Stop 语义已取代（2026-10-21）,在 docs_consistency 门禁名单(historical)，移动断门禁
+docs/plans/PES2TS_ACP执行统一与旧代码清理方案_20261003.md,活跃计划,需所有者裁决,,15,阶段计划,执行方案（待实施与验收；ACP 唯一后端方向已确定）,计划目录但状态头缺失/自相矛盾，需所有者确认
+docs/plans/PES2TS_Demo24_真实RL闭环与对照实施方案_v1_20261007.md,冻结计划,原地保留(只读证据),,5,阶段计划,已实施（2026-10-07 round0 完成一轮真实闭环）,已执行/冻结（Executed-Frozen/Frozen-Preregistered），保留冻结证据
+docs/plans/PES2TS_EGNN_BC_IQL_SAC下一步完整训练方案_v2_20261015.md,已取代计划,需所有者裁决,,3,阶段计划,前版记录,自身已声明被取代，但有 3 处引用，迁入需先改链
+docs/plans/PES2TS_EGNN_BC_IQL_SAC实施与训练计划_v3_20261015.md,已取代计划,需所有者裁决,,7,阶段计划,前版记录,自身已声明被取代，但有 7 处引用，迁入需先改链
+docs/plans/PES2TS_G0-G4整体开发框架修改方案_v1_20261005.md,历史提案,降级为历史提案(不移动),,14,阶段计划,历史提案，当前方向已由 ADR-0010/PES-N 计划取代,README/头部标注历史或已被后续方案承接
+docs/plans/PES2TS_G1_G2边界审计与补齐任务_20261003.md,历史提案,降级为历史提案(不移动),,15,阶段计划,只读抽样审计 + 待实施合同设计,docs/README 状态列'抽样审计/合同草案'；G1/G2 边界任务已被后续承接
+docs/plans/PES2TS_G2T真实战役执行方案_20261004.md,冻结计划,原地保留(只读证据),,6,阶段计划,执行方案（Wave 0 四项执行前修补已实施并通过离线回归门 2026-10-04，证据 outputs/g2t_campaign_logs/T2..T6；S2,已执行/冻结（Executed-Frozen/Frozen-Preregistered），保留冻结证据
+docs/plans/PES2TS_G2_AB3功能整合与原生扫描改造方案_20261006.md,活跃计划,原地保留(SSOT/索引),,23,阶段计划,方案设计完成,README/头部为 Active/Proposed 且未声明被取代
+docs/plans/PES2TS_G2_AB4_ORCA驱动xTB约束优化试点方案_20261007.md,活跃计划,原地保留(SSOT/索引),,15,阶段计划,当前小批优化方案（设计完成；工作流、回退和真实试点尚未实施）,README/头部为 Active/Proposed 且未声明被取代
+docs/plans/PES2TS_G2_ACP能力补齐与联合验收计划_20261003.md,活跃计划,需所有者裁决,,21,阶段计划,配套开发设计，待实现与真实冒烟,计划目录但状态头缺失/自相矛盾，需所有者确认
+docs/plans/PES2TS_G2_PESG收紧算法迭代方案_20261003.md,活跃计划,原地保留(SSOT/索引),,20,阶段计划,修订设计 v1,README/头部为 Active/Proposed 且未声明被取代
+docs/plans/PES2TS_G2_下一批实现方案_真引擎接通与验收_20261004.md,冻结计划,原地保留(只读证据),,9,阶段计划,批次方案（S1 离线实施完成 2026-10-04，V0 门通过——S1 基建/WP-2-A 校准网格/WP-3 假 ACP 测试/WP-6 报告器/WP-7 ,已执行/冻结（Executed-Frozen/Frozen-Preregistered），保留冻结证据
+docs/plans/PES2TS_G2_下一批算法调整与测试方案_20261003.md,活跃计划,需所有者裁决,,12,阶段计划,批次方案（设计层；未实施；未启动 QC；不改变任何能力完成层级）,计划目录但状态头缺失/自相矛盾，需所有者确认
+docs/plans/PES2TS_G2后续开发方案_Classic到Rank到Gen_20261003.md,活跃计划,原地保留(SSOT/索引),,16,阶段计划,当前开发方案,README/头部为 Active/Proposed 且未声明被取代
+docs/plans/PES2TS_G3_P1_IRC教师预训练与模型版本计划_v1_20261006.md,活跃计划,原地保留(SSOT/索引),,23,阶段计划,当前第一期训练实施方案（用户确认实施进行中；数据/权重/硬件和各能力以执行证据验收）,README/头部为 Active/Proposed 且未声明被取代
+docs/plans/PES2TS_IRC20k与RL2000下一阶段详细方案_v1_20261008.md,活跃计划,原地保留(SSOT/索引),,7,阶段计划,规划完成,README/头部为 Active/Proposed 且未声明被取代
+docs/plans/PES2TS_IRC_BC_IQL_SAC直接位移研究方案_v1_20261015.md,已取代计划,需所有者裁决,,2,阶段计划,前版记录,自身已声明被取代，但有 2 处引用，迁入需先改链
+docs/plans/PES2TS_PES-N_V5-V7架构调整与实施计划_v1.2_20261018.md,已取代计划,原地保留(门禁钉死),historical,9,阶段计划,SUPERSEDED （2026-10-20）,生命周期=已被取代，但门禁钉死原地保留；在 docs_consistency 门禁名单(historical)，不得移动
+docs/plans/PES2TS_PES-N未来开发计划_v2_20261005.md,已取代计划,仅加历史横幅,,26,阶段计划,Superseded / Historical（作为“当前未来开发计划”的地位已由 V5–V7 v1.2 取代；PES-N 内核、STOP/MOVE 与阶段门定,README 状态列声明被取代，正文头部缺横幅；先补横幅再评估迁入
+docs/plans/PES2TS_RL下一轮代码修复训练与调整方案_v1_20261008.md,活跃计划,需所有者裁决,,6,阶段计划,第一批部分实施并纠错重训,计划目录但状态头缺失/自相矛盾，需所有者确认
+docs/plans/PES2TS_RL自适应路径生长与IRC验证研究方案_v1_20261009.md,活跃计划,原地保留(SSOT/索引),,2,阶段计划,Proposed,README/头部为 Active/Proposed 且未声明被取代
+docs/plans/PES2TS_V4.2-V4.7_十小时训练实验方案_20261017.md,冻结计划,原地保留(只读证据),,5,阶段计划,Executed-Frozen（2026-10-18 已执行 23 个正式 run；V4.7 FINAL 三项种子四项门全部未通过，判定负结果；不晋级、不部署、,已执行/冻结（Executed-Frozen/Frozen-Preregistered），保留冻结证据
+docs/plans/PES2TS_V5-V7_三阶段研究与架构修订方案_v2.0_20261020.md,已取代计划,原地保留(门禁钉死),historical,14,阶段计划,Superseded （2026-10-20）,生命周期=已被取代，但门禁钉死原地保留；在 docs_consistency 门禁名单(historical)，不得移动
+docs/plans/PES2TS_V5-V7_反应意图条件化与低维生长方案_v3.0_20261020.md,活跃计划,原地保留(SSOT/索引),,12,阶段计划,Proposed v3.2（取代 v2.0；不启动训练/QC）,docs/README 状态列 Active-Proposed；头部状态行'Proposed v3.2'
+docs/plans/PES2TS_V5.0-V5.2_十小时冲刺训练与验证执行方案_v1_20261018.md,历史提案,原地保留(门禁钉死),historical,7,阶段计划,Proposed,生命周期=历史，且门禁钉死原地保留(historical)
+docs/plans/PES2TS_V5.1-R2_损失尺度与数据完整性修复方案_v1_20261020.md,已取代计划,原地保留(门禁钉死),historical,7,阶段计划,Proposed v1（可执行研究方案；先于任何 R2 训练冻结；不启动正式 OOF/封存/扩量）,生命周期=已被取代，但门禁钉死原地保留；在 docs_consistency 门禁名单(historical)，不得移动
+docs/plans/PES2TS_V5.1-R3_反应意图条件化与端点标签不变重训方案_v3_20261020.md,活跃计划,原地保留(SSOT/索引),,11,阶段计划,Proposed v3.2（取代 v1/v2/v3.1；先于任何 R3 训练冻结）,docs/README 状态列 Active-Proposed；取代 R3 端点对称 v1/v2
+docs/plans/PES2TS_V5.1-R3_数据库特征损失三位一体修复方案_v1_20261020.md,活跃计划,原地保留(SSOT/索引),,3,阶段计划,Proposed v1.1（V5.1 阶段执行方案；先于任何 R3 训练冻结）,docs/README 状态列 Active-Proposed（执行细化）；superseded/README 明确未收录原因
+docs/plans/PES2TS_V5.1_修复冲刺与扩量准入方案_v1_20261019.md,活跃计划,需所有者裁决,,1,阶段计划,,计划目录但状态头缺失/自相矛盾，需所有者确认
+docs/plans/PES2TS_V5.3-MP_大规模MOVE-PROCESS联合训练计划_v1_20261021.md,活跃计划,原地保留(SSOT/索引),required_files,18,阶段计划,Proposed v1.1（2026-10-21 用户评审后修订；v1 为有条件通过）,README/头部为 Active/Proposed 且未声明被取代
+docs/plans/PES2TS_V5.3-MP_文档同步清单_v1_20261021.md,冻结计划,原地保留(只读证据),,3,阶段计划,Active（执行清单；每项完成后勾选）,属已执行 V5.3-MP 战役配套清单（docs/README 2026-10-21 条），随战役冻结
+docs/plans/PES2TS_V5.4.1_Embedding_50K_详细阶段实施方案_v1.0_20261027.md,冻结计划,原地保留(门禁钉死),required_files,5,阶段计划,Executed-Frozen（2026-10-29；WP0–WP7 已执行完毕，E*=E0 留任；执行结果与证据见 §19 执行指针与最终报告。以下 §0–§,在 docs_consistency 门禁名单(required_files)，移动断门禁
+docs/plans/PES2TS_V5.4.2_Backbone_50K_详细阶段实施方案_v1.0_20261029.md,活跃计划,原地保留(SSOT/索引),required_files,3,阶段计划,Active-Proposed（2026-10-29；WP0 治理/预注册文档已落地，WP1–WP7 待实现与执行；本轮不宣称训练完成或候选科学收益）,README/头部为 Active/Proposed 且未声明被取代
+docs/plans/PES2TS_V5.4.3_WP执行清单_v1.0_20261102.md,冻结计划,原地保留(门禁钉死),required_files,4,阶段计划,Frozen-Preregistered v1.0（2026-11-02；D1–D8 已签认，配套主方案 PES2TS_V5.4.3_双Decoder_50K_,在 docs_consistency 门禁名单(required_files)，移动断门禁
+docs/plans/PES2TS_V5.4.3_双Decoder_50K_全面开发与训练方案_v1.0_20261102.md,冻结计划,原地保留(门禁钉死),required_files,6,阶段计划,Frozen-Preregistered v1.0（2026-11-02；规划、预注册草案与执行设计，不含代码实现、训练执行或科学收益声明）,在 docs_consistency 门禁名单(required_files)，移动断门禁
+docs/plans/PES2TS_V5.4_剩余架构研究工作方案_v1.0_20261029.md,活跃计划,需所有者裁决,,0,阶段计划,Active-Proposed,头部写'建议状态：Active-Proposed'而非正式状态声明；0 引用，需所有者确认是否正式登记
+docs/plans/PES2TS_V52R_全路径导航与端点停止修复方案_v1_20261021.md,冻结计划,原地保留(只读证据),,4,阶段计划,Closed（D2-G STOP；T1 不授权；由 V5.3-MP / ADR-0031 接续）,docs/README 状态列：Closed — D2-G STOP，负结果归档
+docs/plans/PES2TS_V52R_输入充分性与化学终点识别优化方案_v1_20261021.md,冻结计划,原地保留(只读证据),,2,阶段计划,Executed / Closed（2026-10-21）——D0.1 PASS（22 异常全 T→Mask）,V52R 配套方案，随 D2-G STOP 关闭（台账 2026-10-21 条目）
+docs/plans/PES2TS_单端点IRC生成控制器_产品设计_v3_20261020.md,活跃计划,原地保留(SSOT/索引),,7,阶段计划,Proposed v3（取代 v1/v2；不启动训练/不改代码）,docs/README 状态列 Active-Proposed；取代 v1/v2（已入 superseded）
+docs/plans/PES2TS_双端拓扑条件训练与项目进度统一方案_v4_20261015.md,历史提案,降级为历史提案(不移动),,15,阶段计划,Executed-Frozen / Historical（V4.2–V4.7 已执行并判定负结果；本文作为 V4 排期与证据入口保留；当前活跃提案为 V5–V7,README/头部标注历史或已被后续方案承接
+docs/plans/PES2TS_双项目开发与Demo方案.md,设计,原地保留(只读证据),,15,阶段计划,,docs/README plans 表状态'参考'：定位/合同/指标说明，非执行计划
+docs/plans/PES2TS_图论立体先验与单端协同延续优化方案_v2_20261002.md,历史提案,降级为历史提案(不移动),,10,阶段计划,参考（已并入 R 工作流 R0–R4）,README/头部标注历史或已被后续方案承接
+docs/plans/PES2TS_完整开发流方案_整合版_v1.md,治理规范,原地保留(SSOT/索引),,7,阶段计划,权威整合稿（流程总入口；阶段定义与规范不在本文重复立法）,流程总纲（AGENT.md 头部指定）
+docs/plans/PES2TS_实施路线图.html,设计,原地保留(只读证据),,1,阶段计划,,HTML 路线图（26KB）：形式异常但为图形入口，docs/README plans 表标'参考'
+docs/plans/PES2TS_扫描规划谱系合并方案_20260930.md,历史提案,降级为历史提案(不移动),,12,阶段计划,参考（ADR 决策记录，已并入 G2.4 / X 工作流）,docs/README plans 表状态'参考'（已并入 G2.4/X）；12 处引用，不移动
+docs/plans/PES2TS_拓扑约束TS接近度与位移联合学习方案_v2_20261004.md,历史提案,降级为历史提案(不移动),,13,阶段计划,历史提案，当前方向已由 ADR-0010/PES-N 计划取代,README/头部标注历史或已被后续方案承接
+docs/plans/PES2TS_整体开发与发布方案_v2.md,活跃计划,原地保留(SSOT/索引),,10,阶段计划,权威（项目级开发与发布；能力状态按独立证据验收）,docs/README '权威文档'表：项目级开发与发布主方案（内容 v3.5）
+docs/plans/PES2TS_文档修订台账.md,治理规范,原地保留(SSOT/索引),,8,运营记录,,修订台账，AGENT.md §9.3 强制同步的治理件
+docs/plans/PES2TS_第二轮修改最终方案_仅完全成断键_20261002.md,活跃计划,原地保留(SSOT/索引),,13,阶段计划,参考（已并入 R 工作流 R0–R4）,docs/README plans 表状态'参考'：R 工作流范围与验收来源；13 引用
+docs/plans/PES2TS_统一价值模型与搜索排序一体化发展方案_v1_20261004.md,历史提案,降级为历史提案(不移动),,14,阶段计划,历史提案，当前方向已由 ADR-0010/PES-N 计划取代,README/头部标注历史或已被后续方案承接
+docs/plans/PES2TS_统一开发顺序与阶段验收.md,历史提案,降级为历史提案(不移动),,13,阶段计划,历史（已并入主干 G0–G4）,docs/README plans 表状态'历史'（S0–S8 已并入 G0–G4）
+docs/plans/PES2TS_统一残差决策与G2有限回退实施方案_v1_20261007.md,活跃计划,原地保留(SSOT/索引),,16,阶段计划,当前实施方案,README/头部为 Active/Proposed 且未声明被取代
+docs/plans/PES2TS_训练测试集划分标准_v1_20261120.md,设计,原地保留(SSOT/索引),,2,阶段计划,说明性汇总（Descriptive，非规范）,说明性汇总（Descriptive 非规范），docs/README 2026-11-20 条登记为'对齐用'
+docs/plans/PES2TS_轻量控制与RL衔接计划_v1_20261007.md,活跃计划,原地保留(SSOT/索引),,12,阶段计划,当前增量计划（用户授权简化路线；本文完成设计，策略接入与 RL 收益待验收）,README/头部为 Active/Proposed 且未声明被取代
+docs/plans/PES2TS_逐步实施与验证方案.md,历史提案,降级为历史提案(不移动),,12,阶段计划,历史资料,docs/README plans 表状态'历史'（早期分步方案）
+docs/plans/PES2TS_阶段定义_G0-G3.md,治理规范,原地保留(SSOT/索引),,41,阶段计划,权威（阶段与边界定义的唯一来源）,阶段定义唯一来源（AGENT.md 头部权威来源）
+docs/plans/V541_WP7_frozen_dev_eval_设计方案_v1.0_20261028.md,设计,需所有者裁决,,1,阶段计划,设计稿（本步只产出设计文档；实现由 fixer 按本文执行，验证负责人为主代理）,位置异常：设计方案类文档放在 plans/；无状态头，被 V541 文档引用 1 次
+docs/reports/PES2TS_Demo24_ACP首批计算_20261001.md,证据报告,原地保留(只读证据),,1,报告,,docs/reports/** 内容永不改（AGENT.md §9.4）
+docs/reports/PES2TS_Demo24_TS_IRC算法诊断_20261001.md,证据报告,原地保留(只读证据),,1,报告,,docs/reports/** 内容永不改（AGENT.md §9.4）
+docs/reports/PES2TS_Demo24_多坐标全批计算结果_20261002.md,证据报告,原地保留(只读证据),,2,报告,,docs/reports/** 内容永不改（AGENT.md §9.4）
+docs/reports/PES2TS_Demo24_端点与TS几何核查_20261001.md,证据报告,原地保留(只读证据),,1,报告,,docs/reports/** 内容永不改（AGENT.md §9.4）
+docs/reports/PES2TS_Demo24_第二轮修改与实测_20261002.md,证据报告,原地保留(只读证据),,1,报告,,docs/reports/** 内容永不改（AGENT.md §9.4）
+docs/reports/PES2TS_Direct_fit50训练表征分析_20261015.md,证据报告,原地保留(只读证据),,5,报告,只读报告（证据留存；后续以新报告或指针追加）,docs/reports/** 内容永不改（AGENT.md §9.4）
+docs/reports/PES2TS_Direct批次1-6实施记录_20261015.md,证据报告,原地保留(只读证据),,4,报告,只读报告（证据留存；后续以新报告或指针追加）,docs/reports/** 内容永不改（AGENT.md §9.4）
+docs/reports/PES2TS_GPU环境与磁盘预算执行记录_20261015.md,证据报告,原地保留(只读证据),,4,报告,只读报告（证据留存，内容不改；后续以新报告或指针追加）,docs/reports/** 内容永不改（AGENT.md §9.4）
+docs/reports/PES2TS_PES-C-G架构审核与创新性可行性分析_20261004.md,证据报告,原地保留(只读证据),,13,报告,审核报告（只读证据与修改建议；不使建议自动生效）,docs/reports/** 内容永不改（AGENT.md §9.4）
+docs/reports/PES2TS_V4.2-V4.7_过夜战役汇总_20261018.md,证据报告,原地保留(只读证据),,2,报告,草稿（自动聚合渲染；最终结论待人工终审）,docs/reports/** 内容永不改（AGENT.md §9.4）
+docs/reports/PES2TS_V52R_输入充分性决策记录_20261021.md,证据报告,原地保留(只读证据),,6,报告,DECIDED（2026-10-21）,docs/reports/** 内容永不改（AGENT.md §9.4）
+docs/reports/PES2TS_V52_任务纠偏审计_20261021.md,证据报告,原地保留(只读证据),required_files,12,报告,,docs/reports/** 内容永不改（AGENT.md §9.4）
+docs/reports/PES2TS_V53MP_S0_数据建库与资格报告_20261022.md,证据报告,原地保留(只读证据),,8,报告,S0 完成（全部门通过） · 阶段,docs/reports/** 内容永不改（AGENT.md §9.4）
+docs/reports/PES2TS_V53MP_S1_2k冒烟报告_20261022.md,证据报告,原地保留(只读证据),,9,报告,"S1 完成（三臂 ok，Move guard 全过，GPU 1,829s ≤ 3,600s 上限） · 阶段",docs/reports/** 内容永不改（AGENT.md §9.4）
+docs/reports/PES2TS_V53MP_S2_5k规模报告_20261022.md,证据报告,原地保留(只读证据),,7,报告,"S2 完成（9/9 done，Move guard 全过，零 NaN，GPU 合计 13,048s） · 阶段",docs/reports/** 内容永不改（AGENT.md §9.4）
+docs/reports/PES2TS_V53MP_S3_20k主结果报告_20261023.md,证据报告,原地保留(只读证据),,8,报告,"S3 训练完成（9/9 done，Move guard 全过且全为负退化，零 NaN，GPU 合计 12,699s） · 阶段",docs/reports/** 内容永不改（AGENT.md §9.4）
+docs/reports/PES2TS_V53MP_S3_闭环评估报告_20261023.md,证据报告,原地保留(只读证据),,3,报告,门 V53MP-S3-closed-loop —— 通过（执行门：reference-normalized 与 autonomous 分开报告；声明限 TS_c,docs/reports/** 内容永不改（AGENT.md §9.4）
+docs/reports/PES2TS_V53MP_S4_20k_vs_50k_配对统计与C臂导出_20261027.md,证据报告,原地保留(只读证据),,2,报告,,docs/reports/** 内容永不改（AGENT.md §9.4）
+docs/reports/PES2TS_V53MP_S4_50k_单路正式训练报告_20261027.md,证据报告,原地保留(只读证据),,2,报告,,docs/reports/** 内容永不改（AGENT.md §9.4）
+docs/reports/PES2TS_V53MP_规模训练收益报告_2k_to_50k_20261027.md,证据报告,原地保留(只读证据),,1,报告,,docs/reports/** 内容永不改（AGENT.md §9.4）
+docs/reports/PES2TS_V53MP_训练过程可视化报告_20261023.html,证据报告,原地保留(只读证据),,0,报告,,docs/reports/** 内容永不改（AGENT.md §9.4）
+docs/reports/PES2TS_V541_Embedding_50K_实施与训练报告_20261029.md,证据报告,原地保留(只读证据),,6,报告,"Executed-Frozen（只读最终报告；报告内容永不改写，后续仅可追加""当前阶段/作废""指针）",docs/reports/** 内容永不改（AGENT.md §9.4）
+docs/reports/PES2TS_V542_Backbone_50K_实施与训练报告_20261031.md,证据报告,原地保留(只读证据),required_files,3,报告,Executed-Frozen（2026-10-31；owner 签认）,docs/reports/** 内容永不改（AGENT.md §9.4）
+docs/reports/PES2TS_V543_双Decoder_50K_实施与训练报告_20261106.md,证据报告,原地保留(只读证据),,1,报告,Executed-Frozen——18-run 正式矩阵全部执行完毕、H0–H3 统计合同全部产出、双轨冠军确证、T7 dev 一次性访问已使用并封存,docs/reports/** 内容永不改（AGENT.md §9.4）
+docs/reports/PES2TS_V5第一阶段冲刺执行报告_20261018.md,证据报告,原地保留(只读证据),,1,报告,,docs/reports/** 内容永不改（AGENT.md §9.4）
+docs/reports/PES2TS_generation关键问题与根因分析_20261002.md,证据报告,原地保留(只读证据),,3,报告,,docs/reports/** 内容永不改（AGENT.md §9.4）
+docs/reports/PES2TS_v4.1阶段训练_修复输入语义与最小实验矩阵_最终报告_20261017.md,证据报告,原地保留(只读证据),,4,报告,阶段执行总结与问题复核,docs/reports/** 内容永不改（AGENT.md §9.4）
+docs/reports/PES2TS_v4阶段训练_最终报告与问题复核_20261017.md,证据报告,原地保留(只读证据),,5,报告,阶段执行总结与问题复核,docs/reports/** 内容永不改（AGENT.md §9.4）
+docs/reports/PES2TS_多坐标PES逐步实施方案_20261001.md,证据报告,原地保留(只读证据),,1,报告,,docs/reports/** 内容永不改（AGENT.md §9.4）
+docs/reports/PES2TS_多坐标同步第一轮实现与实测_20261002.md,证据报告,原地保留(只读证据),,1,报告,,docs/reports/** 内容永不改（AGENT.md §9.4）
+docs/reports/PES2TS_多键同步一维扫描全面问题报告_20261001.md,证据报告,原地保留(只读证据),,3,报告,,docs/reports/** 内容永不改（AGENT.md §9.4）
+docs/reports/PES2TS_实现报告_20261018.md,证据报告,原地保留(只读证据),,2,报告,实现与最新训练证据汇总,docs/reports/** 内容永不改（AGENT.md §9.4）
+docs/reports/PES2TS_对话与现有任务完整总结报告_20261002.md,证据报告,原地保留(只读证据),,0,报告,,docs/reports/** 内容永不改（AGENT.md §9.4）
+docs/reports/PES2TS_开发阶段性报告_20260930.md,证据报告,原地保留(只读证据),,6,报告,,docs/reports/** 内容永不改（AGENT.md §9.4）
+docs/reports/PES_GENERATION_单端预测校正延续可行性分析_20261002.md,证据报告,原地保留(只读证据),,1,报告,,docs/reports/** 内容永不改（AGENT.md §9.4）
+docs/reports/PES_generation_多坐标约束学习_ORCA能力与数学方案_20261001.md,证据报告,原地保留(只读证据),,7,报告,设计方案，尚未实现模型、修改生产算法或提交新计算,docs/reports/** 内容永不改（AGENT.md §9.4）
+docs/superseded/PES2TS_V5.1-R3_端点对称特征与损失重训方案_v1_20261020.md,已取代计划,原地保留(已归档),,1,阶段计划,Superseded （2026-10-20）,已在 docs/superseded/ 归档区，superseded/README 正文不改
+docs/superseded/PES2TS_V5.1-R3_端点对称特征与损失重训方案_v2_20261020.md,已取代计划,原地保留(已归档),,1,阶段计划,Superseded （2026-10-20）,已在 docs/superseded/ 归档区，superseded/README 正文不改
+docs/superseded/PES2TS_单端点IRC生成控制器_产品设计_v1_20261020.md,已取代计划,原地保留(已归档),,1,设计,Superseded （2026-10-20；2026-10-21 后续）,已在 docs/superseded/ 归档区，superseded/README 正文不改
+docs/superseded/PES2TS_单端点IRC生成控制器_产品设计_v2_20261020.md,已取代计划,原地保留(已归档),,1,设计,Superseded （2026-10-20；2026-10-21 后续）,已在 docs/superseded/ 归档区，superseded/README 正文不改
+docs/superseded/README.md,已取代计划,原地保留(已归档),,2,索引,,已在 docs/superseded/ 归档区，superseded/README 正文不改
+examples/contracts_v1/README.md,外部说明,原地保留(SSOT/索引),,0,产品文档,,示例/脚本使用说明，面向外部读者
+examples/contracts_v1/path_viewer.html,未分类-需裁决,需所有者裁决,,6,产品文档,,task-1 清单有记录但本任务扫描域未覆盖（可能为 docs 外文件），需人工确认
+examples/m1_first_plan/README.md,外部说明,原地保留(SSOT/索引),,0,产品文档,,示例/脚本使用说明，面向外部读者
+outputs/README.md,未分类-需裁决,需所有者裁决,,237,索引,,task-1 清单有记录但本任务扫描域未覆盖（可能为 docs 外文件），需人工确认
+requirements-pesn-runtime.txt,其它,原地保留(只读证据),,0,其它,,非文档的仓库配置/构建文件（.ini/requirements 等）
+requirements-pesn-training.txt,其它,原地保留(只读证据),,0,其它,,非文档的仓库配置/构建文件（.ini/requirements 等）
+requirements.txt,其它,原地保留(只读证据),,0,其它,,非文档的仓库配置/构建文件（.ini/requirements 等）
+scripts/README.md,外部说明,原地保留(SSOT/索引),,1,索引,,示例/脚本使用说明，面向外部读者
+scripts/archive/README.md,未分类-需裁决,需所有者裁决,,237,索引,,task-1 清单有记录但本任务扫描域未覆盖（可能为 docs 外文件），需人工确认

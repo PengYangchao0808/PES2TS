@@ -1,0 +1,3 @@
+metric,value,protocol,evidence_path,date,entry
+# 说明：本表为跨期指标账本骨架；逐项数值以档案条目「主要成果与量化指标」段为准，
+# 口径（数据集/seed/评估协议）必须与原文一致，禁止无口径数字。
