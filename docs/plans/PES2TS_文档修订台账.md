@@ -6,7 +6,7 @@
 - **背景事故**：2026-11-22 01:02:11 与 11:32:33，DSH 桌面端 renderer 两次 `Desktop renderer exited: oom` 退出，导致智能体轮次中止。硬证据：WSL `vmmemWSL` 30 天内 6 次冲到 21–30 GB；两次崩溃分别与 Windows 低虚拟内存事件 2004 同秒/11 秒内；宿主 commit 限额仅 ≈72.6 GB（页面文件 9.6 GB 位于仅剩 22.4 GB 的 C: 盘）；崩溃前正在对 19.9 GB `irc_edge.csv`、9.9 GB `labels_cache_v53mp.npz`、24 GB `sample_view.csv` 做全量读取。
 - **根因**：不是模型/智能体逻辑错误，也不是休眠/断电/蓝屏；是"WSL 内存膨胀 → 宿主 commit 耗尽 → Chromium 渲染进程 OOM"的跨层失败。
 - **方案要点（四层防线）**：F1 配置（维持 `config/wslconfig.recommended.ini` 的 36 GB reviewed floor / swap=0 / gradual，数据审计日可选 `dropcache` 严格档）；F2 宿主编排（页面文件迁 D: 固定 24–32 GB、C: 清盘、5 分钟巡检、CRIT 熔断）；F3 Guest 执行（重活必须走 `scripts/infra/wsl_guarded_run.sh` cgroup `MemoryMax`，禁止全量读大文件，阶段末 `wsl_reclaim.sh`）；F4 会话/编排（后台跑+日志落盘、工具输出限幅、阶段末 `wsl --shutdown`、会话拆分）。
-- **新增脚本**：`scripts/infra/wsl_stability_check.ps1`（宿主 preflight：commit/pagefile/vmmem/磁盘/VHDX/Event 2004，exit 0/1/2）、`scripts/infra/wsl_guarded_run.sh`（systemd cgroup 受限运行）、`scripts/infra/wsl_reclaim.sh`（guest sync+drop_caches）。
+- **新增脚本**：`scripts/infra/wsl_stability_check.ps1`（宿主 preflight：commit/pagefile/vmmem/磁盘/VHDX/Event 2004，exit 0/1/2）、`scripts/infra/wsl_guarded_run.sh`（systemd cgroup 受限运行，默认委托既有 `cgroup_scope.sh`）、`scripts/infra/wsl_reclaim.sh`（guest sync+drop_caches）。**复用既有** `scripts/infra/cgroup_scope.sh`、`host_commit_monitor.ps1`、`thread_caps.sh`（S4 infra plan §5.1/§5.5 产物）。
 - **配置增补**：`config/wslconfig.recommended.ini` 追加 v2 稳定性增补段（reviewed 值不变；写入本次事故、操作协议与严格档说明）；其原引用的已退役 `docs/infra/wsl_memory_governance.md` 改指本方案。
 - **待管理员执行（Windows + 重启）**：① 页面文件迁 D: 固定 24–32 GB；② C: 清盘至 ≥30 GB；③ 每 5 分钟巡检计划任务（可选 `-AutoShutdown` 熔断）。
 - **索引**：已登记 `docs/README.md`"证据与运维"表（替换原已退役的 `wsl_memory_governance.md` 行）。
