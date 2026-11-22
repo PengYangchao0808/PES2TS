@@ -61,7 +61,7 @@
 |---|---|
 | `docs/archive_tree/` | 7 期 / 17 条目开发档案（历史结论入口） |
 | `docs/agent_runs/README.md` | 战役编排/交接说明 |
-| `docs/infra/wsl_memory_governance.md` | WSL 内存治理 |
+| `docs/infra/PES2TS_WSL稳定运行与内存治理方案_v1_20261122.md` | **WSL 稳定运行与内存治理（Active）**：四层防线、阈值、SOP、preflight/回收/受限运行脚本 |
 | `docs/infra/doc_audit/20261121/README.md` | 2026-11-21 全量文档审计证据 |
 | `docs/infra/doc_cleanup/20261121/README.md` | 本次清理证据与维护机制 |
 
