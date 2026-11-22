@@ -66,3 +66,33 @@ outputs/pesn/v5/**            # run outputs, rollouts, checkpoints: local only
 
 Only the small manifests and SHA-256 hashes are versioned; see
 `docs/design/PES2TS_G_V_MAPPING_v1_20261018.md` for the G/V campaign map.
+
+## xTB single-point label dataset (local only)
+
+GFN2-xTB fixed-geometry single points on the DFT IRC frames of the `train_fit`
+pool, delivered 2026-11-22 as a self-describing package over an FN Connect share
+link (`https://share.fnnas.net/s/3d2c1a9ee33b43ecbc`, folder `xtb单点数据v1`).
+
+```text
+data/raw/pes2ts_xtb_singlepoints_train_fit_v1.tar.zst   16.85 GiB archive (sha256 below)
+data/raw/pes2ts_xtb_singlepoints_train_fit_v1/          extracted package, 2,878,263 files / 33.8 GB
+  ├── README.md            # dataset-author README (scope, schema, units, boundaries)
+  ├── SHA256SUMS           # 431 per-file hashes + 61 log-shard listing_sha256
+  ├── manifest/            # 122 shard jsonl (+61 dft_pairs + index.json): 8.5 GB
+  └── run/                 # results 122 / failures 61 / conflicts 61, summary/audit, 2,877,830 per-frame logs
+```
+
+- Index and provenance: [manifests/xtb_singlepoints_train_fit_v1.json](manifests/xtb_singlepoints_train_fit_v1.json).
+- Archive sha256: `3bba8861b432549ede317f754ec33c2c406ec7d057420a0e89359384a338f885`
+  (also in `pes2ts_xtb_singlepoints_train_fit_v1.tar.zst.sha256`).
+- Integrity: verified 2026-11-23 — `sha256sum -c SHA256SUMS` passes for all 431
+  files and all 61 log-shard listings (`run/audit.json`: `passed=true`,
+  `n_violations=0`). Re-check with:
+  `cd data/raw/pes2ts_xtb_singlepoints_train_fit_v1 && sha256sum -c SHA256SUMS`.
+- Content: 2,877,830 single points (2,877,433 success / 397 `scf_not_converged` /
+  0 conflicts), 120,222 reactions, 240,444 branches, engine native xTB 6.7.1,
+  policy `irc_dense12_v1`.
+- Boundary: `offline_only=true`, `truth_assisted=true`. This is **not** a TS
+  validation set, must not back online inference / production decisions /
+  external capability claims, and must not be used to tune on
+  train_dev / confirm / family_holdout / parent valid / parent test.

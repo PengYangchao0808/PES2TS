@@ -1,0 +1,94 @@
+{
+  "schema": "pes2ts_xtb_singlepoints_dataset_registration_v1",
+  "dataset_id": "pes2ts_xtb_singlepoints_train_fit_v1",
+  "title": "PES2TS xTB 单点数据集（train_fit, GFN2-xTB fixed-geometry single points）",
+  "registered_at": "2026-11-23T00:30:00+08:00",
+  "tier": "train_fit",
+  "run_id": "train_fit_irc_dense12_v1_native671_802f6243649b",
+  "source": {
+    "channel": "FN Connect 分享链接（飞牛 fnOS）",
+    "share_url": "https://share.fnnas.net/s/3d2c1a9ee33b43ecbc",
+    "share_id": "3d2c1a9ee33b43ecbc",
+    "resolved_host": "https://s28.fnnas.net/s/3d2c1a9ee33b43ecbc",
+    "remote_path": "/xtb单点数据v1/pes2ts_xtb_singlepoints_train_fit_v1.tar.zst",
+    "api": "POST /s/<shareId>/api/v1/share/list and /api/v1/share/download (authx signature + Auth token, resumable Range requests)",
+    "downloaded_at": "2026-11-22T16:07:47Z"
+  },
+  "archive": {
+    "path": "data/raw/pes2ts_xtb_singlepoints_train_fit_v1.tar.zst",
+    "bytes": 18088804066,
+    "size_gib": 16.85,
+    "sha256": "3bba8861b432549ede317f754ec33c2c406ec7d057420a0e89359384a338f885",
+    "sha256_file": "data/raw/pes2ts_xtb_singlepoints_train_fit_v1.tar.zst.sha256"
+  },
+  "extracted": {
+    "path": "data/raw/pes2ts_xtb_singlepoints_train_fit_v1/",
+    "extracted_at": "2026-11-22T16:11:00Z",
+    "extractor": "bsdtar 3.8.9 (libarchive, libzstd 1.5.7)",
+    "total_files": 2878263,
+    "total_bytes": 33846205471,
+    "counts": {
+      "manifest_shards": 122,
+      "manifest_dft_pairs": 61,
+      "results": 122,
+      "failures": 61,
+      "conflicts": 61,
+      "log_shards": 61,
+      "log_files": 2877830
+    }
+  },
+  "integrity": {
+    "method": "package SHA256SUMS（431 个文件哈希 + 61 个日志 shard 的 listing_sha256 对应的文件数/字节数）",
+    "verified_at": "2026-11-22T16:27:05Z",
+    "verdict": "PASS",
+    "files_checked": 431,
+    "files_ok": 431,
+    "files_missing": 0,
+    "files_mismatch": 0,
+    "log_shards_checked": 61,
+    "log_shards_ok": 61,
+    "audit_passed": true,
+    "n_violations": 0,
+    "verify_report": "dsh-acl-recovery-PES2TS/fn/share/verify_report.json"
+  },
+  "content": {
+    "n_manifest_rows": 2877830,
+    "n_success": 2877433,
+    "n_failure": 397,
+    "n_conflict": 0,
+    "failure_reasons": { "scf_not_converged": 397 },
+    "n_reactions": 120222,
+    "n_branches": 240444,
+    "n_points_total": 34486722,
+    "engine": "native 6.7.1 (/opt/xtb-6.7.1/bin/xtb), GFN2-xTB gas phase, charge 0 / mult 1",
+    "engine_binary_sha256": "debf27a9e0fa4bfb5ca75aafe4b90d8211f08ec2f4a482f375a4987212eaa12a",
+    "sampling_policy": "irc_dense12_v1",
+    "layout": "ts_first_dual_branch",
+    "units": "energy_hartree (Ha), gradient_hartree_per_bohr (Ha/Bohr), dft_energy_ev (eV), dft_force_ev_per_angstrom (eV/A)",
+    "manifest_schema": "pes2ts_xtb_frame_v1",
+    "dft_pair_schema": "pes2ts_xtb_dft_pair_v1",
+    "result_schema": "pes2ts_xtb_singlepoint_v1",
+    "idempotency_key": "frame_key = sha256(canonical{round10(coords), atomic_numbers, method, engine, version, binary_sha256, charge, mult, operation, solvent, compute_options})"
+  },
+  "boundaries": {
+    "offline_only": true,
+    "truth_assisted": true,
+    "cannot_claim": [
+      "xTB 单点不等于验证过的 TS 或优化几何（仅有固定几何单点）",
+      "xTB 梯度不可替代 DFT 力（跨方法方向一致性未证明）",
+      "不得用于在线推理、生产决策、部署资格或对外能力声明",
+      "不得用于 train_dev / confirm / family_holdout / parent valid / parent test 的评估调参",
+      "禁止 E_xTB - E_DFT 绝对能量跨方法相减"
+    ],
+    "truth_access": {
+      "caller": "xtb_labels.manifest:train_fit_irc_dense12_v1_native671_802f6243649b",
+      "n_selected_ids": 121363,
+      "excluded_ids_read": 0
+    }
+  },
+  "regeneration": {
+    "redownload": "见 data/README.md「xTB 单点数据集」一节，使用 FN Connect 分享链接下载归档",
+    "verify": "cd data/raw/pes2ts_xtb_singlepoints_train_fit_v1 && sha256sum -c SHA256SUMS",
+    "extract": "tar -xf data/raw/pes2ts_xtb_singlepoints_train_fit_v1.tar.zst -C data/raw"
+  }
+}
