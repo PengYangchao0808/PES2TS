@@ -14,3 +14,8 @@ docs/archive/** -text
 # the sha256 values in data/manifests/split_registry_v1.json keep verifying
 # after a clone (a CRLF-converting checkout would otherwise change them).
 data/manifests/*ids* -text
+
+# Shell scripts run under WSL bash: a CRLF checkout breaks `#!/bin/bash`
+# ("bad interpreter" / `$'\r'` errors). Force LF on every platform.
+*.sh text eol=lf
+
