@@ -50,4 +50,7 @@ jobs:
       - name: Install CPU torch
         run: pip install torch --index-url https://download.pytorch.org/whl/cpu
       - name: Full test tier (includes legacy + V5.6 engine contracts)
-        run: pytest -q -m "not (realdata or xtb or acp or orca)"
+        # ``-o addopts=`` clears the daily-gate addopts (which ignores
+        # tests/legacy at collection time) so the historical tier is collected
+        # and run on Linux, where its POSIX-only imports (fcntl/resource) exist.
+        run: pytest -q -o addopts= -m "not (realdata or xtb or acp or orca)"
