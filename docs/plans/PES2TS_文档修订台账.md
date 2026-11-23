@@ -1,5 +1,16 @@
 # PES2TS 文档修订台账（协同性）
 
+## 2026-11-23 增量登记：本地数据资产整合与数据工程方案 v1 入库
+
+- **新增** [PES2TS 本地数据资产整合与数据工程方案 v1](PES2TS_本地数据资产整合与数据工程方案_v1_20261123.md)（**Active-Proposed**；数据侧执行方案，不改研究设计与训练矩阵）。
+- **资产盘点（2026-11-23 实测，容量单位 GiB）**：Windows 仓库数据资产 ≈139.5 GiB（`data` 69.2 + `outputs` 70.2 + 代码/文档 0.09）；其中 `data/raw` 48.5 GiB（xTB 解压包 31.5 + 归档 16.85 + Reaction-QM CSV 0.13）、`data/ground_truth` 11.3 GiB、`data/interim` 9.1 GiB/1,363,075 文件、`data/manifests` 0.3 GiB/47 文件；WSL 建库数据 182 GiB（50k 128 + 20k 54，`ext4.vhdx` 358.2 GiB）；磁盘 E: 余 93.5 GiB、C: 余 24.9 GiB。
+- **核心产出**：① 五类资产账本与容量预算；② L0–L4 划分链 + 四类测试集口径复核；③ **能量/梯度五通道登记表**（DFT 节点能/DFT 帧力/xTB 单点 E·g/G2 扫描能/精化单点能），明确禁止跨方法绝对能量相减；④ **xTB 数据集三层接入工程**（`pes2ts_v5/data/xtb_singlepoints.py` 包级 reader/index → `scripts/v55/build_xtb_g1_view.py` 帧级对齐视图 → V5 G1 消费者/V6 适配器），含配置契约、4 个测试与接入 PR 六条验收证据；⑤ V5/V6 落位矩阵（V5.6-B/V5.7-B G1 对照 + V6.2 SFT 预热；不进 V5.5 主表/测试集/在线回路）；⑥ M1–M11 矛盾裁决 + H1–H5 待所有者签认；⑦ D0–D5 分阶段执行路线。
+- **口径裁决（M5）**：xTB"单点数"统一为 **2,877,830 行**（= 成功 2,877,433 + 失败 397）；2,912,712 为名义上限；`34,486,722` 实为 `Σ n_points` 记账值（≈12×行数−短分支缺口 47,238），**不得再当单点数引用**；后续修正注册 JSON 注释。
+- **最大技术缺口**：xTB `reaction_id/direction/frame_index` 与 V5 `idx_v2` 的 `curve_id/node_index` 无现成 crosswalk，必须先建并冻结 `frame_key ↔ (curve_id, node_index)` 映射（D1）。
+- **待所有者裁决**：① 2,877,830 口径确认并修正注册 JSON；② 是否补 dev 589 的 xTB 单点（否则 V5.6-B G1 对照无法在 dev 复现）；③ `pre_relaxed_v1` 是否二次计算；④ `C_valid` 是否预注册为 V6 主指标；⑤ 五接口 ADR-0036。
+- **同步动作**：`docs/README.md` 现行计划表 + 本台账 + `authority_map.md` 登记；训练大纲 §7.1 关系表补本文件指针。
+- **执行前置**：宿主 commit 余量 ≈10.8 GB 仍未达重活前置（B1）；D1/D2 可在 Windows 侧完成，不阻塞于宿主整改。
+
 ## 2026-11-23 增量登记：V5 后续阶段训练大纲 v1（工作盘点 + 训练执行层）入库
 
 - **新增** [PES2TS V5 后续阶段训练大纲 v1](PES2TS_V5后续阶段训练大纲_v1_20261123.md)（**Active**；V5.5–V5.8 执行层）。
