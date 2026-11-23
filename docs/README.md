@@ -65,6 +65,7 @@
 | `docs/agent_runs/README.md` | 战役编排/交接说明 |
 | `docs/infra/PES2TS_WSL稳定运行与内存治理方案_v1_20261122.md` | **WSL 稳定运行与内存治理（Active）**：四层防线、阈值、SOP、preflight/回收/受限运行脚本 |
 | `docs/infra/doc_audit/20261121/README.md` | 2026-11-21 全量文档审计证据 |
+| `docs/reports/PES2TS_代码探查报告_v1_20261123.md` | **代码清点与归档依据（2026-11-23）**：991 文件/443,792 行清点、40 个疑似遗留模块分类、CODE_MAP 39 项 planned 缺口、宪法 R1–R6/P1–P5 合规审计、门禁 1 红 3 绿、四类归档建议 |
 | `docs/infra/doc_cleanup/20261121/README.md` | 本次清理证据与维护机制 |
 
 ## 历史

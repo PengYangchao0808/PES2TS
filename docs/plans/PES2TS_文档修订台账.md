@@ -1,5 +1,15 @@
 # PES2TS 文档修订台账（协同性）
 
+## 2026-11-23 增量登记：代码探查报告 v1（清点、合规审计与归档建议）
+
+- **新增** [PES2TS 代码探查报告 v1](../reports/PES2TS_代码探查报告_v1_20261123.md)（**Active-Reference**，只读清点，不改代码/规范）。
+- **清点**：991 个 Python 文件 / 443,792 行（版本化 981）；`pes2ts_core` 365 / 162,756（`pesn` 185 / 91,073）、`tests` 345 / 148,231、`scripts` 225 / 123,791、`pes2ts_v5` 42 / 4,358；配置 10 战役 yaml + 13 模板 + 11 pesn + 2 v5；CI 两档（base 无 torch / pesn 全量）。
+- **健康度**：ruff 847 项（F401 266 / E702 174 / F841 118 / F821 45，其中 42 条为 `from __future__ import annotations` 下的 `Final` 注解噪声）；≥100 行函数 462 个；TODO/FIXME 17；缺模块 docstring 15；`__pycache__` 62 个；`scripts/local/` 11 个 git-ignored 一次性脚本（清理候选）。
+- **合规审计**：R1–R6 机制在位；P1–P5 合规；受保护目录（generation/integration/ranking/evaluation）与 V4 dual_ts 文件自 2026-10-18 未改（P1 合规）。**门禁实跑 1 红 3 绿**：`truth_guard` FAIL（4 处 `torch.eval()` 被判 DYNAMIC_EXEC_RISK，误报但门禁真红）；docs CLEAN / links 0 error / gv-map PASS / registry tests 26 passed。
+- **遗留识别**：40 个「生产代码未导入」模块（2 例外 + 13 V4 冻结 + 25 V5.4.x/规划备用；全仓真死模块仅 1 个 `dual_ts_legacy_labels`）；`CODE_MAP` 78 个 `.py` 引用中 39 个 planned 未实现，且未收录 `pes2ts_v5/`、`scripts/datastore/`、`scripts/infra/`；G–V 注册表 V6/V7 仍 archived 旧语义、V5.4/V5.4.3 状态漂移。
+- **归档建议**：A 保留（主干/受保护/V5 骨架/tests）/ B 冻结（V4 与 V5.4.x，59+47 文件）/ C 移入 archive（`scripts/agent_ops` 66 文件 60.8k 行、`scripts/campaigns` 31 文件 26.9k 行、10 战役 yaml + 13 模板）/ D 清理（缓存、`scripts/local`）。执行顺序：修红灯 → 更新 CODE_MAP/注册表 → 归档移动（不改逻辑）→ 清工作区 → 台账/档案树登记。
+- **登记**：`docs/README.md`「证据与运维」表新增本报告行；本台账增量。
+
 ## 2026-11-23 增量登记：数据资产清盘与统一数据仓执行（方案 v1.1 §11）
 
 - **新增章节**：[本地数据资产整合与数据工程方案 v1.1](PES2TS_本地数据资产整合与数据工程方案_v1_20261123.md) 追加 **§11 执行记录**（清盘账本、数据仓验收、三处假设冲突裁决、<50 GiB 路径、管理员清单）。
