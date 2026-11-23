@@ -57,10 +57,10 @@ reaction by exact round-10 geometry equality of all sampled rows, so the
 Read-only on every source; writes only ``--out-dir`` (plus an optional log
 under ``/tmp``).  Usage::
 
-    wsl --cd /mnt/e/.../PES2TS -e bash scripts/infra/wsl_guarded_run.sh \
+    wsl --cd /mnt/e/.../PES2TS -e bash infra/runtime/wsl_guarded_run.sh \
         --mem 6G --name build-crosswalk --outdir /tmp/cw-cgroup -- \
         /root/miniforge3/envs/pes2ts-gpu/bin/python \
-        scripts/datastore/build_frame_crosswalk.py --stage all
+        pes2ts_data/builders/build_frame_crosswalk.py --stage all
 """
 
 from __future__ import annotations
@@ -1713,7 +1713,7 @@ def main(argv: list[str] | None = None) -> int:
     build = CrosswalkBuild(args)
     try:
         rc = build.run()
-    except BaseException as exc:  # noqa: BLE001 - fail-closed with manifest
+    except BaseException as exc:
         import traceback
         traceback.print_exc()
         build.log(f"FAIL: {type(exc).__name__}: {exc}")

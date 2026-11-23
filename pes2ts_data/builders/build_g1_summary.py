@@ -24,12 +24,12 @@ Guarantees
 Usage
 -----
     # canonical build (inside the WSL memory guard)
-    bash scripts/infra/wsl_guarded_run.sh --mem 6G --name build-g1-summary -- \
+    bash infra/runtime/wsl_guarded_run.sh --mem 6G --name build-g1-summary -- \
         /root/miniforge3/envs/pes2ts-gpu/bin/python \
-        scripts/datastore/build_g1_summary.py
+        pes2ts_data/builders/build_g1_summary.py
 
     # smoke run
-    python scripts/datastore/build_g1_summary.py --limit 500 --out-dir /tmp/g1smoke
+    python pes2ts_data/builders/build_g1_summary.py --limit 500 --out-dir /tmp/g1smoke
 
 Outputs
 -------
@@ -47,7 +47,6 @@ import platform
 import sys
 import threading
 import time
-import traceback
 from collections import Counter, namedtuple
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
@@ -835,7 +834,7 @@ def build_row(rid, inv_meta, source_bases):
             obj = json.loads(raw)
             if not isinstance(obj, dict):
                 raise ValueError("top-level JSON is not an object")
-        except Exception:  # noqa: BLE001 - counted, never silent
+        except Exception:
             statuses.append((key, "bad_json", nbytes))
             for col in DATA_COLS[key]:
                 row[col.name] = None
@@ -847,7 +846,7 @@ def build_row(rid, inv_meta, source_bases):
             row[HAS_COL[key]] = True
             ok_count += 1
             statuses.append((key, "ok", nbytes))
-        except Exception:  # noqa: BLE001 - counted, never silent
+        except Exception:
             for col in DATA_COLS[key]:
                 row[col.name] = None
             statuses.append((key, "extract_error", nbytes))
@@ -939,7 +938,7 @@ def verify_sample(parquet_path, all_ids, inv_lookup, source_bases, n, log):
                 try:
                     with open(path, "rb") as f:
                         obj = json.loads(f.read())
-                except Exception:  # noqa: BLE001
+                except Exception:
                     obj = None
             for col in SOURCE_COLS[key]:
                 if col.name not in pqrow:
@@ -1325,7 +1324,7 @@ def main(argv=None):
                 "deleted or moved by this build."
             ),
             "build_script": {
-                "path": "scripts/datastore/build_g1_summary.py",
+                "path": "pes2ts_data/builders/build_g1_summary.py",
                 "sha256": sha256_file(os.path.abspath(__file__)),
             },
             "inputs": {

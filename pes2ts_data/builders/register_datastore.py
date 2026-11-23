@@ -8,7 +8,7 @@ Scans the datastore root, hashes build artifacts and manifests, and writes
 only records their sha256 and access policy).
 
 Usage:
-    python scripts/datastore/register_datastore.py --root /pes2ts_datastore
+    python pes2ts_data/builders/register_datastore.py --root /pes2ts_datastore
 """
 
 from __future__ import annotations
@@ -16,7 +16,6 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import os
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
@@ -84,10 +83,16 @@ def main() -> int:
                 continue
             rel = str(p.relative_to(root))
             core[rel] = {"bytes": p.stat().st_size, "sha256": sha256_file(p)}
-    g1_meta = read_json(ct_root / "g1_metadata" / "g1_summary_manifest.json")
-    xtb_meta = read_json(ct_root / "xtb_channel" / "xtb_channel_manifest.json")
-    geo_meta = read_json(ct_root / "geometry" / "geometry_manifest.json")
-    dft_meta = read_json(ct_root / "dft_channel" / "dft_channel_manifest.json")
+    # Presence/format check only: ``read_json`` fails the build when a channel
+    # manifest is missing or malformed, but the registry document stores the
+    # authoritative row counts from ``row_counts`` below, not these payloads.
+    for manifest_name in (
+        "g1_metadata/g1_summary_manifest.json",
+        "xtb_channel/xtb_channel_manifest.json",
+        "geometry/geometry_manifest.json",
+        "dft_channel/dft_channel_manifest.json",
+    ):
+        read_json(ct_root / manifest_name)
 
     def parquet_rows(p: Path):
         if not p.is_file():
@@ -239,7 +244,7 @@ def main() -> int:
             "kept_for_live_readers": [
                 "/pes2ts_data/v53mp_50k_data/*.csv (six tables; read by pes2ts_core/pesn/offline/data/key_atom_dataset_v3.py)",
                 "/pes2ts_data/v53mp_50k_data/.light_index_v53mp.pkl + labels_cache_v53mp.npz (read by key_atom_stream_view / label cache)",
-                "/pes2ts_data/v53mp_data (20k; subset of 50k but referenced by scripts/campaigns/r3_v53mp_scale_paired_ci.py)",
+                "/pes2ts_data/v53mp_data (20k; subset of 50k but referenced by archive/v5x_scripts/campaigns/r3_v53mp_scale_paired_ci.py)",
             ],
         },
     }

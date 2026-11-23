@@ -33,9 +33,9 @@ Guarantees
 Usage (WSL, guarded)::
 
     wsl --cd /mnt/e/Calculations/AI4S_ML_Studys/PES2TS -e bash \
-        scripts/infra/wsl_guarded_run.sh --mem 6G --name build-channels -- \
+        infra/runtime/wsl_guarded_run.sh --mem 6G --name build-channels -- \
         /root/miniforge3/envs/pes2ts-gpu/bin/python \
-        scripts/datastore/build_channels.py --stage all
+        pes2ts_data/builders/build_channels.py --stage all
 
 Stages: ``all`` | ``xtb`` | ``geometry`` | ``dft`` | ``g1`` | ``verify``.
 ``--shards 0:2`` restricts the xTB stage to a shard range and writes to
@@ -48,7 +48,6 @@ import argparse
 import hashlib
 import json
 import os
-import shutil
 import sys
 import time
 from pathlib import Path
@@ -294,7 +293,7 @@ def _xtb_manifest_handler_factory(store: dict, order: list):
     def handler(raw: bytes, lineno: int) -> None:
         try:
             d = json.loads(raw)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             _fail("xtb", f"bad JSON in manifest shard line {lineno}: {exc}",
                   {"line": lineno, "raw_head": raw[:200].decode("utf-8", "replace")})
         if d.get("schema_version") != "pes2ts_xtb_frame_v1":
@@ -329,7 +328,7 @@ def _xtb_result_handler_factory(store: dict, counters: dict):
     def handler(raw: bytes, lineno: int) -> None:
         try:
             d = json.loads(raw)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             _fail("xtb", f"bad JSON in results shard line {lineno}: {exc}",
                   {"line": lineno, "raw_head": raw[:200].decode("utf-8", "replace")})
         if d.get("schema_version") != "pes2ts_xtb_singlepoint_v1":
@@ -365,7 +364,7 @@ def _xtb_failure_handler_factory(store: dict):
     def handler(raw: bytes, lineno: int) -> None:
         try:
             d = json.loads(raw)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             _fail("xtb", f"bad JSON in failures shard line {lineno}: {exc}",
                   {"line": lineno, "raw_head": raw[:200].decode("utf-8", "replace")})
         if d.get("schema_version") != "pes2ts_xtb_failure_v1":
@@ -714,9 +713,9 @@ def build_xtb(args: argparse.Namespace) -> dict:
                                                     "run/failures/"))},
         },
         "build": {
-            "script": "scripts/datastore/build_channels.py",
+            "script": "pes2ts_data/builders/build_channels.py",
             "script_sha256": sha256_file(Path(__file__).resolve()),
-            "command": f"python scripts/datastore/build_channels.py --stage xtb "
+            "command": f"python pes2ts_data/builders/build_channels.py --stage xtb "
                        f"--shards {start}:{end}",
             "stage": "xtb",
             "python": sys.version.split()[0],
@@ -1315,7 +1314,7 @@ def build_g1(args: argparse.Namespace) -> dict:
             try:
                 obj = json.loads(val)
                 n_json_ok += int(isinstance(obj, dict))
-            except Exception:  # noqa: BLE001
+            except Exception:
                 pass
     if n_json_ok != n_json_checked:
         _fail(stage, "reaction_intent.csv embedded JSON sample is not all valid objects",
@@ -1591,7 +1590,7 @@ def _parse_shards(text: str) -> tuple[int, int]:
     try:
         a, b = text.split(":")
         return int(a), int(b)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         raise argparse.ArgumentTypeError(f"--shards must be START:END, got {text!r}") from exc
 
 

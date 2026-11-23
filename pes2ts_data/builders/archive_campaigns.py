@@ -7,8 +7,8 @@ artifacts, config snapshot, metrics, conclusion pointers, inventory summary) plu
 copies of the few small decisive artifacts (summary/metrics/report/model_selection).
 
 Usage (dry-run first):
-    python scripts/datastore/archive_campaigns.py --dry-run
-    python scripts/datastore/archive_campaigns.py --apply
+    python pes2ts_data/builders/archive_campaigns.py --dry-run
+    python pes2ts_data/builders/archive_campaigns.py --apply
 
 Safety:
 - never deletes anything itself (deletion is a separate, explicit step);

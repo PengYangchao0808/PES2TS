@@ -985,7 +985,7 @@ def main(argv: list[str] | None = None) -> int:
          "current_decision": "保留 → 66,195 行 = 64,195 built curves + 2,000 sealed confirm ids；这样 sealed 行数=2,000 "
                              "且能在一张表里表达 'confirm 永远不可读'。",
          "alternative": "严格 1 行=1 built curve_id → 64,195 行，sealed 行=0（confirm 只在 manifest 账本里）。",
-         "next_step": "如要 64,195 行口径：python scripts/datastore/build_master_split.py --strict-curve-only（一行命令可复现）。"},
+         "next_step": "如要 64,195 行口径：python pes2ts_data/builders/build_master_split.py --strict-curve-only（一行命令可复现）。"},
         {"id": "Q2", "question": "eval_suite 单值 + 优先级的互斥口径是否符合下游用法？",
          "current_decision": "单值互斥，优先级 id_dev > family_ood > scaffold_ood > size_ood；未占用的行才归下一档。",
          "alternative": "多标签（每套一列 bool）以便同一行同时是 family_ood 和 size_ood。",
@@ -1027,7 +1027,7 @@ def main(argv: list[str] | None = None) -> int:
         "schema_version": 1,
         "purpose": ("PES2TS 数据仓唯一总表：把 L0/L1/L3 划分合并为 1 行=1 curve_id 的分区索引，"
                     "并给出评测套件/访问策略/缺口与口径裁决。"),
-        "created_by": "scripts/datastore/build_master_split.py",
+        "created_by": "pes2ts_data/builders/build_master_split.py",
         "script": {"path": str(Path(__file__).resolve()),
                    "sha256": sha256_file(Path(__file__).resolve())},
         "outputs": {

@@ -1,0 +1,138 @@
+# PES2TS split firewall policy (R6) -- Zone 2 data contract.
+#
+# This file is the machine-readable declaration of the five-layer (L0-L4) split
+# inheritance chain, the four evaluation suites and the permanently sealed
+# confirm set.  Together with `pes2ts_data/splits/policy.py` it is the only
+# allowed source of split names / sealed-set truth.
+#
+# Rules that this file encodes (see docs/PES2TS_开发宪法_v1.md §3 R6 and
+# docs/plans/PES2TS_训练测试集划分标准_v1_20261120.md):
+#   * L0 -> L1 only adds, L1 -> L3 only nested prefixes, L3 -> L4 is a per-run
+#     re-split inside the pool; no layer may rewrite a lower layer.
+#   * whole reaction families are held out (family_holdout_v1).
+#   * reverse reactions, directions, neighbouring frames, mapping/symmetry
+#     copies stay in one split.
+#   * the 2,000-row confirm set is sealed_never_read and never used for tuning.
+schema: pes2ts_split_policy_v1
+policy: family_holdout_v1
+version: "2026-11-23.1"
+unit: reaction
+description: >-
+  R6 split firewall: five-layer inheritance chain, four evaluation suites and one
+  sealed confirm set.  Evaluation may read an eval suite once; the confirm set is
+  only opened by the isolated evaluator after models and gates are frozen.
+
+# -- five-layer inheritance chain (L0-L4, names fixed) -----------------------
+layers:
+  L0:
+    name: dataset_official_split
+    artifact: data/manifests/split_manifest.json
+    schema: g0_manifest_v1
+    frozen: true
+    description: >-
+      G0 author split (g0_manifest_v1): train 159,355 / valid 19,904 / test
+      19,909 reactions; leak_status=clean, max_similarity 0.8571 < 0.90.
+  L1:
+    name: predictor_parent_split
+    artifact: data/manifests/pesn_irc_split_ids_v1.json
+    schema: pesn_irc_split_v1
+    frozen: true
+    description: >-
+      Predictor parent split on canonical groups: train_fit 121,363 /
+      train_dev 15,161 / train_calibration 15,159 / family_holdout 9,573 /
+      isolated 2.  Single upstream for everything downstream.
+  L2:
+    name: v5_sprint_five_fold
+    artifact: data/manifests/v5/split_manifest.json
+    schema: pesn_v5_split_v1
+    frozen: true
+    historical: true
+    description: >-
+      Historical V5 sprint 5-fold split of the fit50 cohort only; folds 3/4 were
+      sealed then.  Must never be mixed with the 50K cohort.
+  L3:
+    name: cohort_and_50k_split
+    artifact: data/manifests/v53mp_split_50k_ids_v1.json
+    schema: v53mp_split_v1
+    frozen: true
+    description: >-
+      Current 50K cohort + split: pool 50,000 (tiers 2k in 5k in 20k in 50k),
+      dev 589 curves, confirm 2,000 id-only placeholders, curve_folds 66,195.
+  L4:
+    name: run_inner_train_val
+    artifact: null
+    schema: v53mp_pool_split
+    frozen: false
+    recomputed_per_run: true
+    description: >-
+      Per-run inner-train/inner-val split inside the pool (20% of pool curves,
+      cap 8,192).  Recomputed for every run from a pinned seed; used only for
+      checkpoint selection / tau_end calibration, never reported as science.
+
+# -- four evaluation suites (mutually exclusive labels, single eval_suite value)
+test_sets:
+  id_dev:
+    layer: L3
+    kind: id
+    description: >-
+      In-distribution dev suite: L3 dev_589 curves (built curves matching the
+      frozen 589-curve dev list); one-shot evaluation only.
+    access: one_shot_dev
+    sealed: false
+    n_hint: 589
+  scaffold_ood:
+    layer: L3
+    kind: scaffold
+    description: >-
+      Scaffold out-of-distribution suite.  Currently EMPTY: no scaffold label
+      source exists yet; the derived-label script must land in a V5.5 contract
+      before this suite may be reported.
+    access: evaluation_only
+    sealed: false
+    n_hint: null
+  family_ood:
+    layer: L3
+    kind: family
+    description: >-
+      Reaction-family OOD suite: rows whose curve_family label belongs to the
+      frozen family_ood family list (sha256-ranked, counts >= 200) and which are
+      not already claimed by id_dev.
+    access: evaluation_only
+    sealed: false
+    n_hint: null
+  size_ood:
+    layer: L3
+    kind: size
+    description: >-
+      Size OOD suite: n_atoms strictly greater than Q3(n_atoms over built
+      curves), excluding id_dev/family_ood rows.  Never to be constructed from
+      xTB data.
+    access: evaluation_only
+    sealed: false
+    n_hint: null
+
+# -- sealed confirm set -------------------------------------------------------
+confirm:
+  n: 2000
+  sealed: true
+  layer: L3
+  description: >-
+    2,000 id-only confirm rows from the L3 `confirm` list (train_calibration
+    lineage), never built into the datastore and never read.  Final one-shot
+    confirmation only, after model + gate freeze, by the isolated evaluator.
+  access: sealed_never_read
+
+# -- firewall rules -----------------------------------------------------------
+rules:
+  family_holdout_required: true
+  family_label_source: data/interim/curve_family.csv
+  family_column: family_labels
+  sealed_never_read:
+    - confirm
+  no_holdout_tuning: true
+  reverse_and_neighbor_grouping: true
+  eval_read_once: true
+  required_split_keys:
+    - train
+    - valid
+    - test
