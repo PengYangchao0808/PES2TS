@@ -90,10 +90,10 @@ RUN_RECORD_SCHEMA: Final[str] = "pesn_key_atom_bc_run_v1"
 CHECKPOINT_SCHEMA: Final[str] = "pesn_key_atom_bc_checkpoint_v1"
 CAMPAIGN_ID: Final[str] = "V5_SPRINT"
 EXPECTED_CONFIG_SCHEMA: Final[str] = "pesn_v5_sprint_draft2"
-#: V5.1a config schema (config/campaigns/v5_1_sprint.yaml, driver lane);
+#: V5.1a config schema (archive/v5x_configs/campaigns/v5_1_sprint.yaml, driver lane);
 #: the trainer accepts BOTH schemas in every mode — the v51 yaml is a
 #: superset of the V5 loss keys and legacy modes default identically.
-#: V5.1a-R1 adds ``pesn_v5_1_r1_v1`` (config/campaigns/v5_1_r1.yaml).
+#: V5.1a-R1 adds ``pesn_v5_1_r1_v1`` (archive/v5x_configs/campaigns/v5_1_r1.yaml).
 ACCEPTED_CONFIG_SCHEMAS: Final[tuple[str, ...]] = (
     "pesn_v5_sprint_draft2", "pesn_v5_1_sprint_v1", "pesn_v5_1_r1_v1")
 
@@ -2634,7 +2634,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="python -m pes2ts_core.pesn.offline.training.key_atom_bc",
         description="V5 sprint key-atom BC single-run trainer (ADR-0026)")
-    p.add_argument("--config", default="config/campaigns/v5_sprint.yaml")
+    p.add_argument("--config", default="archive/v5x_configs/campaigns/v5_sprint.yaml")
     p.add_argument("--arm", required=True)
     p.add_argument("--fold", type=int, required=True)
     p.add_argument("--seed", type=int, required=True)

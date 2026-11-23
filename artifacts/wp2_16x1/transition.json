@@ -6,21 +6,21 @@
     "251928": {
       "ppid": 251741,
       "state": "S",
-      "cmd": "python3 scripts/compute_dual_ts_observations.py ",
+      "cmd": "python3 archive/v5x_scripts/campaign_oneoffs/compute_dual_ts_observations.py ",
       "cwd": "/mnt/e/Calculations/AI4S_ML_Studys/PES2TS",
       "wchan": "hrtimer_nanosleep"
     },
     "251929": {
       "ppid": 251741,
       "state": "S",
-      "cmd": "python3 scripts/compute_dual_ts_observations.py ",
+      "cmd": "python3 archive/v5x_scripts/campaign_oneoffs/compute_dual_ts_observations.py ",
       "cwd": "/mnt/e/Calculations/AI4S_ML_Studys/PES2TS",
       "wchan": "hrtimer_nanosleep"
     },
     "251741": {
       "ppid": 251740,
       "state": "S",
-      "cmd": "python3 scripts/compute_dual_ts_observations.py ",
+      "cmd": "python3 archive/v5x_scripts/campaign_oneoffs/compute_dual_ts_observations.py ",
       "cwd": "/mnt/e/Calculations/AI4S_ML_Studys/PES2TS",
       "wchan": "futex_wait_queue_me"
     }
@@ -33,14 +33,14 @@
     "251928": {
       "ppid": 251741,
       "state": "S",
-      "cmd": "python3 scripts/compute_dual_ts_observations.py ",
+      "cmd": "python3 archive/v5x_scripts/campaign_oneoffs/compute_dual_ts_observations.py ",
       "cwd": "/mnt/e/Calculations/AI4S_ML_Studys/PES2TS",
       "wchan": "pipe_read"
     },
     "251929": {
       "ppid": 251741,
       "state": "S",
-      "cmd": "python3 scripts/compute_dual_ts_observations.py ",
+      "cmd": "python3 archive/v5x_scripts/campaign_oneoffs/compute_dual_ts_observations.py ",
       "cwd": "/mnt/e/Calculations/AI4S_ML_Studys/PES2TS",
       "wchan": "futex_wait_queue_me"
     }
@@ -55,11 +55,11 @@
   "command": [
     "/root/miniforge3/bin/python3",
     "-u",
-    "scripts/compute_dual_ts_observations.py",
+    "archive/v5x_scripts/campaign_oneoffs/compute_dual_ts_observations.py",
     "--workers",
     "16",
     "--acp-config",
-    "config/pesn/dual_ts_observations_16x1_v1.yaml"
+    "archive/v5x_configs/pesn/dual_ts_observations_16x1_v1.yaml"
   ],
   "thread_environment": {
     "OMP_NUM_THREADS": "1",

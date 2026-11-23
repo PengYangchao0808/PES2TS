@@ -168,7 +168,7 @@ __all__ = [
 
 V541_TRAIN_SCHEMA = "pesn_v541_train_v1"
 
-#: Frozen λ of the unified objective (config/campaigns §training_contract).
+#: Frozen λ of the unified objective (archive/v5x_configs/campaigns §training_contract).
 V541_LAMBDA_RANK: float = 0.5
 V541_LAMBDA_Q: float = 0.5
 V541_LAMBDA_ENDPOINT: float = 0.012385049119773344

@@ -131,7 +131,7 @@ Single entry for the training/analysis layer, built 2026-11-23:
   into the datastore first (see plan §11.3 D-2).
 - 20k dataset `/pes2ts_data/v53mp_data` is a verified strict subset of the 50k
   curves (26,038 ⊆ 64,195) but is still referenced by
-  `scripts/campaigns/r3_v53mp_scale_paired_ci.py`; deletion requires repointing
+  `archive/v5x_scripts/campaigns/r3_v53mp_scale_paired_ci.py`; deletion requires repointing
   that campaign script (plan §11.3 D-3).
 - Design and execution record:
   `docs/plans/PES2TS_本地数据资产整合与数据工程方案_v1_20261123.md` (§1–§4 design, §11 execution).

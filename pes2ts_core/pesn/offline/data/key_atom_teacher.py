@@ -1549,7 +1549,7 @@ def prepare_audit(config: Mapping, *, allow_truth: bool = False) -> dict:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="V5 stage-0: key-atom teacher prepare/audit")
-    parser.add_argument("--config", default="config/campaigns/v5_sprint.yaml")
+    parser.add_argument("--config", default="archive/v5x_configs/campaigns/v5_sprint.yaml")
     parser.add_argument(
         "--stage", choices=["prepare-audit"], required=True)
     parser.add_argument(

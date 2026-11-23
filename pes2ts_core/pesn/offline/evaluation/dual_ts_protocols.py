@@ -46,7 +46,7 @@ PROTOCOL_FREEZE_SCHEMA: Final[str] = "pesn_v42_campaign_protocol_v1"
 PROTOCOL_EVAL_SCHEMA: Final[str] = "pesn_v42_protocol_eval_v1"
 
 # ---------------------------------------------------------------------------
-# Frozen gate thresholds (literal source: scripts/freeze_wp4_monitor_prereg.py
+# Frozen gate thresholds (literal source: archive/v5x_scripts/campaign_oneoffs/freeze_wp4_monitor_prereg.py
 # freeze_thresholds() -> payload["gate"]).
 # ---------------------------------------------------------------------------
 GATE_MEDIAN_RATIO_MAX: Final[float] = 1.0

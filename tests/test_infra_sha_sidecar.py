@@ -1,4 +1,4 @@
-"""Sidecar sha256 cache acceptance (plan §5.5, scripts/infra/sha_sidecar.py).
+"""Sidecar sha256 cache acceptance (plan §5.5, infra/runtime/sha_sidecar.py).
 
 Covers: fresh hash, stat-tuple reuse (no rehash), invalidation on mtime and
 size change, ``--reverify`` forcing a full hash, and the verify CLI's
@@ -18,8 +18,8 @@ REPO = Path(__file__).resolve().parents[1]
 if str(REPO) not in sys.path:
     sys.path.insert(0, str(REPO))
 
-from scripts.infra import sha_sidecar  # noqa: E402
-from scripts.infra.sha_sidecar import (  # noqa: E402
+from infra.runtime import sha_sidecar  # noqa: E402
+from infra.runtime.sha_sidecar import (  # noqa: E402
     SidecarError,
     sidecar_path,
     sidecar_sha256,

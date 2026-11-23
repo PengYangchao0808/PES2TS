@@ -27,7 +27,7 @@ Frozen architecture (campaign yaml ``v52_training.heads``):
 without an existing backbone) and running the heads leaves the backbone —
 and therefore the Move output ``u`` — BIT-for-bit unchanged
 (``torch.equal``); asserted explicitly in
-``tests/pesn/test_r3_v52_heads.py``.  ``forward`` still enforces the v3
+``tests/legacy/pesn/test_r3_v52_heads.py``.  ``forward`` still enforces the v3
 forward-view contract (``check_forward_view_keys_v3``): supervision keys
 (including the V5.2 labels) can never reach any module here.
 
@@ -62,14 +62,14 @@ V5.3-MP section (MoveProcessContract v1 §6 + §3.2 outputs; V5.3-MP plan
   REFERENCE exactly like :class:`KeyAtomV52Model`, so the
   **Attachability guarantee** (contract §6) holds: constructing the model
   and running the heads leaves ``u`` bit-for-bit unchanged
-  (``torch.equal``, asserted in ``tests/pesn/test_r3_v53mp_heads.py``);
+  (``torch.equal``, asserted in ``tests/legacy/pesn/test_r3_v53mp_heads.py``);
 * legacy discipline: :attr:`TSStopHeadV3.legacy_frozen = True` marks the
   V5.2 stop head as **LEGACY_TS_STOP** (contract §2/§6 弃用 row): V5.2
   semantics, only for loading old checkpoints — forbidden for new
   training or new inference.  Nothing is renamed or removed (V5.2
   checkpoints/tests keep loading);
 * parameter accounting (exact, asserted in
-  ``tests/pesn/test_r3_v53mp_heads.py``): backbone 55,441 +
+  ``tests/legacy/pesn/test_r3_v53mp_heads.py``): backbone 55,441 +
   (ProgressHeadV3 2,113 + EndpointHeadV53MP 65 = 2,178) =
   **57,619** — identical joint count to V5.2 because the endpoint head is
   shape-identical to the old stop head; only the SUPERVISION semantics
@@ -90,7 +90,7 @@ V52_HEADS_VERSION: Final[str] = "pesn_key_atom_v52_heads_v3"
 #: Frozen progress-head hidden width (yaml: ``Linear(64,32) SiLU Linear(32,1)``).
 PROGRESS_HIDDEN_V52: Final[int] = 32
 
-#: Exact parameter counts (asserted by ``tests/pesn/test_r3_v52_heads.py``).
+#: Exact parameter counts (asserted by ``tests/legacy/pesn/test_r3_v52_heads.py``).
 MEASURED_PARAMS_PROGRESS_HEAD_V52: Final[int] = 2_113   # (64·32+32)+(32+1)
 MEASURED_PARAMS_TS_STOP_HEAD_V52: Final[int] = 65      # (64+1)
 MEASURED_PARAMS_HEADS_V52: Final[int] = (
@@ -217,7 +217,7 @@ V53MP_HEADS_VERSION: Final[str] = "pesn_key_atom_v53mp_heads_v1"
 LEGACY_TS_STOP_HEAD: Final[str] = "TSStopHeadV3"
 
 #: Exact V5.3-MP parameter counts (asserted by
-#: ``tests/pesn/test_r3_v53mp_heads.py``).
+#: ``tests/legacy/pesn/test_r3_v53mp_heads.py``).
 MEASURED_PARAMS_ENDPOINT_HEAD_V53MP: Final[int] = 65    # (64+1)
 MEASURED_PARAMS_HEADS_V53MP: Final[int] = (
     MEASURED_PARAMS_PROGRESS_HEAD_V52 + MEASURED_PARAMS_ENDPOINT_HEAD_V53MP)
@@ -324,7 +324,7 @@ class KeyAtomV53MPModel(nn.Module):
         """Backbone-only view (R3 M0-equivalent): ``{"u", "z"}`` — no head math.
 
         Bit-for-bit identical to calling the backbone directly (delegated
-        call; asserted by ``tests/pesn/test_r3_v53mp_heads.py``).
+        call; asserted by ``tests/legacy/pesn/test_r3_v53mp_heads.py``).
         """
         return self.backbone(batch)
 

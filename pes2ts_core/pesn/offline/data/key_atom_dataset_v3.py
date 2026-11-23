@@ -11,8 +11,8 @@ data_manifest.json  teacher_manifest.json  split_manifest_r3.json
 ```
 
 Column expectations are mirrored from the E1 schema
-``scripts/agent_ops/data_gate/r3_table_schema.py`` (``r3_6table_v2``); a
-machine check in ``tests/pesn/test_r3_dataset.py`` pins the mirror so schema
+``archive/v5x_scripts/agent_ops/data_gate/r3_table_schema.py`` (``r3_6table_v2``); a
+machine check in ``tests/legacy/pesn/test_r3_dataset.py`` pins the mirror so schema
 drift in E1 fails loudly here instead of silently mis-parsing.
 
 Design rules:
@@ -99,7 +99,7 @@ DATA_MANIFEST_FILENAME = "data_manifest.json"
 SPLIT_MANIFEST_FILENAME = "split_manifest_r3.json"
 
 #: Required columns mirrored from ``r3_6table_v2`` (E1 schema; machine-pinned
-#: by ``tests/pesn/test_r3_dataset.py``).
+#: by ``tests/legacy/pesn/test_r3_dataset.py``).
 REQUIRED_COLUMNS: dict[str, tuple[str, ...]] = {
     "irc_curve": ("curve_id", "canonical_irc_id", "n_nodes", "ts_index"),
     "irc_node": ("curve_id", "node_index", "x", "y", "z",

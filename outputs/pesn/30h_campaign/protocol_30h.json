@@ -104,9 +104,9 @@
     "WP-L3 (E3 前强制): ledger.append 校验钉定 run_plan sha+mode（防 frozen plan 被改后仍可 launch 的残余路径）; metric_unseal 消费接线（B folds3/4 揭示）; monitor 捕获 PlanNotFrozenError",
     "assert_campaign_root 集成进 driver 于 E3 lane 启动时",
     "G1 消费者使用 gate state/passed 而非 gate_admissible 字段（yaml 不匹配时 admissible 不复位）— WP-2 注意",
-    "CI/测试解释器: tests/agent_ops 需 torch 环境（/tmp/opencode/venv 或 pes2ts-gpu）; 系统 python3 下 feature 模块跳过"
+    "CI/测试解释器: tests/legacy/agent_ops 需 torch 环境（/tmp/opencode/venv 或 pes2ts-gpu）; 系统 python3 下 feature 模块跳过"
   ],
-  "normative_config": "config/campaigns/pes2ts_30h_20261020.yaml",
+  "normative_config": "archive/v5x_configs/campaigns/pes2ts_30h_20261020.yaml",
   "pending_artifacts_two_stage": {
     "data_manifest.json": "c21ff84b3790282b4c60764e6a356b8cb3c46e5f3b76f2bf785eeb8e70a56cbc (BOUND at G0 2026-10-20T15:35Z) (BOUND at G0)",
     "dataset_sha256": "4635c330e94f59ad80f8da51c996923e1e1f9d236b5a8d8def293bd4af2dfd84 (BOUND at G0, content digest inside data_manifest) (BOUND at G0)",

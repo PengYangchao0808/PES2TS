@@ -34,7 +34,7 @@ torch CPU RNG state (and, since no CUDA device is touched by the
 construction, the CUDA RNG states too) is restored byte-identically on
 exit.  ``load_a0_strict`` / ``a0_mapping_table`` can NEVER perturb the
 training RNG stream (asserted by
-``tests/pesn/test_v542_model.py::test_a0_loader_never_perturbs_global_rng``).
+``tests/legacy/pesn/test_v542_model.py::test_a0_loader_never_perturbs_global_rng``).
 """
 
 from __future__ import annotations

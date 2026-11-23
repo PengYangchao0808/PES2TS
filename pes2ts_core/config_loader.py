@@ -97,7 +97,7 @@ def load_config_mapping(path: str | Path) -> dict[str, Any]:
 
     Use this for campaign/config files that are not the classic
     ``config/defaults.yaml`` overlay (e.g. ``config/g2t_scale.yaml`` or
-    ``config/campaigns/*.yaml``).
+    ``archive/v5x_configs/campaigns/*.yaml``).
     """
     config_path = Path(path)
     if not config_path.is_absolute():

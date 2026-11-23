@@ -18,7 +18,7 @@ query attention block with **2 heads × 24 dim**:
   the raw ``m_ij``), so the query affects ``h``/``z`` AND MOVE;
 * ``W_o`` is ZERO-initialised: at init the attention branch contributes
   exactly zero, A3 forward == A1 forward (bitwise in fp32 — proven in
-  ``tests/pesn/test_v542_a3.py``), so the R3 warm-start is clean and
+  ``tests/legacy/pesn/test_v542_a3.py``), so the R3 warm-start is clean and
   A3−A1 isolates the query operator.
 
 Shapes/params (exact): ``query_g`` Linear(53→48) 2,592;

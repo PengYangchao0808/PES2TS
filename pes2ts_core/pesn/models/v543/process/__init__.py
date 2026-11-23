@@ -19,7 +19,7 @@ What this package owns
   side-effect free on import: the process-wide
   :data:`~pes2ts_core.pesn.models.v543.registry.REGISTRY_V543` is WP4's object
   and its "only the M0/P0 baselines" state is asserted by
-  ``tests/pesn/test_v543_registry.py``, so this module never mutates it.  A
+  ``tests/legacy/pesn/test_v543_registry.py``, so this module never mutates it.  A
   caller (trainer, campaign script, test) passes the registry it owns.
 
 Why ``P4-C`` is not a :class:`DecoderSpec`
@@ -177,7 +177,7 @@ def process_candidate_report() -> dict[str, Any]:
     """The WP6 parameter table: plan estimate vs measured, with the band check.
 
     JSON-able; used by the WP6 report and re-checked by
-    ``tests/pesn/test_v543_process_decoders.py``.
+    ``tests/legacy/pesn/test_v543_process_decoders.py``.
     """
     from pes2ts_core.pesn.models.v543.registry import (
         PARAM_BAND_MAX_V543,

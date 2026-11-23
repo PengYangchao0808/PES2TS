@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 ROOT = Path(__file__).resolve().parents[2]
 OUT = ROOT / 'outputs/pesn/dual_ts_v2_20261015/wp2_observations'
 AUDIT = Path(__file__).resolve().parent
-SCRIPT = 'scripts/compute_dual_ts_observations.py'
+SCRIPT = 'archive/v5x_scripts/campaign_oneoffs/compute_dual_ts_observations.py'
 
 
 def processes():
@@ -114,7 +114,7 @@ def main():
     env = os.environ.copy()
     env.update({key: '1' for key in ('OMP_NUM_THREADS', 'OPENBLAS_NUM_THREADS', 'MKL_NUM_THREADS', 'NUMEXPR_NUM_THREADS', 'BLIS_NUM_THREADS')})
     cmd = ['/root/miniforge3/bin/python3', '-u', SCRIPT, '--workers', '16',
-           '--acp-config', 'config/pesn/dual_ts_observations_16x1_v1.yaml']
+           '--acp-config', 'archive/v5x_configs/pesn/dual_ts_observations_16x1_v1.yaml']
     log = AUDIT / 'compute_16x1.log'
     with log.open('ab', buffering=0) as handle:
         proc = subprocess.Popen(cmd, cwd=ROOT, env=env, stdin=subprocess.DEVNULL,

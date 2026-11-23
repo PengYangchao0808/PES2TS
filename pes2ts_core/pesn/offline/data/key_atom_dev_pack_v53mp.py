@@ -77,7 +77,7 @@ __all__ = [
 DEV_PACKS_DIRNAME = "dev_packs"
 #: Pack schema id (binding json ``schema``).
 DEV_PACK_SCHEMA = "v53mp_dev_pack_v1"
-#: Migration-time sha256 cache sidecars (``scripts/infra/sha_sidecar.py``)
+#: Migration-time sha256 cache sidecars (``infra/runtime/sha_sidecar.py``)
 #: land NEXT to pack files as ``<target>.sha256sidecar.json``; they are NOT
 #: binding jsons and are excluded from binding discovery (still exactly ONE
 #: real binding required — fail-closed on anything else).

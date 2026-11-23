@@ -97,7 +97,7 @@ Design decisions and their plan basis
    every CUDA generator state.  Observed on the ``pes2ts-gpu`` host: right
    after a load, ``torch.cuda.get_rng_state_all()`` returned a freshly
    seeded ``[17, 0, 0, …]`` instead of the pre-load states (caught by
-   ``tests/pesn/test_v543_encoder_a0.py::test_load_never_perturbs_global_rng``).
+   ``tests/legacy/pesn/test_v543_encoder_a0.py::test_load_never_perturbs_global_rng``).
    V5.4.3 cannot simply drop the seed — the build must be reproducible per
    ``seed`` for the identity/cache layer (plan §5.2 ``encoder_ckpt_sha256``,
    §5.7 cache keys) — so the fork is WIDENED to every visible CUDA device
@@ -861,7 +861,7 @@ def assert_encoder_packet_parity(
     (``z``/``u0``/``q``/``endpoint_logit``) at the CPU-bitwise / GPU-≤1e-6
     tolerance and returns the audit rows keyed by equality name.  Used by
     the WP1 parity certificate and by
-    ``tests/pesn/test_v543_encoder_a0.py``.
+    ``tests/legacy/pesn/test_v543_encoder_a0.py``.
     """
     rows: dict[str, object] = {
         "u0": compare_parity("u0", packet.u0, u0, context=context),

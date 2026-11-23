@@ -55,7 +55,7 @@ Frozen-contract training loop for the V5.3-MP three arms (A/B/C):
   AUPRC / prevalence / mis-stop rates at frozen τ_end).  Reported
   SEPARATELY — no composite score (plan §7.1).
 
-The driver (``scripts/campaigns/r3_v53mp_run.py``) owns ledger/lifecycle/
+The driver (``archive/v5x_scripts/campaigns/r3_v53mp_run.py``) owns ledger/lifecycle/
 provenance; this module owns the math loop only.
 """
 

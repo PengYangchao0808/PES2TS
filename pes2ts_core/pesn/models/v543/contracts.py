@@ -238,7 +238,7 @@ class CoarsePacket:
     ``q0_raw`` and ``e0`` are the two PROCESS scalars; ``tanh(q0_raw)``
     is proven equal to the V542 ``q`` by the encoder's own typed check
     (plan §5.8 equality 4) and re-proven in
-    ``tests/pesn/test_v543_q0_raw_tanh_identity.py``.
+    ``tests/legacy/pesn/test_v543_q0_raw_tanh_identity.py``.
 
     The packet deliberately has NO ``pos`` / ``batch`` / supervision key
     and NO ``DecoderContextV1`` field — those arrive with the WP2 Bridge.

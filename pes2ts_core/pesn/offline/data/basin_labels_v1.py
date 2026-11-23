@@ -13,7 +13,7 @@ label computation or xtb call):
   :func:`graph_symmetry.min_sym_rmsd` via the K-perms of the TARGET-endpoint
   graph (forward → ``g_tgt``, reverse → ``g_src``);
 * (c) xtb-optimized conformer enrichment (built by the D2 phase-2 driver in
-  ``scripts/agent_ops/data_gate/v52r_d2_p5_probe.py`` — subprocess is
+  ``archive/v5x_scripts/agent_ops/data_gate/v52r_d2_p5_probe.py`` — subprocess is
   sanctioned there for this QC only; this module only GENERATES and
   clash-filters candidate geometries, pure numpy);
 * (d) no independent IRC endpoints in this dataset (skipped).

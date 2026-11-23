@@ -74,7 +74,7 @@ class EmbeddingSpec:
                 f"{FROZEN_EMBEDDING_IDS}; ad-hoc test ids do not get specs")
 
 
-#: Frozen spec table — mirrors ``config/campaigns/pes2ts_v541_embed_50k.yaml``
+#: Frozen spec table — mirrors ``archive/v5x_configs/campaigns/pes2ts_v541_embed_50k.yaml``
 #: ``embedding_contract.embedding_registry`` (WP0-signed rows; do not edit
 #: without a config re-signoff).
 EMBEDDING_SPECS: Final[Mapping[str, EmbeddingSpec]] = {

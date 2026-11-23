@@ -7,7 +7,7 @@ which M0/P0 are re-computed and SHA-frozen (§9.5), and under which every
 candidate is compared for H2/H3 (§9.3).  It is **pure**: same inputs → same
 outputs, bit-for-bit (float64 numpy only), so a report can be SHA-frozen and a
 re-run re-derived.  No file IO, no dataset access, no checkpoint loading, no
-model.  The runner that feeds it (``scripts/agent_ops/v543_eval.py``) owns all
+model.  The runner that feeds it (``archive/v5x_scripts/agent_ops/v543_eval.py``) owns all
 of that; this module only ever sees explicitly-passed arrays.
 
 Inputs (per frame, :class:`EvalFrame`)
@@ -95,7 +95,7 @@ a copy, so the numbers cannot drift from the frozen evaluator);
 V542 aggregation order (frame → branch → reaction → cluster).  The
 ``fixed_coverage_direction@3`` metric is **not** imported and has no V542
 counterpart: V542's "direction" leaf IS ``sign_accuracy_cluster_median``
-(``scripts/agent_ops/v542_stats.py`` :177–190), which is why §1.5 :108 and §2
+(``archive/v5x_scripts/agent_ops/v542_stats.py`` :177–190), which is why §1.5 :108 and §2
 F3 require a physically different implementation here.
 
 ADR-0034 §10 v1.1 (BOND_SCALE)
@@ -107,8 +107,8 @@ in this module compares a distance change ``Δd`` to ``pair_edit``; the
 compare them cannot silently forget it.
 
 Everything here is CPU-fast and tested on synthetic tensors in
-``tests/pesn/test_v543_eval.py``; the real-data certificate is
-``tests/pesn/test_v543_eval_realdata.py``.
+``tests/legacy/pesn/test_v543_eval.py``; the real-data certificate is
+``tests/legacy/pesn/test_v543_eval_realdata.py``.
 """
 
 from __future__ import annotations
@@ -462,7 +462,7 @@ def soft_cosine(u: np.ndarray, y: np.ndarray, *,
     Repeated here (vectorised, same arithmetic) because the evaluator must stay
     importable without pulling the model layers; the frozen module's function
     is private and the formula is two lines, so the risk of silent drift is
-    handled by ``tests/pesn/test_v543_eval.py`` asserting agreement with it.
+    handled by ``tests/legacy/pesn/test_v543_eval.py`` asserting agreement with it.
     """
     u = np.asarray(u, dtype=np.float64)
     y = np.asarray(y, dtype=np.float64)
@@ -1828,7 +1828,7 @@ def _frozen_definitions() -> dict[str, Any]:
         "fixed_coverage_direction_at_3": (
             "NOT imported and NOT a rename of the V542 direction leaf: V542's "
             "direction IS sre_and_sign.sign_accuracy_cluster_median "
-            "(scripts/agent_ops/v542_stats.py :177-190, plan §1.5 :108/§2 F3) "
+            "(archive/v5x_scripts/agent_ops/v542_stats.py :177-190, plan §1.5 :108/§2 F3) "
             "while this metric is defined on the teacher's top-3 |Δd| pairs"),
     }
 

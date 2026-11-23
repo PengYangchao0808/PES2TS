@@ -24,7 +24,7 @@ elementwise copy; no dtype or precision handling differs).
 This is the "B3 里实测一次" row of plan §6: the honest win on this loop is
 the pinned DMA bandwidth for the larger tensors (node positions, edge
 attrs) plus skipping the pageable bounce; the micro-benchmark in
-``tests/pesn/test_h2d_pinned_v53mp.py`` measures it (informational, never
+``tests/legacy/pesn/test_h2d_pinned_v53mp.py`` measures it (informational, never
 a gate).
 
 Torch-only module (mirrors the trainer's dependency); numpy for the

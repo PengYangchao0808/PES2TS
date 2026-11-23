@@ -41,9 +41,9 @@ Fields built here (the 14 frozen required run-identity fields of config
   (read from ``.git`` directly — library code here never spawns a child
   process) plus a sorted SHA-256 manifest of the FROZEN config
   ``identity_contract.code`` scope: the include dirs ``pes2ts_core/``,
-  ``config/campaigns/v542_templates/``, ``scripts/campaigns/``,
-  ``scripts/agent_ops/``, ``scripts/infra/`` plus the exact include files
-  ``config/campaigns/pes2ts_v542_backbone_50k.yaml``, ``requirements.txt``,
+  ``archive/v5x_configs/campaigns/v542_templates/``, ``archive/v5x_scripts/campaigns/``,
+  ``archive/v5x_scripts/agent_ops/``, ``infra/runtime/`` plus the exact include files
+  ``archive/v5x_configs/campaigns/pes2ts_v542_backbone_50k.yaml``, ``requirements.txt``,
   ``requirements-pesn-training.txt``, ``requirements-pesn-runtime.txt``,
   filtered by the frozen suffixes ``.py``/``.yaml``/``.json``/``.txt``
   (excluding ``__pycache__``, ``.git``, ``outputs``, ``node_modules`` and
@@ -155,7 +155,7 @@ IDENTITY_REQUIRED_FIELDS: Final[tuple[str, ...]] = (
 )
 
 DEFAULT_CAMPAIGN_CONFIG: Final[str] = (
-    "config/campaigns/pes2ts_v542_backbone_50k.yaml")
+    "archive/v5x_configs/campaigns/pes2ts_v542_backbone_50k.yaml")
 DEFAULT_PLAN_PATH: Final[str] = (
     "docs/plans/PES2TS_V5.4.2_Backbone_50K_详细阶段实施方案_v1.0_20261029.md")
 DEFAULT_ORACLE_DESIGN_SOURCE: Final[str] = (
@@ -172,14 +172,14 @@ PINNED_ORACLE_DESIGN_SOURCE_SHA256: Final[str] = (
 #: (``docs_consistency_config.json`` — a tooling config that must never
 #: enter the source identity).
 FINGERPRINT_INCLUDE_DIRS: Final[tuple[str, ...]] = (
-    "config/campaigns/v542_templates",
+    "archive/v5x_configs/campaigns/v542_templates",
     "pes2ts_core",
-    "scripts/agent_ops",
-    "scripts/campaigns",
-    "scripts/infra",
+    "archive/v5x_scripts/agent_ops",
+    "archive/v5x_scripts/campaigns",
+    "infra/runtime",
 )
 FINGERPRINT_INCLUDE_FILES: Final[tuple[str, ...]] = (
-    "config/campaigns/pes2ts_v542_backbone_50k.yaml",
+    "archive/v5x_configs/campaigns/pes2ts_v542_backbone_50k.yaml",
     "requirements-pesn-runtime.txt",
     "requirements-pesn-training.txt",
     "requirements.txt",
@@ -500,9 +500,9 @@ def source_tree_fingerprint(root: Path | str | None = None
 
     The manifest scope is the FROZEN config ``identity_contract.code``
     block (oracle gate-3 B1): the include DIRS
-    ``config/campaigns/v542_templates``, ``pes2ts_core``,
-    ``scripts/agent_ops``, ``scripts/campaigns``, ``scripts/infra`` plus
-    the exact include FILES ``config/campaigns/
+    ``archive/v5x_configs/campaigns/v542_templates``, ``pes2ts_core``,
+    ``archive/v5x_scripts/agent_ops``, ``archive/v5x_scripts/campaigns``, ``infra/runtime`` plus
+    the exact include FILES ``archive/v5x_configs/campaigns/
     pes2ts_v542_backbone_50k.yaml``, ``requirements.txt``,
     ``requirements-pesn-training.txt``, ``requirements-pesn-runtime.txt``,
     filtered by the frozen suffixes ``.py``/``.yaml``/``.json``/``.txt``

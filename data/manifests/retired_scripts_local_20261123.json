@@ -1,0 +1,63 @@
+{
+  "schema": "pes2ts_retired_scripts_manifest_v1",
+  "retired_on": "2026-11-23",
+  "reason": "one-off ACP hot-fixes; never versioned (scripts/local is gitignored)",
+  "n_files": 11,
+  "files": [
+    {
+      "path": "scripts/local/finalize_acp_path_contract.py",
+      "sha256": "1e978c394d73ba509f14563932d00960c320703bf1987ab40504c9d534c40332",
+      "size_bytes": 7340
+    },
+    {
+      "path": "scripts/local/fix_acp_single_explicit_path.py",
+      "sha256": "a7604fa061d8182d2915e6a9bfa1102fe40c8f65e89fa39a3462e853beeb4e85",
+      "size_bytes": 757
+    },
+    {
+      "path": "scripts/local/patch_acp_synchronized_path.py",
+      "sha256": "6a18e98383011d25ce6c205a476a6c4782a3d9636eca3167490c9b5a2b8d7f6d",
+      "size_bytes": 7351
+    },
+    {
+      "path": "scripts/local/probe_direct_training_env.py",
+      "sha256": "04a4f59d36a6fc26f8317065f81fe1f5387ef917ee7e18221c7f6d2177915174",
+      "size_bytes": 12285
+    },
+    {
+      "path": "scripts/local/probe_scale_campaign_env.py",
+      "sha256": "513d199954eb6e04ebebc4810b6eed261cd4644a1276345237286f0aaebb297b",
+      "size_bytes": 5938
+    },
+    {
+      "path": "scripts/local/probe_wsl_gpu.py",
+      "sha256": "0d7364237cdb10a49e906552b0da129bc2bf64ad5e8a5baec8ddef31a81601f3",
+      "size_bytes": 2837
+    },
+    {
+      "path": "scripts/local/recover_demo24_missing_energy.py",
+      "sha256": "201dc6e5ca74c2c90f1076c8099a3a1cd632ac350a414c5eb257cee75f8684be",
+      "size_bytes": 2560
+    },
+    {
+      "path": "scripts/local/recover_demo24_required_only.py",
+      "sha256": "0fc85b2b045e4ee9a119dba319212607cf13fa08ad73d825c24a2a4d92dd9f11",
+      "size_bytes": 1610
+    },
+    {
+      "path": "scripts/local/recover_explicit_single_paths.py",
+      "sha256": "d6390a64f17614675839771edf731751ec4a7579ea0e6437567d4a6121cdb137",
+      "size_bytes": 1091
+    },
+    {
+      "path": "scripts/local/recover_pilot_scc.py",
+      "sha256": "bf3826f5e420375d3b62428c17aa3813036eac2320d1dfd892da2105631d34da",
+      "size_bytes": 1473
+    },
+    {
+      "path": "scripts/local/reload_acp_idle.py",
+      "sha256": "3be0e5690f0645880cac2f2ff8c88edf9fb074a37c8f861a5a31df7b70364f9f",
+      "size_bytes": 1253
+    }
+  ]
+}

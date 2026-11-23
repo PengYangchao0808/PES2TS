@@ -13,7 +13,7 @@
 |---|---|---|
 | 13:44Z | E0 证据核验（4 SHA + ORA-3 + 两段式 PENDING 声明一致） | 本文件 §E0 |
 | 13:45Z | E0 条件签认生效；campaign clock 启动；phase deadlines 写入 task_state | 2630d6c |
-| 13:47Z | 协调裁定: E1 builder 落 scripts/agent_ops/data_gate/（单写者规则）；key_atom_dataset_v3.py 授予 W-FEAT；loss 函数(models/key_atom_losses_v3.py)=W-FEAT、训练循环(key_atom_bc_v3.py)=W-LOSS wave-2 | ad4b879 |
+| 13:47Z | 协调裁定: E1 builder 落 archive/v5x_scripts/agent_ops/data_gate/（单写者规则）；key_atom_dataset_v3.py 授予 W-FEAT；loss 函数(models/key_atom_losses_v3.py)=W-FEAT、训练循环(key_atom_bc_v3.py)=W-LOSS wave-2 | ad4b879 |
 | 13:50Z | 三 lane 并行派发: E1-DATA(wt-a/ops/e1-data, ses_ea66b6551ffejO6LMIT7xKsffQ)、WP-L3(wt-c/ops/wp-l3, ses_ea66b654fffe2REQ8iiWIEqW4p)、E2-FEAT(wt-b/ops/e2-feat, ses_ea66b654fffdIshaQ5CgZsFuO4) | 本文件 |
 | 15:11Z | E1 数据集落地: 六表+3 manifests, validator T0.1-T0.5 10/10 pass | data_gate_report_r3.json |
 | 15:30Z | E1-DATA 完成 (d5f4cb6): 50 曲线/100 intents/12034 样本; 覆盖率 ok 9655/terminal 1123/conflict 68/masked 1188; 四 cohort 全处置; 确定性重建 ×3 | W-DATA_E1_sixtables.md |

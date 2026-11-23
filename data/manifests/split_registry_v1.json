@@ -49,7 +49,7 @@
       "sha256": "802f6243649b62c85ce86927adbecfe44d54f7d0c4ee22c0c51ddc08ca42ce5e",
       "bytes": 2903919,
       "copy_note": "verbatim copy: sha256 equals the producing artifact",
-      "regen": "python -m pes2ts_core.pesn split --config config/pesn/g3_p1.yaml"
+      "regen": "python -m pes2ts_core.pesn split --config archive/v5x_configs/pesn/g3_p1.yaml"
     },
     {
       "id": "l3_v53mp_cohort_20k",
@@ -67,7 +67,7 @@
       "sha256": "83e72e9a2570415d71cdf87919edfdc1521600386dd4ea18678a111d428195b4",
       "bytes": 1316830,
       "copy_note": "verbatim copy (renamed only): sha256 equals the producing artifact",
-      "regen": "scripts/agent_ops/data_gate/r3_v53mp_freeze_cohort.py --pool-candidate-target 26000"
+      "regen": "archive/v5x_scripts/agent_ops/data_gate/r3_v53mp_freeze_cohort.py --pool-candidate-target 26000"
     },
     {
       "id": "l3_v53mp_cohort_50k",
@@ -85,7 +85,7 @@
       "sha256": "b65fa4c92f9db2cd2eb8d06dc5306c747702b282ea7c25a111015309698a932b",
       "bytes": 3110831,
       "copy_note": "verbatim copy (renamed only): sha256 equals the producing artifact",
-      "regen": "scripts/agent_ops/data_gate/r3_v53mp_freeze_cohort.py --pool-candidate-target 65000"
+      "regen": "archive/v5x_scripts/agent_ops/data_gate/r3_v53mp_freeze_cohort.py --pool-candidate-target 65000"
     },
     {
       "id": "l3_v53mp_split_50k",
@@ -133,7 +133,7 @@
       "sha256": "c0d2cb2aabde403277d413a113f57924877cc370784865e65951678690b7d7f3",
       "bytes": 3720470,
       "copy_note": "verbatim copy: sha256 equals the producing artifact in WSL",
-      "regen": "scripts/agent_ops/data_gate/r3_v53mp_finalize.py --data <tables_dir> --cohort <cohort.json> --s0a <s0a_dir> --pool-target 50000"
+      "regen": "archive/v5x_scripts/agent_ops/data_gate/r3_v53mp_finalize.py --data <tables_dir> --cohort <cohort.json> --s0a <s0a_dir> --pool-target 50000"
     }
   ]
 }

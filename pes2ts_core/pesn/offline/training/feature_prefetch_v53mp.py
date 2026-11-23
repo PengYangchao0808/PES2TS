@@ -35,7 +35,7 @@ after popping).  Any thread/queue error logs one line and permanently
 falls back to the synchronous path (same fail-open discipline as the
 pool).  The ``(seed, update)`` sampling sequence and the feature bytes
 are IDENTICAL to the sync path — pinned by
-``tests/pesn/test_double_buffer_v53mp.py``.  All of it is opt-in via the
+``tests/legacy/pesn/test_double_buffer_v53mp.py``.  All of it is opt-in via the
 trainer's ``double_buffer=False`` default (B0–B2 reproducibility).
 """
 

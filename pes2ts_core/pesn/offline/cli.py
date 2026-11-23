@@ -1,7 +1,7 @@
 """Explicit offline entry points with scoped configuration (B1–B6).
 
 The predictor keeps its own standalone configuration file (default
-``config/pesn/g3_p1.yaml``); unknown keys and unknown sections fail loudly.
+``archive/v5x_configs/pesn/g3_p1.yaml``); unknown keys and unknown sections fail loudly.
 The Classic ``config/defaults.yaml`` is deliberately not consulted here.
 Offline commands never enter the runtime import chain — ``pesn.__main__``
 imports this module lazily.

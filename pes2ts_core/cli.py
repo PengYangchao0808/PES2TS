@@ -1503,7 +1503,7 @@ def build_parser() -> argparse.ArgumentParser:
     g2t_control_round_parser.add_argument("--selection", required=True, metavar="PATH",
                                           help="frozen train-qualified reaction selection manifest")
     g2t_control_round_parser.add_argument("--round-config", required=True, metavar="PATH",
-                                          help="control round YAML config (config/pesn/control_r1.yaml)")
+                                          help="control round YAML config (archive/v5x_configs/pesn/control_r1.yaml)")
     g2t_control_round_parser.add_argument("--bundle", metavar="DIR", default=None,
                                           help="frozen control bundle dir (execute phase; defaults to the freeze output in 'all')")
     g2t_control_round_parser.add_argument("--max-cases", type=int, default=None,

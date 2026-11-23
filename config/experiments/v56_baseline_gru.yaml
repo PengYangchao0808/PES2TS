@@ -1,0 +1,56 @@
+# V5.6 end-to-end baseline: descriptor encoder + GRU core (alias of M04) +
+# existing MultiHead, trained by the single V5.6 trainer on the deterministic
+# synthetic fixture.
+#
+# This is the config that proves "new experiment = 1 YAML + the same command":
+#   python -m pes2ts_v5.runner train --config config/experiments/v56_baseline_gru.yaml
+#
+# swap the algorithm by changing model.core.name only ("gru" -> "lstm",
+# "causal_tcn", "cfc", "s4d", ... or the M01..M14 ids); nothing else changes.
+experiment_id: v56-baseline-gru
+seed: 17
+
+data:
+  store_manifest: data/interim/v5_synthetic_v56
+  split_policy: synthetic_fixture
+
+model:
+  encoder: descriptor
+  core:
+    name: gru
+    hidden_dim: 64
+    layers: 2
+    dropout: 0.0
+    param_budget: 100000
+  head:
+    name: multi_head
+    q_dim: 3
+    process_classes: 3
+    dropout: 0.0
+
+loss:
+  components:
+    - {name: move_huber, weight: 1.0}
+    - {name: process_ce, weight: 0.5}
+    - {name: progress_huber, weight: 0.2}
+    - {name: trust_bce, weight: 0.2}
+
+training:
+  epochs: 3
+  batch_size: 8
+  lr: 0.001
+  weight_decay: 0.01
+  grad_clip: 1.0
+  grad_accum: 1
+  patience: 3
+  amp: false
+  ema_decay: null
+  optimizer: {name: adamw, lr: 0.001, weight_decay: 0.01}
+  callbacks: [checkpoint_best, cost_ledger, provenance, oom_guard]
+  device: auto
+  cpu_threads: 1
+
+evaluation:
+  splits: [valid, id]
+  ood: [scaffold_ood, family_ood]
+  cpu_benchmark: true

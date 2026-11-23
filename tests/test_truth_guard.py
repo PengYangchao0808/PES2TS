@@ -214,6 +214,60 @@ def test_guard_flags_paths_files_and_dynamic_exec(tmp_path: Path) -> None:
     assert all(finding.line >= 1 for finding in findings)
 
 
+def test_guard_allows_module_eval_method_but_flags_builtin_eval(
+    tmp_path: Path,
+) -> None:
+    # Given: a module that puts a network into inference mode (the ubiquitous
+    # torch.nn.Module.eval() attribute call) AND calls the builtin eval()
+    package = tmp_path / "pkg"
+    package.mkdir()
+    (package / "mod_net.py").write_text(
+        "class _Net:\n"
+        "    def eval(self):\n"
+        "        return self\n"
+        "NET = _Net()\n"
+        "NET.eval()\n"
+        "BUILTIN = eval('1 + 1')\n",
+        encoding="utf-8",
+    )
+
+    # When
+    findings = scan_truth_access(package_root=package)
+
+    # Then: exactly the builtin call is flagged; the method call is not
+    assert [(finding.kind, finding.line) for finding in findings] == [
+        (DYNAMIC_EXEC_RISK, 6)
+    ]
+    assert "calls eval()" in findings[0].detail
+
+
+def test_guard_flags_builtins_and_getattr_spellings_of_eval(tmp_path: Path) -> None:
+    # Given: aliased spellings that hide the builtin from a naive reader
+    package = tmp_path / "pkg"
+    package.mkdir()
+    (package / "mod_spice.py").write_text(
+        "import builtins\n"
+        "A = builtins.eval('1')\n"
+        "B = getattr(builtins, 'eval')('1')\n"
+        "C = exec('x = 1')\n"
+        "D = getattr(builtins, '__import__')('os')\n",
+        encoding="utf-8",
+    )
+
+    # When
+    findings = scan_truth_access(package_root=package)
+
+    # Then: all four smuggling attempts are flagged
+    assert {finding.kind for finding in findings} == {DYNAMIC_EXEC_RISK}
+    assert [finding.line for finding in findings] == [2, 3, 4, 5]
+
+
+def test_shipped_package_has_no_module_eval_false_positive() -> None:
+    # Given the shipped tree (which legitimately calls ``head.eval()`` /
+    # ``encoder.eval()`` for inference); When / Then the scan is clean
+    assert scan_truth_access() == []
+
+
 def test_truth_access_without_allow_truth_raises_permission_error() -> None:
     # Given / When / Then: neither accessor opens anything without the flag
     with pytest.raises(PermissionError, match="allow_truth=True") as irc_exc:

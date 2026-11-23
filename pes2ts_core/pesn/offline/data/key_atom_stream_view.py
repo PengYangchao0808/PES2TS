@@ -4,7 +4,7 @@ The 50k-scale loader-v2 certificate cannot afford the v1 reference's full
 residency (a 14.7M-entry ``SampleRecordV3Lite`` list ≈ 30 GB + the eagerly
 expanded label-cache dicts ≈ 10 GB co-resident OOMs a 12 GiB host).  This
 module provides the bounded alternative used by
-``scripts/agent_ops/data_gate/r3_v53mp_loader_v2_certificate.py --mode
+``archive/v5x_scripts/agent_ops/data_gate/r3_v53mp_loader_v2_certificate.py --mode
 streaming``:
 
 * :class:`StreamThinViewV3` — light tables (``irc_curve`` /

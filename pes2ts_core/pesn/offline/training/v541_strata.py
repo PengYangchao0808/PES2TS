@@ -1,7 +1,7 @@
 """V5.4.1 WP4a — frozen curve-stratified sampler (path-A 方案四 分层兑现).
 
 Implements the sampling contract declared by the frozen V5.4.1 config
-(``config/campaigns/pes2ts_v541_embed_50k.yaml`` → ``training_contract.batch
+(``archive/v5x_configs/campaigns/pes2ts_v541_embed_50k.yaml`` → ``training_contract.batch
 = {curves: 8, frames: 4, strata: [start, pre_TS, post_TS, endpoint],
 sampler: (seed, update, salt) 纯函数协议}``) as machine-readable
 :data:`SAMPLER_SPEC_V541`, sampler_id **``v541_curve_stratified_v1``**.
@@ -133,7 +133,7 @@ SAMPLER_SPEC_V541: Final[Dict[str, Any]] = {
     "status": "frozen_wp4a_2026_10_27",
     "config_binding": {
         "config_path": (
-            "config/campaigns/pes2ts_v541_embed_50k.yaml#"
+            "archive/v5x_configs/campaigns/pes2ts_v541_embed_50k.yaml#"
             "training_contract.batch"),
         "curves": 8,
         "frames": 4,

@@ -47,7 +47,7 @@ Frozen semantics:
   ones ⇒ ``w == keep`` bitwise) and divides by ``w.sum()`` which equals the
   baseline's integer frame count exactly; (3) the bucket branches are
   SKIPPED entirely when their λ is 0 (no stray additions).
-  ``tests/pesn/test_r3_losses.py`` asserts ``torch.equal`` against the
+  ``tests/legacy/pesn/test_r3_losses.py`` asserts ``torch.equal`` against the
   baseline function on randomized fixtures.
 * Determinism: all reductions are fixed-order sums over fixed index tensors
   (CPU bitwise-reproducible; CUDA ``index_add`` atomics are not asserted
@@ -65,10 +65,10 @@ from typing import Final, Mapping
 import torch
 
 # NOTE (product boundary): ``pes2ts_core/pesn/models`` is runtime-reachable
-# and may NOT import ``offline`` (tests/pesn/test_product_boundaries.py), so
+# and may NOT import ``offline`` (tests/legacy/pesn/test_product_boundaries.py), so
 # the four baseline helpers below are copied VERBATIM from the frozen
 # ``pes2ts_core/pesn/offline/training/key_atom_bc.py``.  The copies are kept
-# bitwise-identical by ``tests/pesn/test_r3_losses.py``, which asserts
+# bitwise-identical by ``tests/legacy/pesn/test_r3_losses.py``, which asserts
 # ``torch.equal`` against the baseline loss on randomized fixtures.
 
 #: Frozen bucket/aux constants (campaign ``r3_training.loss``).

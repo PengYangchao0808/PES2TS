@@ -237,13 +237,53 @@ def _import_findings(node: ast.Import | ast.ImportFrom, file: str) -> list[Findi
 
 
 def _dynamic_findings(node: ast.AST, file: str) -> list[Finding]:
-    """Flag eval/exec/__import__ calls and ``.__import__`` attribute access."""
+    """Flag dynamic-execution primitives, without false-positive ``obj.eval()``.
+
+    The rule set is deliberately precise about *which* ``eval`` is dangerous:
+
+    * a bare ``eval(...)`` / ``exec(...)`` / ``__import__(...)`` name is the
+      Python builtin — always flagged;
+    * ``builtins.eval(...)`` / ``builtins.exec(...)`` is the same builtin by
+      attribute access — always flagged;
+    * ``getattr(<obj>, "eval")`` (or ``"exec"`` / ``"__import__"``) smuggles
+      the primitive past a static reader — flagged;
+    * ``<obj>.eval()`` is the ubiquitous ``torch.nn.Module.eval()`` (inference
+      mode switch), *not* the builtin, so it is NOT flagged.  Treating every
+      attribute call as dynamic execution is the false positive that made the
+      guard unrunnable; the bare-name check above still catches the real thing.
+
+    ``.__import__`` attribute access stays flagged in every form.
+    """
     if isinstance(node, ast.Call):
         func = node.func
         if isinstance(func, ast.Name) and func.id in DYNAMIC_CALL_NAMES:
             return [Finding(file, node.lineno, DYNAMIC_EXEC_RISK, f"calls {func.id}()")]
-        if isinstance(func, ast.Attribute) and func.attr in DYNAMIC_CALL_NAMES:
-            return [Finding(file, node.lineno, DYNAMIC_EXEC_RISK, f"calls .{func.attr}()")]
+        if isinstance(func, ast.Attribute):
+            if func.attr == "__import__":
+                return [Finding(file, node.lineno, DYNAMIC_EXEC_RISK, "calls .__import__()")]
+            if func.attr == "exec":
+                return [Finding(file, node.lineno, DYNAMIC_EXEC_RISK, "calls .exec()")]
+            if func.attr == "eval" and isinstance(func.value, ast.Name) and (
+                func.value.id in {"builtins", "__builtins__"}
+            ):
+                return [
+                    Finding(file, node.lineno, DYNAMIC_EXEC_RISK, f"calls {func.value.id}.eval()")
+                ]
+        if isinstance(func, ast.Name) and func.id == "getattr" and len(node.args) >= 2:
+            spice = node.args[1]
+            if (
+                isinstance(spice, ast.Constant)
+                and isinstance(spice.value, str)
+                and spice.value in DYNAMIC_CALL_NAMES
+            ):
+                return [
+                    Finding(
+                        file,
+                        node.lineno,
+                        DYNAMIC_EXEC_RISK,
+                        f"resolves {spice.value!r} dynamically via getattr()",
+                    )
+                ]
     if isinstance(node, ast.Attribute) and node.attr == "__import__":
         return [Finding(file, node.lineno, DYNAMIC_EXEC_RISK, "accesses .__import__")]
     return []

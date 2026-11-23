@@ -48,7 +48,7 @@ Losses (§7.2 :688–711), every coefficient frozen:
   rows and the endpoint rows; ``_frame_mask_for`` is used by the MOVE track
   ONLY.  A terminal frame with a valid endpoint label therefore trains the
   PROCESS head while being excluded from MOVE — the F5 correction, asserted by
-  ``tests/pesn/test_v543_train.py::test_process_mask_covers_terminal_rows``.
+  ``tests/legacy/pesn/test_v543_train.py::test_process_mask_covers_terminal_rows``.
 * Skip rule (:711): a batch with no valid supervision for the current track
   records ``skipped_no_grad`` and is not resampled.
 * Gradient isolation (:713–726): :meth:`V543Trainer._backward` runs the plan's
@@ -1699,19 +1699,19 @@ def build_real_trainer(
 
     repo_root = Path(__file__).resolve().parents[4]
     campaign_path = campaign_config or (
-        "config/campaigns/pes2ts_v543_dual_decoder_50k.yaml")
+        "archive/v5x_configs/campaigns/pes2ts_v543_dual_decoder_50k.yaml")
     data_path = data_view_config or (
-        "config/campaigns/pes2ts_v542_backbone_50k.yaml")
+        "archive/v5x_configs/campaigns/pes2ts_v542_backbone_50k.yaml")
 
-    from scripts.agent_ops.v542_a0_parity import (
+    from archive.v5x_scripts.agent_ops.v542_a0_parity import (
         _open_frozen_dataset,
         load_pinned_assets,
     )
-    from scripts.agent_ops.v543_s0_probe import (
+    from archive.v5x_scripts.agent_ops.v543_s0_probe import (
         load_campaign_config,
         resolve_checkpoints,
     )
-    from scripts.campaigns.r3_v53mp_run import _tier_pool_curve_ids
+    from archive.v5x_scripts.campaigns.r3_v53mp_run import _tier_pool_curve_ids
     from pes2ts_core.pesn.models.v543 import CoarseEncoder
     from pes2ts_core.pesn.models.v543.assembly import assemble_v543
     from pes2ts_core.pesn.offline.data.v543_feature_cache import CacheIdentity

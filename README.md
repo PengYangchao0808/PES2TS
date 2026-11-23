@@ -175,9 +175,9 @@ python bin/pes2ts acp-validate-run `
 This starts real quantum-chemistry calculations. No calculation has been
 launched through this sequence because the 24 sample reviews are still pending.
 
-For the 24-reaction S1 review packet, run `python scripts/audit_demo24_endpoints.py`
-then `python scripts/build_demo24_reaction_cases.py`, and run
-`python scripts/audit_demo24_spin_sources.py` for the spin-source ledger. The
+For the 24-reaction S1 review packet, run `python archive/v5x_scripts/campaign_oneoffs/audit_demo24_endpoints.py`
+then `python archive/v5x_scripts/campaign_oneoffs/build_demo24_reaction_cases.py`, and run
+`python archive/v5x_scripts/campaign_oneoffs/audit_demo24_spin_sources.py` for the spin-source ledger. The
 builder writes standard
 endpoint-only cases under `data/interim/g1_v2/reaction_cases_review_v1` and a
 provenance manifest under `data/manifests`. All 24 cases remain `needs_review`.
@@ -195,7 +195,7 @@ must still be transferred to auditable `ReviewRecord`/`ReactionCase` records;
 blank cells are not approvals.
 
 After both reviewers and the adjudicator complete all 24 rows, import the
-workbook with `python scripts/import_demo24_review_workbook.py <completed.xlsx>`.
+workbook with `python archive/v5x_scripts/campaign_oneoffs/import_demo24_review_workbook.py <completed.xlsx>`.
 The importer verifies row identities against the frozen ReactionCase manifest,
 requires distinct reviewers and matching adjudication, and promotes a case to
 `ready` only when both reviews confirm every dimension, agree on 1D feasibility,
@@ -203,7 +203,7 @@ and enter matching explicit R/P multiplicities. It writes a new reviewed-case
 snapshot and review-record manifest without overwriting the review packet.
 
 After a successful import, freeze the 16/8 execution input bundle with
-`python scripts/build_demo24_execution_bundle.py --reviewed-cases <reviewed-root> --reviewed-manifest <review-records.json> --output <new-input-bundle>`.
+`python archive/v5x_scripts/campaign_oneoffs/build_demo24_execution_bundle.py --reviewed-cases <reviewed-root> --reviewed-manifest <review-records.json> --output <new-input-bundle>`.
 The packer reconciles each reviewed case and ReviewRecord against the original
 24-case IDs/splits, copies the exact snapshots, and writes a hash receipt. It
 does not create approvals; accepted/rejected decisions must come from the

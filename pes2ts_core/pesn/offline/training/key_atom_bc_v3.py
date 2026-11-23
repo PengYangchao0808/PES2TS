@@ -27,7 +27,7 @@ Frozen-contract training loop for the Reaction-Intent-conditioned R3 arm
   checkpoint sha256 is returned for the ledger record; resume continues
   from ``checkpoint_last.pt`` by run identity.
 
-The driver (``scripts/campaigns/run_v5_1_r3.py``) owns ledger/lifecycle;
+The driver (``archive/v5x_scripts/campaigns/run_v5_1_r3.py``) owns ledger/lifecycle;
 this module owns the math loop only.
 """
 

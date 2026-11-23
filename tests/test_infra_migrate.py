@@ -1,4 +1,4 @@
-"""ext4 migration acceptance (plan §5.4, scripts/infra/migrate_data_to_ext4.py).
+"""ext4 migration acceptance (plan §5.4, infra/runtime/migrate_data_to_ext4.py).
 
 Covers: dry-run plan fields, copy/verify/commit happy path on tmp dirs
 (fs-type check monkeypatched to ext4), resumable copy skip, the
@@ -30,8 +30,8 @@ REPO = Path(__file__).resolve().parents[1]
 if str(REPO) not in sys.path:
     sys.path.insert(0, str(REPO))
 
-from scripts.infra import migrate_data_to_ext4 as mig  # noqa: E402
-from scripts.infra.sha_sidecar import sidecar_path, sidecar_sha256  # noqa: E402
+from infra.runtime import migrate_data_to_ext4 as mig  # noqa: E402
+from infra.runtime.sha_sidecar import sidecar_path, sidecar_sha256  # noqa: E402
 
 RELS = ("a.csv", "manifest.json", "shards/shard_00000.npz")
 

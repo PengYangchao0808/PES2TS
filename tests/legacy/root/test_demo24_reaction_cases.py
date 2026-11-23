@@ -1,0 +1,58 @@
+"""Demo24 review-case builder tests (source-backed spin, pending review)."""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+import pytest
+
+from pes2ts_core.contracts import loads_document, validate_document
+
+_RAW = Path(__file__).resolve().parents[3] / "data" / "raw" / "reaction_qm"
+pytestmark = pytest.mark.skipif(
+    not (_RAW / "B3LYP-RXN_train.csv").is_file()
+    or not (_RAW / "B3LYP-RXN_valid.csv").is_file(),
+    reason="raw Reaction-QM split CSV is local-only data and is not in a fresh clone",
+)
+
+from archive.v5x_scripts.campaign_oneoffs.build_demo24_reaction_cases import DEFAULT_OUTPUT, MANIFEST_PATH, build_review_cases
+from archive.v5x_scripts.campaign_oneoffs.audit_demo24_spin_sources import build_spin_audit
+
+
+def test_demo24_cases_are_standardized_with_source_backed_spin_but_still_need_review(tmp_path):
+    output_root = tmp_path / "review_cases"
+    manifest_path = tmp_path / "demo24_reaction_case_manifest_v1.json"
+    manifest = build_review_cases(output_root=output_root, manifest_path=manifest_path)
+
+    assert manifest["n_cases"] == 24
+    assert manifest["split_counts"] == {"train": 16, "valid": 8}
+    assert manifest["case_status_counts"] == {"needs_review": 24}
+    assert manifest["status"] == "awaiting_manual_chemistry_review"
+    assert manifest_path.is_file()
+    assert (output_root / "README.md").is_file()
+    assert MANIFEST_PATH.is_file()
+    assert (DEFAULT_OUTPUT / "README.md").is_file()
+
+    for record in manifest["records"]:
+        case = loads_document((output_root / record["relative_path"]).read_text(encoding="utf-8"))
+        assert case["reaction_id"] == record["reaction_id"]
+        assert case["status"] == "needs_review"
+        assert case["reactant"]["multiplicity"] == record["multiplicities"]["reactant"]
+        assert case["product"]["multiplicity"] == record["multiplicities"]["product"]
+        assert case["source"]["spin_provenance"]["reactant"]["status"] == record["spin_resolution"]["reactant"]
+        assert case["source"]["spin_provenance"]["product"]["status"] == record["spin_resolution"]["product"]
+        assert case["source"]["g1_export_sha256"] == record["source_export_sha256"]
+        assert len(case["source"]["g1_payload_sha256"]) == 64
+        assert case["case_id"] == record["case_id"]
+        assert not validate_document(case, production_input=True)
+        assert "TS/IRC" in manifest["information_boundary"]
+
+
+def test_single_component_spin_is_traceable_and_never_uses_multiplicity_max():
+    report = build_spin_audit()
+    assert report["n_reactions"] == 24
+    record = next(item for item in report["records"] if item["reaction_id"] == "RXN_0000007104")
+    assert record["endpoint_spin"]["reactant"]["multiplicity"] == 1
+    assert record["endpoint_spin"]["product"]["multiplicity"] == 1
+    assert record["endpoint_spin"]["reactant"]["components"][0]["component_id"] == "R0"
+    assert "multiplicity_max" not in record["endpoint_spin"]["reactant"]

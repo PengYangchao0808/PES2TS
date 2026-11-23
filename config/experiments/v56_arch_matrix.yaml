@@ -1,0 +1,59 @@
+# V5.6-A architecture matrix: one config, 14 cores, identical everything else
+# (descriptor encoder / MultiHead / loss components / optimizer / callbacks).
+#
+#   python -m pes2ts_v5.runner sweep --config config/experiments/v56_arch_matrix.yaml \
+#       --arch M01 --arch M02 --arch M03 --arch M04 --arch M05 --arch M06 \
+#       --arch M07 --arch M08 --arch M09 --arch M10 --arch M11 --arch M12 \
+#       --arch M13 --arch M14 --max-epochs 1 --max-train-batches 2
+#
+# Without --arch the sweep runs the configured core only.  Fairness axis:
+# model.core.hidden_dim: auto + param_budget = equal Core-only parameter budget
+# (0.1M) for all architectures.  Dataset is the deterministic synthetic fixture,
+# so the ranking is an engineering check, NOT a scientific claim.
+experiment_id: v56-arch-matrix
+seed: 17
+
+data:
+  store_manifest: data/interim/v5_synthetic_matrix
+  split_policy: synthetic_fixture
+
+model:
+  encoder: descriptor
+  core:
+    name: M01
+    hidden_dim: auto
+    layers: 2
+    dropout: 0.0
+    param_budget: 100000
+  head:
+    name: multi_head
+    q_dim: 3
+    process_classes: 3
+    dropout: 0.0
+
+loss:
+  components:
+    - {name: move_huber, weight: 1.0}
+    - {name: process_ce, weight: 0.5}
+    - {name: progress_huber, weight: 0.2}
+    - {name: trust_bce, weight: 0.2}
+
+training:
+  epochs: 1
+  batch_size: 8
+  lr: 0.001
+  weight_decay: 0.01
+  grad_clip: 1.0
+  grad_accum: 1
+  patience: 3
+  amp: false
+  ema_decay: null
+  optimizer: {name: adamw}
+  callbacks: [checkpoint_best, cost_ledger, provenance_ledger, log, early_stop]
+  device: auto
+  cpu_threads: 1
+
+evaluation:
+  splits: [valid, id]
+  ood: [scaffold_ood, family_ood]
+  cpu_benchmark: true

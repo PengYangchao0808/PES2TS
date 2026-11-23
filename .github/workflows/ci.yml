@@ -18,23 +18,21 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
       - name: G–V map check
-        run: python scripts/render_gv_map.py --check
+        run: python infra/governance/render_gv_map.py --check
       - name: Docs link check
-        run: python scripts/check_docs_links.py
+        run: python infra/governance/check_docs_links.py
+      - name: Docs consistency gate
+        run: python infra/governance/docs_consistency.py --strict
       - name: Registry tests
         run: pytest -q tests/test_gv_registry.py tests/test_config_env.py
+      - name: Architecture boundary guard
+        run: pytest -q tests/kernel
       - name: Base test tier (no torch)
         # This tier deliberately has NO torch installed, so it must not collect
-        # suites that import torch at module scope. Those still run in the
-        # `pesn` job (which installs CPU torch), so coverage is unchanged.
-        run: |
-          pytest -q --ignore=tests/pesn \
-            --ignore=tests/agent_ops/test_v53mp_50k_tier.py \
-            --ignore=tests/agent_ops/test_v53mp_loader_streaming_cert.py \
-            --ignore=tests/agent_ops/test_v541_h0_legality_audit.py \
-            --ignore=tests/agent_ops/test_v541_runner_contract.py \
-            --ignore=tests/test_i3_infra.py \
-            --ignore=tests/test_v53mp_tau_recompute.py
+        # suites that import torch at module scope. The historical V4/V5.1-V5.4
+        # tier (tests/legacy) and the V5.6 engine contracts (tests/v5) are
+        # exercised by the `pesn` job below, which installs CPU torch.
+        run: pytest -q --ignore=tests/legacy --ignore=tests/v5
 
   pesn:
     runs-on: ubuntu-latest
@@ -49,5 +47,5 @@ jobs:
           pip install -r requirements.txt
       - name: Install CPU torch
         run: pip install torch --index-url https://download.pytorch.org/whl/cpu
-      - name: Full test tier
-        run: pytest -q
+      - name: Full test tier (includes legacy + V5.6 engine contracts)
+        run: pytest -q -m "not (realdata or xtb or acp or orca)"

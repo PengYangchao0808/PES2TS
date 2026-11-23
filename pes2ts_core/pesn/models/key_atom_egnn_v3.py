@@ -34,7 +34,7 @@ Contract (R3 plan v3 §3.2 + campaign yaml):
   channels; no dropout anywhere; positions are NEVER updated;
 * forward determinism: no dropout/batchnorm/stochastic layers; two eval-mode
   calls on the same batch are bitwise equal (asserted in
-  ``tests/pesn/test_r3_model.py``); fp32 throughout;
+  ``tests/legacy/pesn/test_r3_model.py``); fp32 throughout;
 * input legality: only :data:`FORWARD_VIEW_KEYS_V3` are read; non-finite
   coordinates/features raise :class:`KeyAtomV3InvalidInputError` (typed
   invalid — never a fabricated action, GeometryPolicyContract v1 §S4.3);

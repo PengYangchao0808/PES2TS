@@ -10,7 +10,7 @@ Contract highlights (plan §6.1 / §6.2, campaign yaml ``v53_rollout``):
 
 * **No physics in the loop** — no xTB/DFT/gradient call ever happens here;
   the constrained-relax bridge is a separate, out-of-loop tool
-  (``scripts/agent_ops/feature_gate/v53_relax_bridge.py``) and its results
+  (``archive/v5x_scripts/agent_ops/feature_gate/v53_relax_bridge.py``) and its results
   never feed back into the policy (plan §5: 物理返回数据不馈入 V5 policy).
 * **No history side-channels** — every step re-embeds from the CURRENT
   (moved) geometry plus the SAME fixed intent via
@@ -18,7 +18,7 @@ Contract highlights (plan §6.1 / §6.2, campaign yaml ``v53_rollout``):
   :func:`forward_view_v3`, so future frames / true TS / true progress /
   hidden state can never reach ``model.forward`` (ReactionIntent Contract
   v1 §5; enforced structurally and tested in
-  ``tests/pesn/test_r3_rollout_v3.py``).
+  ``tests/legacy/pesn/test_r3_rollout_v3.py``).
 * **Arms** (frozen ``v53_rollout.constrained_relax.arms``):
   ``classic`` = CV/Jacobian min-norm step (formula mirrored from the
   ``key_atom_bc_v3`` classic baseline, record-only there; same math here,
@@ -250,7 +250,7 @@ def classic_cv_jacobian_step_v3(
     ``pes2ts_core.pesn.offline.training.key_atom_bc_v3.classic_jacobian_step``
     (the offline module is record-only there; runtime modules may not
     import ``offline/*`` — product boundary B0/B6 — so the identical math
-    lives here and ``tests/pesn/test_r3_rollout_v3.py`` asserts numerical
+    lives here and ``tests/legacy/pesn/test_r3_rollout_v3.py`` asserts numerical
     parity against the offline implementation).
     """
     pos = np.asarray(pos, dtype=np.float64)
@@ -870,7 +870,7 @@ def execute_relax_episode_v3(
 
     ``runner`` is ANY callable ``runner(request, workdir) ->
     PhysicsOutcomeV3`` — the real xtb runner lives in
-    ``scripts/agent_ops/feature_gate/v53_relax_exec.py``; tests inject a
+    ``archive/v5x_scripts/agent_ops/feature_gate/v53_relax_exec.py``; tests inject a
     mock.  A runner exception is captured as ``physics_failed`` (physics
     failures are recorded, never hidden, and never abort sibling runs).
     Claim scope is always ``TS_candidate_only`` — single-imaginary-

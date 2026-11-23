@@ -3,7 +3,7 @@
 Schema ``pesn_key_atom_v3`` / feature spec ``pesn_r3_feature_spec_v3``.
 Normative sources (read-only):
 
-* ``config/campaigns/pes2ts_30h_20261020.yaml`` ``feature_contract`` +
+* ``archive/v5x_configs/campaigns/pes2ts_30h_20261020.yaml`` ``feature_contract`` +
   ``r3_training`` blocks (FROZEN; PD-2/PD-6/PD-9),
 * ``docs/contracts/PES2TS_ReactionIntent_Contract_v1.md`` (G_rxn, relabel vs
   reverse, forward-input legality §5),
@@ -249,7 +249,7 @@ def intent_off_keys_v3(classes: Iterable[str]) -> tuple[str, ...]:
 # ---------------------------------------------------------------------------
 #: Every key a model forward may ever see.  Must stay a subset of the
 #: campaign ``feature_contract`` forward-input allowlist (machine-checked in
-#: ``tests/pesn/test_r3_input_legality.py`` and by the feature-gate harness).
+#: ``tests/legacy/pesn/test_r3_input_legality.py`` and by the feature-gate harness).
 FORWARD_VIEW_KEYS_V3: Final[tuple[str, ...]] = (
     NODE_Z_KEY, NODE_POS_KEY, NODE_GRAPH_KEY, NODE_KEY_SET_KEY,
     NODE_IS_KEY_KEY, NODE_DEGK_KEY, NODE_INTENT_ROLE_KEY,
@@ -506,7 +506,7 @@ class IntentRecordV3:
 
         The intent id becomes the paired reverse id (label involution
         ``reverse(reverse(x)) == x`` is asserted by the data gate T0.2 and
-        at feature level by ``tests/pesn/test_r3_relabel_invariance.py``).
+        at feature level by ``tests/legacy/pesn/test_r3_relabel_invariance.py``).
         """
         return IntentRecordV3(
             intent_id=self.reverse_of_intent_id or f"{self.intent_id}::rev",

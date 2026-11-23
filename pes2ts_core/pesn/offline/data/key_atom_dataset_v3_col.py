@@ -6,7 +6,7 @@ index and the label tables from flat ``.npy`` column files opened with
 ``np.load(..., mmap_mode="r")`` instead of a 2 GB pickle + a 4 GB eagerly
 expanded label npz.  Sample order is BYTE-IDENTICAL to v1's ``samples``
 tuple (the idx is built from the v1 light pickle in order; certified by
-``scripts/agent_ops/data_gate/r3_v53mp_loader_v2_certificate.py``).
+``archive/v5x_scripts/agent_ops/data_gate/r3_v53mp_loader_v2_certificate.py``).
 
 Files consumed (built by ``r3_v53mp_build_idx_v2.py``; ``allow_pickle=False``
 everywhere, write AND read):
@@ -547,7 +547,7 @@ class ColumnarStartup:
 
     Equivalence discipline: the trainer's fast paths consume these columns
     and must produce results IDENTICAL to the per-item path — pinned by
-    ``tests/pesn/test_columnar_startup_fast.py`` and re-verified on the
+    ``tests/legacy/pesn/test_columnar_startup_fast.py`` and re-verified on the
     real tables by ``r3_v53mp_startup_certificate.py``.  The per-item
     fallback paths are kept VERBATIM; ``V53MP_DISABLE_COLUMNAR_FAST=1``
     forces them (the certificate's reference arm).

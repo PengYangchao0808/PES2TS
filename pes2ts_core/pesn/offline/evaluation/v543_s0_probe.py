@@ -68,10 +68,10 @@ Supervision discipline (hard constraint, plan §5.6 :420–425)
     heads are trained OUTSIDE the encoder graph (``torch.no_grad`` features).
 
 Everything in this module is pure/offline: no file IO, no dataset access, no
-checkpoint loading (that plumbing lives in ``scripts/agent_ops/
+checkpoint loading (that plumbing lives in ``archive/v5x_scripts/agent_ops/
 v543_s0_probe.py``, mirroring ``v542_a0_parity.py``).  It is therefore
 CPU-fast and testable on synthetic tensors, which is what
-``tests/pesn/test_v543_s0_probe.py`` does.
+``tests/legacy/pesn/test_v543_s0_probe.py`` does.
 """
 
 from __future__ import annotations

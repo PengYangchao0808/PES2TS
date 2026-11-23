@@ -1,0 +1,59 @@
+# V5.6-A broad architecture screening (research plan v2.0 §2.3).
+#
+# 14 memory cores x 1 seed (17), unified descriptor encoder / heads / loss /
+# training rules, Core ~0.1M params via param_budget (hidden_dim: auto).
+# Iterate all architectures through the sweep subcommand:
+#
+#   python -m pes2ts_v5.runner sweep --config config/experiments/screening.yaml \
+#       --arch M01 --arch M02 --arch M03 --arch M04 --max-epochs 1
+#
+# NOTE: dataset is the deterministic synthetic fixture (split_policy:
+# synthetic_fixture) until the V5.5 real-store adapter is frozen; the synthetic
+# ranking is an engineering check, NOT a scientific architecture ranking.
+experiment_id: v56-screening
+seed: 17
+
+data:
+  store_manifest: data/interim/v5_synthetic
+  split_policy: synthetic_fixture
+
+model:
+  encoder: descriptor
+  core:
+    name: M01                 # overridden per run by --arch
+    hidden_dim: auto          # resolved from param_budget (fairness axis)
+    layers: 2
+    dropout: 0.0
+    param_budget: 100000
+  head:
+    name: multi_head
+    q_dim: 3
+    process_classes: 3
+    dropout: 0.0
+
+loss:
+  components:
+    - {name: move_huber, weight: 1.0}
+    - {name: process_ce, weight: 0.5}
+    - {name: progress_huber, weight: 0.2}
+    - {name: trust_bce, weight: 0.2}
+
+training:
+  epochs: 5
+  batch_size: 8
+  lr: 0.001
+  weight_decay: 0.01
+  grad_clip: 1.0
+  grad_accum: 1
+  patience: 3
+  amp: false
+  ema_decay: null
+  optimizer: {name: adamw}
+  callbacks: [checkpoint_best, cost_ledger, provenance_ledger, log, early_stop]
+  device: auto
+  cpu_threads: 1
+
+evaluation:
+  splits: [valid, id]
+  ood: [scaffold_ood, family_ood]
+  cpu_benchmark: true

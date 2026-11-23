@@ -76,7 +76,7 @@ def test_v541_registered_with_required_g_support():
     assert set(entry.supporting_g) == {"G3.P.1", "G3.P.3", "G0", "G1"}
     assert "G3.P.2" not in entry.supporting_g
     assert set(entry.data_dependencies) == {"G0", "G1"}
-    assert entry.config == "config/campaigns/pes2ts_v541_embed_50k.yaml"
+    assert entry.config == "archive/v5x_configs/campaigns/pes2ts_v541_embed_50k.yaml"
     assert entry.evidence and "V541" in entry.evidence
     # executed: evidence must be the read-only final report
     assert "实施与训练报告_20261029" in entry.evidence
@@ -94,7 +94,7 @@ def test_v54_untouched_by_v541_registration():
     old = resolve_campaign(gv_map, "V5.4")
     assert old.status == "proposed"
     assert old.primary_g == "G3.P.2"
-    assert old.config == "config/campaigns/v5_4_rollout.yaml"
+    assert old.config == "archive/v5x_configs/campaigns/v5_4_rollout.yaml"
     assert "from-any-point" in (old.gate_note or "")
     # both campaigns coexist and stay distinct
     assert "V5.4" in gv_map.campaigns and "V5.4.1" in gv_map.campaigns
@@ -158,12 +158,12 @@ def test_v542_registered_as_proposed_with_fix6_gates():
     assert "status proposed" in gate_note or "status: proposed" in gate_note
     # config + schema + tests + templates are the declared code scope
     for pattern in (
-        "config/campaigns/pes2ts_v542_backbone_50k.yaml",
-        "scripts/agent_ops/v542_config_schema.py",
-        "tests/agent_ops/test_v542_config_schema.py",
+        "archive/v5x_configs/campaigns/pes2ts_v542_backbone_50k.yaml",
+        "archive/v5x_scripts/agent_ops/v542_config_schema.py",
+        "tests/legacy/agent_ops/test_v542_config_schema.py",
     ):
         assert pattern in entry.code_scope, pattern
-    assert entry.config == "config/campaigns/pes2ts_v542_backbone_50k.yaml"
+    assert entry.config == "archive/v5x_configs/campaigns/pes2ts_v542_backbone_50k.yaml"
     # WP7: evidence points at the frozen execution report (V542 naming)
     assert entry.evidence.endswith(
         "PES2TS_V542_Backbone_50K_实施与训练报告_20261031.md")
@@ -212,8 +212,8 @@ def test_v541_code_scope_paths_exist_for_executed():
     validate_gv_map(gv_map)
     root = gv_map.path.parents[2]
     assert (root / entry.config).is_file()
-    assert (root / "scripts/agent_ops/v541_config_schema.py").is_file()
-    assert (root / "tests/agent_ops/test_v541_config_schema.py").is_file()
+    assert (root / "archive/v5x_scripts/agent_ops/v541_config_schema.py").is_file()
+    assert (root / "tests/legacy/agent_ops/test_v541_config_schema.py").is_file()
     # every declared code_scope pattern must match at least one file
     for pattern in entry.code_scope:
         assert any(root.glob(pattern)), f"code_scope pattern matches nothing: {pattern}"

@@ -1,0 +1,59 @@
+# V5.6 smoke experiment (fast CI acceptance path).
+#
+# Pipeline: deterministic synthetic fixture -> descriptor encoder + GRU core
+# (alias of M04) + existing Move/Process/Trust heads -> 1 epoch -> valid split.
+#
+# Run:
+#   python -m pes2ts_v5.runner train --config config/experiments/smoke.yaml \
+#       --max-epochs 1 --max-train-batches 2 --out-dir .slim/runs/smoke-test
+#
+# split_policy: synthetic_fixture means "if no manifest.json exists at
+# store_manifest, build the deterministic synthetic fixture there" (the only
+# fallback; real stores must ship a manifest).
+experiment_id: v56-smoke
+seed: 17
+
+data:
+  store_manifest: data/interim/v5_synthetic_smoke
+  split_policy: synthetic_fixture
+
+model:
+  encoder: descriptor
+  core:
+    name: gru                 # algorithm alias -> M04
+    hidden_dim: 32
+    layers: 2
+    dropout: 0.0
+    param_budget: 100000
+  head:
+    name: multi_head
+    q_dim: 3
+    process_classes: 3
+    dropout: 0.0
+
+loss:
+  components:
+    - {name: move_huber, weight: 1.0}
+    - {name: process_ce, weight: 0.5}
+    - {name: progress_huber, weight: 0.2}
+    - {name: trust_bce, weight: 0.2}
+
+training:
+  epochs: 1
+  batch_size: 4
+  lr: 0.001
+  weight_decay: 0.01
+  grad_clip: 1.0
+  grad_accum: 1
+  patience: 2
+  amp: false
+  ema_decay: null
+  optimizer: {name: adamw}
+  callbacks: [checkpoint_best, cost_ledger, provenance_ledger, log, early_stop]
+  device: auto
+  cpu_threads: 1
+
+evaluation:
+  splits: [valid]
+  ood: []
+  cpu_benchmark: false

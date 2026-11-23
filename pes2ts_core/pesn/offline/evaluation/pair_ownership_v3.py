@@ -12,7 +12,7 @@ node rows of their graph.  Both entry points now call
 :func:`assign_batch_pairs` from THIS module so the logic cannot drift:
 
 * ``pes2ts_core.pesn.offline.training.key_atom_bc_v3.evaluate_checkpoint``
-* ``scripts.campaigns.r3_v53mp_scale_paired_ci._collect``
+* ``archive.v5x_scripts.campaigns.r3_v53mp_scale_paired_ci._collect``
 
 Contract (plan §4.1 / V5.4.1 WP1a)
 ----------------------------------
