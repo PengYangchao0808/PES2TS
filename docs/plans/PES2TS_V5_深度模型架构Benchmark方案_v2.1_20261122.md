@@ -382,6 +382,8 @@ pes2ts_v5/
 ## 8. 仓库落地映射（2026-11-22 入库时点）
 
 > 本节为入库适配层，记录方案与本仓库现状的对应关系与差距；若与正文冲突，以正文研究设计为准，落地细节由 V5.5/V5.6 实施文档细化。
+>
+> **2026-11-23 补记**：本节的执行层已由 `docs/plans/PES2TS_V5后续阶段训练大纲_v1_20261123.md` 承接（四层数据口径、screening 子集、V5.5–V5.8 训练矩阵、122 run 预算、里程碑与 WSL 稳定性前置）。本节只保留"设计 → 资产"映射，不再展开训练安排。
 
 ### 8.1 现有可复用资产（入库时点事实）
 
@@ -395,6 +397,9 @@ pes2ts_v5/
 | 旧训练/评估脚本 | `scripts/train_direct_bc.py`、`scripts/train_dual_ts_bc.py`、`pes2ts_core/pesn/offline/**` | V5.1–V5.4 遗留实现；**不作为 V5.6 目标结构**，仅作数据读取/训练器参考 |
 | GPU 训练环境 | WSL Ubuntu `conda env pes2ts-gpu`（Python 3.12.15，torch 2.14.1+cu130，CUDA 可用） | 已验证可用 |
 | 既有训练输出 | `outputs/pesn/v53mp*`、`v541_embed_50k`、`v542_backbone_50k`、`v543_dual_decoder_50k` | 历史运行记录与权重，可作基线参考 |
+| **50k 轨迹索引（2026-11-23 补记）** | `/pes2ts_data/v53mp_50k_data/idx_v2`（schema `v53mp_idx_v2`）：64,195 曲线 / 128,390 intent / 7,342,581 帧 / 14,685,162 决策；memmap 读取 | ✅ 可用；V5.5 数据底座优先资产 |
+| **xTB 单点标签集（2026-11-23 补记）** | `data/raw/pes2ts_xtb_singlepoints_train_fit_v1/` + `data/manifests/xtb_singlepoints_train_fit_v1.json`：120,222 反应 / 240,444 分支 / 34,486,722 点 | ✅ 校验 PASS；**仅 G1 对照/V6 预热，offline only** |
+| **V5.6 工程骨架（2026-11-23 补记）** | `pes2ts_v5/`（14 Core + 统一 Encoder/Heads + trainer/sweep + evaluation）、`config/v5/`、`scripts/v5/` | ✅ 已入 git（commit `4fbf773`）；合成 smoke 通过；tests/v5 与 code map 待补 |
 
 ### 8.2 与 V5.3–V5.4 路线的关系
 
