@@ -10,6 +10,14 @@
 # model.core.hidden_dim: auto + param_budget = equal Core-only parameter budget
 # (0.1M) for all architectures.  Dataset is the deterministic synthetic fixture,
 # so the ranking is an engineering check, NOT a scientific claim.
+#
+# Feature dimensions are taken from the built dataset (one engine path).  If a
+# store's dims must be pinned explicitly, declare them here — they are checked
+# against the dataset and a mismatch raises the typed DATA_DIM_MISMATCH error
+# (never used as magic model defaults):
+#   data:
+#     frame_feat_dim: 11    # synthetic fixture: 2*q_dim + 5
+#     static_feat_dim: 8
 experiment_id: v56-arch-matrix
 seed: 17
 

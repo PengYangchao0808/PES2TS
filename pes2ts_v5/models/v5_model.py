@@ -39,6 +39,13 @@ class V5Model(nn.Module):
         self.heads = heads
         self.q_dim = int(q_dim)
         self.core_info = core_info or {}
+        #: batch fields this model requires (the model-registry path overwrites
+        #: this with the full encoder+core declaration; legacy ``build_v5_model``
+        #: callers get the framework default)
+        declared = getattr(type(self.core), "REQUIRED_FIELDS", None)
+        self.required_fields = frozenset(declared) if declared else frozenset(
+            {"frame_feats", "static_feats", "lengths"})
+        self.REQUIRED_FIELDS = self.required_fields
 
     # ------------------------------------------------------------------ info
     def param_report(self) -> dict:

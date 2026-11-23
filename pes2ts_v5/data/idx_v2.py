@@ -43,7 +43,6 @@ from pathlib import Path
 
 import numpy as np
 
-from pes2ts_v5.data.labels import LABEL_SPEC
 from pes2ts_v5.data.manifest import V55DatasetSpec
 from pes2ts_v5.data.split import SPLIT_NAMES
 from pes2ts_v5.data.trajectories import build_frame_features, collate_samples
@@ -279,7 +278,6 @@ class IdxV2Dataset:
     def _build_split(self, split: str) -> None:
         curves = self.reader.split_curves(split, seed=self.seed,
                                           max_curves=self.max_curves.get(split))
-        ci = self.reader["samples/curve_idx"]
         ii = self.reader["samples/intent_idx"]
         trajs: list[_TrajectoryRef] = []
         for curve_idx in curves:
@@ -370,7 +368,6 @@ class IdxV2Dataset:
             raise IndexError(f"trajectory index {traj_idx} out of range")
         ref = self._trajs[split][traj_idx]
         curve_idx = ref.curve_idx
-        meta = self.reader.curve_meta(curve_idx)
         nodes = self.reader.curve_node_arrays(curve_idx)
         rows = ref.rows
         node_index = np.asarray(self.reader["samples/node_index"][rows], dtype=np.int64)
@@ -438,7 +435,6 @@ class IdxV2Dataset:
         if shuffle:
             rng = np.random.default_rng(seed)
             idx = [idx[i] for i in rng.permutation(len(idx))]
-        trajs = self._trajs[split]
         for start in range(0, len(idx), batch_size):
             chunk = idx[start:start + batch_size]
             if drop_last and len(chunk) < batch_size:

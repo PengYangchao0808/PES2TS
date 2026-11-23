@@ -10,7 +10,10 @@ import numpy as np
 import torch
 
 from pes2ts_v5.evaluation._common import (
-    binary_auc, masked_cosine, masked_rmse, to_device,
+    binary_auc,
+    masked_cosine,
+    masked_rmse,
+    to_device,
 )
 
 

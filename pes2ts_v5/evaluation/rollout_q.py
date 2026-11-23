@@ -35,7 +35,6 @@ def run_rollout_q(
     model.eval()
     idx = dataset.trajectory_indices(split)[:max_trajectories]
     per_traj = []
-    q_dim = int(dataset.q_dim)
     for traj_idx in idx:
         seq = dataset.build_sequence(traj_idx)
         ref_q = np.asarray(seq["q"], dtype=np.float32)

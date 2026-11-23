@@ -35,7 +35,7 @@
 
 ## 7. 复现命令
 ```bash
-/root/miniforge3/envs/pes2ts-gpu/bin/python scripts/v5/run_screening.py --config config/v5/screening.yaml
+/root/miniforge3/envs/pes2ts-gpu/bin/python pes2ts_v5/runner.py --config config/v5/screening.yaml
 ```
 
 ## 8. 签署
