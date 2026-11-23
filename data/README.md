@@ -74,21 +74,22 @@ pool, delivered 2026-11-22 as a self-describing package over an FN Connect share
 link (`https://share.fnnas.net/s/3d2c1a9ee33b43ecbc`, folder `xtb单点数据v1`).
 
 ```text
-data/raw/pes2ts_xtb_singlepoints_train_fit_v1.tar.zst   16.85 GiB archive (sha256 below)
-data/raw/pes2ts_xtb_singlepoints_train_fit_v1/          extracted package, 2,878,263 files / 33.8 GB
+data/raw/pes2ts_xtb_singlepoints_train_fit_v1/   trimmed package: 311 files / 3.60 GiB (2026-11-23)
   ├── README.md            # dataset-author README (scope, schema, units, boundaries)
   ├── SHA256SUMS           # 431 per-file hashes + 61 log-shard listing_sha256
-  ├── manifest/            # 122 shard jsonl (+61 dft_pairs + index.json): 8.5 GB
-  └── run/                 # results 122 / failures 61 / conflicts 61, summary/audit, 2,877,830 per-frame logs
+  ├── manifest/index.json  # shard roster + exclusion id lists + truth-access record
+  ├── manifest/dft_pairs/  # 61 DFT sidecar jsonl (3.6 GiB, kept as independent cross-check)
+  └── run/                 # audit.json / summary.json / run_summary.json / failures / conflicts
 ```
 
 - Index and provenance: [manifests/xtb_singlepoints_train_fit_v1.json](manifests/xtb_singlepoints_train_fit_v1.json).
-- Archive sha256: `3bba8861b432549ede317f754ec33c2c406ec7d057420a0e89359384a338f885`
-  (also in `pes2ts_xtb_singlepoints_train_fit_v1.tar.zst.sha256`).
-- Integrity: verified 2026-11-23 — `sha256sum -c SHA256SUMS` passes for all 431
-  files and all 61 log-shard listings (`run/audit.json`: `passed=true`,
-  `n_violations=0`). Re-check with:
-  `cd data/raw/pes2ts_xtb_singlepoints_train_fit_v1 && sha256sum -c SHA256SUMS`.
+- Archive sha256 (archive deleted after verification): `3bba8861b432549ede317f754ec33c2c406ec7d057420a0e89359384a338f885`.
+- Integrity: verified 2026-11-23 — 431/431 file hashes + 61/61 log-shard listings passed
+  (`run/audit.json`: `passed=true`, `n_violations=0`). **Columnar replacement**:
+  `manifest/shards/*.jsonl`, `run/results/*.jsonl` and `run/logs/` (2,877,830 files)
+  were converted to `/pes2ts_datastore/02_core_tensors/xtb_channel/xtb_points.parquet`
+  (2,877,830 rows × 19 cols, sha256 `4599f8327fa4…`, includes `scf_log_sha256`) and
+  then deleted; see `data/archives_summary/retired_raw_packs.json` for the deletion ledger.
 - Content: 2,877,830 single points (2,877,433 success / 397 `scf_not_converged` /
   0 conflicts), 120,222 reactions, 240,444 branches, engine native xTB 6.7.1,
   policy `irc_dense12_v1`.
@@ -96,3 +97,41 @@ data/raw/pes2ts_xtb_singlepoints_train_fit_v1/          extracted package, 2,878
   validation set, must not back online inference / production decisions /
   external capability claims, and must not be used to tune on
   train_dev / confirm / family_holdout / parent valid / parent test.
+
+## Unified datastore (`/pes2ts_datastore`, WSL native ext4; local only)
+
+Single entry for the training/analysis layer, built 2026-11-23:
+
+```text
+/pes2ts_datastore/
+├── 00_vault_readonly/vault_manifest.json      # pointer + sha256 to data/ground_truth (frozen truth paths preserved)
+├── 01_master_index/
+│   ├── master_split.parquet                   # 66,195 rows x 23 cols: L0/L1/v5_role/scale_tier/eval_suite/access_policy
+│   ├── frame_crosswalk.parquet                # 7,342,581 rows: global_frame_id <-> (curve_id, node_index, dft_frame_index, xtb_frame_key)
+│   ├── xtb_row_ledger.parquet                 # 2,877,830 xTB rows with disposition/reason
+│   ├── excluded_ledger.parquet                # 2,812 reaction/branch-level exclusions (34,882-point shortfall reconciled)
+│   └── datastore_registry.json                # top-level version lock (sha256 of every component)
+├── 02_core_tensors/
+│   ├── geometry/                              # coords (123,443,835 x 3 f64), atomic_numbers, curve/node offsets
+│   ├── dft_channel/dft_energy.npy             # 7,342,581 f64, unit eV (OPEN QUESTION, pending owner sign-off)
+│   ├── xtb_channel/xtb_points.parquet         # 2,877,830 x 19: E/g + DFT pair + scf_log_sha256
+│   └── g1_metadata/                           # g1_reaction_summary (199,217 x 238), reaction_intent, curve_family
+└── 03_feature_cache/                          # content-addressed FeatureStore (contract pending)
+```
+
+- Frozen build artifacts are registered in `01_master_index/datastore_registry.json`
+  (status `ACTIVE`); every manifest carries source sha256, idempotency evidence and
+  `open_questions`.
+- Archived campaign summaries and the deletion ledger live on the Windows side:
+  `data/archives_summary/campaigns/*.json` (34 campaigns, 70.19 GiB summarized),
+  `data/archives_summary/campaigns_index.json`, `data/archives_summary/retired_raw_packs.json`.
+- Known live dependencies that keep the WSL six-table CSVs / light-index / label
+  cache in place: `pes2ts_core/pesn/offline/data/key_atom_dataset_v3.py`,
+  `key_atom_stream_view.py`. Deleting those (~67 GiB) requires porting the readers
+  into the datastore first (see plan §11.3 D-2).
+- 20k dataset `/pes2ts_data/v53mp_data` is a verified strict subset of the 50k
+  curves (26,038 ⊆ 64,195) but is still referenced by
+  `scripts/campaigns/r3_v53mp_scale_paired_ci.py`; deletion requires repointing
+  that campaign script (plan §11.3 D-3).
+- Design and execution record:
+  `docs/plans/PES2TS_本地数据资产整合与数据工程方案_v1_20261123.md` (§1–§4 design, §11 execution).

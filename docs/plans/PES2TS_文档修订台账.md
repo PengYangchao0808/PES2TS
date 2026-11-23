@@ -1,5 +1,13 @@
 # PES2TS 文档修订台账（协同性）
 
+## 2026-11-23 增量登记：数据资产清盘与统一数据仓执行（方案 v1.1 §11）
+
+- **新增章节**：[本地数据资产整合与数据工程方案 v1.1](PES2TS_本地数据资产整合与数据工程方案_v1_20261123.md) 追加 **§11 执行记录**（清盘账本、数据仓验收、三处假设冲突裁决、<50 GiB 路径、管理员清单）。
+- **已执行（有墓碑/账本留痕）**：只读标签 `archive/pre-v55-legacy-20261123`（本地，推送待 SSH host key）；`outputs/` 34 个历史战役（130 万文件）单文件留痕后清盘 **70.19 GiB**；xTB 归档 **16.85 GiB**；WSL `fragments/` **51 GiB**；xTB `run/logs`（288 万小文件）**13.90 GiB**；xTB `manifest/shards` + `run/results` JSONL **14.02 GiB**（无损入 `xtb_points.parquet`）。**Windows 合计回收 ≈114.95 GiB**，E: 可用 93.44 → 220.11 GiB。
+- **统一数据仓 `/pes2ts_datastore`（WSL ext4）建成，状态 ACTIVE**：`master_split`（66,195×23，sha `701018a1…`）、`frame_crosswalk`（7,342,581×15，sha `674773a9…`，全量几何 0 mismatch）、`xtb_row_ledger`（2,877,830 逐行去留）、`excluded_ledger`（2,812 条，34,882 点缺口全平）、`xtb_points`（2,877,830×19，含 `scf_log_sha256`）、geometry/DFT/g1 通道（g1 summary 199,217×238，sha `ad6db043…`）；registry 见 `01_master_index/datastore_registry.json`。
+- **三处与方案假设不符（待 owner 裁决，§11.3）**：D-1 `export` 与 `export_contracts_v1` 非重复（原始 vs 脱敏）；D-2 六表 CSV/light-index/labels-cache 是 `key_atom_dataset_v3.py` 活依赖，回收 67 GiB 前需先移植 reader；D-3 20k 为 50k 真子集（26,038⊆64,195）但仍被 `r3_v53mp_scale_paired_ci.py` 引用。
+- **待管理员**：`fstrim` 已完成（711.7 GiB trimmed）且 WSL 已 shutdown，但 `ext4.vhdx` 仍 358.2 GiB，需 **管理员 diskpart compact**（§11.4）；页面文件迁 D: + C: 清盘（B1）仍需管理员+重启。**当前未达 <50 GiB 目标**：需完成 vhdx compact + D-3 + D-2 三步（§11.4 路径）。
+
 ## 2026-11-23 增量登记：本地数据资产整合与数据工程方案 v1 入库
 
 - **新增** [PES2TS 本地数据资产整合与数据工程方案 v1](PES2TS_本地数据资产整合与数据工程方案_v1_20261123.md)（**Active-Proposed**；数据侧执行方案，不改研究设计与训练矩阵）。
