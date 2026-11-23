@@ -1,0 +1,31 @@
+# Project-wide Ruff configuration — pinned rule set so the architecture gate
+# (infra/governance/arch_guard.py G5) and CI behave identically across Ruff
+# releases.  The rule set is deliberately about *correctness* (undefined names,
+# unused imports, unused noqa, import order) rather than style modernization:
+# archive/ and tests/legacy/ are frozen evidence, pes2ts_core/pesn/ is the frozen
+# V4/V5.4 predictor tree (~800 historical findings that must not be "fixed" by a
+# tool), and the runtime/infrastructure scripts moved into infra/runtime/ are
+# POSIX tooling whose py3.12-style churn (UP006/UP032/UP045) carries no value.
+# Style modernization is therefore NOT enabled repo-wide.
+line-length = 100
+target-version = "py312"
+
+[lint]
+select = [
+    "E4",   # import errors
+    "E7",   # statement-level errors
+    "E9",   # runtime errors
+    "F",    # pyflakes: undefined names, unused imports/variables, redefinitions
+    "I",    # import sorting (deterministic layout across zones)
+    "RUF100",  # unused noqa directives (keeps suppressions honest)
+]
+ignore = [
+    "E501",  # line length handled by the formatter, not the gate
+]
+
+[lint.isort]
+known-first-party = ["pes2ts_core", "pes2ts_data", "pes2ts_v5", "infra"]
+
+[lint.per-file-ignores]
+"tests/**" = ["B011"]  # assert False in tests is intentional
+"**/__init__.py" = ["F401"]  # package re-exports are the module contract

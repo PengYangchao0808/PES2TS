@@ -11,7 +11,7 @@
 ---
 > 条目标号：E14　时间范围：2026-10-29 → 2026-10-31　状态：Archived（Executed-Frozen；计划状态头滞后 A01/P0）
 > 关联 ADR：ADR-0033（Accepted，v1.3.3）；合同 MoveProcessContract v1
-> 数据/代码/模型版本指针：`config/campaigns/pes2ts_v542_backbone_50k.yaml`（`0.1.2-wp0`，schema `pes2ts_v542_campaign_v1`）；registry `V5.4.2`（status executed，`plan_revision 2026-10-30.3`）
+> 数据/代码/模型版本指针：`archive/v5x_configs/campaigns/pes2ts_v542_backbone_50k.yaml`（`0.1.2-wp0`，schema `pes2ts_v542_campaign_v1`）；registry `V5.4.2`（status executed，`plan_revision 2026-10-30.3`）
 > 证据根：`docs/plans/PES2TS_V5.4.2_Backbone_50K_详细阶段实施方案_v1.0_20261029.md`（内容 v1.2）、`docs/reports/PES2TS_V542_Backbone_50K_实施与训练报告_20261031.md`、`docs/design/decisions/ADR-0033-V5.4.2-Backbone接口与预注册治理.md`
 
 ## 目标

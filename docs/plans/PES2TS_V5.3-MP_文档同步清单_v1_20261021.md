@@ -3,7 +3,7 @@
 > 状态：**Active**（执行清单；每项完成后勾选）
 > 日期：2026-10-21
 > 依据：[ADR-0031](../design/decisions/ADR-0031-MOVE-PROCESS统一学习合同.md)、[MoveProcessContract v1](../contracts/PES2TS_MoveProcessContract_v1.md)、[V5.3-MP 计划](PES2TS_V5.3-MP_大规模MOVE-PROCESS联合训练计划_v1_20261021.md)
-> 强制门：`python scripts/agent_ops/docs_consistency.py --strict` 必须 CLEAN（0 violation）
+> 强制门：`python infra/governance/docs_consistency.py --strict` 必须 CLEAN（0 violation）
 
 ## 0. 同步原则
 
@@ -49,7 +49,7 @@
 | # | 文件 | 操作 | 状态 |
 |---|---|---|---|
 | 3.1 | `config/registry/g_v_map.yaml` | `plan_revision` 升 2026-10-21.2；V5.2-R → `status: closed`；旧 V5.3 → `V5.3-ENG`（executed, historical）；新增 `V5.3-MP`（proposed；gates `V53MP-S0-data`/`S1-smoke`/`S2-scale`/`S3-formal`/`S3-closed-loop`；config/scripts/code_scope） | ⬜ |
-| 3.2 | `docs/design/PES2TS_G_V_MAPPING_v1_20261018.md` | 由 `python scripts/render_gv_map.py --write` 重渲染；`--check` 通过 | ⬜ |
+| 3.2 | `docs/design/PES2TS_G_V_MAPPING_v1_20261018.md` | 由 `python infra/governance/render_gv_map.py --write` 重渲染；`--check` 通过 | ⬜ |
 | 3.3 | `docs/design/PES2TS_CODE_MAP_v2_20261018.md` | 新增 V5.3-MP 模块/脚本/配置路径；标 `ReactionProcessHead`、`key_atom_v53mp_*`、`r3_v53mp_run.py`；旧 `TSStopHeadV3` 标 LEGACY | ⬜ |
 | 3.4 | `docs/plans/PES2TS_阶段定义_G0-G3.md` | 版本 v4.7 → v4.8；上游宪法 v2.7 → v2.9；G3.P 注记加 V5.3-MP；G3.P.3 的 STOP/MOVE-Q 说明改为 PROCESS 语义 | ⬜ |
 
@@ -86,7 +86,7 @@
 
 | # | 文件 | 操作 | 状态 |
 |---|---|---|---|
-| 6.1 | `scripts/agent_ops/docs_consistency_config.json` | `required_files` 增加 ADR-0031 / MoveProcessContract v1 / V5.3-MP 计划；`historical` 增加 FullPathNavigationContract v1（需先加含 ADR-0030 的 SUPERSEDED 横幅）；`root_scope` 增加 `V53_ROLLOUT_REPORT.md` | ⬜ |
+| 6.1 | `infra/governance/docs_consistency_config.json` | `required_files` 增加 ADR-0031 / MoveProcessContract v1 / V5.3-MP 计划；`historical` 增加 FullPathNavigationContract v1（需先加含 ADR-0030 的 SUPERSEDED 横幅）；`root_scope` 增加 `V53_ROLLOUT_REPORT.md` | ⬜ |
 | 6.2 | `CONTRIBUTING.md` | 如 campaign/gate ID 变化，更新 V/gv 示例为 V5.3-MP | ⬜ |
 
 ---
@@ -101,7 +101,7 @@
 5) CODE MAP + 阶段定义
 6) 旧计划/报告指针（5.1–5.10）
 7) docs_consistency_config.json（required/historical/root_scope）
-8) python scripts/agent_ops/docs_consistency.py --strict  → 0 violation
+8) python infra/governance/docs_consistency.py --strict  → 0 violation
 9) 相关测试（155 项 + 新增 V5.3-MP 测试）全绿
 ```
 

@@ -1,0 +1,41 @@
+{
+  "schema": 1,
+  "note": "Documented tolerances for arch_guard (ADR-0036), keyed by (gate, path, code). The five G3 entries are legacy infra couplings that predate the five-zone split and still need separate migration (render_gv_map reads the G-V registry; the three infra/runtime campaign drills import historical code). There are no G5 (ruff) tolerances as of 2026-11-24: the ruff debt in the active zones was paid down, so G5 is strict for new code. Remove entries as the debt is paid down: arch_guard reports a stale entry when it no longer matches any finding. Regenerate with `python infra/governance/arch_guard.py --update-baseline` after an approved cleanup.",
+  "entries": [
+    {
+      "gate": "G3",
+      "path": "infra/governance/render_gv_map.py",
+      "code": "import:pes2ts_core",
+      "count": 1,
+      "reason": "G-V map renderer reads pes2ts_core.gv_registry; governance tooling coupling predates the split (owner: migrate registry lookup to config/registry/g_v_map.yaml or a governance-local reader)"
+    },
+    {
+      "gate": "G3",
+      "path": "infra/runtime/concurrency_drill.py",
+      "code": "import:pes2ts_core",
+      "count": 2,
+      "reason": "legacy V5.3-MP concurrency drill imports the frozen pesn training loader and utils.hashing; should be archived with the other campaign drills"
+    },
+    {
+      "gate": "G3",
+      "path": "infra/runtime/infra_bench.py",
+      "code": "import:archive",
+      "count": 5,
+      "reason": "legacy infrastructure benchmark imports archived V5.3-MP campaign runners/ledger; should move to archive/v5x_scripts or drop the benchmark path"
+    },
+    {
+      "gate": "G3",
+      "path": "infra/runtime/infra_bench.py",
+      "code": "import:pes2ts_core",
+      "count": 3,
+      "reason": "legacy benchmark reuses pes2ts_core.utils.hashing only; replace with infra.runtime.sha_sidecar helpers when the file is migrated"
+    },
+    {
+      "gate": "G3",
+      "path": "infra/runtime/thread_env_ab.py",
+      "code": "import:pes2ts_core",
+      "count": 6,
+      "reason": "legacy V5.3-MP thread/CPU A/B drill imports the frozen pesn dataset/feature modules; should be archived with the other campaign drills"
+    }
+  ]
+}

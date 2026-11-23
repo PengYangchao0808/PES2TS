@@ -3,8 +3,8 @@
 > 状态：权威（机器可读源：`config/registry/g_v_map.yaml`）
 > 映射版本：`2026-10-18.1`
 > 计划修订：`2026-10-30.3`
-> 生成命令：`python scripts/render_gv_map.py --write`
-> 校验命令：`python scripts/render_gv_map.py --check`
+> 生成命令：`python infra/governance/render_gv_map.py --write`
+> 校验命令：`python infra/governance/render_gv_map.py --check`
 
 ## 0. 读法
 
@@ -49,32 +49,32 @@
 
 | V | 状态 | primary G | supporting G | config | data manifest | gates |
 |---|---|---|---|---|---|---|
-| V4.2 | executed | G3.P.2 | G0, G1 | `config/pesn/dual_ts_observations_16x1_v1.yaml` | `data/manifests/split_manifest.json` | V4-MSE-zero, V4-cos |
-| V4.3 | executed | G3.P.2 | G0, G1 | `config/pesn/dual_ts_observations_16x1_v1.yaml` | `data/manifests/split_manifest.json` | V4-MSE-zero, V4-cos |
-| V4.4 | executed | G3.P.2 | G0, G1 | `config/pesn/dual_ts_observations_16x1_v1.yaml` | `data/manifests/split_manifest.json` | V4-MSE-zero, V4-cos |
-| V4.5 | executed | G3.P.2 | G0, G1 | `config/pesn/dual_ts_observations_16x1_v1.yaml` | `data/manifests/split_manifest.json` | V4-MSE-zero, V4-cos |
-| V4.6 | executed | G3.P.2 | G0, G1 | `config/pesn/dual_ts_observations_16x1_v1.yaml` | `data/manifests/split_manifest.json` | V4-MSE-zero, V4-cos |
-| V4.7 | executed | G3.P.3 | G3.P.2, G0, G1 | `config/pesn/dual_ts_observations_16x1_v1.yaml` | `data/manifests/split_manifest.json` | V4.7-MSE-zero, V4.7-groups, V4.7-cos, V4.7-nearTS-cos |
-| V5.0 | proposed | G3.P.1 | G0, G1, G3.P.0, G2.T | `config/campaigns/v5_0_data_math.yaml` | `data/manifests/v5/split_manifest.json` | V5-G1, M0.5-oracle |
-| V5.1 | archived | G3.P.2 | G0, G1 | `config/campaigns/v5_1_architecture.yaml` | `data/manifests/v5/split_manifest.json` | V5-G1, V5-G2, V5-G3, V5-G4 |
-| V5.1-R2 | archived | G3.P.2 | G3.P.0, G3.P.1, G3.P.3, G0, G1 | `config/campaigns/v5_1_r2.yaml` | `data/manifests/v5/split_manifest.json` | V5-G1, V5.1-R2-loss, V5.1-R2-data |
-| V5.1-R3 | proposed | G3.P.2 | G3.P.0, G3.P.1, G3.P.3, G0, G1 | `config/campaigns/v5_1_r3.yaml` | `data/manifests/v5/split_manifest.json` | V5-G1, V5.1-R3-relabel, V5.1-R3-reverse, V5.1-R3-loss |
-| V5.2 | executed | G3.P.1 | G3.P.0, G3.P.3, G0, G1 | `config/campaigns/pes2ts_30h_20261020.yaml` | `data/manifests/v5/split_manifest.json` | V5.2-contract, V5.2-labels, V5.2-progress, V5.2-stop, V5.2-move-nonregression |
-| V5.2-R | archived | G3.P.1 | G3.P.0, G3.P.3, G0, G1 | `config/campaigns/pes2ts_v52r_20261021.yaml` | `data/manifests/v5/split_manifest.json` | V5.2R-D0-labels, V5.2R-D1-endpoint-head, V5.2R-D2-input-sufficiency, V5.2R-D2G-review |
-| V5.3-ENG | executed | G3.P.2 | G3.P.1, G3.P.3, G0, G1 | `config/campaigns/pes2ts_30h_20261020.yaml` | `data/manifests/v5/split_manifest.json` | G4-Rollout |
-| V5.3-MP | proposed | G3.P.2 | G3.P.0, G3.P.1, G3.P.3, G0, G1 | `config/campaigns/pes2ts_v53mp_20261021.yaml` | `data/manifests/v5/split_manifest.json` | V53MP-S0-data, V53MP-S1-smoke, V53MP-S2-scale, V53MP-S3-formal, V53MP-S3-closed-loop |
-| V5.4 | proposed | G3.P.2 | G3.P.1, G3.P.3, G0, G1 | `config/campaigns/v5_4_rollout.yaml` | `data/manifests/v5/split_manifest.json` | V5-G1, V5.4-field, V5.4-rollout, V5.4-stop |
-| V5.4.1 | executed | G3.P.2 | G3.P.1, G3.P.3, G0, G1 | `config/campaigns/pes2ts_v541_embed_50k.yaml` | `data/manifests/v5/split_manifest.json` | V541-WP0-prereg, V541-WP1-pair-eval, V541-WP2-parity, V541-e0-reuse-decision, V541-smoke-200, V541-H0-legality, V541-H1-resource, V541-H2-move, V541-H3-process, V541-budget-signoff, V541-formal-t1 |
-| V5.4.2 | executed | G3.P.2 | G3.P.1, G3.P.3, G0, G1 | `config/campaigns/pes2ts_v542_backbone_50k.yaml` | `/pes2ts_data/v53mp_50k_data/split_manifest_v53mp.json` | V542-WP0-prereg, V542-WP1-interface-parity, V542-WP2-candidates, V542-smoke-200, V542-profile, V542-diagnostic-2000, V542-A0-sanity-band, V542-H0-legality, V542-H1-resource, V542-H2-move, V542-H3-backbone, V542-budget-signoff, V542-formal |
-| V5.4.3 | proposed | G3.P.2 | G3.P.1, G3.P.3, G0, G1 | `config/campaigns/pes2ts_v543_dual_decoder_50k.yaml` | `/pes2ts_data/v53mp_50k_data/split_manifest_v53mp.json` | V543-WP0-prereg, V543-WP1-encoder-parity, V543-WP2-bridge-context, V543-WP3-sufficiency, V543-WP4-registry-trainer, V543-smoke-200, V543-profile, V543-diagnostic-2000, V543-H0-legality, V543-H1-resource, V543-H2-move, V543-H2-process, V543-H3-move, V543-H3-process, V543-budget-signoff, V543-formal, V543-S2-conditional |
-| V5_SPRINT | executed | G3.P.0 | G3.P.1, G3.P.2, G3.P.3, G0, G1 | `config/campaigns/v5_sprint.yaml` | `data/manifests/v5/split_manifest.json` | V5-G1, V5-G2, V5-G3, V5-G4 |
-| V5_1A_SPRINT | executed | G3.P.2 | G3.P.0, G3.P.1, G3.P.3, G0, G1 | `config/campaigns/v5_1_sprint.yaml` | `data/manifests/v5/split_manifest.json` | V5-G1, V5-G2, V5-G3, V5-G4 |
-| V6.0 | archived | G3.2 | G3.P.3 | `config/campaigns/v6_0_data.yaml` | `data/manifests/v6/split_manifest.json` | V6-OOF, V6-leakage |
-| V6.1 | archived | G3.2 | G3.P.3 | `config/campaigns/v6_1_progress.yaml` | `data/manifests/v6/split_manifest.json` | V6-progress, V6-conformal |
-| V6.2 | archived | G3.2 | G3.P.3 | `config/campaigns/v6_2_decoder.yaml` | `data/manifests/v6/split_manifest.json` | V6-decoder, V6-stop |
-| V7-A | archived | G4.1 | G2.T, G3.2, G4.0 | `config/campaigns/v7a_rollout.yaml` | `data/manifests/v7/rollout_cohort.json` | V7-verified-TS, V7-cost |
-| V7-B | archived | G4.1 | G3.2, G2.T | `config/campaigns/v7b_calibration.yaml` | `data/manifests/v7/rollout_cohort.json` | V7-calibration, V7-cost |
-| V7-C | archived | G4.0 | G4.1, G2.T, G3.2 | `config/campaigns/v7c_rl.yaml` | `data/manifests/v7/transition_cohort.json` | V7-RL, V7-cost |
+| V4.2 | executed | G3.P.2 | G0, G1 | `archive/v5x_configs/pesn/dual_ts_observations_16x1_v1.yaml` | `data/manifests/split_manifest.json` | V4-MSE-zero, V4-cos |
+| V4.3 | executed | G3.P.2 | G0, G1 | `archive/v5x_configs/pesn/dual_ts_observations_16x1_v1.yaml` | `data/manifests/split_manifest.json` | V4-MSE-zero, V4-cos |
+| V4.4 | executed | G3.P.2 | G0, G1 | `archive/v5x_configs/pesn/dual_ts_observations_16x1_v1.yaml` | `data/manifests/split_manifest.json` | V4-MSE-zero, V4-cos |
+| V4.5 | executed | G3.P.2 | G0, G1 | `archive/v5x_configs/pesn/dual_ts_observations_16x1_v1.yaml` | `data/manifests/split_manifest.json` | V4-MSE-zero, V4-cos |
+| V4.6 | executed | G3.P.2 | G0, G1 | `archive/v5x_configs/pesn/dual_ts_observations_16x1_v1.yaml` | `data/manifests/split_manifest.json` | V4-MSE-zero, V4-cos |
+| V4.7 | executed | G3.P.3 | G3.P.2, G0, G1 | `archive/v5x_configs/pesn/dual_ts_observations_16x1_v1.yaml` | `data/manifests/split_manifest.json` | V4.7-MSE-zero, V4.7-groups, V4.7-cos, V4.7-nearTS-cos |
+| V5.0 | proposed | G3.P.1 | G0, G1, G3.P.0, G2.T | `archive/v5x_configs/campaigns/v5_0_data_math.yaml` | `data/manifests/v5/split_manifest.json` | V5-G1, M0.5-oracle |
+| V5.1 | archived | G3.P.2 | G0, G1 | `archive/v5x_configs/campaigns/v5_1_architecture.yaml` | `data/manifests/v5/split_manifest.json` | V5-G1, V5-G2, V5-G3, V5-G4 |
+| V5.1-R2 | archived | G3.P.2 | G3.P.0, G3.P.1, G3.P.3, G0, G1 | `archive/v5x_configs/campaigns/v5_1_r2.yaml` | `data/manifests/v5/split_manifest.json` | V5-G1, V5.1-R2-loss, V5.1-R2-data |
+| V5.1-R3 | proposed | G3.P.2 | G3.P.0, G3.P.1, G3.P.3, G0, G1 | `archive/v5x_configs/campaigns/v5_1_r3.yaml` | `data/manifests/v5/split_manifest.json` | V5-G1, V5.1-R3-relabel, V5.1-R3-reverse, V5.1-R3-loss |
+| V5.2 | executed | G3.P.1 | G3.P.0, G3.P.3, G0, G1 | `archive/v5x_configs/campaigns/pes2ts_30h_20261020.yaml` | `data/manifests/v5/split_manifest.json` | V5.2-contract, V5.2-labels, V5.2-progress, V5.2-stop, V5.2-move-nonregression |
+| V5.2-R | archived | G3.P.1 | G3.P.0, G3.P.3, G0, G1 | `archive/v5x_configs/campaigns/pes2ts_v52r_20261021.yaml` | `data/manifests/v5/split_manifest.json` | V5.2R-D0-labels, V5.2R-D1-endpoint-head, V5.2R-D2-input-sufficiency, V5.2R-D2G-review |
+| V5.3-ENG | executed | G3.P.2 | G3.P.1, G3.P.3, G0, G1 | `archive/v5x_configs/campaigns/pes2ts_30h_20261020.yaml` | `data/manifests/v5/split_manifest.json` | G4-Rollout |
+| V5.3-MP | proposed | G3.P.2 | G3.P.0, G3.P.1, G3.P.3, G0, G1 | `archive/v5x_configs/campaigns/pes2ts_v53mp_20261021.yaml` | `data/manifests/v5/split_manifest.json` | V53MP-S0-data, V53MP-S1-smoke, V53MP-S2-scale, V53MP-S3-formal, V53MP-S3-closed-loop |
+| V5.4 | proposed | G3.P.2 | G3.P.1, G3.P.3, G0, G1 | `archive/v5x_configs/campaigns/v5_4_rollout.yaml` | `data/manifests/v5/split_manifest.json` | V5-G1, V5.4-field, V5.4-rollout, V5.4-stop |
+| V5.4.1 | executed | G3.P.2 | G3.P.1, G3.P.3, G0, G1 | `archive/v5x_configs/campaigns/pes2ts_v541_embed_50k.yaml` | `data/manifests/v5/split_manifest.json` | V541-WP0-prereg, V541-WP1-pair-eval, V541-WP2-parity, V541-e0-reuse-decision, V541-smoke-200, V541-H0-legality, V541-H1-resource, V541-H2-move, V541-H3-process, V541-budget-signoff, V541-formal-t1 |
+| V5.4.2 | executed | G3.P.2 | G3.P.1, G3.P.3, G0, G1 | `archive/v5x_configs/campaigns/pes2ts_v542_backbone_50k.yaml` | `/pes2ts_data/v53mp_50k_data/split_manifest_v53mp.json` | V542-WP0-prereg, V542-WP1-interface-parity, V542-WP2-candidates, V542-smoke-200, V542-profile, V542-diagnostic-2000, V542-A0-sanity-band, V542-H0-legality, V542-H1-resource, V542-H2-move, V542-H3-backbone, V542-budget-signoff, V542-formal |
+| V5.4.3 | proposed | G3.P.2 | G3.P.1, G3.P.3, G0, G1 | `archive/v5x_configs/campaigns/pes2ts_v543_dual_decoder_50k.yaml` | `/pes2ts_data/v53mp_50k_data/split_manifest_v53mp.json` | V543-WP0-prereg, V543-WP1-encoder-parity, V543-WP2-bridge-context, V543-WP3-sufficiency, V543-WP4-registry-trainer, V543-smoke-200, V543-profile, V543-diagnostic-2000, V543-H0-legality, V543-H1-resource, V543-H2-move, V543-H2-process, V543-H3-move, V543-H3-process, V543-budget-signoff, V543-formal, V543-S2-conditional |
+| V5_SPRINT | executed | G3.P.0 | G3.P.1, G3.P.2, G3.P.3, G0, G1 | `archive/v5x_configs/campaigns/v5_sprint.yaml` | `data/manifests/v5/split_manifest.json` | V5-G1, V5-G2, V5-G3, V5-G4 |
+| V5_1A_SPRINT | executed | G3.P.2 | G3.P.0, G3.P.1, G3.P.3, G0, G1 | `archive/v5x_configs/campaigns/v5_1_sprint.yaml` | `data/manifests/v5/split_manifest.json` | V5-G1, V5-G2, V5-G3, V5-G4 |
+| V6.0 | archived | G3.2 | G3.P.3 | `archive/v5x_configs/campaigns/v6_0_data.yaml` | `data/manifests/v6/split_manifest.json` | V6-OOF, V6-leakage |
+| V6.1 | archived | G3.2 | G3.P.3 | `archive/v5x_configs/campaigns/v6_1_progress.yaml` | `data/manifests/v6/split_manifest.json` | V6-progress, V6-conformal |
+| V6.2 | archived | G3.2 | G3.P.3 | `archive/v5x_configs/campaigns/v6_2_decoder.yaml` | `data/manifests/v6/split_manifest.json` | V6-decoder, V6-stop |
+| V7-A | archived | G4.1 | G2.T, G3.2, G4.0 | `archive/v5x_configs/campaigns/v7a_rollout.yaml` | `data/manifests/v7/rollout_cohort.json` | V7-verified-TS, V7-cost |
+| V7-B | archived | G4.1 | G3.2, G2.T | `archive/v5x_configs/campaigns/v7b_calibration.yaml` | `data/manifests/v7/rollout_cohort.json` | V7-calibration, V7-cost |
+| V7-C | archived | G4.0 | G4.1, G2.T, G3.2 | `archive/v5x_configs/campaigns/v7c_rl.yaml` | `data/manifests/v7/transition_cohort.json` | V7-RL, V7-cost |
 
 ## 3. G 阶段登记
 

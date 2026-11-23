@@ -63,9 +63,9 @@ python docs/infra/doc_cleanup/20261121/apply_keep_overrides.py   # ADR 全留等
 python docs/infra/doc_cleanup/20261121/regen_linkfix.py
 
 # 门禁（任何文档改动后）
-python scripts/agent_ops/docs_consistency.py --strict
-python scripts/check_docs_links.py
-python scripts/render_gv_map.py --check
+python infra/governance/docs_consistency.py --strict
+python infra/governance/check_docs_links.py
+python infra/governance/render_gv_map.py --check
 python -m pytest -q tests/test_gv_registry.py tests/test_config_env.py
 ```
 

@@ -10,7 +10,7 @@ python：3.12.7（Windows-11-10.0.26200-SP0）
 
 ##############################################################################
 [门禁 1/4 · docs_consistency --strict] 文档一致性门（禁用语 / historical 横幅 / required_files 子串）
-命令：E:\Anaconda\python.exe scripts/agent_ops/docs_consistency.py --strict
+命令：E:\Anaconda\python.exe infra/governance/docs_consistency.py --strict
 工作目录：E:/Calculations/AI4S_ML_Studys/PES2TS
 开始时间：2026-11-21T22:27:31+08:00；耗时 0.2s
 退出码：0
@@ -22,7 +22,7 @@ docs_consistency: scanned 158 file(s); 0 violation(s); CLEAN
 
 ##############################################################################
 [门禁 2/4 · check_docs_links] 相对链接存在性门（README/AGENT/docs 排除 archive；E:/ 绝对路径仅 warning）
-命令：E:\Anaconda\python.exe scripts/check_docs_links.py
+命令：E:\Anaconda\python.exe infra/governance/check_docs_links.py
 工作目录：E:/Calculations/AI4S_ML_Studys/PES2TS
 开始时间：2026-11-21T22:27:31+08:00；耗时 0.2s
 退出码：0
@@ -129,7 +129,7 @@ WARN docs\reports\PES2TS_V52R_输入充分性决策记录_20261021.md: local-onl
 WARN docs\reports\PES2TS_V52R_输入充分性决策记录_20261021.md: local-only link ../../outputs/pesn/v52r/d2/evidence_pack.json
 WARN docs\reports\PES2TS_V53MP_S2_5k规模报告_20261022.md: local-only link ../../outputs/pesn/v53mp/reports/S2_resource_diagnosis_20261022.md
 WARN docs\reports\PES2TS_多坐标PES逐步实施方案_20261001.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/pes2ts_core/scan_strategy/primary.py:18
-WARN docs\reports\PES2TS_多坐标PES逐步实施方案_20261001.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/scripts/run_demo24_acp_primary.py:32
+WARN docs\reports\PES2TS_多坐标PES逐步实施方案_20261001.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/archive/v5x_scripts/campaign_oneoffs/run_demo24_acp_primary.py:32
 WARN docs\reports\PES2TS_多坐标PES逐步实施方案_20261001.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/pes2ts_core/integration/acp/scheduler_backend.py
 WARN docs\reports\PES2TS_多坐标PES逐步实施方案_20261001.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/pes2ts_core/scan_strategy/contracts_v2.py
 WARN docs\reports\PES2TS_多坐标PES逐步实施方案_20261001.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/pes2ts_core/scan_strategy/plan_freeze.py:895
@@ -158,17 +158,17 @@ WARN docs\reports\PES2TS_多坐标同步第一轮实现与实测_20261002.md: lo
 WARN docs\reports\PES2TS_多坐标同步第一轮实现与实测_20261002.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/outputs/PES2TS_Demo24_synchronized_reference_20261002/RXN_0000155302/boundary_proposal/P_proposed.xyz
 WARN docs\reports\PES2TS_多坐标同步第一轮实现与实测_20261002.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/outputs/acp_synchronized_capability_20261002/receipts.json
 WARN docs\reports\PES2TS_多坐标同步第一轮实现与实测_20261002.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/pes2ts_core/scan_strategy/synchronized_path.py
-WARN docs\reports\PES2TS_多坐标同步第一轮实现与实测_20261002.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/scripts/run_demo24_synchronized.py
+WARN docs\reports\PES2TS_多坐标同步第一轮实现与实测_20261002.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/archive/v5x_scripts/campaign_oneoffs/run_demo24_synchronized.py
 WARN docs\reports\PES2TS_多坐标同步第一轮实现与实测_20261002.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/outputs/acp_synchronized_patch_20261002/manifest.json
 WARN docs\reports\PES2TS_多键同步一维扫描全面问题报告_20261001.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/pes2ts_core/scan_strategy/primary.py:98
 WARN docs\reports\PES2TS_多键同步一维扫描全面问题报告_20261001.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/pes2ts_core/scan_strategy/primary.py:119
 WARN docs\reports\PES2TS_多键同步一维扫描全面问题报告_20261001.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/pes2ts_core/scan_strategy/primary.py:52
 WARN docs\reports\PES2TS_多键同步一维扫描全面问题报告_20261001.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/pes2ts_core/scan_strategy/primary.py:105
 WARN docs\reports\PES2TS_多键同步一维扫描全面问题报告_20261001.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/pes2ts_core/scan_strategy/coordinate_pool.py:986
-WARN docs\reports\PES2TS_多键同步一维扫描全面问题报告_20261001.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/scripts/run_demo24_acp_primary.py:63
-WARN docs\reports\PES2TS_多键同步一维扫描全面问题报告_20261001.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/scripts/run_demo24_acp_primary.py:87
-WARN docs\reports\PES2TS_多键同步一维扫描全面问题报告_20261001.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/scripts/run_demo24_acp_primary.py:51
-WARN docs\reports\PES2TS_多键同步一维扫描全面问题报告_20261001.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/scripts/run_demo24_acp_primary.py:208
+WARN docs\reports\PES2TS_多键同步一维扫描全面问题报告_20261001.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/archive/v5x_scripts/campaign_oneoffs/run_demo24_acp_primary.py:63
+WARN docs\reports\PES2TS_多键同步一维扫描全面问题报告_20261001.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/archive/v5x_scripts/campaign_oneoffs/run_demo24_acp_primary.py:87
+WARN docs\reports\PES2TS_多键同步一维扫描全面问题报告_20261001.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/archive/v5x_scripts/campaign_oneoffs/run_demo24_acp_primary.py:51
+WARN docs\reports\PES2TS_多键同步一维扫描全面问题报告_20261001.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/archive/v5x_scripts/campaign_oneoffs/run_demo24_acp_primary.py:208
 WARN docs\reports\PES2TS_多键同步一维扫描全面问题报告_20261001.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/pes2ts_core/integration/acp/multicoord.py:405
 WARN docs\reports\PES2TS_多键同步一维扫描全面问题报告_20261001.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/pes2ts_core/integration/acp/multicoord.py:435
 WARN docs\reports\PES2TS_多键同步一维扫描全面问题报告_20261001.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/docs/design/PES_GENERATION_图论扫描策略选择器设计_v1.md:15
@@ -177,8 +177,8 @@ WARN docs\reports\PES2TS_多键同步一维扫描全面问题报告_20261001.md:
 WARN docs\reports\PES2TS_多键同步一维扫描全面问题报告_20261001.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/outputs/demo24_acp_geometry_audit_20261001/multibond_requirement_audit.json
 WARN docs\reports\PES2TS_多键同步一维扫描全面问题报告_20261001.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/outputs/demo24_acp_geometry_audit_20261001/graph_requirement_summary.json
 WARN docs\reports\PES2TS_多键同步一维扫描全面问题报告_20261001.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/outputs/PES2TS_Demo24_primary_20261001/submission_receipt.json
-WARN docs\reports\PES2TS_多键同步一维扫描全面问题报告_20261001.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/scripts/audit_demo24_graph_requirements.py
-WARN docs\reports\PES2TS_多键同步一维扫描全面问题报告_20261001.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/scripts/analyze_demo24_acp_geometry.py
+WARN docs\reports\PES2TS_多键同步一维扫描全面问题报告_20261001.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/archive/v5x_scripts/campaign_oneoffs/audit_demo24_graph_requirements.py
+WARN docs\reports\PES2TS_多键同步一维扫描全面问题报告_20261001.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/archive/v5x_scripts/campaign_oneoffs/analyze_demo24_acp_geometry.py
 WARN docs\reports\PES2TS_对话与现有任务完整总结报告_20261002.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/docs/reports/PES2TS_Demo24_多坐标全批计算结果_20261002.md
 WARN docs\reports\PES2TS_对话与现有任务完整总结报告_20261002.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/outputs/PES2TS_Demo24_synchronized_reference_20261002/completed_batch_summary.json
 WARN docs\reports\PES2TS_对话与现有任务完整总结报告_20261002.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/outputs/PES2TS_Demo24_synchronized_reference_20261002/execution_ledger.json
@@ -191,7 +191,7 @@ WARN docs\reports\PES2TS_对话与现有任务完整总结报告_20261002.md: lo
 WARN docs\reports\PES2TS_对话与现有任务完整总结报告_20261002.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/docs/reports/PES2TS_多键同步一维扫描全面问题报告_20261001.md
 WARN docs\reports\PES2TS_对话与现有任务完整总结报告_20261002.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/docs/reports/PES_generation_多坐标约束学习_ORCA能力与数学方案_20261001.md
 WARN docs\reports\PES2TS_对话与现有任务完整总结报告_20261002.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/pes2ts_core/scan_strategy/synchronized_path.py
-WARN docs\reports\PES2TS_对话与现有任务完整总结报告_20261002.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/scripts/run_demo24_synchronized.py
+WARN docs\reports\PES2TS_对话与现有任务完整总结报告_20261002.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/archive/v5x_scripts/campaign_oneoffs/run_demo24_synchronized.py
 WARN docs\reports\PES2TS_对话与现有任务完整总结报告_20261002.md: local E:/ link E:/Calculations/AI4S_ML_Studys/PES2TS/outputs/acp_synchronized_patch_20261002/manifest.json
 WARN docs\reports\PES_generation_多坐标约束学习_ORCA能力与数学方案_20261001.md: local E:/ link E:/Calculations/Common_Script/Auto_Calc_Platform/ACP_V1_20260811/src/acp/calculations/pes/contracts.py:45
 WARN docs\reports\PES_generation_多坐标约束学习_ORCA能力与数学方案_20261001.md: local E:/ link E:/Calculations/Common_Script/Auto_Calc_Platform/ACP_V1_20260811/src/cccp/qc/interfaces/constraints.py:99
@@ -206,7 +206,7 @@ checked 182 docs; 0 error(s), 172 warning(s)
 
 ##############################################################################
 [门禁 3/4 · render_gv_map --check] G–V 映射生成文档时效门（YAML 为 SSOT，文档须与渲染结果逐字节一致）
-命令：E:\Anaconda\python.exe scripts/render_gv_map.py --check
+命令：E:\Anaconda\python.exe infra/governance/render_gv_map.py --check
 工作目录：E:/Calculations/AI4S_ML_Studys/PES2TS
 开始时间：2026-11-21T22:27:31+08:00；耗时 0.2s
 退出码：0
@@ -231,7 +231,7 @@ G–V mapping doc is current
 
 ##############################################################################
 [补充] docs_consistency 模式语义（源码事实，未产生不同输出）
-实现：scripts/agent_ops/docs_consistency.py:288-302 —— 默认 advisory 模式打印 VIOLATION 但始终 return 0；--strict 时只要 clean 为假即 return 1；配置文件缺失/不可读统一 return 2（第 275-279 行）。
+实现：infra/governance/docs_consistency.py:288-302 —— 默认 advisory 模式打印 VIOLATION 但始终 return 0；--strict 时只要 clean 为假即 return 1；配置文件缺失/不可读统一 return 2（第 275-279 行）。
 
 
 ##############################################################################

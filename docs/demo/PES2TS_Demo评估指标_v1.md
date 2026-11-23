@@ -57,6 +57,6 @@
 }
 ```
 
-生成报告：`python scripts/evaluate_demo_runs.py run_bundle.json --output metrics.json --evaluation-split valid --ranking-rule highest_scan_energy`。标签文件缺省或无 valid 标签时 ranking 会显示 `not_measured`，不会猜标签或产生 0 分。
+生成报告：`python archive/v5x_scripts/campaign_oneoffs/evaluate_demo_runs.py run_bundle.json --output metrics.json --evaluation-split valid --ranking-rule highest_scan_energy`。标签文件缺省或无 valid 标签时 ranking 会显示 `not_measured`，不会猜标签或产生 0 分。
 
 当前没有经人工复核并冻结的 24 条运行包，因此实际 generation/ranking/端到端效果、失败率和成本仍待计算后填写；本定义本身不构成效果证据或达标声明。

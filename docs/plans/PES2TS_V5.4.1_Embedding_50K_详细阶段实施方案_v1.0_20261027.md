@@ -125,7 +125,7 @@ WP3 的化学、空间、角度特征可在同一接口冻结后并行实现；�
 
 1. 新增 V5.4.1 ADR/设计登记，说明本阶段只扩展 Embedding 接口，不改变 MoveProcessContract v1 的任务语义。
 2. 在机器可读 G–V registry 中登记 V5.4.1：`primary_g=G3.P.2`，`supporting_g` 包含 G3.P.1/G3.P.3/G0/G1；旧 V5.4 from-any-point 保留下游身份。
-3. 新增 `config/campaigns/pes2ts_v541_embed_50k.yaml` 及 schema validator；配置未通过 validator 时 runner 拒绝启动。
+3. 新增 `archive/v5x_configs/campaigns/pes2ts_v541_embed_50k.yaml` 及 schema validator；配置未通过 validator 时 runner 拒绝启动。
 4. 将 `objective=unified_move_process` 设为唯一外部任务名。过渡实现可内部映射旧 `arm="C"`，但新配置、日志、报表和 run_id 不暴露三臂矩阵。
 5. 固定 `embedding_id` 注册表、forward-view 白名单、feature schema、artifact schema、失败词表和 run 状态机。
 6. 将上游 v1.1 设计文件纳入执行证据链。编制时源文件 SHA256 为 `c2c1e5e5588ecd7109037095cd2035474722b366f953f1811cfcc0da56cfd24c`；执行时记录仓库内副本或只读来源的 SHA。
@@ -146,7 +146,7 @@ WP3 的化学、空间、角度特征可在同一接口冻结后并行实现；�
 
 ### 3.3 WP0 出口
 
-- `python scripts/agent_ops/docs_consistency.py --strict` 通过；
+- `python infra/governance/docs_consistency.py --strict` 通过；
 - 新 schema 对缺字段、未知 Embedding、非统一 objective、confirm 授权、非法 forward key、非预期 EdgeAdapter/vector consumption 均 typed rejection；
 - runplan 明确 nominal、conditional、diagnostic 三类 run，不把诊断组计入主赢家数；
 - 所有待定阈值已签认；未签认项保持 `null` 并阻断 T1，而不是由 runner 填默认值。
@@ -160,7 +160,7 @@ WP3 的化学、空间、角度特征可在同一接口冻结后并行实现；�
 主要现状位置：
 
 - `pes2ts_core/pesn/offline/training/key_atom_bc_v3.py:400-469`；
-- `scripts/campaigns/r3_v53mp_scale_paired_ci.py` 中镜像的 pair 收集逻辑；
+- `archive/v5x_scripts/campaigns/r3_v53mp_scale_paired_ci.py` 中镜像的 pair 收集逻辑；
 - `pes2ts_core/pesn/features/key_atom_graph_v3.py:321-351` 证明 pair/key index 属于 batch-global node-row 空间。
 
 实施时提取一个共享的 pair 归属/映射工具，避免两个评估入口分别修补后再次漂移。key-row 指针继续用于 `u/y/key_index`；node-row 指针用于 pair 所属图窗口，并同时校验 pair 两端属于同一图。不得用“增加 active pair 数”作为唯一正确性判断，应以独立构造的期望 pair 集为准。
@@ -751,10 +751,10 @@ outputs/pesn/v541_embed_50k/
 ### 14.1 仓库已有入口，可在各自合同和授权范围内使用
 
 ```bash
-python scripts/agent_ops/docs_consistency.py --strict
-python scripts/campaigns/r3_v53mp_run.py --help
-python scripts/campaigns/r3_v53mp_scale_paired_ci.py --help
-python scripts/agent_ops/feature_gate/v53mp_rollout_exec.py --help
+python infra/governance/docs_consistency.py --strict
+python archive/v5x_scripts/campaigns/r3_v53mp_run.py --help
+python archive/v5x_scripts/campaigns/r3_v53mp_scale_paired_ci.py --help
+python archive/v5x_scripts/agent_ops/feature_gate/v53mp_rollout_exec.py --help
 ```
 
 这些入口不证明支持 V5.4.1；尤其不得把 V5.3 的 `run --tier 50k` 当作新 Embedding runner。
@@ -762,7 +762,7 @@ python scripts/agent_ops/feature_gate/v53mp_rollout_exec.py --help
 ### 14.2 V5.4.1 拟实现流程，当前不可直接执行
 
 ```text
-v541 validate-config --config config/campaigns/pes2ts_v541_embed_50k.yaml
+v541 validate-config --config archive/v5x_configs/campaigns/pes2ts_v541_embed_50k.yaml
 v541 gate audit-data-and-manifests
 v541 gate fix-and-retest-pair-evaluator
 v541 gate legacy-E0-forward-parity
@@ -883,7 +883,7 @@ v1.0→v1.1：补充分子 GNN 选型依据、F2/RBF 和图语义、候选最小
 
 | 方案阶段 | 执行状态 | 证据 |
 |---|---|---|
-| WP0 治理/预注册 | done | ADR-0032、`config/campaigns/pes2ts_v541_embed_50k.yaml`、`plan/preregistration_signoff.json`、`plan/runplan.pin.json` |
+| WP0 治理/预注册 | done | ADR-0032、`archive/v5x_configs/campaigns/pes2ts_v541_embed_50k.yaml`、`plan/preregistration_signoff.json`、`plan/runplan.pin.json` |
 | WP1 评估器修复 + 历史 C×3 重评 | done | `audits/evaluator_before_after.json`、`audits/dev_baseline_sealed/`、`audits/verify_report.json` |
 | WP2 V541Model + E0 parity | done | `audits/v53_parity{,_gpu,_gpu_bitwise_probe}.json`（CPU bitwise + GPU 1e-6/1e-5） |
 | WP3 候选实现 | done（E1–E5 代码落地；E6 未创建，按 §5.1 不进默认批次） | `pes2ts_core/pesn/models/v541/` |

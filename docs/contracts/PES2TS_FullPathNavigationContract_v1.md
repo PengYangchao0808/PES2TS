@@ -8,7 +8,7 @@
 > 取代：GeometryPolicyContract v1 §4.2/§5.2、ReactionIntent Contract v1 §4、30h 计划 §5.3/§5.6 的 Stop 语义（详见 ADR-0030 §5）
 > 证据：[V5.2 任务纠偏审计 20261021](../reports/PES2TS_V52_任务纠偏审计_20261021.md)
 
-**单一真相规则**：本文件 + 宪法相关增量 + ADR-0030 是 Move/Stop/TS/q 语义的唯一规范来源。其他文档只能引用本文，不得重新定义；代码命名、标签 schema、评估指标必须与本文一致。任何变更必须走"新 ADR + 新合同版本 + `scripts/agent_ops/docs_consistency.py --strict` 通过"，禁止静默修改。
+**单一真相规则**：本文件 + 宪法相关增量 + ADR-0030 是 Move/Stop/TS/q 语义的唯一规范来源。其他文档只能引用本文，不得重新定义；代码命名、标签 schema、评估指标必须与本文一致。任何变更必须走"新 ADR + 新合同版本 + `infra/governance/docs_consistency.py --strict` 通过"，禁止静默修改。
 
 ## 1. 任务定义
 

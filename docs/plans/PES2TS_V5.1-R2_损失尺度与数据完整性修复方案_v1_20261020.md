@@ -387,10 +387,10 @@ WP4 S1 数据审计（与 WP2/WP3 并行；硬门）
 | WP | 任务 | 关键文件/产物 | 验收 | 预计 |
 |---|---|---|---|---|
 | **WP0** | 冻结 R1：提交/打 tag、生成 53-run 证据清单；创建 R2 分支 | `outputs/pesn/v5_1_r1/`、`r1_evidence_manifest.json`、git tag | R1 产物只读；无未提交 R1 代码；tag 可复现 | 0.5 h |
-| **WP1** | 写 `protocol_r2.json` 与 `v5_1_r2.yaml`；冻结 τ_s/τ_d、梯度目标、ramp、checkpoint、S1 验收、止损 | `outputs/pesn/v5_1_r2/protocol_r2.json`、`config/campaigns/v5_1_r2.yaml` | protocol/config/split hash 落盘；训练前写入 | 1 h |
-| **WP2** | 实现 R2 归一化 loss：strong 无量纲 Huber、dead τ 归一化 hinge；保持 λ=0 时 bit-identical；加 schema v4 | `pes2ts_core/pesn/offline/training/key_atom_bc.py`、`tests/pesn/test_key_atom_losses_r2.py` | 旧 665 测试 + 新单测全绿；空桶/边界/非有限值有测试 | 3 h |
-| **WP3** | 梯度探针：固定 B0 checkpoint、20 真实 batch、encoder/head 分组梯度范数；解 2%/10% λ | `scripts/campaigns/r2_gradient_probe.py`、`gradient_probe_r2.json` | ρ 可复算；λ 写入 protocol.executed；不可达则 `scale_unreachable` | 1.5 h |
-| **WP4** | S1 数据审计：DQ1–DQ6；342 分类、2022 处置、gauge ADR-0027、hard cluster 卡 | `scripts/campaigns/r2_s1_audit.py`、`s1/data_quality_s1.md/json`、`conflict_classification.csv` | 342/342 分类；无未关闭 P0；主分母不变 | 3 h（并行） |
+| **WP1** | 写 `protocol_r2.json` 与 `v5_1_r2.yaml`；冻结 τ_s/τ_d、梯度目标、ramp、checkpoint、S1 验收、止损 | `outputs/pesn/v5_1_r2/protocol_r2.json`、`archive/v5x_configs/campaigns/v5_1_r2.yaml` | protocol/config/split hash 落盘；训练前写入 | 1 h |
+| **WP2** | 实现 R2 归一化 loss：strong 无量纲 Huber、dead τ 归一化 hinge；保持 λ=0 时 bit-identical；加 schema v4 | `pes2ts_core/pesn/offline/training/key_atom_bc.py`、`tests/legacy/pesn/test_key_atom_losses_r2.py` | 旧 665 测试 + 新单测全绿；空桶/边界/非有限值有测试 | 3 h |
+| **WP3** | 梯度探针：固定 B0 checkpoint、20 真实 batch、encoder/head 分组梯度范数；解 2%/10% λ | `archive/v5x_scripts/campaigns/r2_gradient_probe.py`、`gradient_probe_r2.json` | ρ 可复算；λ 写入 protocol.executed；不可达则 `scale_unreachable` | 1.5 h |
+| **WP4** | S1 数据审计：DQ1–DQ6；342 分类、2022 处置、gauge ADR-0027、hard cluster 卡 | `archive/v5x_scripts/campaigns/r2_s1_audit.py`、`s1/data_quality_s1.md/json`、`conflict_classification.csv` | 342/342 分类；无未关闭 P0；主分母不变 | 3 h（并行） |
 | **WP5** | R2-0 基线复核 + R2-1 fold0 screen（S2/S10/D2/D10） | `run_v5_1_r2.py`、`screen_summary.csv`、run dirs | A0 9 cells 复用/补齐；12 新 run 完整 checkpoint/log | 2 h |
 | **WP6** | R2-2 Top-2 复现（folds1–2）+ R2-3 ramp 三臂 | `dev_summary.csv`、`ramp_summary.csv` | 12 + 6 新 run；无止损触发 | 2 h |
 | **WP7** | R2-4 confirm（仅 dev-positive；folds3–4） | `confirm_summary.csv` | 6 新 run；预注册准入判定 | 1 h |
@@ -416,30 +416,30 @@ git tag v5.1a-r1
 git checkout -b v5.1-r2
 
 # 1) 训练前冻结
-python scripts/campaigns/run_v5_1_r2.py --stage baseline --dry-run
+python archive/v5x_scripts/campaigns/run_v5_1_r2.py --stage baseline --dry-run
 
 # 2) 梯度探针（不训练、不更新权重）
-python scripts/campaigns/r2_gradient_probe.py \
+python archive/v5x_scripts/campaigns/r2_gradient_probe.py \
   --checkpoint outputs/pesn/v5_1/runs/B0_f0_s17_v51/checkpoints/checkpoint_best.pt \
   --batches 20 --targets 0.02 0.10 \
   --out outputs/pesn/v5_1_r2/gradient_probe_r2.json
 
 # 3) fold0 screen
-python scripts/campaigns/run_v5_1_r2.py --stage screen \
+python archive/v5x_scripts/campaigns/run_v5_1_r2.py --stage screen \
   --plan outputs/pesn/v5_1_r2/plans/screen.json
 
 # 4) dev 复现 + ramp
-python scripts/campaigns/run_v5_1_r2.py --stage dev \
+python archive/v5x_scripts/campaigns/run_v5_1_r2.py --stage dev \
   --plan outputs/pesn/v5_1_r2/plans/dev.json
-python scripts/campaigns/run_v5_1_r2.py --stage ramp \
+python archive/v5x_scripts/campaigns/run_v5_1_r2.py --stage ramp \
   --plan outputs/pesn/v5_1_r2/plans/ramp.json
 
 # 5) confirm（仅 dev-positive）
-python scripts/campaigns/run_v5_1_r2.py --stage confirm \
+python archive/v5x_scripts/campaigns/run_v5_1_r2.py --stage confirm \
   --arm <top1> --plan outputs/pesn/v5_1_r2/plans/confirm.json
 
 # 6) 报告
-python scripts/campaigns/r2_report.py \
+python archive/v5x_scripts/campaigns/r2_report.py \
   --root outputs/pesn/v5_1_r2 --out outputs/pesn/v5_1_r2
 ```
 

@@ -23,7 +23,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[3]          # cleanup -> 20261121_cleanup -> deepwork -> .slim
 INV = ROOT / "docs/infra/doc_audit/20261121/doc_inventory.csv"
-CFG = ROOT / "scripts/agent_ops/docs_consistency_config.json"
+CFG = ROOT / "infra/governance/docs_consistency_config.json"
 PLAN = HERE / "CLEANUP_PLAN.md"
 CAND = HERE / "CLEANUP_CANDIDATES.csv"
 KEEPCSV = HERE / "KEEP_SET.csv"

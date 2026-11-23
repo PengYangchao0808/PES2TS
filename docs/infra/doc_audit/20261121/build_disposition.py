@@ -145,8 +145,8 @@ def disposition(row: dict, p0_paths: set[str], p1_paths: set[str]) -> dict:
         pinned_by = "无"
 
     if batch == "B0":
-        verification = ("python scripts/check_docs_links.py → 0 error；"
-                        "python scripts/agent_ops/docs_consistency.py --strict → CLEAN")
+        verification = ("python infra/governance/check_docs_links.py → 0 error；"
+                        "python infra/governance/docs_consistency.py --strict → CLEAN")
     elif action == "move":
         verification = ("git grep 引用清零 → git mv → 修链 → links 0 error "
                         "→ superseded/README 索引 → 台账登记")

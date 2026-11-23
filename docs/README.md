@@ -53,9 +53,10 @@
 | `docs/plans/PES2TS_V5.4.2_Backbone_50K_详细阶段实施方案_v1.0_20261029.md` | V5.4.2 战役（已执行） |
 | `docs/plans/PES2TS_整体开发与发布方案_v2.md` | 项目级发布主方案 |
 | `docs/plans/PES2TS_训练测试集划分标准_v1_20261120.md` | 数据划分与来源 |
-| `docs/design/PES2TS_CODE_MAP_v2_20261018.md` | 代码地图（新会话先读） |
+| `docs/design/PES2TS_CODE_MAP_v3_20261123.md` | **代码地图 v3（Active-Reference，新会话先读）**：五功能区（`pes2ts_core`/`pes2ts_data`/`pes2ts_v5`/`infra`/`archive`）、唯一训练引擎与 runner CLI、任务→入口表、`pes2ts_core/pesn/**` FROZEN、v2 planned 缺口收敛为 NOT_IMPLEMENTED |
+| `docs/design/PES2TS_CODE_MAP_v2_20261018.md` | 代码地图 v2（历史版；现行见 v3，v2 的 planned 区块已由 v3 收敛登记） |
 | `docs/design/PES2TS_G_V_MAPPING_v1_20261018.md` | G–V 映射（生成物，勿手改） |
-| `docs/design/decisions/` | ADR-0001…0035（全部保留） |
+| `docs/design/decisions/` | ADR-0001…0036（全部保留；0036 = 五功能区与单一训练引擎） |
 
 ## 证据与运维
 
@@ -66,6 +67,7 @@
 | `docs/infra/PES2TS_WSL稳定运行与内存治理方案_v1_20261122.md` | **WSL 稳定运行与内存治理（Active）**：四层防线、阈值、SOP、preflight/回收/受限运行脚本 |
 | `docs/infra/doc_audit/20261121/README.md` | 2026-11-21 全量文档审计证据 |
 | `docs/reports/PES2TS_代码探查报告_v1_20261123.md` | **代码清点与归档依据（2026-11-23）**：991 文件/443,792 行清点、40 个疑似遗留模块分类、CODE_MAP 39 项 planned 缺口、宪法 R1–R6/P1–P5 合规审计、门禁 1 红 3 绿、四类归档建议 |
+| `docs/reports/PES2TS_代码分区重构执行记录_v1_20261123.md` | **五功能区重构执行记录（2026-11-23，Evidence-ReadOnly）**：提交 `ccd31f2` 的 575 重命名/0 删除、逐树迁移计数、四个合同与五道硬门、门禁实跑、legacy POSIX/依赖限制、G–V 语义待决与 GPU/WSL 全量 pytest 待补 |
 | `docs/infra/doc_cleanup/20261121/README.md` | 本次清理证据与维护机制 |
 
 ## 历史

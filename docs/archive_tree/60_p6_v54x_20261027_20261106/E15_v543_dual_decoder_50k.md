@@ -11,7 +11,7 @@
 ---
 > 条目标号：E15　时间范围：2026-11-02 → 2026-11-06　状态：Archived（Executed-Frozen）
 > 关联 ADR：ADR-0034（Proposed，但 D1–D8 于 11-02 经仓库所有者签认）；方案与 WP 清单保持 `Frozen-Preregistered v1.0`（按台账明示"执行完毕不改文"）
-> 数据/代码/模型版本指针：`config/campaigns/pes2ts_v543_dual_decoder_50k.yaml`；终版 bundle `PES2TSBundleV543_20261106T095436Z`（208 文件 verify ok）；dev pack `4f6c1e95…`（589 曲线/135,926 positions）
+> 数据/代码/模型版本指针：`archive/v5x_configs/campaigns/pes2ts_v543_dual_decoder_50k.yaml`；终版 bundle `PES2TSBundleV543_20261106T095436Z`（208 文件 verify ok）；dev pack `4f6c1e95…`（589 曲线/135,926 positions）
 > 证据根：`docs/plans/PES2TS_V5.4.3_双Decoder_50K_全面开发与训练方案_v1.0_20261102.md`、`docs/plans/PES2TS_V5.4.3_WP执行清单_v1.0_20261102.md`、`docs/reports/PES2TS_V543_双Decoder_50K_实施与训练报告_20261106.md`、`docs/design/decisions/ADR-0034-V5.4.3-双Decoder与DecoderContextV1.md`
 
 ## 目标
@@ -63,7 +63,7 @@
 
 关键技术决策：`docs/infra/PES2TS_开发文档规范化归档方案_v2_20261121.md`（Active-Proposed，规范性方案；经所有者签认后转 Canonical 并纳入 G5 门禁）；`docs/infra/PES2TS_仓库归档与清理方案_v1_20261120.md`（Operational，非规范）；`docs/plans/PES2TS_训练测试集划分标准_v1_20261120.md`（Descriptive v1.1）；`docs/superseded/README.md`（取代区规则）。
 
-主要成果与指标：LICENSE（MIT，2026-11-20）补齐公开前最后缺口；5 份划分名单 15.2 MB 逐字节入库（索引 `data/manifests/split_registry_v1.json`，sha256 前缀 07bdbedc…/802f6243…/83e72e9a…/b65fa4c9…/c0d2cb2a…，链条校验均等于 L1 `802f6243…`）；`docs/superseded/` 建立并迁入 4 份自身已声明 Superseded 的文档；5 个零引用 V4 脚本归档 `scripts/archive/v4/`；CI 红灯修复（`gv_registry.py` 区分仓库内外路径，26 tests 由 4 failed 转全过）；门禁 `check_docs_links.py` 0 error / 173 warning（182 docs）、`docs_consistency --strict` CLEAN。全量审计（11-21）：253 条 / 4.97 MB / 55,452 行；`docs/**/*.md` 216（活跃 180 / archive 36）；状态块 167/216；状态原始值 137 种 → 17 个归并桶；索引双缺 40；21 家族/53 成员（6 组状态自相矛盾）；52 条硬钉死路径；32 条异常（P0 2 / P1 10 / P2 20）。
+主要成果与指标：LICENSE（MIT，2026-11-20）补齐公开前最后缺口；5 份划分名单 15.2 MB 逐字节入库（索引 `data/manifests/split_registry_v1.json`，sha256 前缀 07bdbedc…/802f6243…/83e72e9a…/b65fa4c9…/c0d2cb2a…，链条校验均等于 L1 `802f6243…`）；`docs/superseded/` 建立并迁入 4 份自身已声明 Superseded 的文档；5 个零引用 V4 脚本归档 `archive/v4/v4/`；CI 红灯修复（`gv_registry.py` 区分仓库内外路径，26 tests 由 4 failed 转全过）；门禁 `check_docs_links.py` 0 error / 173 warning（182 docs）、`docs_consistency --strict` CLEAN。全量审计（11-21）：253 条 / 4.97 MB / 55,452 行；`docs/**/*.md` 216（活跃 180 / archive 36）；状态块 167/216；状态原始值 137 种 → 17 个归并桶；索引双缺 40；21 家族/53 成员（6 组状态自相矛盾）；52 条硬钉死路径；32 条异常（P0 2 / P1 10 / P2 20）。
 
 关键负结果：**40 份文档既不在 `docs/README.md` 也不在台账**（C-08）且索引自述版本滞后 5 处（C-03）；**`docs_consistency` 从未进入 CI**，12 项冲突在门禁 CLEAN 基线下长期并存（C-09）；176 条 warning 是"容忍债务"不是 0 债务（C-11，台账 11-20 记 173/182，口径差 1 属不同时点）；7 份根目录战役 memo 因门禁钉死不移动、只加索引（A30）；`docs/archive/**` 28 份与 live 文档同名（A22，快照只读不改）；归档家族"①可立即归位"实际为 **0** 份（F19 三份因有引用不满足），说明"零成本归位"在现实中几乎不存在。
 

@@ -55,9 +55,9 @@
 **B0 验收**：
 
 ```powershell
-python scripts/check_docs_links.py                        # 0 error；warning 不高于 172
-python scripts/agent_ops/docs_consistency.py --strict     # CLEAN
-python scripts/render_gv_map.py --check                   # current
+python infra/governance/check_docs_links.py                        # 0 error；warning 不高于 172
+python infra/governance/docs_consistency.py --strict     # CLEAN
+python infra/governance/render_gv_map.py --check                   # current
 python -m pytest -q tests/test_gv_registry.py tests/test_config_env.py
 ```
 
@@ -97,7 +97,7 @@ git -c core.quotepath=false grep -l -- "PES2TS_IRC_BC_IQL_SAC直接位移研究�
 #   docs/plans/PES2TS_EGNN_BC_IQL_SAC下一步完整训练方案_v2:3、
 #   docs/plans/PES2TS_文档修订台账.md:407/413/415 等
 #   把指向 docs/plans/<name>.md 的相对链接改为 docs/superseded/<name>.md
-python scripts/check_docs_links.py     # 期望 0 error
+python infra/governance/check_docs_links.py     # 期望 0 error
 
 # 步骤 2：迁移（git mv 保留历史）
 git mv "docs/plans/PES2TS_EGNN_BC_IQL_SAC下一步完整训练方案_v2_20261015.md" "docs/superseded/"
@@ -110,9 +110,9 @@ git mv "docs/plans/PES2TS_IRC_BC_IQL_SAC直接位移研究方案_v1_20261015.md"
 #   docs/README.md 对应条目状态列改 Superseded（链接改新路径）
 
 # 步骤 4：门禁
-python scripts/check_docs_links.py
-python scripts/agent_ops/docs_consistency.py --strict
-python scripts/render_gv_map.py --check
+python infra/governance/check_docs_links.py
+python infra/governance/docs_consistency.py --strict
+python infra/governance/render_gv_map.py --check
 python -m pytest -q tests/test_gv_registry.py tests/test_config_env.py
 ```
 
@@ -165,12 +165,12 @@ python -m pytest -q tests/test_gv_registry.py tests/test_config_env.py
 
 ```powershell
 # 四门（缺一不可）
-python scripts/agent_ops/docs_consistency.py --strict
-python scripts/check_docs_links.py
-python scripts/render_gv_map.py --check
+python infra/governance/docs_consistency.py --strict
+python infra/governance/check_docs_links.py
+python infra/governance/render_gv_map.py --check
 python -m pytest -q tests/test_gv_registry.py tests/test_config_env.py
 
-# 若改动代码/测试，再加：python -m pytest -q --ignore=tests/pesn
+# 若改动代码/测试，再加：python -m pytest -q --ignore=tests/legacy/pesn
 
 # 回滚（本批未提交时；reset --hard 才能撤销已 staged 的 git mv）
 git reset --hard HEAD

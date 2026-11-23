@@ -725,7 +725,7 @@ V4 负结果后 24 小时内启动 V5 冲刺：先做 OOF 交叉拟合验证配�
 
 > 条目标号：E13　时间范围：2026-10-27 → 2026-10-29　状态：Archived（Executed-Frozen）
 > 关联 ADR：ADR-0032（Accepted，10-27）；任务合同 MoveProcessContract v1
-> 数据/代码/模型版本指针：`config/campaigns/pes2ts_v541_embed_50k.yaml`（schema `pes2ts_v541_campaign_v1`）；冻结计划 `plan/runplan.pin.json`（code_commit `1d8b7972…`、common_protocol `2b9ce1ed…`、config `464c1f6f…`）；证据根 `outputs/pesn/v541_embed_50k/`
+> 数据/代码/模型版本指针：`archive/v5x_configs/campaigns/pes2ts_v541_embed_50k.yaml`（schema `pes2ts_v541_campaign_v1`）；冻结计划 `plan/runplan.pin.json`（code_commit `1d8b7972…`、common_protocol `2b9ce1ed…`、config `464c1f6f…`）；证据根 `outputs/pesn/v541_embed_50k/`
 > 证据根：`docs/plans/PES2TS_V5.4.1_Embedding_50K_详细阶段实施方案_v1.0_20261027.md`（内容 v1.2）、`docs/reports/PES2TS_V541_Embedding_50K_实施与训练报告_20261029.md`、`docs/design/decisions/ADR-0032-V5.4.1-Embedding接口扩展与预注册治理.md`
 
 ## 目标
@@ -770,7 +770,7 @@ V4 负结果后 24 小时内启动 V5 冲刺：先做 OOF 交叉拟合验证配�
 
 > 条目标号：E14　时间范围：2026-10-29 → 2026-10-31　状态：Archived（Executed-Frozen；计划状态头滞后 A01/P0）
 > 关联 ADR：ADR-0033（Accepted，v1.3.3）；合同 MoveProcessContract v1
-> 数据/代码/模型版本指针：`config/campaigns/pes2ts_v542_backbone_50k.yaml`（`0.1.2-wp0`，schema `pes2ts_v542_campaign_v1`）；registry `V5.4.2`（status executed，`plan_revision 2026-10-30.3`）
+> 数据/代码/模型版本指针：`archive/v5x_configs/campaigns/pes2ts_v542_backbone_50k.yaml`（`0.1.2-wp0`，schema `pes2ts_v542_campaign_v1`）；registry `V5.4.2`（status executed，`plan_revision 2026-10-30.3`）
 > 证据根：`docs/plans/PES2TS_V5.4.2_Backbone_50K_详细阶段实施方案_v1.0_20261029.md`（内容 v1.2）、`docs/reports/PES2TS_V542_Backbone_50K_实施与训练报告_20261031.md`、`docs/design/decisions/ADR-0033-V5.4.2-Backbone接口与预注册治理.md`
 
 ## 目标
@@ -815,7 +815,7 @@ V4 负结果后 24 小时内启动 V5 冲刺：先做 OOF 交叉拟合验证配�
 
 > 条目标号：E15　时间范围：2026-11-02 → 2026-11-06　状态：Archived（Executed-Frozen）
 > 关联 ADR：ADR-0034（Proposed，但 D1–D8 于 11-02 经仓库所有者签认）；方案与 WP 清单保持 `Frozen-Preregistered v1.0`（按台账明示"执行完毕不改文"）
-> 数据/代码/模型版本指针：`config/campaigns/pes2ts_v543_dual_decoder_50k.yaml`；终版 bundle `PES2TSBundleV543_20261106T095436Z`（208 文件 verify ok）；dev pack `4f6c1e95…`（589 曲线/135,926 positions）
+> 数据/代码/模型版本指针：`archive/v5x_configs/campaigns/pes2ts_v543_dual_decoder_50k.yaml`；终版 bundle `PES2TSBundleV543_20261106T095436Z`（208 文件 verify ok）；dev pack `4f6c1e95…`（589 曲线/135,926 positions）
 > 证据根：`docs/plans/PES2TS_V5.4.3_双Decoder_50K_全面开发与训练方案_v1.0_20261102.md`、`docs/plans/PES2TS_V5.4.3_WP执行清单_v1.0_20261102.md`、`docs/reports/PES2TS_V543_双Decoder_50K_实施与训练报告_20261106.md`、`docs/design/decisions/ADR-0034-V5.4.3-双Decoder与DecoderContextV1.md`
 
 ## 目标
@@ -867,7 +867,7 @@ V4 负结果后 24 小时内启动 V5 冲刺：先做 OOF 交叉拟合验证配�
 
 关键技术决策：`docs/infra/PES2TS_开发文档规范化归档方案_v2_20261121.md`（Active-Proposed，规范性方案；经所有者签认后转 Canonical 并纳入 G5 门禁）；`docs/infra/PES2TS_仓库归档与清理方案_v1_20261120.md`（Operational，非规范）；`docs/plans/PES2TS_训练测试集划分标准_v1_20261120.md`（Descriptive v1.1）；`docs/superseded/README.md`（取代区规则）。
 
-主要成果与指标：LICENSE（MIT，2026-11-20）补齐公开前最后缺口；5 份划分名单 15.2 MB 逐字节入库（索引 `data/manifests/split_registry_v1.json`，sha256 前缀 07bdbedc…/802f6243…/83e72e9a…/b65fa4c9…/c0d2cb2a…，链条校验均等于 L1 `802f6243…`）；`docs/superseded/` 建立并迁入 4 份自身已声明 Superseded 的文档；5 个零引用 V4 脚本归档 `scripts/archive/v4/`；CI 红灯修复（`gv_registry.py` 区分仓库内外路径，26 tests 由 4 failed 转全过）；门禁 `check_docs_links.py` 0 error / 173 warning（182 docs）、`docs_consistency --strict` CLEAN。全量审计（11-21）：253 条 / 4.97 MB / 55,452 行；`docs/**/*.md` 216（活跃 180 / archive 36）；状态块 167/216；状态原始值 137 种 → 17 个归并桶；索引双缺 40；21 家族/53 成员（6 组状态自相矛盾）；52 条硬钉死路径；32 条异常（P0 2 / P1 10 / P2 20）。
+主要成果与指标：LICENSE（MIT，2026-11-20）补齐公开前最后缺口；5 份划分名单 15.2 MB 逐字节入库（索引 `data/manifests/split_registry_v1.json`，sha256 前缀 07bdbedc…/802f6243…/83e72e9a…/b65fa4c9…/c0d2cb2a…，链条校验均等于 L1 `802f6243…`）；`docs/superseded/` 建立并迁入 4 份自身已声明 Superseded 的文档；5 个零引用 V4 脚本归档 `archive/v4/v4/`；CI 红灯修复（`gv_registry.py` 区分仓库内外路径，26 tests 由 4 failed 转全过）；门禁 `check_docs_links.py` 0 error / 173 warning（182 docs）、`docs_consistency --strict` CLEAN。全量审计（11-21）：253 条 / 4.97 MB / 55,452 行；`docs/**/*.md` 216（活跃 180 / archive 36）；状态块 167/216；状态原始值 137 种 → 17 个归并桶；索引双缺 40；21 家族/53 成员（6 组状态自相矛盾）；52 条硬钉死路径；32 条异常（P0 2 / P1 10 / P2 20）。
 
 关键负结果：**40 份文档既不在 `docs/README.md` 也不在台账**（C-08）且索引自述版本滞后 5 处（C-03）；**`docs_consistency` 从未进入 CI**，12 项冲突在门禁 CLEAN 基线下长期并存（C-09）；176 条 warning 是"容忍债务"不是 0 债务（C-11，台账 11-20 记 173/182，口径差 1 属不同时点）；7 份根目录战役 memo 因门禁钉死不移动、只加索引（A30）；`docs/archive/**` 28 份与 live 文档同名（A22，快照只读不改）；归档家族"①可立即归位"实际为 **0** 份（F19 三份因有引用不满足），说明"零成本归位"在现实中几乎不存在。
 
@@ -898,7 +898,7 @@ V4 负结果后 24 小时内启动 V5 冲刺：先做 OOF 交叉拟合验证配�
 ## 主要成果与量化指标
 - **LICENSE**：新增 MIT（Copyright (c) 2026 PengYangchao0808）；此前仓库无任何许可文件 = 公开后等同保留所有权利。
 - **划分名单发布**：5 份、15.2 MB、逐字节副本；`split_ids_g0_v1.csv` 199,168 行（train 159,355 / valid 19,904 / test 19,909）、`pesn_irc_split_ids_v1.json`（train_fit 121,363 / train_dev 15,161 / train_calibration 15,159 + family_holdout 9,573）、v53mp cohort 20k/50k、`v53mp_split_50k_ids_v1.json`（pool tiers + dev 589 + confirm 2,000 仅列名 + curve_folds 66,195）；链条校验：两个 cohort 的父哈希与 50K manifest 的 `parents.g3p1_split` 均等于 L1 `802f6243…`。
-- 归档执行：`docs/superseded/` 建立 + 迁入 4 份（单端点 IRC 产品设计 v1/v2、V5.1-R3 端点对称 v1/v2）；5 个零引用 V4 脚本迁 `scripts/archive/v4/`（该目录 .py 16→21）；7 份根 memo 按建议不移动只留索引。
+- 归档执行：`docs/superseded/` 建立 + 迁入 4 份（单端点 IRC 产品设计 v1/v2、V5.1-R3 端点对称 v1/v2）；5 个零引用 V4 脚本迁 `archive/v4/v4/`（该目录 .py 16→21）；7 份根 memo 按建议不移动只留索引。
 - CI 修复：`gv_registry.py` 新增 `_is_external_path()`（仓库外路径只作 provenance、不强制存在；仓库内相对路径仍严格校验）；`pytest tests/test_gv_registry.py tests/test_config_env.py` → 26 passed（修复前 4 failed / 20 passed）。
 - 门禁：`check_docs_links.py` 0 error / 173 warning（182 docs）、`docs_consistency --strict` CLEAN；`render_gv_map --check` 的失败源于既有环境的 WSL 路径问题（同日第二条增量已修）。
 
@@ -1052,7 +1052,7 @@ V4 负结果后 24 小时内启动 V5 冲刺：先做 OOF 交叉拟合验证配�
 
 ## 附录 B · 横切常青层 X0 清单（18 条）
 
-`README.md`、`AGENT.md`、`docs/PES2TS_开发宪法_v1.md`、`docs/README.md`、`docs/plans/PES2TS_阶段定义_G0-G3.md`、`docs/plans/PES2TS_文档修订台账.md`、`docs/plans/PES2TS_整体开发与发布方案_v2.md`、`docs/plans/PES2TS_完整开发流方案_整合版_v1.md`、`docs/design/PES2TS_G_V_MAPPING_v1_20261018.md`、`docs/design/PES2TS_CODE_MAP_v2_20261018.md`、`docs/design/decisions/ADR-0025-G-V双轴映射与战役注册.md`、`docs/archive/README.md`、`docs/superseded/README.md`、`scripts/README.md`、`outputs/README.md`、`requirements.txt`、`requirements-pesn-runtime.txt`、`requirements-pesn-training.txt`。
+`README.md`、`AGENT.md`、`docs/PES2TS_开发宪法_v1.md`、`docs/README.md`、`docs/plans/PES2TS_阶段定义_G0-G3.md`、`docs/plans/PES2TS_文档修订台账.md`、`docs/plans/PES2TS_整体开发与发布方案_v2.md`、`docs/plans/PES2TS_完整开发流方案_整合版_v1.md`、`docs/design/PES2TS_G_V_MAPPING_v1_20261018.md`、`docs/design/PES2TS_CODE_MAP_v2_20261018.md`、`docs/design/decisions/ADR-0025-G-V双轴映射与战役注册.md`、`docs/archive/README.md`、`docs/superseded/README.md`、`archive/v5x_scripts/README_scripts_convention.md`、`outputs/README.md`、`requirements.txt`、`requirements-pesn-runtime.txt`、`requirements-pesn-training.txt`。
 
 > 横切层规则：**只更新、不归档**。它们的价值在"始终是当前事实"，历史版本走 `docs/archive/` 快照或台账增量记录；档案条目只引用其"当时版本"（如宪法 v2.9 @ 10-21）。
 

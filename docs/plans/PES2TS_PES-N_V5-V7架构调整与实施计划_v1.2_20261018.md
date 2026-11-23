@@ -776,17 +776,17 @@ pes2ts_core/integration/acp/xtb_freeze_transport.py
 pes2ts_core/integration/validation/xtb_ts_verification.py  # M6.5
 scripts/prepare_key_atom_teacher.py
 scripts/prepare_v6_pre_relaxed.py
-scripts/campaigns/train_v5.py
-scripts/campaigns/train_v6.py
-scripts/campaigns/run_v7_rollout.py
-tests/pesn/test_key_atom_contract.py
-tests/pesn/test_key_atom_teacher.py
-tests/pesn/test_key_atom_models.py
-tests/pesn/test_v6_decoder.py
+archive/v5x_scripts/campaigns/train_v5.py
+archive/v5x_scripts/campaigns/train_v6.py
+archive/v5x_scripts/campaigns/run_v7_rollout.py
+tests/legacy/pesn/test_key_atom_contract.py
+tests/legacy/pesn/test_key_atom_teacher.py
+tests/legacy/pesn/test_key_atom_models.py
+tests/legacy/pesn/test_v6_decoder.py
 tests/test_xtb_freeze_transport.py
 ```
 
-> 命名规则（ADR-0025）：以上训练/评测模块按 **G 能力**命名；V5/V6 战役编号只出现在 `config/campaigns/`、`scripts/campaigns/`、`outputs/campaigns/` 与报告中。
+> 命名规则（ADR-0025）：以上训练/评测模块按 **G 能力**命名；V5/V6 战役编号只出现在 `archive/v5x_configs/campaigns/`、`archive/v5x_scripts/campaigns/`、`outputs/campaigns/` 与报告中。
 
 ### 11.3 禁止事项
 

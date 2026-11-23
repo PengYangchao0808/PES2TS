@@ -15,7 +15,8 @@
 | 流程总纲 | `docs/plans/PES2TS_完整开发流方案_整合版_v1.md` | 阶段流/双轨/依赖图 |
 | 文档治理 | `docs/infra/PES2TS_开发文档规范化归档方案_v2_20261121.md` + `ADR-0035` | 状态机/命名/退役政策 |
 | G–V 映射 | `docs/design/PES2TS_G_V_MAPPING_v1_20261018.md`（生成物） | 源 `config/registry/g_v_map.yaml`，禁止手改 |
-| 代码地图 | `docs/design/PES2TS_CODE_MAP_v2_20261018.md` | 新会话先读 |
+| 代码地图 | `docs/design/PES2TS_CODE_MAP_v3_20261123.md` | 新会话先读（五功能区）；v2 保留为历史 |
+| 代码分区机制 | `docs/design/decisions/ADR-0036-功能分区与单一训练引擎.md` | 五功能区/单向依赖/五道硬门；执行证据见 `docs/reports/PES2TS_代码分区重构执行记录_v1_20261123.md` |
 | V5–V7 研发路线 | `docs/plans/PES2TS_V5-V7_全阶段研发与Benchmark方案_v2.0_20261121.md` | **Active-Proposed** 路线重规划；签认前不作训练依据（V5 离线/V6 闭环/V7 RL） |
 | V5 详细实验方案 | `docs/plans/PES2TS_V5_深度模型架构Benchmark方案_v2.1_20261122.md` | **Active-Proposed** V5 章细化（14 架构/四测试集/122 预算），取代上一行 V5 章；V6/V7 仍以上一行 v2.0 为准 |
 | V5 训练执行大纲 | `docs/plans/PES2TS_V5后续阶段训练大纲_v1_20261123.md` | **Active** V5.5–V5.8 执行层：数据口径/screening 子集/训练矩阵/里程碑/稳定性前置；与 WSL 稳定方案联用 |

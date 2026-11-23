@@ -11,7 +11,7 @@
 | 轴 | 含义 | 命名落点 |
 |---|---|---|
 | **G** | 代码/物理能力阶段 | `pes2ts_core/g0`、`g1`、`generation`、`integration`、`pesn` 内的能力名 |
-| **V** | 训练/测试战役 | `config/campaigns`、`scripts/campaigns`、`outputs/campaigns`、`docs/reports` 的战役名 |
+| **V** | 训练/测试战役 | `archive/v5x_configs/campaigns`、`archive/v5x_scripts/campaigns`、`outputs/campaigns`、`docs/reports` 的战役名 |
 
 V5–V7 不是新 G 阶段：V5 → G3.P；V6 → G3.2 + G2.T（xTB 探测/验证）；V7 → G4.0/G4.1；M0.5/M6.5 → G2.T。V5.1-R2 仍属 G3.P.2；V5.2 起新合同仍归 G3.P.0–.3。
 
@@ -57,8 +57,8 @@ pes2ts_core/pesn/features/key_atom_graph_v3.py         # planned: intent-conditi
 pes2ts_core/pesn/models/key_atom_egnn_v3.py            # planned: fixed F3 superset + masks
 pes2ts_core/pesn/offline/training/key_atom_bc_v3.py    # planned: strong/dead + sample weights
 pes2ts_core/pesn/offline/evaluation/key_atom_protocols.py
-scripts/campaigns/run_v5_1_r3.py                       # planned
-config/campaigns/v5_1_r3.yaml                          # planned
+archive/v5x_scripts/campaigns/run_v5_1_r3.py                       # planned
+archive/v5x_configs/campaigns/v5_1_r3.yaml                          # planned
 ```
 
 **V5.2–V5.4（reaction intent + CV/Jacobian + progress/stop + growth）**
@@ -71,9 +71,9 @@ pes2ts_core/pesn/offline/data/key_atom_teacher.py      # T0/T1/T2 + stop labels
 pes2ts_core/pesn/offline/data/key_atom_dataset_v3.py
 pes2ts_core/pesn/offline/training/key_atom_bc_v3.py
 pes2ts_core/pesn/offline/evaluation/key_atom_protocols.py
-scripts/campaigns/run_v5_2_progress_stop.py             # planned
-scripts/campaigns/run_v5_3_growth.py                    # planned
-scripts/campaigns/run_v5_4_any_point.py                 # planned
+archive/v5x_scripts/campaigns/run_v5_2_progress_stop.py             # planned
+archive/v5x_scripts/campaigns/run_v5_3_growth.py                    # planned
+archive/v5x_scripts/campaigns/run_v5_4_any_point.py                 # planned
 ```
 
 **V5.2-R（planned，G3.P；ADR-0030 全路径导航与端点停止）**
@@ -83,8 +83,8 @@ pes2ts_core/pesn/offline/data/key_atom_dataset_v3.py    # existing (endpoint lab
 pes2ts_core/pesn/offline/data/key_atom_endpoint_labels_v1.py  # planned: d_end 0.10/0.30 endpoint stop labels
 pes2ts_core/pesn/models/key_atom_heads_v52r.py          # planned: EndpointStopHead (+ ProgressHeadV3 kept)
 pes2ts_core/pesn/models/key_atom_loss_v52r_v3.py        # planned: L_move + λ_end·L_end + λ_ord·L_ord + λ_q·L_q
-scripts/campaigns/r3_v52r_run.py                        # planned: D0/D1/T1/R entry
-scripts/agent_ops/docs_consistency.py                   # docs gate: python scripts/agent_ops/docs_consistency.py --strict
+archive/v5x_scripts/campaigns/r3_v52r_run.py                        # planned: D0/D1/T1/R entry
+infra/governance/docs_consistency.py                   # docs gate: python infra/governance/docs_consistency.py --strict
 ```
 
 - 遗留符号 `TSStopHeadV3` / `ts_stop_loss_v52` / `stop_label_from_distance_v52` = **LEGACY_TS_STOP**（仅旧 checkpoint 加载/ablation，不用于新训练）；落点 `models/key_atom_heads_v3.py`、`models/key_atom_loss_v52_v3.py`、`offline/data/key_atom_dataset_v3.py`。
@@ -98,10 +98,10 @@ pes2ts_core/pesn/models/key_atom_loss_v53mp_v3.py       # planned: L_Move + L_Pr
 pes2ts_core/pesn/offline/training/key_atom_v53mp_train_v3.py  # planned: staged trainer, arms A/B/C, Move guard, gradient monitor
 pes2ts_core/pesn/offline/data/key_atom_dataset_v3.py    # fix: load all statuses; MOVE/PROCESS independent eligibility
 pes2ts_core/pesn/offline/data/key_atom_endpoint_labels_v1.py  # existing: keep as diagnostic + high-confidence endpoint labels
-scripts/campaigns/r3_v53mp_run.py                       # planned: S0-S4 driver
-scripts/agent_ops/data_gate/r3_build_tables.py          # extend: 2k/5k/20k cohort six-table build
+archive/v5x_scripts/campaigns/r3_v53mp_run.py                       # planned: S0-S4 driver
+archive/v5x_scripts/agent_ops/data_gate/r3_build_tables.py          # extend: 2k/5k/20k cohort six-table build
 pes2ts_core/pesn/offline/publishing/export.py           # planned: pes2ts_move_process_bundle_v1
-config/campaigns/pes2ts_v53mp_20261021.yaml             # planned: S0-S4, arms, authorization, freeze hashes
+archive/v5x_configs/campaigns/pes2ts_v53mp_20261021.yaml             # planned: S0-S4, arms, authorization, freeze hashes
 ```
 
 - 命名：`V5.3-ENG` = 30h rollout/relax 工程闭环（historical）；`V5.3-MP` = 本战役。
@@ -119,9 +119,9 @@ pes2ts_core/pesn/offline/evaluation/physics_protocols.py  # planned
 pes2ts_core/integration/acp/xtb_freeze_request.py
 pes2ts_core/integration/acp/xtb_freeze_transport.py
 pes2ts_core/integration/validation/xtb_ts_verification.py
-scripts/campaigns/run_v6_1_mlp.py                       # planned
-scripts/campaigns/run_v6_2_cnn.py                       # planned
-scripts/campaigns/run_v6_3_verify.py                    # planned
+archive/v5x_scripts/campaigns/run_v6_1_mlp.py                       # planned
+archive/v5x_scripts/campaigns/run_v6_2_cnn.py                       # planned
+archive/v5x_scripts/campaigns/run_v6_3_verify.py                    # planned
 ```
 
 ### V7（proposed，G4.0/G4.1）
@@ -133,9 +133,9 @@ pes2ts_core/integration/acp/
 pes2ts_core/pesn/offline/transitions.py
 pes2ts_core/pesn/offline/control_trainer.py
 pes2ts_core/pesn/contracts/qc_transition.py
-scripts/campaigns/run_v7_1_env.py                       # planned
-scripts/campaigns/run_v7_2_offline_rl.py                # planned
-scripts/campaigns/run_v7_3_online_rl.py                 # planned
+archive/v5x_scripts/campaigns/run_v7_1_env.py                       # planned
+archive/v5x_scripts/campaigns/run_v7_2_offline_rl.py                # planned
+archive/v5x_scripts/campaigns/run_v7_3_online_rl.py                 # planned
 ```
 
 > 旧 v1.2 的 `v6_progress.py`、`v6_decoder.py`、`decision_*` 与 V7-A/B/C 路线已于 2026-10-20 归档，不再作为当前代码落点；保留为历史设计。
@@ -155,7 +155,7 @@ scripts/campaigns/run_v7_3_online_rl.py                 # planned
 
 | 类别 | 路径 | Git |
 |---|---|---|
-| 源码/测试/config/schema | `pes2ts_core/`、`tests/`、`config/pesn/`、`config/campaigns/` | tracked |
+| 源码/测试/config/schema | `pes2ts_core/`、`tests/`、`archive/v5x_configs/pesn/`、`archive/v5x_configs/campaigns/` | tracked |
 | 小 manifest/审计 | `data/manifests/*.json`（<1MB）、`data/manifests/v5/`、`v6/`、`v7/` | tracked |
 | 大 manifest/派生 | `data/manifests/g1_cluster_report.json`、`data/interim/**` | ignored |
 | Teacher shards/parquet | `data/interim/v5/`、`outputs/pesn/v5/` | ignored |
@@ -167,9 +167,9 @@ scripts/campaigns/run_v7_3_online_rl.py                 # planned
 
 - `bin/pes2ts` → `pes2ts_core/cli.py`：G0/G1/G2/G2.T/ACP 命令。
 - `python -m pes2ts_core.pesn` → PES-N 离线 CLI（inventory/split/build-teacher/train/evaluate/export/predict）。
-- V5.1-R3 新战役入口：`scripts/campaigns/run_v5_1_r3.py`（planned）。
-- V5.2–V5.4 新战役入口：`scripts/campaigns/run_v5_2_progress_stop.py`、`run_v5_3_growth.py`、`run_v5_4_any_point.py`（planned）。
-- V6/V7 新战役入口：`scripts/campaigns/run_v6_1_mlp.py`、`run_v6_2_cnn.py`、`run_v6_3_verify.py`、`run_v7_1_env.py`、`run_v7_2_offline_rl.py`、`run_v7_3_online_rl.py`（planned）。
+- V5.1-R3 新战役入口：`archive/v5x_scripts/campaigns/run_v5_1_r3.py`（planned）。
+- V5.2–V5.4 新战役入口：`archive/v5x_scripts/campaigns/run_v5_2_progress_stop.py`、`run_v5_3_growth.py`、`run_v5_4_any_point.py`（planned）。
+- V6/V7 新战役入口：`archive/v5x_scripts/campaigns/run_v6_1_mlp.py`、`run_v6_2_cnn.py`、`run_v6_3_verify.py`、`run_v7_1_env.py`、`run_v7_2_offline_rl.py`、`run_v7_3_online_rl.py`（planned）。
 
 ## 7. 已知债务（不在本次清理中重构）
 

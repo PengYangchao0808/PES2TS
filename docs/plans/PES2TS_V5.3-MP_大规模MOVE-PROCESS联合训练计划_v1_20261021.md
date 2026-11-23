@@ -157,10 +157,10 @@ X_t + G_rxn + H
 
 | 文件 | 状态 | 测试 |
 |---|---|---|
-| `config/campaigns/pes2ts_v53mp_20261021.yaml` | ❌ 缺失 | 配置/哈希/授权位测试 |
+| `archive/v5x_configs/campaigns/pes2ts_v53mp_20261021.yaml` | ❌ 缺失 | 配置/哈希/授权位测试 |
 | `pes2ts_core/pesn/models/key_atom_loss_v53mp_v3.py` | ❌ 缺失 | loss/mask/梯度测试 |
 | `pes2ts_core/pesn/offline/training/key_atom_v53mp_train_v3.py` | ❌ 缺失 | 分阶段/恢复/Move guard 测试 |
-| `scripts/campaigns/r3_v53mp_run.py` | ❌ 缺失 | runplan/ledger/GPU lock 测试 |
+| `archive/v5x_scripts/campaigns/r3_v53mp_run.py` | ❌ 缺失 | runplan/ledger/GPU lock 测试 |
 | 分片加载器（`KeyAtomDatasetV3` 扩展或新类） | ❌ 未实现 | shard 等价性/内存小试 |
 | Endpoint 标签生成器（`endpoint_label_spec_v1`） | ❌ 未实现 | 正/负/Mask/覆盖率测试 |
 | 导出 `pes2ts_move_process_bundle_v1` | ❌ 未实现 | bundle schema/τ_end 测试 |
@@ -241,12 +241,12 @@ L_{\rm Process}=\lambda_rL_{\rm ranking}+\lambda_qL_{\rm progress}+\lambda_eL_{\
 | `pes2ts_core/pesn/models/key_atom_heads_v3.py` | 新增 `ReactionProcessHead` + `KeyAtomV53MPModel`；旧停止头标 LEGACY，禁止新训练 |
 | `pes2ts_core/pesn/models/key_atom_loss_v53mp_v3.py` | `L_Move + L_Process`，独立 mask，ranking/progress/endpoint |
 | `pes2ts_core/pesn/offline/training/key_atom_v53mp_train_v3.py` | 分阶段 trainer；A/B/C；Move guard；梯度监控；resume |
-| `scripts/campaigns/r3_v53mp_run.py` | 训练驱动；campaign root / runplan / ledger / GPU lock / monitor |
+| `archive/v5x_scripts/campaigns/r3_v53mp_run.py` | 训练驱动；campaign root / runplan / ledger / GPU lock / monitor |
 | `pes2ts_core/pesn/offline/data/key_atom_dataset_v3.py` | 全 status 加载；MOVE/PROCESS 独立 eligibility；分片/惰性接口 |
 | `pes2ts_core/pesn/offline/data/key_atom_endpoint_labels_v1.py` | 保留诊断；新增 `endpoint_label_spec_v1` 生成器 |
-| `scripts/agent_ops/data_gate/r3_build_tables.py` | 扩展 20k cohort 六表构建；S0-A/B/C 输出 |
+| `archive/v5x_scripts/agent_ops/data_gate/r3_build_tables.py` | 扩展 20k cohort 六表构建；S0-A/B/C 输出 |
 | `pes2ts_core/pesn/offline/publishing/export.py` | `pes2ts_move_process_bundle_v1`（u + q/endpoint + τ_end + provenance） |
-| `config/campaigns/pes2ts_v53mp_20261021.yaml` | S0–S4、arms、seed、授权位、freeze hashes、预算上限 |
+| `archive/v5x_configs/campaigns/pes2ts_v53mp_20261021.yaml` | S0–S4、arms、seed、授权位、freeze hashes、预算上限 |
 | `config/registry/g_v_map.yaml` | V5.3-MP gates 增补 S0-A/B、20k、readiness |
 
 ### 8.2 测试

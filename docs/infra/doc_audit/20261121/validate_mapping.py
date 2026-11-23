@@ -6,7 +6,7 @@
   - docs/infra/doc_audit/20261121/LINK_FIX.csv         （条件迁移引用修正清单）
   - docs/infra/doc_audit/20261121/BATCH_PLAN.md        （批次手册）
   - .slim/deepwork/20261121_docaudit/inventory/doc_inventory.csv（253 条覆盖基准）
-  - scripts/agent_ops/docs_consistency_config.json     （门禁钉死名单）
+  - infra/governance/docs_consistency_config.json     （门禁钉死名单）
 
 断言：
   (a) 清单每行恰一条处置（集合相等、无重复、无遗漏、无多余）
@@ -111,7 +111,7 @@ def check_a_coverage(inv_rows, dis_rows) -> None:
 
 
 def build_pinned(repo: Path):
-    cfg = json.loads((repo / "scripts/agent_ops/docs_consistency_config.json")
+    cfg = json.loads((repo / "infra/governance/docs_consistency_config.json")
                      .read_text(encoding="utf-8"))
     hist, req, rs = set(cfg["historical"]), set(cfg["required_files"]), set(cfg["root_scope"])
     req_docs = {p for p in req if p.endswith(".md")}
@@ -435,7 +435,7 @@ def main() -> int:
     link_path = audit / "LINK_FIX.csv"
     plan_path = audit / "BATCH_PLAN.md"
     for p in (dis_path, link_path, plan_path, inv_path,
-              repo / "scripts/agent_ops/docs_consistency_config.json"):
+              repo / "infra/governance/docs_consistency_config.json"):
         if not p.exists():
             print(f"FAIL: 缺少输入文件 {p}")
             return 1

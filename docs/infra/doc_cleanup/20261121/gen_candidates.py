@@ -60,8 +60,8 @@ docs/infra/doc_audit/20261121/MIGRATION_LOG.md
 examples/contracts_v1/README.md
 examples/contracts_v1/path_viewer.html
 examples/m1_first_plan/README.md
-scripts/README.md
-scripts/archive/README.md
+archive/v5x_scripts/README_scripts_convention.md
+archive/v4/README.md
 """.split())
 # 8 份 artifacts 模型卡
 KEEP |= {
@@ -556,8 +556,8 @@ def main():
             return "本次审计证据（只读）"
         if "规范化归档方案" in p:
             return "现行文档治理方案 v2"
-        if p in ("data/README.md", "outputs/README.md", "scripts/README.md",
-                 "scripts/archive/README.md", "examples/contracts_v1/README.md",
+        if p in ("data/README.md", "outputs/README.md", "archive/v5x_scripts/README_scripts_convention.md",
+                 "archive/v4/README.md", "examples/contracts_v1/README.md",
                  "examples/m1_first_plan/README.md", "examples/contracts_v1/path_viewer.html"):
             return "外部/目录说明"
         if p.startswith("requirements"):

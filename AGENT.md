@@ -75,6 +75,15 @@ R/P与H → 化学控制模板 → ReactiveState → Classic/残差候选
 - **模块布局（受保护）**：`generation/{planning,assembly,execution,quality}/`、`integration/acp/`、`ranking/`、`evaluation/`、`g0/`、`g1/`。迁移目录须走审查并同步文档。预测器落点`pes2ts_core/pesn/`由宪法§2.3/§2.6及ADR-0014细化；教师构建/训练/模型评测归`pesn/offline/`，不另建`evaluation/pesn_irc`。runtime及公共初始化不能依赖offline或QC/生成链；既有模块仅经离线适配器复用，具体实现与隔离边界以实施证据为准。
 - **数据链身份**：`ExecutionBackend → TrajectoryRecord → PathBundle → SeedProposal → ValidationResult`。缓存/idempotency 键绑定 `geometry_sha256 + atom_order/map_hash + method/state/solvent + convergence + operation`。同键不同摘要 = 显式冲突。
 
+### §5.1 No-Read / No-Edit Zone（2026-11-23 功能分区）
+
+五功能区（[ADR-0036](docs/design/decisions/ADR-0036-功能分区与单一训练引擎.md)）：`pes2ts_core/`（保护；`pesn/` 冻结）、`pes2ts_data/`、`pes2ts_v5/`（**唯一**训练/评估引擎）、`infra/`、`archive/`（只读）。依赖单向：`pes2ts_v5`/`pes2ts_data`/`infra`/`pes2ts_core` 不得 import `archive`；`archive -> infra.runtime` 是唯一文档化例外。
+
+- **只读区**：`archive/**`（历史 V4/V5.x 战役代码与配置，永不 import、不编辑）、`tests/legacy/**`（历史测试层，默认 `-m "not legacy"` 跳过）、`pes2ts_core/pesn/**`（V4+V5.1–V5.4 冻结模型区，不再演进）。
+- **单一训练器**：只有 `pes2ts_v5/training/` 可含 `.backward()` / `optimizer.step()`；新增架构 = 1 个 core 文件 + 1 份 `config/experiments/*.yaml`，禁止新增战役版本号代码文件（如 `v54_*.py`、`v6_*.py`）。
+- **`scripts/` 已清空**，不得复活；数据构建在 `pes2ts_data/builders/`，运行时工具在 `infra/runtime/`，历史脚本在 `archive/v5x_scripts/`。
+- **门禁**：`python infra/governance/arch_guard.py --json`（五道硬门）；CI `pytest -q tests/kernel`；冻结区变更须提交信息含 `[unlock-legacy]` 且经所有者批准（见 ADR-0036 §5）。
+
 ---
 
 ## 6. 数学工具的适用条件（证据边界纪律）
@@ -161,7 +170,7 @@ R/P与H → 化学控制模板 → ReactiveState → Classic/残差候选
 
 **2026-10-22 V5.3-MP S0 完成（全部门通过，S1 待 λ 探针 + 授权）**：[S0 数据建库与资格报告](docs/archive_tree/50_p5_v53mp_20261021_20261027/E12_v53mp_scale_training.md)——20,000 合格反应冻结池（2k⊂5k⊂20k 嵌套）+ dev 589 + confirm 2,000（仅列名封存）；S0-B 经审计 truth bridge 建库 26,038 曲线/5.96M 样本；endpoint_label_spec_v1 硬门全过（TS/起点 0% 正例，覆盖 99.62%）；S0-F 就绪 7/7 + 表校验 10/10。当前任务合同 [MoveProcessContract v1](docs/contracts/PES2TS_MoveProcessContract_v1.md)；实施层全部落地（heads/loss/trainer/driver/loader/labels/export + λ 探针）。S1 2k 冒烟：λ gradient-share 探针回填 config → `s1_authorized` 翻转 → plan-init → 3 臂 × seed17。GPU 在 S0 通过前保持 0；本轮 S0 完成后方启动 S1。
 
-**2026-10-21 V5.3-MP MOVE–PROCESS（ADR-0031，当前）**：V5.2 / V5.2-R 已关闭（D2-G STOP，T1 不授权，负结果归档）。当前唯一任务合同为 [MoveProcessContract v1](docs/contracts/PES2TS_MoveProcessContract_v1.md)：一个共享 EGNN，两个头——MOVE（关键原子位移，跨越 TS）+ PROCESS（有向进度 q、端点完成置信度 p_end、ordering）；No-Move = p_end ≥ τ_end 且目标化学状态一致；q 仅辅助/诊断，TS 永远继续 MOVE。输入边界不变（当前单帧 + 合法有向拓扑；禁止参考端点 XYZ/历史/真值）。执行计划 [V5.3-MP](docs/plans/PES2TS_V5.3-MP_大规模MOVE-PROCESS联合训练计划_v1_20261021.md)：S0 数据资格/建库（CPU）→ S1 2k 冒烟 → S2 5k → S3 20k 正式。实测：当前六表仅 50 曲线/12,034 行；~200k 反应库尚未转 V5 六表，S0 是真实建库而非配置开关。S0 通过前 GPU=0；S1 需单独授权。文档门 `python scripts/agent_ops/docs_consistency.py --strict` 训练前强制。
+**2026-10-21 V5.3-MP MOVE–PROCESS（ADR-0031，当前）**：V5.2 / V5.2-R 已关闭（D2-G STOP，T1 不授权，负结果归档）。当前唯一任务合同为 [MoveProcessContract v1](docs/contracts/PES2TS_MoveProcessContract_v1.md)：一个共享 EGNN，两个头——MOVE（关键原子位移，跨越 TS）+ PROCESS（有向进度 q、端点完成置信度 p_end、ordering）；No-Move = p_end ≥ τ_end 且目标化学状态一致；q 仅辅助/诊断，TS 永远继续 MOVE。输入边界不变（当前单帧 + 合法有向拓扑；禁止参考端点 XYZ/历史/真值）。执行计划 [V5.3-MP](docs/plans/PES2TS_V5.3-MP_大规模MOVE-PROCESS联合训练计划_v1_20261021.md)：S0 数据资格/建库（CPU）→ S1 2k 冒烟 → S2 5k → S3 20k 正式。实测：当前六表仅 50 曲线/12,034 行；~200k 反应库尚未转 V5 六表，S0 是真实建库而非配置开关。S0 通过前 GPU=0；S1 需单独授权。文档门 `python infra/governance/docs_consistency.py --strict` 训练前强制。
 
 **2026-10-21 V5.2-R Full-Path Navigation 任务纠偏（ADR-0030，历史，已关闭）**：审计确认 V5.2 的 Stop 标签是 TS 邻域且终点行被 terminal 排除（见 docs/reports/PES2TS_V52_任务纠偏审计_20261021.md）。该线以 D2-G STOP 结束；[FullPathNavigationContract v1](docs/contracts/PES2TS_FullPathNavigationContract_v1.md) 已由 ADR-0031 / MoveProcessContract v1 取代。旧 V5.2 负结果仅对旧任务成立。
 

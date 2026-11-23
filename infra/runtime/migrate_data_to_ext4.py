@@ -90,7 +90,6 @@ from infra.runtime.sha_sidecar import (  # noqa: E402
     SIDECAR_SUFFIX,
     SidecarError,
     sha256_file,
-    sidecar_path,
     sidecar_sha256,
 )
 

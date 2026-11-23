@@ -230,7 +230,7 @@ wall_minutes: 600
 
 本轮必做：数据/数学门、6组合短训练、Top-2复核、密集开发验证和审计报告。条件任务：胜出配方正式OOF与一次封存确认。后续窗口：50→200→500扩量及粗到细配对实验。未完成条件任务时输出开发研究结果，不能宣称V5.2/OOF或泛化门已经完成。
 
-**所有命令是待实现CLI设计。** 统一入口 `python scripts/campaigns/run_v5_sprint.py --config config/campaigns/v5_sprint.yaml --stage ...`；只编排离线工作，不启动QC。实现、环境准备不计入本轮600分钟。
+**所有命令是待实现CLI设计。** 统一入口 `python archive/v5x_scripts/campaigns/run_v5_sprint.py --config archive/v5x_configs/campaigns/v5_sprint.yaml --stage ...`；只编排离线工作，不启动QC。实现、环境准备不计入本轮600分钟。
 
 ### 5.2 六组合与稀疏起始帧
 

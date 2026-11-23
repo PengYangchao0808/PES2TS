@@ -9,7 +9,7 @@
 > 上游依赖：V5.4.2 冻结报告与 A0×3 checkpoint；50K 冻结数据与 split；V541 共同 sampler；V542 `BackboneOutput`/`DirectMoveDecoder`/`ReactionProcessHeadV53MP`；V542 strict loader/identity/evaluator
 > 下游消费者：V5.4.4 离线全 IRC Teacher 蒸馏、V6 物理反馈闭环、V7 成本感知自主探索；本文件不授予在线部署、生产 No-Move 或 verified-TS 资格
 > 当前版本：v1.0 @ 2026-11-02（WP0 签认已完成，转 `Frozen-Preregistered`）
-> 配套治理（WP0 产出，本文件只给草案）：ADR-0034、`config/campaigns/pes2ts_v543_dual_decoder_50k.yaml`、`scripts/agent_ops/v543_config_schema.py`、五类模板与 registry 条目
+> 配套治理（WP0 产出，本文件只给草案）：ADR-0034、`archive/v5x_configs/campaigns/pes2ts_v543_dual_decoder_50k.yaml`、`archive/v5x_scripts/agent_ops/v543_config_schema.py`、五类模板与 registry 条目
 
 ---
 
@@ -105,7 +105,7 @@
 | 评估器 | `evaluate_v53mp`（frozen）；`tau_end=None` |
 | 指标叶子 | `move.key_rmse_over_zero.median_rmse_over_zero`、`move.sre_and_sign.sign_accuracy_cluster_median`、`move.sre_and_sign.dead_zone_fraction`、`endpoint_head.auprc`、`q_head.corr_curve_median` |
 
-**关键事实**：V542 的 `direction` 与 `fixed_coverage_direction` 是同一个叶子。`scripts/agent_ops/v542_stats.py` 第 180–190 行明确写道：「the frozen V5.3-MP evaluator has no separate `fixed_coverage_direction` leaf — the frozen evaluator's direction metric IS `sre_and_sign.sign_accuracy_cluster_median`」。因此 V543 必须新增独立指标，不能把旧指标改名后继续当两个指标用。
+**关键事实**：V542 的 `direction` 与 `fixed_coverage_direction` 是同一个叶子。`archive/v5x_scripts/agent_ops/v542_stats.py` 第 180–190 行明确写道：「the frozen V5.3-MP evaluator has no separate `fixed_coverage_direction` leaf — the frozen evaluator's direction metric IS `sre_and_sign.sign_accuracy_cluster_median`」。因此 V543 必须新增独立指标，不能把旧指标改名后继续当两个指标用。
 
 ### 1.6 V542 A0 基线指标（仅作历史锚点，不作 V543 H2/H3 基线）
 
@@ -1117,14 +1117,14 @@ pes2ts_core/pesn/offline/evaluation/
 ├── v543_eval.py              # MOVE/PROCESS 新评估
 └── v543_rollout.py           # 自主路径压力测试
 
-scripts/agent_ops/
+archive/v5x_scripts/agent_ops/
 ├── v543_schema.py            # 配置/签认检查
 ├── v543_campaign.py          # smoke/profile/diagnostic
 ├── v543_formal.py            # 正式训练编排
 ├── v543_stats.py             # 统计、晋级、最终选择
 └── v543_bundle.py            # 统一打包与验证
 
-config/campaigns/
+archive/v5x_configs/campaigns/
 ├── pes2ts_v543_dual_decoder_50k.yaml
 └── v543_templates/
     ├── preregistration_signoff.template.json
@@ -1133,8 +1133,8 @@ config/campaigns/
     ├── parity_certificate.template.json
     └── decoder_context.template.json
 
-tests/pesn/test_v543_*.py
-tests/agent_ops/test_v543_*.py
+tests/legacy/pesn/test_v543_*.py
+tests/legacy/agent_ops/test_v543_*.py
 docs/design/decisions/ADR-0034-V5.4.3-双Decoder与DecoderContextV1.md
 ```
 
@@ -1168,7 +1168,7 @@ docs/design/decisions/ADR-0034-V5.4.3-双Decoder与DecoderContextV1.md
 - `pes2ts_core/pesn/offline/evaluation/key_atom_protocols.py` 的 `evaluate_g53`/`exact_delta_d`；
 - `pes2ts_core/pesn/models/v542/identity.py` 的 `canonical_sha256`；
 - `pes2ts_core/pesn/offline/training/v541_identity.py` 的 manifest/RNG/outcome 工具；
-- `scripts/agent_ops/v542_identity.py` 的 `build_identity_record`。
+- `archive/v5x_scripts/agent_ops/v542_identity.py` 的 `build_identity_record`。
 
 **禁止**：
 
@@ -1186,33 +1186,33 @@ docs/design/decisions/ADR-0034-V5.4.3-双Decoder与DecoderContextV1.md
 cd /mnt/e/Calculations/AI4S_ML_Studys/PES2TS
 
 # WP0
-python scripts/agent_ops/v543_schema.py --prereg \
-  --config config/campaigns/pes2ts_v543_dual_decoder_50k.yaml
+python archive/v5x_scripts/agent_ops/v543_schema.py --prereg \
+  --config archive/v5x_configs/campaigns/pes2ts_v543_dual_decoder_50k.yaml
 
 # S0
-python scripts/agent_ops/v543_campaign.py parity --config ...
-python scripts/agent_ops/v543_campaign.py probe --config ...
-python scripts/agent_ops/v543_campaign.py basis --config ...
+python archive/v5x_scripts/agent_ops/v543_campaign.py parity --config ...
+python archive/v5x_scripts/agent_ops/v543_campaign.py probe --config ...
+python archive/v5x_scripts/agent_ops/v543_campaign.py basis --config ...
 
 # S1 工程筛
-python scripts/agent_ops/v543_campaign.py smoke --config ...
-python scripts/agent_ops/v543_campaign.py diagnostic --config ...
-python scripts/agent_ops/v543_campaign.py profile --config ...
+python archive/v5x_scripts/agent_ops/v543_campaign.py smoke --config ...
+python archive/v5x_scripts/agent_ops/v543_campaign.py diagnostic --config ...
+python archive/v5x_scripts/agent_ops/v543_campaign.py profile --config ...
 
 # 正式
-python scripts/agent_ops/v543_formal.py freeze-runplan --config ...
-python scripts/agent_ops/v543_formal.py run-stage T0 --config ...
-python scripts/agent_ops/v543_formal.py run-stage T3 --config ...
-python scripts/agent_ops/v543_formal.py status --config ...
+python archive/v5x_scripts/agent_ops/v543_formal.py freeze-runplan --config ...
+python archive/v5x_scripts/agent_ops/v543_formal.py run-stage T0 --config ...
+python archive/v5x_scripts/agent_ops/v543_formal.py run-stage T3 --config ...
+python archive/v5x_scripts/agent_ops/v543_formal.py status --config ...
 
 # 统计/选择/打包
-python scripts/agent_ops/v543_stats.py extract --config ...
-python scripts/agent_ops/v543_stats.py h2 --config ...
-python scripts/agent_ops/v543_stats.py screen --config ...
-python scripts/agent_ops/v543_stats.py h3 --config ...
-python scripts/agent_ops/v543_stats.py select --config ...
-python scripts/agent_ops/v543_bundle.py build --config ...
-python scripts/agent_ops/v543_bundle.py verify --config ...
+python archive/v5x_scripts/agent_ops/v543_stats.py extract --config ...
+python archive/v5x_scripts/agent_ops/v543_stats.py h2 --config ...
+python archive/v5x_scripts/agent_ops/v543_stats.py screen --config ...
+python archive/v5x_scripts/agent_ops/v543_stats.py h3 --config ...
+python archive/v5x_scripts/agent_ops/v543_stats.py select --config ...
+python archive/v5x_scripts/agent_ops/v543_bundle.py build --config ...
+python archive/v5x_scripts/agent_ops/v543_bundle.py verify --config ...
 ```
 
 ### 11.5 测试矩阵（最低要求）
@@ -1396,7 +1396,7 @@ PES2TSBundleV543/
 
 ## 附录 A：Campaign YAML 草案
 
-> 这是 `config/campaigns/pes2ts_v543_dual_decoder_50k.yaml` 的起点；WP0 必须由 `v543_schema.py` 正式校验并冻结 SHA。字段值为拟议，签认后不得按结果修改。
+> 这是 `archive/v5x_configs/campaigns/pes2ts_v543_dual_decoder_50k.yaml` 的起点；WP0 必须由 `v543_schema.py` 正式校验并冻结 SHA。字段值为拟议，签认后不得按结果修改。
 
 ```yaml
 schema: pes2ts_v543_dual_decoder_campaign_v1

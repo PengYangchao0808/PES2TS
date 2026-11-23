@@ -45,7 +45,7 @@
 | G6 | `docs/README.md` | 人工导航投影：读者从哪读起、哪些是权威（Phase 4 收敛为 ≤60 行 4 入口短索引） | Agent 会话 | 每次新增/改状态/退役文档的**同一 PR**；Phase 4 重写 | 双周 | `Canonical`；与 G5、`DOC_MANIFEST.json` 三件套一致 |
 | G7 | `docs/infra/PES2TS_开发文档规范化归档方案_v2_20261121.md` | 分类法 L0–L4、11 状态封闭词表、元数据头 v2、归档判定、G5 门禁规格 | 仓库所有者 | 状态词表/目录规范/门禁规格变更（须修订本方案版本） | 里程碑 + 季度 | `Active-Proposed` → 签认后 `Canonical`；8 字段元数据头 |
 | G8 | `docs/infra/PES2TS_开发档案树与文档清理方案_v1_20261121.md` | 退役（Retire）政策、档案树结构、Phase 0–5 执行与回滚 | 仓库所有者 | 退役红线/清理强度/档案树结构变更 | 里程碑（Phase 0 前后必读） | `Active-Proposed` → Phase 0 签认后 `Canonical`；8 字段头 |
-| G9 | `docs/design/PES2TS_G_V_MAPPING_v1_20261018.md`（生成物；源 `config/registry/g_v_map.yaml`） | 战役注册投影：G（能力）× V（战役）状态、evidence、gate_note | Agent 会话（生成）/ 工程负责人（配置源） | `g_v_map.yaml` 任何变更后**重渲染**（`python scripts/render_gv_map.py --write`） | 事件驱动 + 双周核对 `--check` | `Canonical`（生成物，**禁止手改**）；`map_version`/`plan_revision` 必须可见 |
+| G9 | `docs/design/PES2TS_G_V_MAPPING_v1_20261018.md`（生成物；源 `config/registry/g_v_map.yaml`） | 战役注册投影：G（能力）× V（战役）状态、evidence、gate_note | Agent 会话（生成）/ 工程负责人（配置源） | `g_v_map.yaml` 任何变更后**重渲染**（`python infra/governance/render_gv_map.py --write`） | 事件驱动 + 双周核对 `--check` | `Canonical`（生成物，**禁止手改**）；`map_version`/`plan_revision` 必须可见 |
 | G10 | `docs/agent_runs/FAQ.md`（新建，FAQ 落点） | 运营问答库：可复用的操作口径/排错知识（**非规范、不参与状态校验**） | Agent 会话 | 双周同步会新增条目；答案被规范取代时改为指针 | 双周 | L4 豁免状态头；每条 FAQ 带编号/依据/失效条件/复审日（见 `DISCUSSION_TEMPLATE.md`） |
 | G11 | `docs/infra/doc_cleanup/20261121/RETIRE_LOG.md`（待建，Phase 4 由 `MIGRATION_LOG.md` 改名/升级） | 退役流水：日期/批次/路径/档案条目/恢复 tag | Agent 会话 | 每批删除完成后当日追加 | 里程碑 + 季度对账 | `Evidence-ReadOnly`（追加式）；不得回改历史行 |
 
@@ -155,7 +155,7 @@
 | E2 | `CONTRIBUTING.md` | 贡献流程：分支/PR/门禁/提交规范 | 仓库所有者 | 门禁流程、PR 规范、发布流程变化 | 季度 | 外部说明豁免 |
 | E3 | `examples/contracts_v1/README.md` | 合成 demo bundle/viewer 用法 | 工程负责人 | demo 命令、输出结构变化 | 季度 | 外部说明豁免 |
 | E4 | `examples/m1_first_plan/README.md` | 首个真实输入预检示例说明 | 工程负责人 | 预检流程/输入格式变化 | 季度 | 外部说明豁免 |
-| E5 | `scripts/README.md` | 脚本入口与常用命令（挡在"根目录一次性脚本"之前） | 工程负责人 | 入口脚本增删、命令变更 | 季度 | 外部说明豁免 |
+| E5 | `archive/v5x_scripts/README_scripts_convention.md` | 脚本入口与常用命令（挡在"根目录一次性脚本"之前） | 工程负责人 | 入口脚本增删、命令变更 | 季度 | 外部说明豁免 |
 | E6 | `data/README.md` | 数据来源、大文件不入库、`data/manifests/*ids*` 例外与 SHA 规则 | 科学负责人 + 工程负责人 | 数据版本/来源/例外规则变化（数据发布前必查） | 里程碑（数据发布）+ 季度 | 外部说明豁免；例外必须逐条写清 |
 | E7 | `outputs/README.md` | 产物目录约定（本地/不入库/可重生成边界） | 工程负责人 | 产物结构、导出约定变化 | 季度 | 外部说明豁免 |
 | E8 | `artifacts/**/model_card.md`（8 份，1 个受管单元） | 模型卡：模型身份/数据/指标/已知限制（bundle 的对外说明书） | 科学负责人（产物生成会话起草） | **每次新 bundle 发布必须新增/更新模型卡**；指标口径变化 | 季度抽检（8 份轮查） | 固定 `Evidence-ReadOnly`（只读产品证据）；不得与报告数字矛盾 |

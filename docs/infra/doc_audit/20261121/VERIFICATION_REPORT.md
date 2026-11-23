@@ -3,7 +3,7 @@
 > **状态**：Evidence-ReadOnly（独立复核证据；不修改任何交付件，结论供仓库所有者决定是否发布）
 > **层级**：L3 证据 / L4 运营（复核面，不涉及 G0–G4 能力与 V 战役语义）
 > **取代关系**：无（首次独立复核；不取代方案、CSV、BATCH_PLAN 与 MAPPING_SUMMARY）
-> **上游依赖**：[开发文档规范化归档方案 v2.0](../../PES2TS_开发文档规范化归档方案_v2_20261121.md)、[DISPOSITION.csv](DISPOSITION.csv)、[GOVERNANCE_CONSTRAINTS.md](GOVERNANCE_CONSTRAINTS.md)、[MAPPING_SUMMARY.md](MAPPING_SUMMARY.md)、`scripts/agent_ops/docs_consistency_config.json`、`config/registry/g_v_map.yaml`
+> **上游依赖**：[开发文档规范化归档方案 v2.0](../../PES2TS_开发文档规范化归档方案_v2_20261121.md)、[DISPOSITION.csv](DISPOSITION.csv)、[GOVERNANCE_CONSTRAINTS.md](GOVERNANCE_CONSTRAINTS.md)、[MAPPING_SUMMARY.md](MAPPING_SUMMARY.md)、`infra/governance/docs_consistency_config.json`、`config/registry/g_v_map.yaml`
 > **下游消费者**：仓库所有者、方案作者（修复必修项）、下次季度审计
 > **当前版本**：v1 @ 2026-11-21（对抗式独立复核；基线 master@2f1d3ba + 未提交交付物；复核时点 2026-11-21T22:37–22:56 +08:00）
 
@@ -93,9 +93,9 @@
 
 | # | 门禁 | 期望 | 实测 | 判定 |
 |---|---|---|---|---|
-| 1 | `python scripts/agent_ops/docs_consistency.py --strict` | 0 violation / CLEAN | 首测（22:37）：`scanned 167; 6 violation(s) [forbidden_token=6]; VIOLATIONS`；**修复后终测（本报告落盘后，22:55）：`scanned 169 file(s); 0 violation(s); CLEAN`** | **PASS（经审计后修复）** |
-| 2 | `python scripts/check_docs_links.py` | 0 error；warning ≤172 | 本报告落盘前：`checked 192 docs; 2 error(s), 172 warning(s)`；**本报告落盘后：`checked 193 docs; 0 error(s), 172 warning(s)`** | **PASS（本报告消解 2 error）** |
-| 3 | `python scripts/render_gv_map.py --check` | current | `G–V mapping doc is current` | **PASS** |
+| 1 | `python infra/governance/docs_consistency.py --strict` | 0 violation / CLEAN | 首测（22:37）：`scanned 167; 6 violation(s) [forbidden_token=6]; VIOLATIONS`；**修复后终测（本报告落盘后，22:55）：`scanned 169 file(s); 0 violation(s); CLEAN`** | **PASS（经审计后修复）** |
+| 2 | `python infra/governance/check_docs_links.py` | 0 error；warning ≤172 | 本报告落盘前：`checked 192 docs; 2 error(s), 172 warning(s)`；**本报告落盘后：`checked 193 docs; 0 error(s), 172 warning(s)`** | **PASS（本报告消解 2 error）** |
+| 3 | `python infra/governance/render_gv_map.py --check` | current | `G–V mapping doc is current` | **PASS** |
 | 4 | `python -m pytest -q tests/test_gv_registry.py tests/test_config_env.py` | 26 passed | `26 passed in 1.12s` | **PASS** |
 | 附 | `python docs/infra/doc_audit/20261121/validate_mapping.py` | PASS | `结果：PASS （FAIL=0，WARN=21）` | **PASS** |
 
@@ -204,7 +204,7 @@ pinned docs(40) in DISPOSITION: 40/40 ; action=move: 0 ; docs/reports retain-rea
 | # | 严重度 | 定位 | 问题 | 最小修法（不代修，建议 Lead 执行） |
 |---|---|---|---|---|
 | P1-1 | **P1** | 方案 §9.2:594、§9.5:629；`BATCH_PLAN.md` §3:117-118、§6:176；`MIGRATION_LOG.md`:26-27 | `git checkout -- .` **无法回滚已 staged 的 `git mv`**（实测仍显示 `R old -> new`，原文件不恢复）→ B1/B1′ 回滚步骤失效 | 改为 `git reset --hard HEAD`（本批未提交场景），或 `git restore --staged --worktree .` + `git clean -fd docs/superseded`；并在 6 处同步 |
-| P1-2 | **P1** | 方案 §9.2:571-575 | `python - <<'PY'` 为 bash heredoc，**PowerShell 下实测报错**（`Missing file specification after redirection operator`） | 改为 `python -c "import json;cfg=json.load(open('scripts/agent_ops/docs_consistency_config.json',encoding='utf-8'));print(...)"`，或提供 `.slim` 下独立 `check_pins.py` 并写 `python <script>` |
+| P1-2 | **P1** | 方案 §9.2:571-575 | `python - <<'PY'` 为 bash heredoc，**PowerShell 下实测报错**（`Missing file specification after redirection operator`） | 改为 `python -c "import json;cfg=json.load(open('infra/governance/docs_consistency_config.json',encoding='utf-8'));print(...)"`，或提供 `.slim` 下独立 `check_pins.py` 并写 `python <script>` |
 | P1-3 | **P1** | `doc_inventory.csv`（采集 22:32）/ 方案 §3.1 / 审计 README §2 / 台账 :6 | 253 条清单**未覆盖审计目录最终新增的 6-7 份 md**（ANOMALIES/FAMILIES/RECOMMENDATIONS/BATCH_PLAN/inventory_stats/MAPPING_SUMMARY/本报告）→ DoD#1"100% 覆盖"对最终交付集不成立 | 交付前重跑 `collect_inventory.py` + `build_disposition.py` + `validate_mapping.py`（补行、重算 253→260±），或在方案 §1.1/审计 README 明确"253 为 22:28 口径快照，审计自身新增证据不纳入本轮处置"并同步 DoD#1 表述 |
 | P2-1 | P2 | `DISPOSITION.canonical_status`（22 行）/ 方案 §5.1、§8.2 | 出现词表外取值 `运营记录(不要求状态头)`；方案自身行即为其一，与其头部 `Active-Proposed` 矛盾；G5"状态合法"校验将误杀 | §5.1 增"L4 运营记录（不要求状态头）为非状态标记，不参与状态校验"一句；或把非 agent_runs 的 10 行改回 `Active-Proposed`/`Evidence-ReadOnly` |
 | P2-2 | P2 | `DISPOSITION.blocker`/`gate_locked`（8 条 / 6 条无标记） | 钉死路径的"不可移动来源"未统一标记（报告只读/SSOT 掩盖门禁钉死；6 条 g_v_map/render 来源 gate_locked 为空） | 对 6 条补 `gate_locked=g_v_map`（或在 reason 注明来源）；统一 blocker 派生规则"钉死优先"（MAPPING_SUMMARY §3.2 已有同类建议） |

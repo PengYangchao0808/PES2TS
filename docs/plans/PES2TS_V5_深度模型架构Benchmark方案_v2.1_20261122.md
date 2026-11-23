@@ -394,12 +394,12 @@ pes2ts_v5/
 | V5.3-MP 20k/50k 队列与划分 | `data/manifests/v53mp_cohort_20k_ids_v1.json`、`v53mp_cohort_50k_ids_v1.json`、`v53mp_split_50k_ids_v1.json` | V5.3–V5.4 时期冻结 |
 | 50k 数据表（WSL） | `/pes2ts_data/v53mp_50k_data`（r3 6 表：`irc_curve/irc_node/irc_edge/reaction_intent/curve_quality/sample_view` + 251 个 `shard_*.npz` + `geom/coords.f64.npy`） | 可用；`data_manifest.json` 含逐文件 SHA256 |
 | 20k 数据表（WSL） | `/pes2ts_data/v53mp_data` | 可用 |
-| 旧训练/评估脚本 | `scripts/train_direct_bc.py`、`scripts/train_dual_ts_bc.py`、`pes2ts_core/pesn/offline/**` | V5.1–V5.4 遗留实现；**不作为 V5.6 目标结构**，仅作数据读取/训练器参考 |
+| 旧训练/评估脚本 | `archive/v5x_scripts/campaign_oneoffs/train_direct_bc.py`、`archive/v5x_scripts/campaign_oneoffs/train_dual_ts_bc.py`、`pes2ts_core/pesn/offline/**` | V5.1–V5.4 遗留实现；**不作为 V5.6 目标结构**，仅作数据读取/训练器参考 |
 | GPU 训练环境 | WSL Ubuntu `conda env pes2ts-gpu`（Python 3.12.15，torch 2.14.1+cu130，CUDA 可用） | 已验证可用 |
 | 既有训练输出 | `outputs/pesn/v53mp*`、`v541_embed_50k`、`v542_backbone_50k`、`v543_dual_decoder_50k` | 历史运行记录与权重，可作基线参考 |
 | **50k 轨迹索引（2026-11-23 补记）** | `/pes2ts_data/v53mp_50k_data/idx_v2`（schema `v53mp_idx_v2`）：64,195 曲线 / 128,390 intent / 7,342,581 帧 / 14,685,162 决策；memmap 读取 | ✅ 可用；V5.5 数据底座优先资产 |
 | **xTB 单点标签集（2026-11-23 补记）** | `data/raw/pes2ts_xtb_singlepoints_train_fit_v1/` + `data/manifests/xtb_singlepoints_train_fit_v1.json`：120,222 反应 / 240,444 分支 / 34,486,722 点 | ✅ 校验 PASS；**仅 G1 对照/V6 预热，offline only** |
-| **V5.6 工程骨架（2026-11-23 补记）** | `pes2ts_v5/`（14 Core + 统一 Encoder/Heads + trainer/sweep + evaluation）、`config/v5/`、`scripts/v5/` | ✅ 已入 git（commit `4fbf773`）；合成 smoke 通过；tests/v5 与 code map 待补 |
+| **V5.6 工程骨架（2026-11-23 补记）** | `pes2ts_v5/`（14 Core + 统一 Encoder/Heads + trainer/sweep + evaluation）、`config/v5/`、`pes2ts_v5/` | ✅ 已入 git（commit `4fbf773`）；合成 smoke 通过；tests/v5 与 code map 待补 |
 
 ### 8.2 与 V5.3–V5.4 路线的关系
 

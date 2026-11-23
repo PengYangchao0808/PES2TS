@@ -37,7 +37,7 @@ CSV 输出列已按此设计：`path, class_bucket, suggested_action, gate_locke
 | 产品文档 | 8 | artifacts/*/model_card.md |
 | 外部说明 | 5 | 根 README/CONTRIBUTING/LICENSE、examples/README、scripts/README |
 | 其它 | 3 | pytest.ini/requirements*.txt 等非文档配置 |
-| 未分类-需裁决 | 9 | 清单外/本次新增：`docs/infra/doc_audit/20261121/*`（4）、LICENSE、data/README.md、outputs/README.md、scripts/archive/README.md、examples/contracts_v1/path_viewer.html |
+| 未分类-需裁决 | 9 | 清单外/本次新增：`docs/infra/doc_audit/20261121/*`（4）、LICENSE、data/README.md、outputs/README.md、archive/v4/README.md、examples/contracts_v1/path_viewer.html |
 | **合计** | **253** | |
 
 处置动作计数：`原地保留(门禁钉死)` **23**、`原地保留(SSOT/索引)` **81**、`原地保留(只读证据)` **73**、`原地保留(快照)` **36**、

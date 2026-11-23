@@ -179,7 +179,7 @@ V5.1a 冻结配方后：seeds 17/29/43 × folds 0–4 = 15 runs，从零训练�
 ## 6. 交付物
 
 ```
-config/campaigns/v5_1_sprint.yaml
+archive/v5x_configs/campaigns/v5_1_sprint.yaml
 docs/plans/PES2TS_V5.1_修复冲刺与扩量准入方案_v1_20261019.md   (本文件)
 docs/design/decisions/ADR-0027-V5.1参考架fallback与双分母评估.md   # 仅当做 fallback
 outputs/pesn/v5_1/diagnostics/

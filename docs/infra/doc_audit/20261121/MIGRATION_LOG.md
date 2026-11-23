@@ -27,6 +27,6 @@
 git reset --hard HEAD
 git clean -fd docs/superseded   # 仅清理本批新增且未跟踪的文件
 # 已提交时：git revert <commit>
-python scripts/check_docs_links.py
-python scripts/agent_ops/docs_consistency.py --strict
+python infra/governance/check_docs_links.py
+python infra/governance/docs_consistency.py --strict
 ```

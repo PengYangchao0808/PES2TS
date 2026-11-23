@@ -6,7 +6,7 @@
 > 上游依赖：开发宪法、阶段定义、ADR-0031/ADR-0032、MoveProcessContract v1、V5.3-MP S4 50K 冻结数据、R3 冻结 checkpoint（`5372d9b12807c3f0`，SHA `a2e46b6ad65cc18996d6c1660c5ae24c723397ca22526e52fa34e430afd0417f`）、V541 共同 sampler/评估身份；Oracle 设计源 `.slim/deepwork/v542-backbone-20261029/oracle-architecture.md` SHA256 `4f13bfbd26d4acf17572641e30453000d65243599519c269473f07d6678ccccb`（WP0 冻结进 run identity）
 > 下游消费者：V5.4.3 Decoder 基准、后续 backbone 冻结交接；不直接授予在线部署资格
 > 当前版本：v1.2 @ 2026-10-30（fix-5 WP0 条件收口：final_selection_rule / route_logic / parity 分层 / signoff 角色 / A0 sanity band 硬前置；v1.0 文件名保留；v1.1 修复见 git 历史与台账）
-> 配套治理：[ADR-0033 V5.4.2 Backbone 接口与预注册治理](../design/decisions/ADR-0033-V5.4.2-Backbone接口与预注册治理.md)；config `config/campaigns/pes2ts_v542_backbone_50k.yaml`（fix-2 车道产出）；validator `scripts/agent_ops/v542_config_schema.py`
+> 配套治理：[ADR-0033 V5.4.2 Backbone 接口与预注册治理](../design/decisions/ADR-0033-V5.4.2-Backbone接口与预注册治理.md)；config `archive/v5x_configs/campaigns/pes2ts_v542_backbone_50k.yaml`（fix-2 车道产出）；validator `archive/v5x_scripts/agent_ops/v542_config_schema.py`
 
 ---
 

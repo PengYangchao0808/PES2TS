@@ -11,7 +11,7 @@
 ---
 > 条目标号：E13　时间范围：2026-10-27 → 2026-10-29　状态：Archived（Executed-Frozen）
 > 关联 ADR：ADR-0032（Accepted，10-27）；任务合同 MoveProcessContract v1
-> 数据/代码/模型版本指针：`config/campaigns/pes2ts_v541_embed_50k.yaml`（schema `pes2ts_v541_campaign_v1`）；冻结计划 `plan/runplan.pin.json`（code_commit `1d8b7972…`、common_protocol `2b9ce1ed…`、config `464c1f6f…`）；证据根 `outputs/pesn/v541_embed_50k/`
+> 数据/代码/模型版本指针：`archive/v5x_configs/campaigns/pes2ts_v541_embed_50k.yaml`（schema `pes2ts_v541_campaign_v1`）；冻结计划 `plan/runplan.pin.json`（code_commit `1d8b7972…`、common_protocol `2b9ce1ed…`、config `464c1f6f…`）；证据根 `outputs/pesn/v541_embed_50k/`
 > 证据根：`docs/plans/PES2TS_V5.4.1_Embedding_50K_详细阶段实施方案_v1.0_20261027.md`（内容 v1.2）、`docs/reports/PES2TS_V541_Embedding_50K_实施与训练报告_20261029.md`、`docs/design/decisions/ADR-0032-V5.4.1-Embedding接口扩展与预注册治理.md`
 
 ## 目标

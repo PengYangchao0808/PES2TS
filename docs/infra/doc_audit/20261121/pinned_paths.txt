@@ -1,6 +1,6 @@
 # 钉死路径清单（extract_rules.py 自动生成）
 
-来源：`scripts/agent_ops/docs_consistency_config.json`、`config/registry/g_v_map.yaml`
+来源：`infra/governance/docs_consistency_config.json`、`config/registry/g_v_map.yaml`
 
 ## docs_consistency_config.json
 
@@ -41,25 +41,25 @@
   - `docs/plans/PES2TS_V5.3-MP_大规模MOVE-PROCESS联合训练计划_v1_20261021.md`（6 个必须子串，缺失=无）
   - `docs/design/decisions/ADR-0032-V5.4.1-Embedding接口扩展与预注册治理.md`（9 个必须子串，缺失=无）
   - `docs/plans/PES2TS_V5.4.1_Embedding_50K_详细阶段实施方案_v1.0_20261027.md`（5 个必须子串，缺失=无）
-  - `config/campaigns/pes2ts_v541_embed_50k.yaml`（7 个必须子串，缺失=无）
+  - `archive/v5x_configs/campaigns/pes2ts_v541_embed_50k.yaml`（7 个必须子串，缺失=无）
   - `docs/design/decisions/ADR-0033-V5.4.2-Backbone接口与预注册治理.md`（38 个必须子串，缺失=无）
   - `docs/plans/PES2TS_V5.4.2_Backbone_50K_详细阶段实施方案_v1.0_20261029.md`（21 个必须子串，缺失=无）
-  - `config/campaigns/pes2ts_v542_backbone_50k.yaml`（44 个必须子串，缺失=无）
-  - `config/campaigns/v542_templates/parity_certificate.template.json`（11 个必须子串，缺失=无）
-  - `config/campaigns/v542_templates/runplan_pin.template.json`（13 个必须子串，缺失=无）
-  - `config/campaigns/v542_templates/preregistration_signoff.template.json`（17 个必须子串，缺失=无）
-  - `config/campaigns/v542_templates/a0_reuse_decision.template.json`（10 个必须子串，缺失=无）
+  - `archive/v5x_configs/campaigns/pes2ts_v542_backbone_50k.yaml`（44 个必须子串，缺失=无）
+  - `archive/v5x_configs/campaigns/v542_templates/parity_certificate.template.json`（11 个必须子串，缺失=无）
+  - `archive/v5x_configs/campaigns/v542_templates/runplan_pin.template.json`（13 个必须子串，缺失=无）
+  - `archive/v5x_configs/campaigns/v542_templates/preregistration_signoff.template.json`（17 个必须子串，缺失=无）
+  - `archive/v5x_configs/campaigns/v542_templates/a0_reuse_decision.template.json`（10 个必须子串，缺失=无）
   - `docs/reports/PES2TS_V542_Backbone_50K_实施与训练报告_20261031.md`（6 个必须子串，缺失=无）
   - `docs/design/decisions/ADR-0034-V5.4.3-双Decoder与DecoderContextV1.md`（5 个必须子串，缺失=无）
   - `docs/plans/PES2TS_V5.4.3_双Decoder_50K_全面开发与训练方案_v1.0_20261102.md`（11 个必须子串，缺失=无）
   - `docs/plans/PES2TS_V5.4.3_WP执行清单_v1.0_20261102.md`（3 个必须子串，缺失=无）
-  - `config/campaigns/pes2ts_v543_dual_decoder_50k.yaml`（20 个必须子串，缺失=无）
-  - `scripts/agent_ops/v543_config_schema.py`（13 个必须子串，缺失=无）
-  - `config/campaigns/v543_templates/preregistration_signoff.template.json`（8 个必须子串，缺失=无）
-  - `config/campaigns/v543_templates/runplan_pin.template.json`（8 个必须子串，缺失=无）
-  - `config/campaigns/v543_templates/budget_policy.template.json`（9 个必须子串，缺失=无）
-  - `config/campaigns/v543_templates/parity_certificate.template.json`（12 个必须子串，缺失=无）
-  - `config/campaigns/v543_templates/decoder_context.template.json`（8 个必须子串，缺失=无）
+  - `archive/v5x_configs/campaigns/pes2ts_v543_dual_decoder_50k.yaml`（20 个必须子串，缺失=无）
+  - `archive/v5x_scripts/agent_ops/v543_config_schema.py`（13 个必须子串，缺失=无）
+  - `archive/v5x_configs/campaigns/v543_templates/preregistration_signoff.template.json`（8 个必须子串，缺失=无）
+  - `archive/v5x_configs/campaigns/v543_templates/runplan_pin.template.json`（8 个必须子串，缺失=无）
+  - `archive/v5x_configs/campaigns/v543_templates/budget_policy.template.json`（9 个必须子串，缺失=无）
+  - `archive/v5x_configs/campaigns/v543_templates/parity_certificate.template.json`（12 个必须子串，缺失=无）
+  - `archive/v5x_configs/campaigns/v543_templates/decoder_context.template.json`（8 个必须子串，缺失=无）
 
 ## g_v_map.yaml 引用的 docs/文档路径
 

@@ -410,15 +410,15 @@ B0-F forward fold0 × 3
 | `offline/data/key_atom_dataset_v3.py` | manifest-driven，intent_id |
 | `models/key_atom_egnn_v3.py` | 固定 F3 shape + mask |
 | `offline/training/key_atom_bc_v3.py` | v3 loss、weights |
-| `scripts/campaigns/r3_build_data.py` | 六表 + intent + manifests（PD-1；见 §2 v3.2 修订） |
-| `scripts/campaigns/r3_build_features.py` | v3 shard |
-| `scripts/campaigns/run_v5_1_r3.py` | 阶段驱动 |
-| `scripts/campaigns/r3_gradient_probe.py` | ρ |
-| `scripts/campaigns/r3_report.py` | gate |
-| `tests/pesn/test_r3_relabel_invariance.py` | Relabel 门 |
-| `tests/pesn/test_r3_reverse_sensitivity.py` | Reverse 诊断 |
-| `tests/pesn/test_r3_input_legality.py` | 输入白名单 |
-| `tests/pesn/test_key_atom_losses_r3.py` | λ=0/空桶/权重 |
+| `archive/v5x_scripts/campaigns/r3_build_data.py` | 六表 + intent + manifests（PD-1；见 §2 v3.2 修订） |
+| `archive/v5x_scripts/campaigns/r3_build_features.py` | v3 shard |
+| `archive/v5x_scripts/campaigns/run_v5_1_r3.py` | 阶段驱动 |
+| `archive/v5x_scripts/campaigns/r3_gradient_probe.py` | ρ |
+| `archive/v5x_scripts/campaigns/r3_report.py` | gate |
+| `tests/legacy/pesn/test_r3_relabel_invariance.py` | Relabel 门 |
+| `tests/legacy/pesn/test_r3_reverse_sensitivity.py` | Reverse 诊断 |
+| `tests/legacy/pesn/test_r3_input_legality.py` | 输入白名单 |
+| `tests/legacy/pesn/test_key_atom_losses_r3.py` | λ=0/空桶/权重 |
 
 v1/v2 模块只读。
 

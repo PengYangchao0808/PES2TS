@@ -3,7 +3,7 @@
 > **状态**：Evidence-ReadOnly（只读证据；结论与规则以 [开发文档规范化归档方案 v2.0](../../PES2TS_开发文档规范化归档方案_v2_20261121.md) 为准，本目录只提供可复跑的原始数据）
 > **层级**：L3 证据 / L4 运营（工程治理面，不涉及 G0–G4 能力与 V 战役语义）
 > **取代关系**：无（本目录为一次性审计证据，不取代任何文档）
-> **上游依赖**：[开发宪法](../../../PES2TS_开发宪法_v1.md)、[AGENT.md](../../../../AGENT.md) §9、[文档修订台账](../../../plans/PES2TS_文档修订台账.md)、[docs/README.md](../../../README.md)、`scripts/agent_ops/docs_consistency_config.json`、`scripts/check_docs_links.py`、`config/registry/g_v_map.yaml`
+> **上游依赖**：[开发宪法](../../../PES2TS_开发宪法_v1.md)、[AGENT.md](../../../../AGENT.md) §9、[文档修订台账](../../../plans/PES2TS_文档修订台账.md)、[docs/README.md](../../../README.md)、`infra/governance/docs_consistency_config.json`、`infra/governance/check_docs_links.py`、`config/registry/g_v_map.yaml`
 > **下游消费者**：执行归档批次的所有者、方案复核者、下次季度审计（复用本模板）
 > **当前版本**：v1 @ 2026-11-21（采集时点 2026-11-21T22:28–22:45 +08:00，基线 master@2f1d3ba）
 
@@ -66,9 +66,9 @@
 
 ```powershell
 # 门禁基线（4 门；期望 0 violation / 0 error / current / 26 passed）
-python scripts/agent_ops/docs_consistency.py --strict
-python scripts/check_docs_links.py
-python scripts/render_gv_map.py --check
+python infra/governance/docs_consistency.py --strict
+python infra/governance/check_docs_links.py
+python infra/governance/render_gv_map.py --check
 python -m pytest -q tests/test_gv_registry.py tests/test_config_env.py
 
 # 全量清单重生成（覆盖 doc_inventory.csv；口径见 §2）

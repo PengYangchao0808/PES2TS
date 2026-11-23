@@ -3,7 +3,7 @@
 > **状态**：Evidence-ReadOnly（独立校验证据；不构成新规范，不修改任何交付件）
 > **层级**：L3/L4（本次归档审计的复核证据）
 > **取代关系**：无（本文件只复核 `DISPOSITION.csv` / `LINK_FIX.csv` / `BATCH_PLAN.md`，不取代它们）
-> **上游依赖**：`docs/infra/doc_audit/20261121/DISPOSITION.csv`、`LINK_FIX.csv`、`BATCH_PLAN.md`、`build_disposition.py`；`.slim/deepwork/20261121_docaudit/inventory/doc_inventory.csv`；`.slim/deepwork/20261121_docaudit/rules/GOVERNANCE_CONSTRAINTS.md` §3/§6；`scripts/agent_ops/docs_consistency_config.json`
+> **上游依赖**：`docs/infra/doc_audit/20261121/DISPOSITION.csv`、`LINK_FIX.csv`、`BATCH_PLAN.md`、`build_disposition.py`；`.slim/deepwork/20261121_docaudit/inventory/doc_inventory.csv`；`.slim/deepwork/20261121_docaudit/rules/GOVERNANCE_CONSTRAINTS.md` §3/§6；`infra/governance/docs_consistency_config.json`
 > **下游消费者**：仓库所有者、执行 B0/B1′/B3 的会话、下次季度审计
 > **当前版本**：v1 @ 2026-11-21（只读复核；未执行 `git mv`，未修改 `docs/` 下任何交付文件）
 
@@ -34,7 +34,7 @@
 | 条件迁移引用清单 | `docs/infra/doc_audit/20261121/LINK_FIX.csv` | 13 行 × 6 列（3 个目标文档） |
 | 批次手册 | `docs/infra/doc_audit/20261121/BATCH_PLAN.md` | B0 234 / B1 空集 / B1′ 3 / B2 无 / B3 19 |
 | 覆盖基准 | `.slim/deepwork/20261121_docaudit/inventory/doc_inventory.csv` | 253 条（含 4 条本轮新增未跟踪文档） |
-| 钉死清单来源 | `scripts/agent_ops/docs_consistency_config.json`（17 historical / 27 required_files / 9 root_scope） | 52 条硬钉死 = 31 docs + 8 硬根 md + 13 非文档（另 1 软登记 `R3_RESULT_SUMMARY.md`） |
+| 钉死清单来源 | `infra/governance/docs_consistency_config.json`（17 historical / 27 required_files / 9 root_scope） | 52 条硬钉死 = 31 docs + 8 硬根 md + 13 非文档（另 1 软登记 `R3_RESULT_SUMMARY.md`） |
 | 规则依据 | `.slim/deepwork/20261121_docaudit/rules/GOVERNANCE_CONSTRAINTS.md` §3/§6；方案 §5.3/§7.2/§9 | — |
 
 **52 条分解复核（与 GOVERNANCE_CONSTRAINTS §2.3/§3.8 一致）**：31 份 `docs/` 文档 + 8 份硬钉根 md（root_scope 9 − 软登记 1）+ 13 份 config/模板/validator = 52；`R3_RESULT_SUMMARY.md` 为第 9 条 root_scope 软登记（缺失静默跳过，不计入硬钉死）。

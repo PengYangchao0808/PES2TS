@@ -66,9 +66,9 @@
 | 编号 | 规则要点 | 出处 |
 |---|---|---|
 | G-27 | **新增/修改计划文档后必须同步修订台账 + `docs/README.md`**。 | `AGENT.md:147`（§9.3） |
-| G-28 | **训练前文档门强制**：`python scripts/agent_ops/docs_consistency.py --strict` 在训练前强制（当前记录于 V5.3-MP 进度指针）。 | `AGENT.md:159,163`（§10） |
+| G-28 | **训练前文档门强制**：`python infra/governance/docs_consistency.py --strict` 在训练前强制（当前记录于 V5.3-MP 进度指针）。 | `AGENT.md:159,163`（§10） |
 | G-29 | 台账是**规范映射与取代登记**，服从宪法；两者不一致时以宪法为准并修正台账。 | `docs/PES2TS_开发宪法_v1.md:455-456`（§14） |
-| G-30 | **门禁工具链本身是受保护输入**：`docs_consistency_config.json`、`check_docs_links.py`、`render_gv_map.py`、`gv_registry.py`、`g_v_map.yaml`、CI 工作流共同定义门禁；本审计期间保持零改动。 | 证据：`scripts/agent_ops/docs_consistency.py:57-68`；`.github/workflows/ci.yml:20-25`；`config/registry/g_v_map.yaml:4-7` |
+| G-30 | **门禁工具链本身是受保护输入**：`docs_consistency_config.json`、`check_docs_links.py`、`render_gv_map.py`、`gv_registry.py`、`g_v_map.yaml`、CI 工作流共同定义门禁；本审计期间保持零改动。 | 证据：`infra/governance/docs_consistency.py:57-68`；`.github/workflows/ci.yml:20-25`；`config/registry/g_v_map.yaml:4-7` |
 
 ### 1.6 只读区与归档边界
 
@@ -82,7 +82,7 @@
 
 | 编号 | 规则要点 | 出处 |
 |---|---|---|
-| G-34 | `docs/agent_runs/` 只承载编排/状态/交接，**不新增科研规范**；作为运营记录被列入 `token_exempt_prefixes`。 | `docs/agent_runs/README.md:6`；`scripts/agent_ops/docs_consistency_config.json:24-26` |
+| G-34 | `docs/agent_runs/` 只承载编排/状态/交接，**不新增科研规范**；作为运营记录被列入 `token_exempt_prefixes`。 | `docs/agent_runs/README.md:6`；`infra/governance/docs_consistency_config.json:24-26` |
 | G-35 | 运行区硬规则：正式训练/解封两个独立 token；CUDA 进程持 GPU 锁；科研不可变项（指标/阈值/损失/数据身份/标签语义）任何 agent 不得修改；每文件唯一写入负责人；中断恢复按 run_id 幂等；旧证据目录只读。 | `docs/agent_runs/README.md:34-41` |
 
 ### 1.8 入库边界（文档/数据/产物）
@@ -101,9 +101,9 @@
 
 | # | 门禁 | 命令 | 入口实现 | 是否在 CI | 当前实测 |
 |---|---|---|---|---|---|
-| 1 | 文档一致性（禁用语 + historical 横幅 + required_files 子串） | `python scripts/agent_ops/docs_consistency.py --strict` | `scripts/agent_ops/docs_consistency.py:251-302` | **否**（训练前人工强制，`AGENT.md:159,163`） | scanned 158 files; 0 violation; **CLEAN**；exit 0 |
-| 2 | 相对链接存在性 | `python scripts/check_docs_links.py` | `scripts/check_docs_links.py:46-86` | **是**（`.github/workflows/ci.yml:22-23`） | checked 182 docs; **0 error, 172 warning**；exit 0 |
-| 3 | G–V 映射文档时效 | `python scripts/render_gv_map.py --check` | `scripts/render_gv_map.py:104-139` | **是**（`ci.yml:20-21`） | "G–V mapping doc is current"；exit 0 |
+| 1 | 文档一致性（禁用语 + historical 横幅 + required_files 子串） | `python infra/governance/docs_consistency.py --strict` | `infra/governance/docs_consistency.py:251-302` | **否**（训练前人工强制，`AGENT.md:159,163`） | scanned 158 files; 0 violation; **CLEAN**；exit 0 |
+| 2 | 相对链接存在性 | `python infra/governance/check_docs_links.py` | `infra/governance/check_docs_links.py:46-86` | **是**（`.github/workflows/ci.yml:22-23`） | checked 182 docs; **0 error, 172 warning**；exit 0 |
+| 3 | G–V 映射文档时效 | `python infra/governance/render_gv_map.py --check` | `infra/governance/render_gv_map.py:104-139` | **是**（`ci.yml:20-21`） | "G–V mapping doc is current"；exit 0 |
 | 4 | registry/config 测试 | `python -m pytest -q tests/test_gv_registry.py tests/test_config_env.py` | `tests/test_gv_registry.py`、`tests/test_config_env.py` | **是**（`ci.yml:24-25`） | **26 passed**；exit 0 |
 | 5 | 全仓测试档（两档） | CI `base` 档（无 torch）与 `pesn` 档（CPU torch，`pytest -q`） | `ci.yml:26-37,39-53` | 是 | 本次未跑（与文档门禁无直接关系；CI 事实记录） |
 
@@ -113,14 +113,14 @@
 
 | # | 完整命令 | 退出码 | 关键输出 | 耗时 |
 |---|---|---|---|---|
-| 1 | `python scripts/agent_ops/docs_consistency.py --strict` | **0** | `docs_consistency: scanned 158 file(s); 0 violation(s); CLEAN` | 0.2s |
-| 2 | `python scripts/check_docs_links.py` | **0** | `checked 182 docs; 0 error(s), 172 warning(s)` | 0.2s |
-| 3 | `python scripts/render_gv_map.py --check` | **0** | `G–V mapping doc is current` | 0.2s |
+| 1 | `python infra/governance/docs_consistency.py --strict` | **0** | `docs_consistency: scanned 158 file(s); 0 violation(s); CLEAN` | 0.2s |
+| 2 | `python infra/governance/check_docs_links.py` | **0** | `checked 182 docs; 0 error(s), 172 warning(s)` | 0.2s |
+| 3 | `python infra/governance/render_gv_map.py --check` | **0** | `G–V mapping doc is current` | 0.2s |
 | 4 | `python -m pytest -q tests/test_gv_registry.py tests/test_config_env.py` | **0** | `26 passed in 1.20s` | 2.3s |
 
 原始 stdout/stderr 全文（含 172 条 warning 逐条、命令、时间、退出码）见 `baseline_gate_outputs.txt`。
 
-**warning 构成（门禁 2 的"容忍债务"，不计 error）**：172 条 = `E:/` 绝对路径链接 **101 条** + 本机/`outputs`/`.slim` 等 local-only 链接 **71 条**；涉及 31 份文档，集中在历史报告（如 `docs/reports/PES2TS_多坐标PES逐步实施方案_20261001.md` 21 条、`PES2TS_多键同步一维扫描全面问题报告_20261001.md` 19 条）。这些是历史本机证据链接，设计上只 warning 不 fail（`scripts/check_docs_links.py:54-70`）。
+**warning 构成（门禁 2 的"容忍债务"，不计 error）**：172 条 = `E:/` 绝对路径链接 **101 条** + 本机/`outputs`/`.slim` 等 local-only 链接 **71 条**；涉及 31 份文档，集中在历史报告（如 `docs/reports/PES2TS_多坐标PES逐步实施方案_20261001.md` 21 条、`PES2TS_多键同步一维扫描全面问题报告_20261001.md` 19 条）。这些是历史本机证据链接，设计上只 warning 不 fail（`infra/governance/check_docs_links.py:54-70`）。
 
 ### 2.3 门禁 1：`docs_consistency.py` 实现事实
 
@@ -170,7 +170,7 @@
 | `exemption_markers` | **12** | `docs_consistency_config.json:10-23` | 同行出现任一 marker 即豁免 |
 | `historical_banner_marker` | **1**（`ADR-0030`） | `docs_consistency_config.json:420` | 17 historical 必须含该串 |
 | `g_v_map` 引用的 docs 路径 | **43 条引用**（去重后 17 条文档路径：stage_doc 1 + evidence 15 + 文本注记 3；含 1 条根 memos） | `config/registry/g_v_map.yaml`（行号见 3.5） | 见 3.5：executed/active 战役 evidence/config 缺失 → `render_gv_map --check` exit 2；渲染目标缺失 → exit 1 |
-| `render_gv_map` 渲染目标 | **1** | `scripts/render_gv_map.py:29` | 缺失/内容过期 → exit 1 |
+| `render_gv_map` 渲染目标 | **1** | `infra/governance/render_gv_map.py:29` | 缺失/内容过期 → exit 1 |
 | CI 直接引用 docs 路径 | **0** | `.github/workflows/ci.yml`（无 docs/ 字符串） | CI 经脚本/测试**间接**钉死（见 3.6） |
 | **硬钉死路径合计（去重）** | **52** = 31 份 `docs/` 文档 + 9 份根 `.md` + 13 份 config/模板/validator | 3.1–3.6 并集 | 另有 1 条软登记：`R3_RESULT_SUMMARY.md`（仅 root_scope，缺失不 fail，见 3.3） |
 
@@ -210,25 +210,25 @@
 | 6 | `docs/plans/PES2TS_V5.3-MP_大规模MOVE-PROCESS联合训练计划_v1_20261021.md` | L91 | 6 | docs（plan） |
 | 7 | `docs/design/decisions/ADR-0032-V5.4.1-Embedding接口扩展与预注册治理.md` | L99 | 9 | docs（ADR） |
 | 8 | `docs/plans/PES2TS_V5.4.1_Embedding_50K_详细阶段实施方案_v1.0_20261027.md` | L110 | 5 | docs（plan） |
-| 9 | `config/campaigns/pes2ts_v541_embed_50k.yaml` | L117 | 7 | config |
+| 9 | `archive/v5x_configs/campaigns/pes2ts_v541_embed_50k.yaml` | L117 | 7 | config |
 | 10 | `docs/design/decisions/ADR-0033-V5.4.2-Backbone接口与预注册治理.md` | L126 | 38 | docs（ADR） |
 | 11 | `docs/plans/PES2TS_V5.4.2_Backbone_50K_详细阶段实施方案_v1.0_20261029.md` | L166 | 21 | docs（plan） |
-| 12 | `config/campaigns/pes2ts_v542_backbone_50k.yaml` | L189 | 44 | config |
-| 13 | `config/campaigns/v542_templates/parity_certificate.template.json` | L235 | 11 | config 模板 |
-| 14 | `config/campaigns/v542_templates/runplan_pin.template.json` | L248 | 13 | config 模板 |
-| 15 | `config/campaigns/v542_templates/preregistration_signoff.template.json` | L263 | 17 | config 模板 |
-| 16 | `config/campaigns/v542_templates/a0_reuse_decision.template.json` | L282 | 10 | config 模板 |
+| 12 | `archive/v5x_configs/campaigns/pes2ts_v542_backbone_50k.yaml` | L189 | 44 | config |
+| 13 | `archive/v5x_configs/campaigns/v542_templates/parity_certificate.template.json` | L235 | 11 | config 模板 |
+| 14 | `archive/v5x_configs/campaigns/v542_templates/runplan_pin.template.json` | L248 | 13 | config 模板 |
+| 15 | `archive/v5x_configs/campaigns/v542_templates/preregistration_signoff.template.json` | L263 | 17 | config 模板 |
+| 16 | `archive/v5x_configs/campaigns/v542_templates/a0_reuse_decision.template.json` | L282 | 10 | config 模板 |
 | 17 | `docs/reports/PES2TS_V542_Backbone_50K_实施与训练报告_20261031.md` | L294 | 6 | docs（report） |
 | 18 | `docs/design/decisions/ADR-0034-V5.4.3-双Decoder与DecoderContextV1.md` | L302 | 5 | docs（ADR） |
 | 19 | `docs/plans/PES2TS_V5.4.3_双Decoder_50K_全面开发与训练方案_v1.0_20261102.md` | L309 | 11 | docs（plan） |
 | 20 | `docs/plans/PES2TS_V5.4.3_WP执行清单_v1.0_20261102.md` | L322 | 3 | docs（plan） |
-| 21 | `config/campaigns/pes2ts_v543_dual_decoder_50k.yaml` | L327 | 20 | config |
-| 22 | `scripts/agent_ops/v543_config_schema.py` | L349 | 13 | 脚本（受保护） |
-| 23 | `config/campaigns/v543_templates/preregistration_signoff.template.json` | L364 | 8 | config 模板 |
-| 24 | `config/campaigns/v543_templates/runplan_pin.template.json` | L374 | 8 | config 模板 |
-| 25 | `config/campaigns/v543_templates/budget_policy.template.json` | L384 | 9 | config 模板 |
-| 26 | `config/campaigns/v543_templates/parity_certificate.template.json` | L395 | 12 | config 模板 |
-| 27 | `config/campaigns/v543_templates/decoder_context.template.json` | L409 | 8 | config 模板 |
+| 21 | `archive/v5x_configs/campaigns/pes2ts_v543_dual_decoder_50k.yaml` | L327 | 20 | config |
+| 22 | `archive/v5x_scripts/agent_ops/v543_config_schema.py` | L349 | 13 | 脚本（受保护） |
+| 23 | `archive/v5x_configs/campaigns/v543_templates/preregistration_signoff.template.json` | L364 | 8 | config 模板 |
+| 24 | `archive/v5x_configs/campaigns/v543_templates/runplan_pin.template.json` | L374 | 8 | config 模板 |
+| 25 | `archive/v5x_configs/campaigns/v543_templates/budget_policy.template.json` | L384 | 9 | config 模板 |
+| 26 | `archive/v5x_configs/campaigns/v543_templates/parity_certificate.template.json` | L395 | 12 | config 模板 |
+| 27 | `archive/v5x_configs/campaigns/v543_templates/decoder_context.template.json` | L409 | 8 | config 模板 |
 
 **说明**：27 条当前 27/27 存在、全部必须子串 0 缺失。其中 14 份 docs（#1-8、10、11、17-20）移动即断 `--strict`；13 份非 docs（#9、12-16、21-27）虽不是文档，但同样被文档门禁硬钉死，**任何重构方案不得把它们当"可自由移动的文件"**。
 
@@ -290,7 +290,7 @@
 - L3 `docs/design/PES2TS_G_V_MAPPING_v1_20261018.md`（map 说明）；L7 `docs/reports/PES2TS_V542_Backbone_50K_实施与训练报告_20261031.md`；L7 `docs/reports/PES2TS_V541_Embedding_50K_实施与训练报告_20261029.md`；L397 V542 报告（gate_note 内）。这些不参与 `validate_gv_map` 的路径存在性检查，但属于"文档间引用事实"，移动会造成 YAML 文本悬空。
 
 **(d) 渲染目标（独立硬钉死）**
-- `docs/design/PES2TS_G_V_MAPPING_v1_20261018.md`（`scripts/render_gv_map.py:29`）：删除/移动 → `--check` exit 1；内容与 YAML 渲染不一致 → exit 1。**禁止手改该文件**，只可 `python scripts/render_gv_map.py --write` 重生成。
+- `docs/design/PES2TS_G_V_MAPPING_v1_20261018.md`（`infra/governance/render_gv_map.py:29`）：删除/移动 → `--check` exit 1；内容与 YAML 渲染不一致 → exit 1。**禁止手改该文件**，只可 `python infra/governance/render_gv_map.py --write` 重生成。
 
 ### 3.6 CI 直接 / 间接引用的 docs 路径（逐条）
 
@@ -464,7 +464,7 @@
 |---|---|---|
 | D-01 | **禁止**移动/重命名/删除 17 条 `historical`（含 5 份根 memo；清单见 §3.1） | `docs_consistency_config.json:27-45`；`docs_consistency.py:167-186` |
 | D-02 | **禁止**移动/重命名/删除 27 条 `required_files`（14 docs + 13 config/模板/validator；清单见 §3.2） | `docs_consistency_config.json:57-419`；`docs_consistency.py:189-207` |
-| D-03 | **禁止**删除/移动/手改 `docs/design/PES2TS_G_V_MAPPING_v1_20261018.md`；只能 `python scripts/render_gv_map.py --write` 重生成 | `render_gv_map.py:29,119-137`；`ci.yml:20-21` |
+| D-03 | **禁止**删除/移动/手改 `docs/design/PES2TS_G_V_MAPPING_v1_20261018.md`；只能 `python infra/governance/render_gv_map.py --write` 重生成 | `render_gv_map.py:29,119-137`；`ci.yml:20-21` |
 | D-04 | **禁止**移动/改名 executed/active 战役的 evidence 文档（V4.2–V4.7 实现报告、30h 计划、`V53_ROLLOUT_REPORT.md`、V541 报告、V542 报告、ADR-0026、V5.1 修复冲刺计划；§3.5(b)） | `gv_registry.py:278-302`；`g_v_map.yaml:79-471` |
 | D-05 | **禁止**在未同步修改 `config/registry/g_v_map.yaml` + 重渲染的情况下移动/改名 `docs/plans/PES2TS_阶段定义_G0-G3.md`（stage_doc）；重命名阶段定义须走台账 §6 未完成项（`:586`）的独立受审改动 | `g_v_map.yaml:12-60`；`render_gv_map.py:42-101` |
 | D-06 | **禁止**把 `docs/archive/` 当"过时文档墓地"或搬入/移出文件；新增快照只能新建 `YYYYMMDD_pre_<主题>/` 并带 manifest/哈希 | `docs/archive/README.md:3,15-20` |
@@ -498,9 +498,9 @@
 ### 6.4 实施后复验命令（4 门，缺一不可）
 
 ```powershell
-python scripts/agent_ops/docs_consistency.py --strict     # 期望：scanned 158+; 0 violation(s); CLEAN
-python scripts/check_docs_links.py                        # 期望：0 error(s)；warning 不高于基线 172
-python scripts/render_gv_map.py --check                   # 期望：G–V mapping doc is current
+python infra/governance/docs_consistency.py --strict     # 期望：scanned 158+; 0 violation(s); CLEAN
+python infra/governance/check_docs_links.py                        # 期望：0 error(s)；warning 不高于基线 172
+python infra/governance/render_gv_map.py --check                   # 期望：G–V mapping doc is current
 python -m pytest -q tests/test_gv_registry.py tests/test_config_env.py   # 期望：26 passed
 ```
 

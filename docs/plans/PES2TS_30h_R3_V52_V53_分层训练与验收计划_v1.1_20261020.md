@@ -307,7 +307,7 @@ Q/T/QT 使用完全相同的曲线数据和训练预算，仅通过 head loss �
 ### 7.1 一次性冻结文件
 
 ```text
-config/campaigns/pes2ts_30h_20261020.yaml
+archive/v5x_configs/campaigns/pes2ts_30h_20261020.yaml
 outputs/pesn/30h_campaign/protocol_30h.json
 outputs/pesn/30h_campaign/data_manifest.json
 outputs/pesn/30h_campaign/feature_spec.json

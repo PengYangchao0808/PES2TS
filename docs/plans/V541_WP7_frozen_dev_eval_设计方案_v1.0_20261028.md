@@ -51,8 +51,8 @@ dev 政策（screen 原文）：`WP7 evaluates frozen matched E0 x3 only; no can
 ### 2.1 新增（本 WP7 唯一新代码面）
 
 ```
-scripts/campaigns/v541_dev_evaluate.py     # WP7 冻结 dev 评估 runner（全新文件）
-tests/campaigns/test_v541_dev_evaluate.py  # fixture 测试（全新文件）
+archive/v5x_scripts/campaigns/v541_dev_evaluate.py     # WP7 冻结 dev 评估 runner（全新文件）
+tests/legacy/campaigns/test_v541_dev_evaluate.py  # fixture 测试（全新文件）
 outputs/pesn/v541_embed_50k/reports/wp7_freeze.json            # 冻结记录（先写）
 outputs/pesn/v541_embed_50k/reports/dev_frozen_evaluation.json # 汇总报告
 outputs/pesn/v541_embed_50k/reports/dev_frozen/                # per-seed 明细
@@ -65,14 +65,14 @@ outputs/pesn/v541_embed_50k/reports/dev_frozen/                # per-seed 明细
 
 | 复用对象 | 来源 | 用途 |
 |---|---|---|
-| `_predict_once` / `_PosPred` | `scripts.campaigns.v541_baseline_repair` | 单次前向（chunk 64，与历史 q/endpoint pass 同构成） |
+| `_predict_once` / `_PosPred` | `archive.v5x_scripts.campaigns.v541_baseline_repair` | 单次前向（chunk 64，与历史 q/endpoint pass 同构成） |
 | `_build_move_variants` / `_move_metrics` | 同上 | 修复后 pair 工具（WP1a `assign_batch_pairs`）的 before/after MOVE |
 | `_process_metrics` | 同上 | q / ordering / endpoint / tau misstop（与 `evaluate_v53mp` 同分组同 helper） |
 | `_move_sanity` / `_h2_move_guard` / `_compare` / `_pass_all` / `_gate_flags` | 同上 | 分母 sanity、H2 MOVE guard 公式、门比较 |
 | `_Cost` / `_GpuLock` / `_free_cuda` | 同上 | 成本计量、GPU 单路锁、显存释放 |
 | `_sha256_file` / `_sha256_text` / `_canonical_positions_sha` / `_canonical_curves_sha` / `_jsonable` / `_write_json` / `_read_json` / `_actor` / `_now` | 同上 | SHA、JSON 原子写、actor/时间 |
-| `_build_tier` / `_trainer_config` / `_ok_mask` / `TIER_DEFAULTS` | `scripts.campaigns.r3_v53mp_scale_paired_ci` | dev 语料 + 冻结 dev feature pack + ok 掩码 |
-| `_subset_curve_ids` / `_tier_pool_curve_ids` | `scripts.campaigns.r3_v53mp_run` | dev 曲线集、pool 曲线集 |
+| `_build_tier` / `_trainer_config` / `_ok_mask` / `TIER_DEFAULTS` | `archive.v5x_scripts.campaigns.r3_v53mp_scale_paired_ci` | dev 语料 + 冻结 dev feature pack + ok 掩码 |
+| `_subset_curve_ids` / `_tier_pool_curve_ids` | `archive.v5x_scripts.campaigns.r3_v53mp_run` | dev 曲线集、pool 曲线集 |
 | `load_model_v541` / `V541TrainerConfig` | `pes2ts_core.pesn.offline.training.v541_train` | E0 模型构造（R3 strict warmstart） |
 | `v53mp_pool_split` / `_curve_id_set_of` / `_train_q_mean` / `evaluate_g52`/`evaluate_g53`（经由上述封装） | `pes2ts_core.pesn.offline.training.key_atom_v53mp_train_v3` | inner-train 切分、常数 q 基线 |
 | `positions_sha256` / `features_sha256_of` / `DevFeaturePackView` | `pes2ts_core.pesn.offline.data.key_atom_dev_pack_v53mp` | dev pack SHA 与只读视图 |
@@ -81,7 +81,7 @@ outputs/pesn/v541_embed_50k/reports/dev_frozen/                # per-seed 明细
 
 ### 2.3 禁改清单（冻结保护）
 
-`scripts/campaigns/v541_run.py`、`v541_baseline_repair.py`、`v541_runplan.py`、`v541_provenance.py`、`v541_parity.py`、`v541_legality_audit.py`、`r3_v53mp_*.py`、`pes2ts_core/pesn/**`（models/training/evaluation/data）、`config/campaigns/pes2ts_v541_embed_50k.yaml`、`plan/*`、`audits/dev_baseline_sealed/**`、`audits/evaluator_before_after.json`、`reports/single_seed_screen.json`。
+`archive/v5x_scripts/campaigns/v541_run.py`、`v541_baseline_repair.py`、`v541_runplan.py`、`v541_provenance.py`、`v541_parity.py`、`v541_legality_audit.py`、`r3_v53mp_*.py`、`pes2ts_core/pesn/**`（models/training/evaluation/data）、`archive/v5x_configs/campaigns/pes2ts_v541_embed_50k.yaml`、`plan/*`、`audits/dev_baseline_sealed/**`、`audits/evaluator_before_after.json`、`reports/single_seed_screen.json`。
 执行前用 `git status --porcelain` + 关键文件 SHA 快照证明确未改动（写入 freeze 的 `provenance`）。
 
 ### 2.4 `v541_dev_evaluate.py` 内部分层
@@ -142,10 +142,10 @@ outputs/pesn/v541_embed_50k/reports/dev_frozen/                # per-seed 明细
 ### 4.1 CLI
 
 ```
-python scripts/campaigns/v541_dev_evaluate.py freeze  [--root outputs/pesn/v541_embed_50k]
-python scripts/campaigns/v541_dev_evaluate.py run     [--seeds 17,29,43] [--device cuda]
+python archive/v5x_scripts/campaigns/v541_dev_evaluate.py freeze  [--root outputs/pesn/v541_embed_50k]
+python archive/v5x_scripts/campaigns/v541_dev_evaluate.py run     [--seeds 17,29,43] [--device cuda]
                                                       [--limit-positions N   # 仅 fixture/测试]
-python scripts/campaigns/v541_dev_evaluate.py verify
+python archive/v5x_scripts/campaigns/v541_dev_evaluate.py verify
 ```
 
 - `freeze`：幂等；若 `wp7_freeze.json` 已存在且绑定 SHA 全部仍一致 → 原样通过；任一漂移 → typed refusal（不覆盖旧文件，写 `failure_*.json` 后退出非零）。
@@ -297,9 +297,9 @@ def append_ledger_candidate_evaluation(...) -> Dict[str, Any]     # §5.4 schema
         "stats_code_files": {
           "type": "object",
           "properties": {
-            "scripts/campaigns/r3_v53mp_scale_paired_ci.py":
+            "archive/v5x_scripts/campaigns/r3_v53mp_scale_paired_ci.py":
               {"const": "39550bdc386659f48f35933d06b3fc2edf9e6403f132f8130572f6dd55d9ae38"},
-            "scripts/campaigns/r3_v53mp_scale_paired_ci.py@paired_ci_tooling": {"type": "string"}
+            "archive/v5x_scripts/campaigns/r3_v53mp_scale_paired_ci.py@paired_ci_tooling": {"type": "string"}
           }
         },
         "evaluator_code_sha256": {"type": "string"},
@@ -651,7 +651,7 @@ train_q_mean = _train_q_mean(samples, labels, train_pos)               # 常数 
 
 ---
 
-## 11. 测试设计（`tests/campaigns/test_v541_dev_evaluate.py`，全部 fixture，无 GPU、无真实 dev）
+## 11. 测试设计（`tests/legacy/campaigns/test_v541_dev_evaluate.py`，全部 fixture，无 GPU、无真实 dev）
 
 | # | 用例 | 断言 |
 |---|---|---|
@@ -672,7 +672,7 @@ train_q_mean = _train_q_mean(samples, labels, train_pos)               # 常数 
 | T15 | 失败不留半成品 | seed 中途抛错 → 无该 seed 的 per-seed 文件；汇总 status=failed |
 | T16 | CLI 门 | `run` 无 freeze → 拒；`--limit-positions` 无环境旗标 → 拒 |
 
-运行：`python -m pytest tests/campaigns/test_v541_dev_evaluate.py -q`。
+运行：`python -m pytest tests/legacy/campaigns/test_v541_dev_evaluate.py -q`。
 
 ---
 
@@ -680,14 +680,14 @@ train_q_mean = _train_q_mean(samples, labels, train_pos)               # 常数 
 
 ```bash
 # 1) 冻结（无 dev 访问）
-python scripts/campaigns/v541_dev_evaluate.py freeze
+python archive/v5x_scripts/campaigns/v541_dev_evaluate.py freeze
 
 # 2) 评估（单路 cgroup；WSL2 用 --fallback）
 scripts/infra/cgroup_scope.sh [--fallback] 12G 10G outputs/pesn/v541_embed_50k/audits/cgroup/wp7_dev_eval \
-  python scripts/campaigns/v541_dev_evaluate.py run --seeds 17,29,43 --device cuda
+  python archive/v5x_scripts/campaigns/v541_dev_evaluate.py run --seeds 17,29,43 --device cuda
 
 # 3) 只读复核
-python scripts/campaigns/v541_dev_evaluate.py verify
+python archive/v5x_scripts/campaigns/v541_dev_evaluate.py verify
 ```
 
 成本量级（依据 WP1 dev stage 实测：4 次模型 pass 共 8496 batches / 181.6 s GPU wall / 峰值 RSS 6.2 GiB）：

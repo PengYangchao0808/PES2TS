@@ -2,7 +2,7 @@
 
 > 状态：**Executed-Frozen**（2026-10-31；owner 签认）
 > 战役：`V5.4.2`（registry status `executed`，`plan_revision 2026-10-30.3`）
-> 依据：[ADR-0033 v1.3.3](../design/decisions/ADR-0033-V5.4.2-Backbone接口与预注册治理.md)、[V5.4.2 详细阶段实施方案 v1.2](../plans/PES2TS_V5.4.2_Backbone_50K_详细阶段实施方案_v1.0_20261029.md)、`config/campaigns/pes2ts_v542_backbone_50k.yaml`（`0.1.2-wp0`）
+> 依据：[ADR-0033 v1.3.3](../design/decisions/ADR-0033-V5.4.2-Backbone接口与预注册治理.md)、[V5.4.2 详细阶段实施方案 v1.2](../plans/PES2TS_V5.4.2_Backbone_50K_详细阶段实施方案_v1.0_20261029.md)、`archive/v5x_configs/campaigns/pes2ts_v542_backbone_50k.yaml`（`0.1.2-wp0`）
 > 任务合同：MoveProcessContract v1（不变）；objective = `unified_move_process`
 > 提交链：`d94ad73`(WP0) → `3bbbdaa`(WP1) → `6939f6a`(WP2) → `dbae3f4`(WP3) → `3acecc4`(WP4 预算) → `844fcad`(WP4 裁决+WP5 runner) → `efae8f4`(WP6 统计) → `9568610`(T3 top2 门) → `647f804`(T2 激活门+stats 修复) → 本报告提交
 
@@ -89,7 +89,7 @@
   - A2、A3 `per_seed_h2_breach`（S43）；
   - A5 `three_seeds_incomplete`（seed17 screen 未过，未获补种）；
   - A4 `gate_skipped`（diagnostic 淘汰）。
-- 因 eligible 为空，Holm/bootstrap 推断**无对象**（不做空集显著性声明）；点估计与 CI 计算方法已在 `scripts/agent_ops/v542_stats.py` 冻结（10,000 paired cluster bootstrap，`bootstrap_seed_root=20261029`，one-sided p，MOVE 两出口各 α=0.025、PROCESS 单 family α=0.025），本报告不为空集伪造推断。
+- 因 eligible 为空，Holm/bootstrap 推断**无对象**（不做空集显著性声明）；点估计与 CI 计算方法已在 `archive/v5x_scripts/agent_ops/v542_stats.py` 冻结（10,000 paired cluster bootstrap，`bootstrap_seed_root=20261029`，one-sided p，MOVE 两出口各 α=0.025、PROCESS 单 family α=0.025），本报告不为空集伪造推断。
 - `final_selection_rule`：0 个 H3-qualified → `no_backbone_winner`，A0 留任；报告不产生 Backbone\* 选择。
 
 ## 5. 激活与删失账
@@ -158,7 +158,7 @@ formal 实跑（core）：T0 1265–1322 s；T1 1167–1354 s；T3 1401–1439 s
 | 预算事实源 | `profile/profile_report.jsonl` |
 | 指标表 / H2 / screen / H3 / 选择 / 激活 | `reports/metrics_table.json`、`h2_report.json`、`seed17_screen_report.json`、`h3_report.json`、`final_selection.json`、`activation_decisions.json` |
 | R3 参照 | `plan/r3_reference_metrics.json` |
-| parity 证书 | `scripts/agent_ops/v542_a0_parity.py --out …`（6/6，CPU bitwise 0.0） |
+| parity 证书 | `archive/v5x_scripts/agent_ops/v542_a0_parity.py --out …`（6/6，CPU bitwise 0.0） |
 
 ## 11. 复核清单
 

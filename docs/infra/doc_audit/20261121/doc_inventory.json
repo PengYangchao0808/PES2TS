@@ -104,8 +104,8 @@
       "requirements-pesn-runtime.txt",
       "requirements-pesn-training.txt",
       "requirements.txt",
-      "scripts/README.md",
-      "scripts/archive/README.md"
+      "archive/v5x_scripts/README_scripts_convention.md",
+      "archive/v4/README.md"
     ],
     "untracked_count": 4,
     "untracked_paths": [
@@ -306,7 +306,7 @@
       "说明性汇总（Descriptive，非规范）": 1,
       "配套开发设计，待实现与真实冒烟": 1,
       "门 V53MP-S3-closed-loop —— 通过（执行门：reference-normalized 与 autonomous 分开报告；声明限 TS_candidate/endpoint_reached）": 1,
-      "随 S4 infra 工具链落地（scripts/infra/）": 1
+      "随 S4 infra 工具链落地（infra/runtime/）": 1
     },
     "by_declared_version": {
       "": 127,
@@ -3252,7 +3252,7 @@
       "title": "WSL 内存治理运维手册（S4 infra，plan §5.1 / §5.4 / §5.5 / §10）",
       "zone": "docs-infra",
       "doc_type": "运营记录",
-      "declared_status": "随 S4 infra 工具链落地（scripts/infra/）",
+      "declared_status": "随 S4 infra 工具链落地（infra/runtime/）",
       "declared_version": "",
       "declared_date": "",
       "ref_count": 1,
@@ -5169,7 +5169,7 @@
       "git_last_commit_date": "2026-10-21"
     },
     {
-      "path": "scripts/README.md",
+      "path": "archive/v5x_scripts/README_scripts_convention.md",
       "ext": ".md",
       "size_bytes": 1426,
       "lines": 32,
@@ -5187,13 +5187,13 @@
       "git_last_commit_date": "2026-11-20"
     },
     {
-      "path": "scripts/archive/README.md",
+      "path": "archive/v4/README.md",
       "ext": ".md",
       "size_bytes": 2655,
       "lines": 38,
       "sha256_16": "41ad5daade9793c1",
       "mtime": "2026-10-03T04:28:19",
-      "title": "scripts/archive — experiment-layer code retired by ADR-0002 X4′-B",
+      "title": "archive/v4 — experiment-layer code retired by ADR-0002 X4′-B",
       "zone": "scripts",
       "doc_type": "索引",
       "declared_status": "",

@@ -35,7 +35,7 @@ V5–V7 不是新阶段：V5 主体属 **G3.P**，V6 属 **G3.2**，V7-A/B 属 *
 
 ### 2.2 单一映射源
 
-`config/registry/g_v_map.yaml` 是唯一机器可读源；`docs/design/PES2TS_G_V_MAPPING_v1_20261018.md` 由 `scripts/render_gv_map.py` 生成。禁止手改生成文档。
+`config/registry/g_v_map.yaml` 是唯一机器可读源；`docs/design/PES2TS_G_V_MAPPING_v1_20261018.md` 由 `infra/governance/render_gv_map.py` 生成。禁止手改生成文档。
 
 每条 V 战役声明：
 
@@ -44,7 +44,7 @@ primary_g: G3.P.2          # 唯一主归属
 supporting_g: [G0, G1]     # 数据/执行/验证支撑
 data_dependencies: [G0, G1]
 code_scope: [...]          # 该战役允许改动的代码路径
-config: config/campaigns/v5_1_architecture.yaml
+config: archive/v5x_configs/campaigns/v5_1_architecture.yaml
 data_manifest: data/manifests/v5/split_manifest.json
 gates: [V5-G1, V5-G2, V5-G3, V5-G4]
 status: proposed|active|executed|archived
@@ -53,7 +53,7 @@ status: proposed|active|executed|archived
 ### 2.3 代码/配置命名
 
 - `pes2ts_core/**` 按 G 能力命名：`key_atom_egnn.py`、`xtb_freeze_transport.py`、`key_atom_bc.py`。
-- `config/campaigns/**`、`scripts/campaigns/**`、`outputs/campaigns/**`、`docs/reports/**` 按 V 战役命名：`v5_1_architecture.yaml`、`run_v5_sprint.py`。
+- `archive/v5x_configs/campaigns/**`、`archive/v5x_scripts/campaigns/**`、`outputs/campaigns/**`、`docs/reports/**` 按 V 战役命名：`v5_1_architecture.yaml`、`run_v5_sprint.py`。
 - 禁止在 `pes2ts_core/**` 新建 `v5/`、`v6/`、`g3p/` 顶层包；阶段是标签，不是目录。
 - V4 `dual_ts_*`/`direct_*` 保留为 `legacy-v4`/`comparison_only`；V5 主结论不得用其 checkpoint 初始化。
 
@@ -80,7 +80,7 @@ status: proposed|active|executed|archived
 
 ### 2.5 CI 门
 
-- `python scripts/render_gv_map.py --check`：生成文档必须与 YAML 一致。
+- `python infra/governance/render_gv_map.py --check`：生成文档必须与 YAML 一致。
 - `pytest tests/test_gv_registry.py`：阶段引用、路径存在性、run record 校验。
 - `status: active/executed` 的 `code_scope`、`config`、`data_manifest`、`evidence` 必须存在；`proposed` 允许规划中的路径暂缺。
 - 每个 V 战役只有一个 `primary_g`；`supporting_g` 必须已登记为 G 阶段。

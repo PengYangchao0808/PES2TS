@@ -116,7 +116,7 @@
 | 4 | `docs/README.md` 尚无 2026-11-06 执行条目（只有 2026-11-02 的 Frozen-Preregistered 条目） | `docs/README.md` 首部章节列表 |
 | 5 | 方案 v2 §5.2 规定"执行完成 → Frozen-Preregistered 转 Executed-Frozen，授权者=执行会话，必须同步台账+报告链接" | `docs/infra/PES2TS_开发文档规范化归档方案_v2_20261121.md` §5.2 |
 | 6 | 方案 v2 §14-Q4 推荐 A：ADR-0034 保留冻结原文，用 `docs/README` 补条目表达执行事实 | 同上 §14-Q4 |
-| 7 | 方案与 WP 清单在 `required_files` 门禁名单内，**只允许改状态头、不得移动/改名** | `scripts/agent_ops/docs_consistency_config.json`；方案 v2 §2.3 |
+| 7 | 方案与 WP 清单在 `required_files` 门禁名单内，**只允许改状态头、不得移动/改名** | `infra/governance/docs_consistency_config.json`；方案 v2 §2.3 |
 | 8 | "冻结件不改"约束的是**正文/结论/预注册数值**；状态头是元数据，不属正文 | `AGENT.md` §9.4；方案 v2 §6.1 |
 
 ## 3. 选项与取舍
@@ -174,7 +174,7 @@
 - **适用场景**：引用 V5.4.3 结论、写新计划的上游依赖、G–V registry 对账时。不适用于"是否已执行"的最终判定（以终报为准）。
 - **答案**：执行事实以 2026-11-06 只读终报与台账为准；方案/WP 清单按 DISC-20261121-01 转 `Executed-Frozen` 后即可正常引用；ADR-0034 按裁决保留 `Proposed` 原文，**引用其决策条款时注明"执行事实见台账 2026-11-06"**，不要据此声称"未执行"。
 - **依据**：台账 2026-11-02/2026-11-06 条目；`docs/reports/PES2TS_V543_双Decoder_50K_实施与训练报告_20261106.md`；`docs/infra/PES2TS_开发文档规范化归档方案_v2_20261121.md` §5.2/§14-Q4；`DISC-20261121-01`。
-- **失效条件**：若后续 ADR-0034 被新 ADR 取代、或 `docs_consistency_config.json` 中 V5.4.3 状态规则变更；复现命令：`python scripts/agent_ops/docs_consistency.py --strict`。
+- **失效条件**：若后续 ADR-0034 被新 ADR 取代、或 `docs_consistency_config.json` 中 V5.4.3 状态规则变更；复现命令：`python infra/governance/docs_consistency.py --strict`。
 - **维护者**：科学负责人　**复审日**：2027-01-22（下次季度审计）
 - **同类问题**：`FAQ-20261121-02`（V5.4.2 同类问题如何处理）
 - **升格记录**：无（运行口径，不具规范效力；若此类情况反复出现，升格为 ADR-0035 的"执行完成状态转换"条款）

@@ -613,23 +613,23 @@ pes2ts_core/pesn/features/key_atom_graph_v3.py
 pes2ts_core/pesn/offline/data/key_atom_dataset_v3.py
 pes2ts_core/pesn/models/key_atom_egnn_v3.py
 pes2ts_core/pesn/offline/training/key_atom_bc_v3.py
-scripts/campaigns/r3_build_data.py
-scripts/campaigns/r3_build_features.py
-scripts/campaigns/run_v5_1_r3.py
-scripts/campaigns/r3_gradient_probe.py
-scripts/campaigns/r3_report.py
+archive/v5x_scripts/campaigns/r3_build_data.py
+archive/v5x_scripts/campaigns/r3_build_features.py
+archive/v5x_scripts/campaigns/run_v5_1_r3.py
+archive/v5x_scripts/campaigns/r3_gradient_probe.py
+archive/v5x_scripts/campaigns/r3_report.py
 ```
 
 ### 6.2 测试
 
 ```text
-tests/pesn/test_r3_data_contract.py
-tests/pesn/test_key_atom_features_r3.py
-tests/pesn/test_r3_relabel_invariance.py
-tests/pesn/test_r3_reverse_sensitivity.py
-tests/pesn/test_r3_input_legality.py
-tests/pesn/test_key_atom_losses_r3.py
-tests/pesn/test_r3_driver_plan.py
+tests/legacy/pesn/test_r3_data_contract.py
+tests/legacy/pesn/test_key_atom_features_r3.py
+tests/legacy/pesn/test_r3_relabel_invariance.py
+tests/legacy/pesn/test_r3_reverse_sensitivity.py
+tests/legacy/pesn/test_r3_input_legality.py
+tests/legacy/pesn/test_key_atom_losses_r3.py
+tests/legacy/pesn/test_r3_driver_plan.py
 ```
 
 ### 6.3 原则

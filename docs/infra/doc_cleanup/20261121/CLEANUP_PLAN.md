@@ -78,9 +78,9 @@
 # 2.1 工作区必须干净、基线记录
 git status --short
 git rev-parse HEAD > .slim\deepwork\20261121_cleanup\backup\BASE_COMMIT.txt
-python scripts/agent_ops/docs_consistency.py --strict | Tee-Object -FilePath .slim\deepwork\20261121_cleanup\backup\gate_before.txt
-python scripts/check_docs_links.py 2>&1 | Tee-Object -Append -FilePath .slim\deepwork\20261121_cleanup\backup\gate_before.txt
-python scripts/render_gv_map.py --check | Tee-Object -Append -FilePath .slim\deepwork\20261121_cleanup\backup\gate_before.txt
+python infra/governance/docs_consistency.py --strict | Tee-Object -FilePath .slim\deepwork\20261121_cleanup\backup\gate_before.txt
+python infra/governance/check_docs_links.py 2>&1 | Tee-Object -Append -FilePath .slim\deepwork\20261121_cleanup\backup\gate_before.txt
+python infra/governance/render_gv_map.py --check | Tee-Object -Append -FilePath .slim\deepwork\20261121_cleanup\backup\gate_before.txt
 python -m pytest -q tests/test_gv_registry.py tests/test_config_env.py | Tee-Object -Append -FilePath .slim\deepwork\20261121_cleanup\backup\gate_before.txt
 
 # 2.2 删除前锚点（可一键恢复）
@@ -206,7 +206,7 @@ git rm -- "docs/reports/PES2TS_v4阶段训练_最终报告与问题复核_202610
 
 **D3b 配置 diff（旧 → 新，精确删除行）**
 
-`scripts/agent_ops/docs_consistency_config.json`：
+`infra/governance/docs_consistency_config.json`：
 
 ```diff
 -  "historical": [
@@ -260,7 +260,7 @@ git rm -- "docs/reports/PES2TS_v4阶段训练_最终报告与问题复核_202610
 +  V6.0–V7-C evidence（6 处）: docs/archive_tree/E09-PES-N-V5-V7.md
 ```
 
-随后**必须**：`python scripts/render_gv_map.py --write`（禁止手改 `docs/design/PES2TS_G_V_MAPPING_v1_20261018.md`，D-03），再 `--check`。
+随后**必须**：`python infra/governance/render_gv_map.py --write`（禁止手改 `docs/design/PES2TS_G_V_MAPPING_v1_20261018.md`，D-03），再 `--check`。
 
 **D3 删除命令**：
 ```powershell

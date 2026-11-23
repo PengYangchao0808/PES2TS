@@ -330,8 +330,8 @@
 
 ### scripts/ (2 条)
 
-- `scripts/README.md`
-- `scripts/archive/README.md`
+- `archive/v5x_scripts/README_scripts_convention.md`
+- `archive/v4/README.md`
 
 ## 8. mtime 与 git_last_commit 相差 > 7 天的文档
 
@@ -683,8 +683,8 @@
 | 249 | `requirements-pesn-runtime.txt` | .txt | 365 | 7 | `root` | 其它 |  | - | - | 12 | 1 |
 | 250 | `requirements-pesn-training.txt` | .txt | 270 | 8 | `root` | 其它 |  | - | - | 16 | 1 |
 | 251 | `requirements.txt` | .txt | 116 | 9 | `root` | 其它 |  | - | - | 22 | 1 |
-| 252 | `scripts/README.md` | .md | 1,426 | 32 | `scripts` | 索引 |  | - | - | 237 | 1 |
-| 253 | `scripts/archive/README.md` | .md | 2,655 | 38 | `scripts` | 索引 |  | - | - | 237 | 1 |
+| 252 | `archive/v5x_scripts/README_scripts_convention.md` | .md | 1,426 | 32 | `scripts` | 索引 |  | - | - | 237 | 1 |
+| 253 | `archive/v4/README.md` | .md | 2,655 | 38 | `scripts` | 索引 |  | - | - | 237 | 1 |
 
 ---
 *本报告由 `collect_inventory.py` 自动生成, 记录总数 253。数据以 `doc_inventory.csv` / `doc_inventory.json` 为准。*

@@ -6,7 +6,7 @@
 > 层级：G3.P.0–G3.P.3（V5.0 数据/数学、V5.1 输入/标签筛选、V5.2 条件 OOF）、G0/G1 仅数据资格增量
 > 取代关系：不取代任何 ADR；落实 [V5 冲刺方案 v1.1](../../plans/PES2TS_V5.0-V5.2_十小时冲刺训练与验证执行方案_v1_20261018.md) §0 的"实现前版本化"要求
 > 上游依赖：ADR-0021（双端拓扑）、ADR-0022（因果输入合同）、ADR-0024（无界位移）、ADR-0025（G–V 注册）
-> 下游消费者：V5 冲刺战役（`config/campaigns/v5_sprint.yaml`）、V6 OOF 消费者（未开放）
+> 下游消费者：V5 冲刺战役（`archive/v5x_configs/campaigns/v5_sprint.yaml`）、V6 OOF 消费者（未开放）
 > 当前版本：v1 / 2026-10-19
 
 ## 1. 决策
@@ -73,7 +73,7 @@
 
 ## 3. 冲刺战役注册
 
-g_v_map 新增 campaign `V5_SPRINT`（status active，code_scope = 本 ADR 实现文件集，config `config/campaigns/v5_sprint.yaml`，data_manifest `data/manifests/v5/split_manifest.json`）；V5.0/V5.1/V5.2 保持 proposed（其 code_scope 含未实现文件，active 会触发路径存在性校验失败）。渲染：`python scripts/render_gv_map.py --write`。
+g_v_map 新增 campaign `V5_SPRINT`（status active，code_scope = 本 ADR 实现文件集，config `archive/v5x_configs/campaigns/v5_sprint.yaml`，data_manifest `data/manifests/v5/split_manifest.json`）；V5.0/V5.1/V5.2 保持 proposed（其 code_scope 含未实现文件，active 会触发路径存在性校验失败）。渲染：`python infra/governance/render_gv_map.py --write`。
 
 ## 4. 明确不做（本轮）
 

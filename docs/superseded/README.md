@@ -15,10 +15,10 @@
 
 1. **只收"自身已声明被取代"的文档**：文件顶部必须已有 `Superseded` / `已取代` 横幅，并写明取代者。
 2. **不收下列对象**：`docs/reports/**`（只读证据，永不移动）、`docs/archive/**`（版本快照）、任何列在
-   `scripts/agent_ops/docs_consistency_config.json` 的 `historical` 名单中的文档（移动会断门禁，
+   `infra/governance/docs_consistency_config.json` 的 `historical` 名单中的文档（移动会断门禁，
    见该配置的 `historical` 与 `required_files` 两节）。
 3. **移入时必须同时做三件事**：
-   - 修掉指向原兄弟目录的链接（`](PES2TS_…)` → `](../plans/PES2TS_…)`），保证 `scripts/check_docs_links.py` 仍为 0 error；
+   - 修掉指向原兄弟目录的链接（`](PES2TS_…)` → `](../plans/PES2TS_…)`），保证 `infra/governance/check_docs_links.py` 仍为 0 error；
    - 在本文件下方"索引"表登记一行（原路径 / 取代者 / 迁入日期）；
    - 在 [docs/plans/PES2TS_文档修订台账.md](../plans/PES2TS_文档修订台账.md) 记一条增量登记。
 4. **正文不改**：除链接与顶部横幅外，不修改任何内容；若需要新语义，请新增文档而不是改本目录文件。

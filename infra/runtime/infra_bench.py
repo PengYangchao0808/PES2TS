@@ -754,7 +754,7 @@ def driver_effective_updates(config_path: Path, tier: str) -> Optional[int]:
                         or {})
         freeze = int(schedule.get("freeze_encoder_updates", 400))
         return freeze + int(driver._tier_joint_updates(schedule, tier))
-    except Exception:  # noqa: BLE001 - informational field only
+    except Exception:
         return None
 
 

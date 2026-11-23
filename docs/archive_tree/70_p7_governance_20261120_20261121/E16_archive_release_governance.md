@@ -32,7 +32,7 @@
 ## 主要成果与量化指标
 - **LICENSE**：新增 MIT（Copyright (c) 2026 PengYangchao0808）；此前仓库无任何许可文件 = 公开后等同保留所有权利。
 - **划分名单发布**：5 份、15.2 MB、逐字节副本；`split_ids_g0_v1.csv` 199,168 行（train 159,355 / valid 19,904 / test 19,909）、`pesn_irc_split_ids_v1.json`（train_fit 121,363 / train_dev 15,161 / train_calibration 15,159 + family_holdout 9,573）、v53mp cohort 20k/50k、`v53mp_split_50k_ids_v1.json`（pool tiers + dev 589 + confirm 2,000 仅列名 + curve_folds 66,195）；链条校验：两个 cohort 的父哈希与 50K manifest 的 `parents.g3p1_split` 均等于 L1 `802f6243…`。
-- 归档执行：`docs/superseded/` 建立 + 迁入 4 份（单端点 IRC 产品设计 v1/v2、V5.1-R3 端点对称 v1/v2）；5 个零引用 V4 脚本迁 `scripts/archive/v4/`（该目录 .py 16→21）；7 份根 memo 按建议不移动只留索引。
+- 归档执行：`docs/superseded/` 建立 + 迁入 4 份（单端点 IRC 产品设计 v1/v2、V5.1-R3 端点对称 v1/v2）；5 个零引用 V4 脚本迁 `archive/v4/v4/`（该目录 .py 16→21）；7 份根 memo 按建议不移动只留索引。
 - CI 修复：`gv_registry.py` 新增 `_is_external_path()`（仓库外路径只作 provenance、不强制存在；仓库内相对路径仍严格校验）；`pytest tests/test_gv_registry.py tests/test_config_env.py` → 26 passed（修复前 4 failed / 20 passed）。
 - 门禁：`check_docs_links.py` 0 error / 173 warning（182 docs）、`docs_consistency --strict` CLEAN；`render_gv_map --check` 的失败源于既有环境的 WSL 路径问题（同日第二条增量已修）。
 

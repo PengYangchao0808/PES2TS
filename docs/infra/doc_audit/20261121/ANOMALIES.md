@@ -2,7 +2,7 @@
 
 > 任务：task-3（内容-关系层面诊断）；生成日期：2026-11-21；只读仓库，未修改/移动任何既有文件。
 > 证据口径：文档内状态头/横幅（头部行）、`docs/README.md` 状态列、`docs/plans/PES2TS_文档修订台账.md` 登记行、
-> `scripts/agent_ops/docs_consistency_config.json` 门禁名单、git 文件名与体积统计。
+> `infra/governance/docs_consistency_config.json` 门禁名单、git 文件名与体积统计。
 > 数据底稿：本目录 `anomaly_candidates.csv`（机械候选 60 条）、`anomaly_stats.json`；复跑 `python anomaly_scan.py`。
 > 精编后 **32 条**（P0 2 / P1 10 / P2 20）；机械候选中的逐文件展开（根 memo 8 份、HTML 8 份、命名混排 8 份）
 > 已合并为单条，避免"一条异常刷屏"。C-xx 编号引用 `rules/GOVERNANCE_CONSTRAINTS.md` 已核事实，不重复验证。
@@ -25,7 +25,7 @@
 | A06 | 位置异常 | `docs/plans/PES2TS_单端点IRC生成控制器_产品设计_v3_20261020.md`、`PES2TS_V5.4_剩余架构研究工作方案_v1.0_20261029.md`、`V541_WP7_frozen_dev_eval_设计方案_v1.0_20261028.md` | 3 份文件文件名含"产品设计/设计方案/架构"（设计语义）却位于 `docs/plans/`；V541 WP7 那份**既无状态头又位置异常** | 需所有者裁决：留 plans（若属方案附件）或迁 `docs/design/`（须同步 docs/README 链接与门禁）；V541 WP7 至少补状态头 |
 | A07 | 位置异常 | `docs/reports/PES2TS_多坐标PES逐步实施方案_20261001.md`、`docs/reports/PES_generation_多坐标约束学习_ORCA能力与数学方案_20261001.md`、`docs/reports/PES2TS_V52R_输入充分性决策记录_20261021.md` | `docs/reports/` 应收只读证据，但混入"方案/决策记录"类文本（3 份） | `docs/reports/**` 内容永不改（AGENT.md §9.4）；仅在 docs/README/reports 索引注明"历史方案误置、只读保留"，新文档不得再入 reports |
 | A08 | 引用异常 | 索引/台账覆盖缺口 | `rules/GOVERNANCE_CONSTRAINTS.md` **C-08**：40 份文档既不在 `docs/README.md` 也不在台账（README-only 40、台账-only 7）；**C-03**：索引自述版本滞后 5 处（门禁 CLEAN 也检测不到） | 治理负债，交 task-2/owner：以 C-08 清单为输入补双索引；索引版本号纳入 CI 校验 |
-| A09 | 引用异常 | 门禁名单 stale 风险 | `scripts/agent_ops/docs_consistency_config.json`：`historical` 17 条 / `required_files` 27 条；其中 `docs/reports/PES2TS_V52_任务纠偏审计_20261021.md` 等被 required_files 钉死但属 reports（只读）；另 **C-10** 指出 `g_v_map` 路径校验分级存在"看起来钉死、实际不校验"盲区 | 门禁名单只增不改；新归档动作前先跑 `check_docs_links.py` + `docs_consistency --strict`（基线：0 error / ~172–173 warning，见 C-11） |
+| A09 | 引用异常 | 门禁名单 stale 风险 | `infra/governance/docs_consistency_config.json`：`historical` 17 条 / `required_files` 27 条；其中 `docs/reports/PES2TS_V52_任务纠偏审计_20261021.md` 等被 required_files 钉死但属 reports（只读）；另 **C-10** 指出 `g_v_map` 路径校验分级存在"看起来钉死、实际不校验"盲区 | 门禁名单只增不改；新归档动作前先跑 `check_docs_links.py` + `docs_consistency --strict`（基线：0 error / ~172–173 warning，见 C-11） |
 | A10 | 体积/形式 | `docs/plans/PES2TS_文档修订台账.md` | **166,842 B / 885 行**，append-only 顶部倒序增量登记；单文件已承载 2026-09 至 2026-11 全部修订 | 不删证据；建议拆"台账索引 + 年度附录"（拆分会动 AGENT.md §9.3/GOVERNANCE 引用，需 owner 批准 + 同步门禁） |
 | A11 | 体积/形式 | `README.md`（根） | **104,309 B / 1,313 行**，与 `docs/README.md`（79,471 B / 349 行）双维护文档/阶段索引 | 需 owner：根 README 收敛为门面+入口，索引单一职责归 docs/README；root_scope 门禁输入，移动需同 PR 改配置 |
 | A12 | 内容重复 | `docs/plans/` 同主题三件套 | V4.2–V4.7 / V5.x 每代都留"方案+合同/清单+报告"，正文大量重复表格（30h 计划与 R3 方案重叠字段；V5.4.3 方案 93 KB/1671 行） | 保留证据；在 `docs/superseded/README.md` 或台账登记"同主题三件套"关系，防止后来者重复引用旧版 |

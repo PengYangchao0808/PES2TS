@@ -12,10 +12,10 @@
 
 | 责任 | 模块 |
 |---|---|
-| WP0 治理 | `config/campaigns/pes2ts_v541_embed_50k.yaml`、`config/campaigns/v541_templates/*`、`scripts/agent_ops/v541_config_schema.py`（独立 schema validator，12 项检查含 T3 预注册）、G–V registry `V5.4.1` 条目 |
+| WP0 治理 | `archive/v5x_configs/campaigns/pes2ts_v541_embed_50k.yaml`、`archive/v5x_configs/campaigns/v541_templates/*`、`archive/v5x_scripts/agent_ops/v541_config_schema.py`（独立 schema validator，12 项检查含 T3 预注册）、G–V registry `V5.4.1` 条目 |
 | WP1 评估器 | `pes2ts_core/pesn/offline/evaluation/pair_ownership_v3.py`（共享 pair 归属/映射工具）；`audits/evaluator_before_after.json`（C×3 inner-val/dev before/after）、`audits/dev_baseline_sealed/`（密封至 WP7）、`audits/verify_report.json`（账本/封存/cgroup 全过） |
 | WP2 模型 | `pes2ts_core/pesn/models/v541/{interfaces,embedding_registry,model}.py` + `embeddings/{gin_e_chemical,pna_chemical,schnet_spatial,angle_mpnn,dual_stream,chemical_common,geometric_common}.py` + `feature_providers/{legal_neighbors,angle_triplets,common}.py`；CPU bitwise + GPU 1e-6/1e-5 parity（`audits/v53_parity{,_gpu,_gpu_bitwise_probe}.json`） |
-| WP4 训练器 | `pes2ts_core/pesn/offline/training/{v541_train,v541_identity,v541_monitor,v541_strata,v541_degree_stats}.py`；stream 视图 `pes2ts_core/pesn/offline/data/key_atom_stream_view.py`；runner/plan/profiling/审计/评估/rollout/导出 `scripts/campaigns/v541_{run,runplan,parity,legality_audit,baseline_repair,dev_evaluate,rollout,export_bundle,provenance}.py` |
+| WP4 训练器 | `pes2ts_core/pesn/offline/training/{v541_train,v541_identity,v541_monitor,v541_strata,v541_degree_stats}.py`；stream 视图 `pes2ts_core/pesn/offline/data/key_atom_stream_view.py`；runner/plan/profiling/审计/评估/rollout/导出 `archive/v5x_scripts/campaigns/v541_{run,runplan,parity,legality_audit,baseline_repair,dev_evaluate,rollout,export_bundle,provenance}.py` |
 | WP6/WP7 报表 | `reports/{single_seed_screen,three_seed_paired_ci,dev_frozen_evaluation,rollout_comparison,compute_pareto,failure_and_censoring,benchmark_summary,wp7_freeze}.json(.csv)` + `exports/embedding_champion_bundle/`（8 文件） |
 
 冻结计划实例：`plan/runplan.pin.json`（code_commit `1d8b7972…`、common_protocol `2b9ce1ed…`、config `464c1f6f…`）、`plan/preregistration_signoff.json`、`plan/budget_policy.json`。
@@ -110,7 +110,7 @@ dev（589 curves，冻结全集；`reports/dev_frozen_evaluation.json` + `report
 ## 9. 全仓测试与文档门（2026-10-29）
 
 - 全仓 `pytest`：**4,954 passed / 1 skipped / 11 deselected**（含 V541 模型/特征/训练器/resume/评估/rollout/导出全套新增测试）。
-- `python scripts/agent_ops/docs_consistency.py --strict`：CLEAN；`python scripts/render_gv_map.py --check`：current。
+- `python infra/governance/docs_consistency.py --strict`：CLEAN；`python infra/governance/render_gv_map.py --check`：current。
 - G–V registry：`V5.4.1` 状态 `executed`，evidence 指向本报告，`plan_revision: 2026-10-29.1`；旧 `V5.4` 条目未动。
 
 ## 10. 给 V5.4.2 的交接（§16.2）

@@ -35,7 +35,7 @@ RXN_0000155302 原始完整 R/P 存在独立组分间 C/Cl 重叠，间距分别
 
 - `pes2ts_core/scan_strategy/synchronized_path.py:105` 已有 `predict_geometry`，实际是非质量加权伪逆，并裁剪最大原子位移；它返回种子，没有迭代投影或在线验收。
 - 同文件已有数值 Jacobian、周期扭转残差、proper-Kabsch 对齐和质量加权弧长；质量加权弧长不等于预测器已经质量加权。
-- `scripts/run_demo24_synchronized.py` 用已知 TS/IRC 生成参考几何及坐标目标，向后端传递完整逐点参考表。
+- `archive/v5x_scripts/campaign_oneoffs/run_demo24_synchronized.py` 用已知 TS/IRC 生成参考几何及坐标目标，向后端传递完整逐点参考表。
 - 外部 ACP 的 `src/cccp/qc/interfaces/orca.py:2286` 先取上一帧，随后在 2290–2291 行用当前点 `reference_geometries[index]` 覆盖。因此上轮执行不能称为上一已接受帧驱动的在线延续。
 - 后端目前按固定 `plan.points` 循环；帧内重试解决量化计算失败，不是动态插入 lambda 节点、拒绝分支跳跃和回溯。
 - `synchronized_path.validate_plan` 强制完整 R/P、lambda 起止 0/1 和预先目标表；`audit_path` 的 `qualified` 还依赖已知 TS 邻近证据。它们不能原样作为未知终点模式的合同。
