@@ -242,7 +242,7 @@ def test_run_bundle_loader_reads_referenced_artifacts_and_rejects_path_escape(tm
     assert report["ranking"]["status"] == "measured"
 
     metrics_path = root / "metrics.json"
-    script = Path(__file__).resolve().parents[1] / "scripts" / "evaluate_demo_runs.py"
+    script = Path(__file__).resolve().parents[3] / "archive" / "v5x_scripts" / "campaign_oneoffs" / "evaluate_demo_runs.py"
     cli = subprocess.run([sys.executable, str(script), str(bundle_path), "--output", str(metrics_path),
                           "--evaluation-split", "train"], capture_output=True, text=True, check=False)
     assert cli.returncode == 0, cli.stderr
