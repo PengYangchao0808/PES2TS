@@ -48,6 +48,8 @@ never used.
 
 from __future__ import annotations
 
+from typing import Final
+
 import torch
 import torch.nn.functional as F
 

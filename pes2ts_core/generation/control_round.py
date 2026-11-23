@@ -34,6 +34,8 @@ phase writes typed artifacts under the round directory.
 
 from __future__ import annotations
 
+from typing import Final
+
 import hashlib
 import json
 import time
@@ -698,7 +700,7 @@ def _load_td_support_registry(
     round_dir: str | Path,
     config: Mapping[str, Any],
     freeze_doc: Mapping[str, Any],
-    settings: "ControlTrainSettings",
+    settings: "ControlTrainSettings",  # noqa: F821 (forward ref, PEP 563)
     transitions: Sequence[Any],
 ):
     """Build the TD-side registry gate from the whitelisted FIT transitions.

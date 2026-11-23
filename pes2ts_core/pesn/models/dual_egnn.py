@@ -78,7 +78,7 @@ class DualTSModelConfig:
             raise ValueError("hidden/n_layers must be positive")
 
 
-def gaussian_distance_basis(torch, dist: "torch.Tensor", config: DualTSModelConfig):
+def gaussian_distance_basis(torch, dist: "torch.Tensor", config: DualTSModelConfig):  # noqa: F821 (forward ref)
     """v1-reused Gaussian expansion of distances (frozen parameters).
 
     ``centers = linspace(0, cutoff, n_basis)``, ``scale = cutoff/n_basis``;
