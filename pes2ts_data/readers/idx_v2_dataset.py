@@ -9,7 +9,7 @@ batches.  The v5 engine owns collation now.
 
 Label mapping (V5.5-shaped, unchanged from the frozen adapter):
 
-* **Move**: ``Δq_t = q_canonical[t+1] - q_canonical[t]`` along the canonical IRC
+* **Move**: ``螖q_t = q_canonical[t+1] - q_canonical[t]`` along the canonical IRC
   coordinate, masked to contiguous ``label_status == ok`` pairs.
 * **Process**: canonical coordinate ``q`` (TS at 0) -> pre/near/post with
   ``near_ts_window``.
@@ -19,6 +19,14 @@ Label mapping (V5.5-shaped, unchanged from the frozen adapter):
 Split note: idx_v2 ``fold`` is sample-level (``position % 3``) and cannot be a
 leak-free split; :meth:`IdxV2Dataset` therefore uses the frozen curve-level hash
 split for smoke runs and marks it as *not* the V5.5 frozen ID/OOD protocol.
+
+Index-space note: trajectories live in one FLAT global space ordered
+``train -> valid -> id``; :meth:`IdxV2Dataset.trajectory_indices` returns
+per-split LOCAL positions while :meth:`IdxV2Dataset.build_sequence` takes a
+GLOBAL index.  ``max_curves`` shrinks the per-split population only, so the
+offsets are recomputed at construction and exposed by
+:meth:`IdxV2Dataset.trajectory_offsets`; consumers combining splits must add
+the offset (never assume ``local == global``).
 """
 
 from __future__ import annotations
@@ -30,71 +38,13 @@ import numpy as np
 
 from ._common import ReaderError
 from .idx_v2 import SPLIT_NAMES, STATUS_OK, IdxV2Error, IdxV2Reader
+from .idx_v2_features import IdxV2Spec, TrajectoryRef, build_frame_features, static_feats
 
 __all__ = [
     "IdxV2Dataset",
     "IdxV2Spec",
     "build_frame_features",
 ]
-
-
-@dataclass(frozen=True)
-class IdxV2Spec:
-    """Minimal V5.5 dataset spec (subset of the frozen ``V55DatasetSpec``)."""
-
-    dataset_version: str = "unknown"
-    input_mode: str = "G0"
-    frame_feat_dim: int = 7
-    static_feat_dim: int = 8
-    q_dim: int = 1
-    history_len: int = 16
-    max_trajectory_len: int = 512
-    near_ts_window: float = 0.10
-    notes: str = "numpy idx_v2 adapter (smoke split = curve hash; V5.5 contract pending)"
-
-
-def build_frame_features(
-    q: np.ndarray,
-    ds: np.ndarray,
-    energy: np.ndarray,
-    grad_norm: np.ndarray,
-    *,
-    input_mode: str = "G0",
-) -> np.ndarray:
-    """Build the causal reaction-descriptor frame features (ported verbatim).
-
-    Only current/past information is used (``dq`` is a backward difference), so
-    the features are causal and can be regenerated during free-run rollout.
-    """
-    q = np.asarray(q, dtype=np.float32)
-    n, _ = q.shape
-    ds = np.asarray(ds, dtype=np.float32)
-    energy = np.asarray(energy, dtype=np.float32)
-    grad_norm = np.asarray(grad_norm, dtype=np.float32)
-    dq = np.zeros_like(q)
-    if n >= 2:
-        dq[1:] = q[1:] - q[:-1]
-    has_qc = (np.ones(n, dtype=np.float32) if input_mode.upper() == "G1"
-              else np.zeros(n, dtype=np.float32))
-    energy = energy * has_qc
-    grad_norm = grad_norm * has_qc
-    step_norm = np.linalg.norm(dq, axis=1).astype(np.float32)
-    feats = np.concatenate(
-        [q, dq, ds[:, None], energy[:, None], grad_norm[:, None],
-         has_qc[:, None], step_norm[:, None]],
-        axis=1,
-    )
-    return np.nan_to_num(feats, nan=0.0, posinf=0.0, neginf=0.0).astype(np.float32)
-
-
-@dataclass(frozen=True)
-class _TrajectoryRef:
-    """One (curve, intent) trajectory: sample rows of the idx_v2 sample table."""
-
-    curve_idx: int
-    intent_idx: int
-    curve_id: str
-    rows: np.ndarray
 
 
 @dataclass
@@ -123,7 +73,9 @@ class IdxV2Dataset:
     near_ts_window: float = 0.10
     spec: IdxV2Spec = field(init=False)
     _splits: dict[str, list[int]] = field(default_factory=dict, init=False)
-    _trajs: dict[str, list[_TrajectoryRef]] = field(default_factory=dict, init=False)
+    _trajs: dict[str, list[TrajectoryRef]] = field(default_factory=dict, init=False)
+    _offsets: dict[str, int] = field(default_factory=dict, init=False)
+    _n_trajectories: int = field(default=0, init=False)
     _counts: dict[str, int] = field(default_factory=dict, init=False)
 
     def __post_init__(self) -> None:
@@ -138,8 +90,16 @@ class IdxV2Dataset:
             max_trajectory_len=512,
             near_ts_window=float(self.near_ts_window),
         )
+        # Trajectory indices are a single FLAT (global) space: train, then
+        # valid, then id.  ``max_curves`` caps the per-split curve population,
+        # so these offsets move with the cap and must be recomputed here (a
+        # stale/hard-coded offset is what made capped runs index out of range).
+        running = 0
         for split in ("train", "valid", "id"):
             self._build_split(split)
+            self._offsets[split] = running
+            running += len(self._trajs[split])
+        self._n_trajectories = running
         self._counts = self._compute_counts()
 
     # ---------------------------------------------------------------- splits
@@ -147,7 +107,7 @@ class IdxV2Dataset:
         curves = self.reader.split_curves(
             split, seed=self.seed, max_curves=self.max_curves.get(split))
         intent_index = self.reader["samples/intent_idx"]
-        trajectories: list[_TrajectoryRef] = []
+        trajectories: list[TrajectoryRef] = []
         for curve_idx in curves:
             lo, hi = self.reader.sample_rows(curve_idx)
             if hi <= lo:
@@ -157,7 +117,7 @@ class IdxV2Dataset:
                         if curve_idx < len(self.reader.curve_ids) else str(curve_idx))
             for intent in intent_ids:
                 rows = lo + np.flatnonzero(np.asarray(intent_index[lo:hi]) == intent)
-                trajectories.append(_TrajectoryRef(curve_idx, int(intent), curve_id,
+                trajectories.append(TrajectoryRef(curve_idx, int(intent), curve_id,
                                                    rows.astype(np.int64)))
         self._splits[split] = curves
         self._trajs[split] = trajectories
@@ -194,6 +154,11 @@ class IdxV2Dataset:
     def q_dim(self) -> int:
         return int(self.spec.q_dim)
 
+    @property
+    def n_trajectories(self) -> int:
+        """Size of the global flat trajectory space (all populated splits)."""
+        return int(self._n_trajectories)
+
     def reaction_ids_for_split(self, split: str) -> list[str]:
         return [self.reader.curve_ids[i] if i < len(self.reader.curve_ids) else str(i)
                 for i in self._splits.get(split, [])]
@@ -203,6 +168,15 @@ class IdxV2Dataset:
 
     def trajectory_indices(self, split: str, *, fraction: float = 1.0,
                            seed: int = 17, min_reactions: int = 1) -> list[int]:
+        """Per-split LOCAL positions in ``[0, n_split_trajectories)``.
+
+        These are *not* global flat indices: map them with
+        ``global = trajectory_offsets()[split] + position`` (or use
+        :meth:`global_trajectory_indices`) before calling
+        :meth:`build_sequence`.  Keeping this local contract matters because the
+        synthetic V5.6 dataset and its consumers use the same per-split
+        positions.
+        """
         n = len(self._trajs.get(split, []))
         if fraction >= 1.0 or n == 0:
             return list(range(n))
@@ -210,31 +184,60 @@ class IdxV2Dataset:
         take = max(min_reactions, int(round(n * float(fraction))))
         return sorted(rng.choice(n, size=min(take, n), replace=False).tolist())
 
-    def _static_feats(self, curve_idx: int) -> np.ndarray:
-        meta = self.reader.curve_meta(curve_idx)
-        n_nodes = max(int(meta.get("n_nodes", 1)), 1)
-        n_atoms = len(meta.get("atomic_numbers", ()) or ())
-        ts_index = float(meta.get("ts_index", 0))
-        return np.asarray([
-            n_atoms / 32.0,
-            n_nodes / 120.0,
-            ts_index / n_nodes,
-            1.0 if meta.get("has_energy") else 0.0,
-            abs(int(meta.get("endpoint_b", 0)) - int(meta.get("endpoint_a", 0))) / n_nodes,
-            float(meta.get("weight_total", 1.0)),
-            0.0,
-            1.0,
-        ], dtype=np.float32)
+    def global_trajectory_indices(self, split: str, *, fraction: float = 1.0,
+                                  seed: int = 17,
+                                  min_reactions: int = 1) -> list[int]:
+        """Per-split positions mapped to the flat global trajectory space."""
+        offset = self._offsets.get(split, 0)
+        return [offset + position for position in
+                self.trajectory_indices(split, fraction=fraction, seed=seed,
+                                        min_reactions=min_reactions)]
+
+    def trajectory_offsets(self) -> dict[str, int]:
+        """``split -> first global trajectory index`` of the flat space.
+
+        Recomputed from the (possibly ``max_curves``-capped) split populations
+        at construction time; consumers that combine splits must use this map.
+        """
+        return dict(self._offsets)
 
     # ------------------------------------------------------------- sequences
+    def trajectory_split(self, traj_idx: int) -> str:
+        """Return the split owning one GLOBAL (flat) trajectory index."""
+        index = int(traj_idx)
+        if index < 0 or index >= self._n_trajectories:
+            raise IdxV2Error(
+                "TRAJ_RANGE",
+                f"trajectory index {index} outside [0, {self._n_trajectories}) "
+                "of the global flat trajectory space")
+        for split in ("train", "valid", "id"):
+            offset = self._offsets.get(split, 0)
+            if offset <= index < offset + len(self._trajs.get(split, [])):
+                return split
+        raise IdxV2Error(  # pragma: no cover - offsets are exhaustive
+            "TRAJ_RANGE", f"trajectory index {index} has no owning split")
+
     def build_sequence(self, traj_idx: int) -> dict:
-        """Build one V5.5-shaped numpy sequence dict (no torch)."""
-        split = next((name for name, trajs in self._trajs.items()
-                      if traj_idx < len(trajs)), None)
-        if split is None:
-            raise IdxV2Error("TRAJ_RANGE",
-                             f"trajectory index {traj_idx} out of range")
-        ref = self._trajs[split][traj_idx]
+        """Build one V5.5-shaped numpy sequence dict (no torch).
+
+        ``traj_idx`` is a GLOBAL flat trajectory index (train, then valid, then
+        id).  Per-split positions returned by :meth:`trajectory_indices` must be
+        mapped first::
+
+            global_idx = dataset.trajectory_offsets()[split] + position
+            # or: dataset.global_trajectory_indices(split)
+
+        Indices outside ``[0, n_trajectories)`` raise ``TRAJ_RANGE`` (typed).
+        """
+        index = int(traj_idx)
+        if index < 0 or index >= self._n_trajectories:
+            raise IdxV2Error(
+                "TRAJ_RANGE",
+                f"trajectory index {index} outside [0, {self._n_trajectories}) "
+                "of the global flat trajectory space; per-split local positions "
+                "must be offset via trajectory_offsets()")
+        split = self.trajectory_split(index)
+        ref = self._trajs[split][index - self._offsets[split]]
         nodes = self.reader.curve_node_arrays(ref.curve_idx)
         rows = ref.rows
         node_index = np.asarray(self.reader["samples/node_index"][rows], dtype=np.int64)
@@ -280,7 +283,7 @@ class IdxV2Dataset:
             "reaction_row": int(ref.curve_idx),
             "direction": 1,
             "frame_feats": feats,
-            "static_feats": self._static_feats(ref.curve_idx),
+            "static_feats": static_feats(self.reader, ref.curve_idx),
             "delta_s": ds,
             "frame_mask": valid,
             "q": q,
@@ -300,13 +303,22 @@ class IdxV2Dataset:
                        shuffle: bool = False, seed: int = 17,
                        max_samples: int | None = None
                        ) -> Iterator[tuple[list[dict], list[dict]]]:
-        """Yield ``(samples, metas)`` chunks; collation belongs to the caller."""
-        indices = self.trajectory_indices(split, fraction=fraction, seed=seed)
+        """Yield ``(samples, metas)`` chunks; collation belongs to the caller.
+
+        ``trajectory_indices`` yields per-split local positions; they are mapped
+        into the global flat space here before :meth:`build_sequence`, so every
+        yielded sample is built from the index it was selected by (the
+        ``max_curves`` cap only shrinks the split population, never the index
+        space).
+        """
+        positions = self.trajectory_indices(split, fraction=fraction, seed=seed)
         if shuffle:
             rng = np.random.default_rng(seed)
-            indices = [indices[i] for i in rng.permutation(len(indices))]
+            positions = [positions[i] for i in rng.permutation(len(positions))]
         if max_samples is not None:
-            indices = indices[: int(max_samples)]
+            positions = positions[: int(max_samples)]
+        offset = self._offsets.get(split, 0)
+        indices = [offset + position for position in positions]
         samples = [self.build_sequence(index) for index in indices]
         metas = [{key: sample[key] for key in ("traj_idx", "trajectory_id",
                                                "reaction_id", "reaction_row",
@@ -328,5 +340,6 @@ class IdxV2Dataset:
         raise ReaderError(
             "GEOMETRY_UNAVAILABLE",
             "idx_v2 has no per-reaction kinematic basis; R1 rollout on real data "
-            "needs the XYZ geometry adapter (staging_chunks) — reported as a "
+            "needs the XYZ geometry adapter (staging_chunks) 鈥?reported as a "
             "limitation, not fabricated")
+

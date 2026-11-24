@@ -56,7 +56,8 @@ from .idx_v2 import (
     idx_v2_available,
     read_staging_chunk,
 )
-from .idx_v2_dataset import IdxV2Dataset, IdxV2Spec, build_frame_features
+from .idx_v2_dataset import IdxV2Dataset
+from .idx_v2_features import IdxV2Spec, build_frame_features
 from .key_atom_stream import IntentRow, KeyAtomStreamView, StreamColumns
 from .label_cache import (
     CACHE_JSON,

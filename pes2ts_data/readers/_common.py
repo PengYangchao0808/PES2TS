@@ -19,6 +19,7 @@ from __future__ import annotations
 import csv
 import hashlib
 import json
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Final, Iterable, Mapping, Sequence
 
@@ -26,6 +27,7 @@ __all__ = [
     "D0_PRIMARY_ANGSTROM",
     "DATA_MANIFEST_FILENAME",
     "LABEL_STATUSES",
+    "IntentRow",
     "ReaderError",
     "REQUIRED_COLUMNS",
     "SPLIT_MANIFEST_FILENAME",
@@ -206,3 +208,52 @@ def load_folds(
                           f"unrecognized split manifest shape in {split_manifest}")
     require(bool(folds), "SPLIT_MANIFEST_EMPTY", "split manifest has no folds")
     return folds
+
+
+@dataclass(frozen=True)
+class IntentRow:
+    """Minimal ``reaction_intent.csv`` row needed by the streaming view.
+
+    The frozen ``IntentRecordV3`` carries the full G_rxn contract; only the
+    direction sign, the reverse-involution key and the endpoint-graph atoms are
+    consumed by the reader/join paths, so the reader keeps exactly those.
+    """
+
+    intent_id: str
+    curve_id: str
+    direction: str
+    reverse_of_intent_id: str
+    intent_pair_id: str
+    g_atoms: tuple[int, ...] = ()
+    intent_underdetermined: bool = False
+
+    @classmethod
+    def from_table_row(cls, row: Mapping[str, Any]) -> "IntentRow":
+        """Parse one ``reaction_intent.csv`` row (typed refusals)."""
+        direction = str(row.get("direction", "")).strip()
+        require(direction in ("forward", "reverse"), "INTENT_DIRECTION",
+                f"intent {row.get('intent_id')!r}: unknown direction {direction!r}")
+        atoms: tuple[int, ...] = ()
+        for key in ("g_src", "g_tgt"):
+            payload = row.get(key) or ""
+            if not str(payload).strip():
+                continue
+            try:
+                doc = json.loads(str(payload))
+            except json.JSONDecodeError as exc:
+                raise ReaderError("INTENT_GRAPH_PARSE",
+                                  f"{row.get('intent_id')}: {key}: {exc}") from exc
+            if isinstance(doc, Mapping) and doc.get("atoms"):
+                atoms = tuple(int(atom) for atom in doc["atoms"])
+            if atoms:
+                break
+        flag = str(row.get("intent_underdetermined", "false")).strip().lower()
+        return cls(
+            intent_id=str(row.get("intent_id", "")),
+            curve_id=str(row.get("curve_id", "")),
+            direction=direction,
+            reverse_of_intent_id=str(row.get("reverse_of_intent_id", "") or ""),
+            intent_pair_id=str(row.get("intent_pair_id", "") or ""),
+            g_atoms=atoms,
+            intent_underdetermined=flag in ("true", "1"),
+        )

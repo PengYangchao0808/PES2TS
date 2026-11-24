@@ -1,4 +1,4 @@
-"""Tests for the read-only Zone-2 readers (``pes2ts_data.readers``)."""
+﻿"""Tests for the read-only Zone-2 readers (``pes2ts_data.readers``)."""
 
 from __future__ import annotations
 
@@ -572,3 +572,140 @@ def test_readers_are_torch_free():
 
 def test_reader_version():
     assert READER_VERSION == "1.0.0"
+
+
+# ---------------------------------------------------------------------------
+# Regression: max_curves vs global trajectory indexing (real-data smoke bug)
+# ---------------------------------------------------------------------------
+
+def _write_idx_v2_multi(root: Path, *, n_curves: int = 6,
+                        nodes_per_curve: int = 2) -> Path:
+    """Synthetic idx_v2 with ``n_curves`` one-intent curves (seed-85 split mix)."""
+    root.mkdir(parents=True, exist_ok=True)
+    n_nodes = n_curves * nodes_per_curve
+    curve_ids = [f"RXN_{index:010d}" for index in range(n_curves)]
+    curves_doc = {
+        "schema": "v53mp_idx_v2",
+        "created_at": "2026-11-01T00:00:00+00:00",
+        "builder_git_commit": "abcdef123456",
+        "binding": {"n_curves": n_curves, "n_intents": n_curves,
+                    "n_samples": n_curves,
+                    "data_manifest_sha256": "d" * 64},
+        "curve_ids": curve_ids,
+        "curves": [
+            {"n_nodes": nodes_per_curve, "ts_index": index % nodes_per_curve,
+             "atomic_numbers": [6] * nodes_per_curve,
+             "endpoint_a": 0, "endpoint_b": nodes_per_curve - 1,
+             "weight_total": 1.0, "has_energy": False}
+            for index in range(n_curves)],
+        "label_status_table": ["conflict", "masked", "ok", "terminal"],
+        "files": {},
+    }
+    (root / "curves.json").write_text(json.dumps(curves_doc), encoding="utf-8")
+    groups = {
+        "label_curves": {
+            "q_canonical": np.linspace(0.2, -0.2, n_nodes, dtype=np.float32),
+            "arc_s": np.tile(np.asarray([0.0, 1.0], dtype=np.float32), n_curves),
+            "node_order": np.tile(
+                np.arange(nodes_per_curve, dtype=np.int64), n_curves),
+            "offsets": np.arange(n_curves + 1, dtype=np.int64) * nodes_per_curve,
+        },
+        "samples": {
+            "curve_idx": np.arange(n_curves, dtype=np.int64),
+            "intent_idx": np.arange(n_curves, dtype=np.int64),
+            "node_index": np.zeros(n_curves, dtype=np.int64),
+            "label_status": np.full(n_curves, 2, dtype=np.int64),
+            "fold": np.arange(n_curves, dtype=np.int64) % 3,
+            "d0": np.full(n_curves, 0.08, dtype=np.float32),
+            "sample_weight": np.ones(n_curves, dtype=np.float32),
+            "label_weight": np.ones(n_curves, dtype=np.float32),
+            "curve_weight": np.ones(n_curves, dtype=np.float32),
+        },
+        "labels_ep": {
+            "ts_row": np.ones(n_curves, dtype=bool),
+            "start_row": np.zeros(n_curves, dtype=bool),
+            "terminal_row": np.zeros(n_curves, dtype=bool),
+            "d_key_ts_ep": np.linspace(0.1, 0.5, n_curves, dtype=np.float32),
+            "degenerate_curve": np.zeros(n_curves, dtype=bool),
+            "ep_label": np.ones(n_curves, dtype=np.int8),
+            "geometry_legal": np.ones(n_curves, dtype=bool),
+        },
+        "labels_v52": {
+            "q": np.zeros(n_curves, dtype=np.float32),
+            "q_mask": np.ones(n_curves, dtype=bool),
+        },
+    }
+    for group, members in groups.items():
+        (root / group).mkdir()
+        for name, array in members.items():
+            np.save(root / group / f"{name}.npy", array)
+    return root
+
+
+def test_max_curves_global_index_space_is_consistent(tmp_path: Path):
+    """Capped split population must never shift or overflow trajectory indices.
+
+    Regression for the real-data smoke bug: with ``data.limit`` -> ``max_curves``
+    the v5 adapter maps a per-split position with ``offset = sum(previous split
+    trajectory counts)``; if Zone 2 resolved indices by "first split with
+    ``index < len``", the offset of a later split exceeded every local length and
+    raised ``TRAJ_RANGE`` (e.g. index 16 with 8 curves).
+    """
+    reader = IdxV2Reader(_write_idx_v2_multi(tmp_path / "idx_v2"))
+    dataset = IdxV2Dataset(reader, seed=85,
+                           max_curves={"train": 2, "valid": 1, "id": 1})
+    offsets = dataset.trajectory_offsets()
+    assert offsets == {"train": 0, "valid": 2, "id": 3}
+    assert dataset.n_trajectories == 4
+
+    # The v5 adapter computes the same offsets from the per-split trajectory
+    # lists (``pes2ts_v5.data.idx_v2_source._split_offsets``); pin the contract.
+    adapter_offsets: dict[str, int] = {}
+    running = 0
+    for split, refs in dataset._trajs.items():
+        adapter_offsets[split] = running
+        running += len(refs)
+    assert adapter_offsets == offsets
+
+    for split in ("train", "valid", "id"):
+        positions = dataset.trajectory_indices(split)
+        curve_rows = dataset._splits[split]
+        assert positions == list(range(len(positions)))
+        assert len(positions) == len(curve_rows)
+        for position in positions:
+            sequence = dataset.build_sequence(offsets[split] + position)
+            assert sequence["traj_idx"] == offsets[split] + position
+            assert sequence["reaction_row"] == curve_rows[position]
+            assert dataset.trajectory_split(offsets[split] + position) == split
+
+        # fraction < 1, shuffled order and max_samples variants
+        fraction_positions = dataset.trajectory_indices(split, fraction=0.5,
+                                                        seed=17)
+        assert all(0 <= position < len(positions) for position in fraction_positions)
+        for position in fraction_positions:
+            dataset.build_sequence(offsets[split] + position)
+
+        rng = np.random.default_rng(17)
+        shuffled = [positions[i] for i in rng.permutation(len(positions))]
+        for position in shuffled:
+            dataset.build_sequence(offsets[split] + position)
+
+        global_indices = dataset.global_trajectory_indices(split, fraction=0.5)
+        assert all(offsets[split] <= index < offsets[split] + len(positions)
+                   for index in global_indices)
+
+        samples, metas = next(dataset.iter_sequences(
+            split, fraction=0.5, shuffle=True, max_samples=1))
+        assert len(samples) <= 1 and len(metas) == len(samples)
+        for sample in samples:
+            assert 0 <= sample["traj_idx"] < dataset.n_trajectories
+            rebuilt = dataset.build_sequence(sample["traj_idx"])
+            assert rebuilt["trajectory_id"] == sample["trajectory_id"]
+
+    # Out-of-space indices stay typed and never reach the numpy arrays.
+    for bad in (dataset.n_trajectories, dataset.n_trajectories + 16, -1):
+        with pytest.raises(IdxV2Error) as excinfo:
+            dataset.build_sequence(bad)
+        assert excinfo.value.code == "TRAJ_RANGE"
+
+

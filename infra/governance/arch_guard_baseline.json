@@ -39,11 +39,6 @@
       "reason": "append-only ingest ledger state machine kept in one module so status transitions stay auditable in one place"
     },
     {
-      "path": "pes2ts_data/readers/key_atom_stream.py",
-      "lines": 392,
-      "reason": "ported reader; split to <=350 tracked as P2"
-    },
-    {
       "path": "pes2ts_data/splits/policy.py",
       "lines": 617,
       "reason": "split policy tables and eligibility rules are normative in one place; split candidate when a second policy family lands"
