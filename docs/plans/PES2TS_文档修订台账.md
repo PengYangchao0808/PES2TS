@@ -1,5 +1,11 @@
 # PES2TS 文档修订台账（协同性）
 
+## 2026-11-23 增量登记：代码情况报告 v2（重组后代码事实更新）
+
+- **新增** [PES2TS 代码情况报告 v2](../reports/PES2TS_代码情况报告_v2_20261123.md)（**Active-Reference**，重组后口径，取代 v1）：五区账本（跟踪 1,685 文件 / 1,027 `.py` / 452,175 行；Zone2+3+4 新代码面 22,431 行、Zone1 底座 71,545 行、archive 111,728 行、tests/legacy 98,334 行）、四层契约实现度（含 `idx_v2` 已实现未接线、`stregnn_v2` typed blocked、`physics_residual` 显式未实现）、健康度（活跃三区 ruff 0 / F821 0、467 个 ≥100 行函数分布、TODO 17）、测试分层（日常 2,129 passed、`tests/v5` 100、`tests/data` 58、`tests/kernel` 38、legacy 全量 6,389 tests/31 POSIX-only 收集错误）、五门禁与 R1–R6 复审、owner 决策 O-1…O-4 与工程待办 E-1…E-7、调整指南与复现附录。
+- **更新** [PES2TS 代码探查报告 v1](../reports/PES2TS_代码探查报告_v1_20261123.md)：加"已被 v2 取代"头注（保留历史证据，不覆写正文）。
+- **登记**：`docs/README.md`「证据与运维」表新增 v2 行、v1 行改标历史。
+
 ## 2026-11-23 增量登记：五功能区重构知识化（CODE_MAP v3 + 执行记录 v1 + 审计日志轮转）
 
 - **新增** [PES2TS 代码地图 v3](../design/PES2TS_CODE_MAP_v3_20261123.md)（**Active-Reference**；取代 [v2](../design/PES2TS_CODE_MAP_v2_20261018.md)，v2 保留为历史）：五功能区 `pes2ts_core`/`pes2ts_data`/`pes2ts_v5`/`infra`/`archive`、唯一训练引擎与 runner CLI、任务→入口表、`pes2ts_core/pesn/**` FROZEN；v2 的 78 条 `.py` 引用本次复核为 39 可解析 / 39 不可解析，收敛为 **28 个 NOT_IMPLEMENTED + 2 个历史名**（不再作为"丢失代码"）。

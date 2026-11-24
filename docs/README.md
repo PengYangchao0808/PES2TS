@@ -66,7 +66,8 @@
 | `docs/agent_runs/README.md` | 战役编排/交接说明 |
 | `docs/infra/PES2TS_WSL稳定运行与内存治理方案_v1_20261122.md` | **WSL 稳定运行与内存治理（Active）**：四层防线、阈值、SOP、preflight/回收/受限运行脚本 |
 | `docs/infra/doc_audit/20261121/README.md` | 2026-11-21 全量文档审计证据 |
-| `docs/reports/PES2TS_代码探查报告_v1_20261123.md` | **代码清点与归档依据（2026-11-23）**：991 文件/443,792 行清点、40 个疑似遗留模块分类、CODE_MAP 39 项 planned 缺口、宪法 R1–R6/P1–P5 合规审计、门禁 1 红 3 绿、四类归档建议 |
+| `docs/reports/PES2TS_代码情况报告_v2_20261123.md` | **当前代码情况报告 v2（Active-Reference，重组后口径）**：五区账本（1,685 文件/1,027 `.py`/452,175 行）、四层契约实现度、健康度（lint/长函数/未接线/测试分层/门禁）、R1–R6 复审、owner 决策与工程待办、调整指南（改什么→动哪里→跑什么）、复现附录；取代 v1 |
+| `docs/reports/PES2TS_代码探查报告_v1_20261123.md` | 代码清点与归档依据 v1（历史：重组前 991 文件/443,792 行清点、40 个疑似遗留模块分类、R1–R6 审计、四类归档建议）；现行口径见 v2 |
 | `docs/reports/PES2TS_代码分区重构执行记录_v1_20261123.md` | **五功能区重构执行记录（2026-11-23，Evidence-ReadOnly）**：提交 `ccd31f2` 的 575 重命名/0 删除、逐树迁移计数、四个合同与五道硬门、门禁实跑、legacy POSIX/依赖限制、G–V 语义待决与 GPU/WSL 全量 pytest 待补 |
 | `docs/infra/doc_cleanup/20261121/README.md` | 本次清理证据与维护机制 |
 
