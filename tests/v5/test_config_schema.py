@@ -24,6 +24,7 @@ SHIPPED = (
     "v56_baseline_gru.yaml",
     "v56_arch_matrix.yaml",
     "v56_egnn_sym.yaml",
+    "v56_real_idx_v2.yaml",
 )
 
 

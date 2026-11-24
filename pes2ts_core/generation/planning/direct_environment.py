@@ -25,7 +25,7 @@ from pes2ts_core.generation.planning.direct_mdp import (
     advance_direct_state,
     goal_potential,
 )
-from pes2ts_core.pesn.contracts.direct import (
+from pes2ts_core.contracts.direct import (
     DEFAULT_REWARD_SPEC,
     DirectAction,
     DirectRewardSpec,

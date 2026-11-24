@@ -1,18 +1,29 @@
-"""Tests for the single data-batch contract (``pes2ts_data.contracts``)."""
+"""Tests for the 3-layer data-batch contract v2 (``pes2ts_data.contracts``)."""
 
 from __future__ import annotations
+
+import warnings
 
 import numpy as np
 import pytest
 
 from pes2ts_data.contracts import (
+    BASE_FIELDS,
+    CODES,
     COMPAT_FIELDS,
     CONTRACT_REQUIRED_FIELDS,
     CONTRACT_VERSION,
     FIELD_SPECS,
+    GRAPH_FIELDS,
+    LEGACY_CONTRACT_VERSION,
     LEGACY_FIELD_MAP,
+    SPLIT_TAGS,
+    BaseBatch,
     ContractViolation,
     FieldSpec,
+    GraphBatch,
+    Provenance,
+    SequenceBatch,
     StandardBatch,
     assert_fields,
     from_standard,
@@ -26,176 +37,242 @@ from pes2ts_data.contracts import (
 # Fixtures / helpers
 # ---------------------------------------------------------------------------
 
-def minimal_batch(**overrides):
-    """A minimal valid geometric batch: pos (3,3), z (3,), edge_index (2,2)."""
-    batch = {
+def graph_batch(**overrides) -> GraphBatch:
+    values = {
+        "sample_id": "sample-1",
+        "provenance": Provenance("curve-1:train"),
         "pos": np.zeros((3, 3), dtype=np.float32),
         "z": np.array([6, 6, 6], dtype=np.int64),
         "edge_index": np.array([[1, 2], [0, 1]], dtype=np.int64),
     }
-    batch.update(overrides)
-    return batch
+    values.update(overrides)
+    return GraphBatch(**values)
 
 
-def legacy_trajectory_batch():
-    """A legacy V5.6 trajectory collate batch (padded [B,T,...] tensors)."""
+def graph_mapping(**overrides) -> dict:
+    batch = graph_batch()
+    mapping = batch.as_mapping()
+    mapping.update(overrides)
+    return mapping
+
+
+def sequence_batch(**overrides) -> SequenceBatch:
     n_batch, n_frames, n_feat, q_dim = 2, 4, 8, 6
-    return {
+    values = {
+        "sample_id": "traj-batch",
+        "provenance": "curve-1:train",
         "frame_feats": np.zeros((n_batch, n_frames, n_feat), dtype=np.float32),
         "static_feats": np.zeros((n_batch, 5), dtype=np.float32),
         "delta_s": np.zeros((n_batch, n_frames), dtype=np.float32),
         "lengths": np.array([n_frames, n_frames], dtype=np.int64),
-        "frame_mask": np.ones((n_batch, n_frames), dtype=bool),
         "move_target": np.zeros((n_batch, n_frames, q_dim), dtype=np.float32),
-        "move_mask": np.ones((n_batch, n_frames), dtype=bool),
-        "process_label": np.zeros((n_batch, n_frames), dtype=np.int64),
-        "process_mask": np.ones((n_batch, n_frames), dtype=bool),
-        "process_progress": np.zeros((n_batch, n_frames), dtype=np.float32),
-        "progress_mask": np.ones((n_batch, n_frames), dtype=bool),
-        "trust_label": np.zeros((n_batch, n_frames), dtype=np.float32),
-        "trust_mask": np.ones((n_batch, n_frames), dtype=bool),
-        "q": np.zeros((n_batch, n_frames, q_dim), dtype=np.float32),
-        "s": np.zeros((n_batch, n_frames), dtype=np.float32),
-        "provenance_id": ["curve-1:train", "curve-2:train"],
+        "process_target": np.zeros((n_batch, n_frames), dtype=np.int64),
+        "progress_target": np.zeros((n_batch, n_frames), dtype=np.float32),
+        "trust_target": np.zeros((n_batch, n_frames), dtype=np.float32),
     }
+    values.update(overrides)
+    return SequenceBatch(**values)
+
+
+def legacy_trajectory_batch() -> dict:
+    batch = sequence_batch().as_mapping()
+    batch.update({
+        "process_label": batch.pop("process_target"),
+        "process_progress": batch.pop("progress_target"),
+        "trust_label": batch.pop("trust_target"),
+        "provenance_id": batch.pop("provenance"),
+        "frame_mask": np.ones((2, 4), dtype=bool),
+        "move_mask": np.ones((2, 4), dtype=bool),
+    })
+    return batch
 
 
 # ---------------------------------------------------------------------------
-# Field specs
+# v2 metadata
 # ---------------------------------------------------------------------------
 
-def test_field_specs_declare_canonical_and_compat_fields():
-    canonical = {"pos", "z", "edge_index", "endpoint_mask", "sym_pair_idx",
-                 "target_xyz", "sample_weight", "provenance_id"}
-    assert canonical <= set(FIELD_SPECS)
+def test_contract_v2_metadata():
+    assert CONTRACT_VERSION == "2.0.0"
+    assert LEGACY_CONTRACT_VERSION == "1.0.0"
+    assert set(BASE_FIELDS) == {"sample_id", "targets", "split_tag", "provenance"}
+    assert set(GRAPH_FIELDS) == {
+        "pos", "z", "edge_index", "endpoint_mask", "sym_pair_idx",
+        "target_xyz", "sample_weight"}
     assert set(COMPAT_FIELDS) == {
         "frame_feats", "static_feats", "lengths", "delta_s", "move_target",
         "process_target", "progress_target", "trust_target"}
-    assert set(COMPAT_FIELDS) <= set(FIELD_SPECS)
-    assert CONTRACT_VERSION
-
-
-def test_contract_required_fields_are_the_geometric_identity():
+    assert set(FIELD_SPECS) == set(BASE_FIELDS) | set(GRAPH_FIELDS) | set(COMPAT_FIELDS)
     assert CONTRACT_REQUIRED_FIELDS == ("pos", "z", "edge_index")
-    assert all(FIELD_SPECS[name].required for name in CONTRACT_REQUIRED_FIELDS)
+    assert "train" in SPLIT_TAGS and "confirm" in SPLIT_TAGS
+    assert {"MISSING_FIELD", "TRUTH_FIELD_FORBIDDEN", "PROVENANCE_MISSING"} <= set(CODES)
 
 
-def test_compat_field_map_is_one_to_one():
-    assert set(LEGACY_FIELD_MAP) == set(COMPAT_FIELDS)
-    assert len(set(LEGACY_FIELD_MAP.values())) == len(LEGACY_FIELD_MAP)
-    assert LEGACY_FIELD_MAP["process_target"] == "process_label"
-    assert LEGACY_FIELD_MAP["progress_target"] == "process_progress"
-    assert LEGACY_FIELD_MAP["trust_target"] == "trust_label"
-
-
-def test_provenance_sensitive_fields_are_marked():
-    for name in ("target_xyz", "sample_weight", "move_target",
-                 "process_target", "progress_target", "trust_target"):
-        assert FIELD_SPECS[name].provenance_sensitive is True, name
-    assert FIELD_SPECS["provenance_id"].mutable is False
-
-
-def test_field_spec_rejects_unknown_dtype():
+def test_field_spec_layers_and_flags():
+    assert FIELD_SPECS["sample_id"].layer == "base"
+    assert FIELD_SPECS["pos"].layer == "graph"
+    assert FIELD_SPECS["frame_feats"].layer == "sequence"
+    assert FIELD_SPECS["provenance"].mutable is False
+    assert FIELD_SPECS["target_xyz"].provenance_sensitive is True
+    assert FIELD_SPECS["move_target"].provenance_sensitive is True
+    assert FIELD_SPECS["sample_weight"].provenance_sensitive is True
     with pytest.raises(ValueError):
         FieldSpec(name="x", dtype="complex", ndim=1, required=False,
                   description="bad")
 
 
+def test_legacy_field_map_is_one_to_one():
+    assert set(LEGACY_FIELD_MAP) == set(COMPAT_FIELDS)
+    assert LEGACY_FIELD_MAP["process_target"] == "process_label"
+    assert LEGACY_FIELD_MAP["progress_target"] == "process_progress"
+    assert LEGACY_FIELD_MAP["trust_target"] == "trust_label"
+
+
 # ---------------------------------------------------------------------------
-# Happy paths
+# Three batch layers
 # ---------------------------------------------------------------------------
 
-def test_validate_standard_batch_dataclass():
-    batch = StandardBatch(**minimal_batch())
+def test_base_batch_validates_identity_layer_only():
+    batch = BaseBatch(sample_id="s1", targets={"move": np.zeros(3)},
+                      split_tag="train", provenance=Provenance("curve-1:train"))
     report = validate_batch(batch)
-    assert set(report["fields"]) == {"pos", "z", "edge_index"}
-    assert report["provenance_id"] is False
-    assert report["required"] == list(CONTRACT_REQUIRED_FIELDS)
+    assert report["layer"] == "base"
+    assert report["sample_id"] == "s1"
+    assert report["targets"] == ["move"]
+    assert report["provenance"] == "curve-1:train"
+    assert report["required"] == ["sample_id", "provenance"]
 
 
-def test_validate_plain_mapping_and_torch_tensor():
-    report = validate_batch(minimal_batch())
+def test_graph_batch_validates_with_core_and_identity():
+    batch = graph_batch(target_xyz=np.zeros((3, 3), dtype=np.float32),
+                        sample_weight=np.ones(3, dtype=np.float32))
+    report = validate_batch(batch)
+    assert report["layer"] == "graph"
     assert report["fields"]["pos"]["shape"] == (3, 3)
+    assert set(report["required"]) == set(CONTRACT_REQUIRED_FIELDS) | {
+        "sample_id", "provenance"}
+    assert report["provenance"] == "curve-1:train"
 
+
+def test_sequence_batch_validates_compat_layer():
+    report = validate_batch(sequence_batch(), require_core=False)
+    assert report["layer"] == "sequence"
+    assert set(report["compat_fields"]) == set(COMPAT_FIELDS)
+    assert report["fields"]["lengths"]["dtype"].startswith("int")
+
+
+def test_plain_mappings_infer_the_layer():
+    assert validate_batch(graph_mapping())["layer"] == "graph"
+    sequence_mapping = sequence_batch().as_mapping()
+    assert validate_batch(sequence_mapping, require_core=False)["layer"] == "sequence"
+    base_mapping = {"sample_id": "s1", "provenance": "tok"}
+    assert validate_batch(base_mapping, require_core=False)["layer"] == "base"
+
+
+def test_standard_batch_is_deprecated_but_still_validates():
+    with pytest.warns(DeprecationWarning):
+        batch = StandardBatch(**graph_mapping())
+    report = validate_batch(batch)
+    assert report["layer"] == "legacy"
+    assert report["deprecated"] is True
+
+
+def test_torch_tensors_are_accepted_by_duck_typing():
     torch = pytest.importorskip("torch")
-    batch = minimal_batch(
+    batch = graph_batch(
         pos=torch.zeros(3, 3, dtype=torch.float32),
         z=torch.tensor([6, 6, 6], dtype=torch.int64),
         edge_index=torch.tensor([[1, 2], [0, 1]], dtype=torch.int64))
     assert validate_batch(batch)["fields"]["z"]["shape"] == (3,)
 
 
-def test_validate_with_provenance_passes():
-    report = validate_batch(minimal_batch(
-        target_xyz=np.zeros((3, 3), dtype=np.float32),
-        sample_weight=np.ones(3, dtype=np.float32),
-        provenance_id="curve-1:train:sha256"))
-    assert report["provenance_id"] is True
-    assert report["fields"]["target_xyz"]["provenance_sensitive"] is True
-
-
 # ---------------------------------------------------------------------------
 # Typed rejections
 # ---------------------------------------------------------------------------
 
-def test_missing_contract_fields_raise_missing_field():
+def test_identity_and_core_requirements_raise_missing_field():
     with pytest.raises(ContractViolation) as excinfo:
         validate_batch({})
     assert excinfo.value.code == "MISSING_FIELD"
 
+    with pytest.raises(ContractViolation) as excinfo:
+        validate_batch(
+            {"sample_id": "s1", "provenance": "tok",
+             "pos": np.zeros((3, 3), dtype=np.float32)},
+            require_core=True)
+    assert excinfo.value.code == "MISSING_FIELD"
+    assert "z" in excinfo.value.detail
+
+    with pytest.raises(ContractViolation) as excinfo:
+        validate_batch({"pos": np.zeros((3, 3), np.float32),
+                        "z": np.zeros(3, np.int64),
+                        "edge_index": np.zeros((2, 2), np.int64)},
+                       require_identity=True)
+    assert excinfo.value.code == "MISSING_FIELD"
+    assert "sample_id" in excinfo.value.detail
+
+    # Pure legacy compat batches can opt out of the identity requirement.
+    validate_batch(sequence_batch().as_mapping(), require_core=False,
+                   require_identity=False)
+
 
 def test_model_required_field_is_enforced():
     with pytest.raises(ContractViolation) as excinfo:
-        validate_batch(minimal_batch(), required=("target_xyz",))
+        validate_batch(graph_batch(), required=("target_xyz",))
     assert excinfo.value.code == "MISSING_FIELD"
     assert "target_xyz" in excinfo.value.detail
 
 
-def test_bad_dtype_raises_coded_error():
+@pytest.mark.parametrize("overrides,code", [
+    ({"pos": np.zeros((3, 3), dtype=np.int64)}, "BAD_DTYPE"),
+    ({"z": np.ones(3, dtype=np.float32)}, "BAD_DTYPE"),
+    ({"pos": np.zeros((3, 2), dtype=np.float32)}, "BAD_SHAPE"),
+    ({"edge_index": np.zeros((3, 3), dtype=np.int64)}, "BAD_SHAPE"),
+    ({"z": np.array([6, 6], dtype=np.int64)}, "SHAPE_MISMATCH"),
+    ({"edge_index": np.array([[0, 5], [1, 2]], dtype=np.int64)}, "BAD_INDEX"),
+])
+def test_graph_field_violations_are_typed(overrides, code):
     with pytest.raises(ContractViolation) as excinfo:
-        validate_batch(minimal_batch(pos=np.zeros((3, 3), dtype=np.int64)))
-    assert excinfo.value.code == "BAD_DTYPE"
-    assert excinfo.value.field == "pos"
+        validate_batch(graph_batch(**overrides))
+    assert excinfo.value.code == code
 
+
+def test_base_field_violations_are_typed():
     with pytest.raises(ContractViolation) as excinfo:
-        validate_batch(minimal_batch(z=np.ones(3, dtype=np.float32)))
-    assert excinfo.value.code == "BAD_DTYPE"
-
-
-def test_bad_shape_raises_coded_error():
-    with pytest.raises(ContractViolation) as excinfo:
-        validate_batch(minimal_batch(pos=np.zeros((3, 2), dtype=np.float32)))
-    assert excinfo.value.code == "BAD_SHAPE"
-
-    with pytest.raises(ContractViolation) as excinfo:
-        validate_batch(minimal_batch(
-            edge_index=np.zeros((3, 3), dtype=np.int64)))
-    assert excinfo.value.code == "BAD_SHAPE"
-
-
-def test_shape_mismatch_and_bad_index_raise_coded_errors():
-    with pytest.raises(ContractViolation) as excinfo:
-        validate_batch(minimal_batch(z=np.array([6, 6], dtype=np.int64)))
-    assert excinfo.value.code == "SHAPE_MISMATCH"
+        validate_batch({"sample_id": "s1", "provenance": "tok", "targets": [1, 2]})
+    assert excinfo.value.code == "TARGETS_INVALID"
 
     with pytest.raises(ContractViolation) as excinfo:
-        validate_batch(minimal_batch(
-            edge_index=np.array([[0, 5], [1, 2]], dtype=np.int64)))
-    assert excinfo.value.code == "BAD_INDEX"
+        validate_batch({"sample_id": "s1", "provenance": "tok",
+                        "split_tag": "everything"})
+    assert excinfo.value.code == "SPLIT_TAG_INVALID"
 
-
-def test_provenance_missing_raises():
     with pytest.raises(ContractViolation) as excinfo:
-        validate_batch(minimal_batch(target_xyz=np.zeros((3, 3), dtype=np.float32)))
+        validate_batch({"sample_id": "s1", "provenance": ""})
+    assert excinfo.value.code == "PROVENANCE_INVALID"
+
+    with pytest.raises(ContractViolation) as excinfo:
+        validate_batch({"sample_id": "s1",
+                        "provenance": Provenance("tok", sha256="abc")})
+    assert excinfo.value.code == "PROVENANCE_INVALID"
+
+    with pytest.raises(ContractViolation) as excinfo:
+        validate_batch({"sample_id": "", "provenance": "tok"})
+    assert excinfo.value.code == "BAD_VALUE"
+
+
+def test_provenance_missing_for_sensitive_fields():
+    mapping = graph_mapping(target_xyz=np.zeros((3, 3), dtype=np.float32))
+    mapping.pop("provenance")
+    with pytest.raises(ContractViolation) as excinfo:
+        validate_batch(mapping, require_identity=False)
     assert excinfo.value.code == "PROVENANCE_MISSING"
-    # ... but an explicit opt-out is allowed for loaders that audited provenance.
-    validate_batch(minimal_batch(target_xyz=np.zeros((3, 3), dtype=np.float32)),
-                   require_provenance=False)
+    # Explicit opt-out for callers whose loader audited provenance upstream.
+    validate_batch(mapping, require_identity=False, require_provenance=False)
 
 
 def test_truth_fields_are_forbidden_r1():
     with pytest.raises(ContractViolation) as excinfo:
-        validate_batch(minimal_batch(ts_geometry_xyz=np.zeros((3, 3))))
+        validate_batch({"ts_geometry_xyz": np.zeros((3, 3))})
     assert excinfo.value.code == "TRUTH_FIELD_FORBIDDEN"
 
     with pytest.raises(ContractViolation) as excinfo:
@@ -207,13 +284,13 @@ def test_truth_fields_are_forbidden_r1():
     assert not is_truth_field("trust_target")
 
 
-def test_assert_fields_rejects_missing_and_truth_requirements():
-    assert_fields(minimal_batch(), ("pos", "z"))
+def test_assert_fields_and_truth_requirements():
+    assert_fields(graph_batch(), ("pos", "z"))
     with pytest.raises(ContractViolation) as excinfo:
-        assert_fields(minimal_batch(), ("target_xyz",))
+        assert_fields(graph_batch(), ("target_xyz",))
     assert excinfo.value.code == "MISSING_FIELD"
     with pytest.raises(ContractViolation) as excinfo:
-        assert_fields(minimal_batch(), ("ts_geometry",))
+        assert_fields(graph_batch(), ("ts_geometry",))
     assert excinfo.value.code == "TRUTH_FIELD_FORBIDDEN"
 
 
@@ -229,7 +306,7 @@ def test_validation_never_leaks_native_exceptions():
     assert excinfo.value.code == "BAD_BATCH_TYPE"
 
     with pytest.raises(ContractViolation) as excinfo:
-        validate_batch(minimal_batch(pos=object()))
+        validate_batch(graph_batch(pos=object()))
     assert excinfo.value.code == "BAD_DTYPE"
 
     with pytest.raises(ContractViolation) as excinfo:
@@ -238,7 +315,7 @@ def test_validation_never_leaks_native_exceptions():
 
 
 def test_unknown_fields_tolerated_by_default_but_rejectable():
-    batch = minimal_batch(unknown_extra=np.zeros(3))
+    batch = graph_mapping(unknown_extra=np.zeros(3))
     validate_batch(batch)
     with pytest.raises(ContractViolation) as excinfo:
         validate_batch(batch, allow_unknown=False)
@@ -246,81 +323,55 @@ def test_unknown_fields_tolerated_by_default_but_rejectable():
 
 
 # ---------------------------------------------------------------------------
-# Legacy V5.6 compat bridge
+# Deprecated compat shim
 # ---------------------------------------------------------------------------
 
-def test_to_standard_renames_legacy_keys_and_preserves_passthrough():
+def test_to_standard_shim_maps_legacy_keys_and_warns():
     legacy = legacy_trajectory_batch()
-    snapshot = {key: value for key, value in legacy.items()}
-    standard = to_standard(legacy)
-
-    assert standard["process_target"] is legacy["process_label"]
-    assert standard["progress_target"] is legacy["process_progress"]
-    assert standard["trust_target"] is legacy["trust_label"]
-    assert "lengths" in standard
-    # Passthrough legacy keys are preserved, never silently dropped (R5).
-    for passthrough in ("frame_mask", "move_mask", "process_mask", "q", "s"):
-        assert passthrough in standard
-    # Input never mutated.
-    assert set(legacy) == set(snapshot)
+    with pytest.warns(DeprecationWarning):
+        batch = to_standard(legacy)
+    assert isinstance(batch, SequenceBatch)
+    assert batch.process_target is legacy["process_label"]
+    assert batch.progress_target is legacy["process_progress"]
+    assert batch.trust_target is legacy["trust_label"]
+    assert batch.provenance is legacy["provenance_id"]
+    assert batch.sample_id == legacy["sample_id"]
+    # Contract-external legacy keys (masks) are not part of the batch contract.
+    assert "frame_mask" not in batch.as_mapping()
 
 
-def test_compat_batch_validates_with_require_core_false():
-    standard = to_standard(legacy_trajectory_batch())
-    report = validate_batch(
-        standard,
-        required=("frame_feats", "static_feats", "lengths"),
-        require_core=False,
-    )
-    assert set(report["compat_fields"]) == set(COMPAT_FIELDS)
-    assert report["provenance_id"] is True
+def test_from_standard_shim_round_trips_legacy_keys_and_warns():
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", DeprecationWarning)
+        batch = to_standard(legacy_trajectory_batch())
+    with pytest.warns(DeprecationWarning):
+        legacy = from_standard(batch)
+    assert legacy["process_label"] is batch.process_target
+    assert legacy["process_progress"] is batch.progress_target
+    assert legacy["trust_label"] is batch.trust_target
+    assert legacy["provenance"] == batch.provenance
 
 
-def test_compat_batch_without_provenance_is_rejected():
-    legacy = legacy_trajectory_batch()
-    legacy.pop("provenance_id")
-    standard = to_standard(legacy)
-    with pytest.raises(ContractViolation) as excinfo:
-        validate_batch(standard, require_core=False)
-    assert excinfo.value.code == "PROVENANCE_MISSING"
-
-
-def test_from_standard_round_trips_compat_keys():
-    standard = to_standard(legacy_trajectory_batch())
-    legacy = from_standard(standard)
-    assert legacy["process_label"] is standard["process_target"]
-    assert legacy["process_progress"] is standard["progress_target"]
-    assert legacy["trust_label"] is standard["trust_target"]
-    assert "lengths" in legacy
-
-
-def test_from_standard_accepts_standard_batch_dataclass():
-    standard = to_standard(legacy_trajectory_batch())
-    declared = set(StandardBatch.__dataclass_fields__)
-    batch = StandardBatch(**{key: value for key, value in standard.items()
-                             if key in declared})
-    out = from_standard(batch)
-    assert "process_label" in out
-    assert "trust_label" in out
-    assert "lengths" in out
-
-
-def test_compat_adapters_reject_truth_and_non_mapping():
-    with pytest.raises(ContractViolation) as excinfo:
-        to_standard({"reference_ts_xyz": np.zeros((3, 3))})
+def test_compat_shims_reject_truth_and_non_mapping():
+    with pytest.warns(DeprecationWarning):
+        with pytest.raises(ContractViolation) as excinfo:
+            to_standard({"reference_ts_xyz": np.zeros((3, 3))})
     assert excinfo.value.code == "TRUTH_FIELD_FORBIDDEN"
 
-    with pytest.raises(ContractViolation) as excinfo:
-        to_standard(["not", "a", "mapping"])
+    with pytest.warns(DeprecationWarning):
+        with pytest.raises(ContractViolation) as excinfo:
+            to_standard(["not", "a", "mapping"])
     assert excinfo.value.code == "BAD_BATCH_TYPE"
 
-    with pytest.raises(ContractViolation) as excinfo:
-        from_standard(object())
+    with pytest.warns(DeprecationWarning):
+        with pytest.raises(ContractViolation) as excinfo:
+            from_standard(object())
     assert excinfo.value.code == "BAD_BATCH_TYPE"
 
 
-def test_standard_batch_as_mapping_skips_none():
-    batch = StandardBatch(**minimal_batch())
+def test_base_batch_as_mapping_skips_none():
+    batch = BaseBatch(sample_id="s1", provenance="tok")
     mapping = batch.as_mapping()
-    assert set(mapping) == {"pos", "z", "edge_index"}
-    assert batch.field_names()[0] == "pos"
+    assert mapping == {"sample_id": "s1", "provenance": "tok"}
+    assert batch.field_names() == ("sample_id", "targets", "split_tag", "provenance")
+    assert graph_batch().field_names()[:4] == batch.field_names()

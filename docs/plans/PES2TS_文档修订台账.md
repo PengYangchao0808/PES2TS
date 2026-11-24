@@ -1,5 +1,14 @@
 # PES2TS 文档修订台账（协同性）
 
+## 2026-11-24 增量登记：三板块清场与治理最小化（宪法 v2.10 + AGENT v4.0 + 冻结策略）
+
+- **清场（master，提交 `45797cc`）**：`archive/`、`tests/legacy/`、`pes2ts_core/pesn/` 移出 master（764 文件，+428/−313,708 行）；完整历史保存在只读分支 **`frozen/v4-v54-history`** 与 tag **`archive/pre-v55-legacy-20261123`**、**`archive/v5x-reorg-20261123`**（历史不可变、符合 P1，不是删除证据）。`pes2ts_core/pesn/contracts/` 迁至 `pes2ts_core/contracts/`；活数据依赖迁至 `pes2ts_data/readers/`；唯一 R1 桥 = `pes2ts_data/truth_bridge.py`（`pes2ts_core/utils/truth_guard.py` allowlist 登记，门禁机器 `pes2ts_data/_truth_gate.py`）。
+- **宪法 v2.10 最小增量**：[PES2TS 开发宪法 v1](../PES2TS_开发宪法_v1.md) 顶部新增 2026-11-24 增量行 + §15 记录：三板块所有权（`pes2ts_core` 化学/物理内核禁 torch；`pes2ts_data` 数据&真值层；`pes2ts_v5` 唯一训练/评测引擎；`infra` 仅门禁运维）、历史冻结、`pes2ts_core/pesn/` 冻结/删除后 §2.3/§2.6 的"pesn 唯一预测器代码根"条款仅对新开发失效；R1–R6 不变。
+- **AGENT.md 重写（v4.0，≤150 行）**：[AGENT.md](../../AGENT.md) 改为三板块 + 唯一命令入口（`python -m pes2ts_v5.runner {train,eval,sweep,smoke}` + 门禁）+ 四条工程红线（禁第二 trainer/`.backward()` 站点、禁战役版本号 `.py`、活跃文件 ≤350 行、禁自造框架/脚本）+ No-Read/No-Write 仅指向冻结分支（不在工作树）+ 指向 ADR-0036 / 宪法 v2.10；明确宪法优先。
+- **CODE_MAP v3 停更**：[CODE_MAP v3](../design/PES2TS_CODE_MAP_v3_20261123.md) 标 **Historical**：三板块后目录树 + `infra/governance/arch_guard.py` 为活地图，本文件仅作 2026-11-23 时点快照（不重构正文）。
+- **链接门禁冻结策略**：`infra/governance/check_docs_links.py` 对解析到 `archive/`、`tests/legacy/`、`pes2ts_core/pesn/`、`scripts/`、`config/campaigns/` 的历史链接输出 WARN（`frozen-history: see branch frozen/v4-v54-history`）而非 ERROR；其余路径保持严格 0 error。
+- **登记**：本台账增量；`docs/README.md` 宪法行 v2.10 / AGENT v4.0 / CODE_MAP 行 Historical + 新增「三板块清场（2026-11-24）」节；执行记录追加 §12 清场与冷存。清场后文档门实测：`docs_consistency --strict` CLEAN（155 文件 0 violation）、`check_docs_links` 0 error（167 docs，23 条 frozen-history 容忍）、`render_gv_map --check` current、`pytest -q tests/kernel` 44 passed。
+
 ## 2026-11-23 增量登记：开发进度报告 v1（宪法 × 最新方案 × 仓库现状）
 
 - **新增** [PES2TS 开发进度报告 v1](../reports/PES2TS_开发进度报告_v1_20261123.md)（**Evidence-ReadOnly**）：按三轴（G 能力 / V 战役 / 数据+代码就绪度）汇总——G0 具备、G1 大部分、G2 部分（24 例 13 complete/9 partial/2 rejected，validated=0）、G3.P 已训练但 sealed/整族评测未冻结、G3.0–G4 未启动；registry 26 战役（12 executed/5 proposed/9 archived）+ 计划 14 战役（V5.5→V7.3，0 执行）；里程碑 M0 达成/M1 部分/M2–M8 未开始；datastore ACTIVE 与 114.95 GiB 回收实测；治理漂移 G-01…G-12（宪法 vs 五区、AGENT 矛盾、R1 真值桥未迁移、registry 落后等）；重构工作包 R1–R7 与 owner 决策 8 项。

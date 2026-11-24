@@ -6,7 +6,7 @@ import json
 
 import pytest
 
-from pes2ts_core.pesn.contracts.control import (
+from pes2ts_core.contracts.control import (
     ACTION_SOURCE_MODEL_RESIDUAL,
     ACTION_SOURCE_RULE_ZERO,
     CONTROL_TRANSITION_SCHEMA_VERSION,
@@ -209,7 +209,7 @@ class TestTransitionAndCost:
 
 
 def _make_transition(cost: MacroCost) -> object:
-    from pes2ts_core.pesn.contracts.control import ControlTransition
+    from pes2ts_core.contracts.control import ControlTransition
 
     return ControlTransition(
         schema_version=CONTROL_TRANSITION_SCHEMA_VERSION,

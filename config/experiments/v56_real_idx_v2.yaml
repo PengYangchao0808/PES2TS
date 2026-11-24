@@ -1,0 +1,66 @@
+# V5.6 real-data experiment: the frozen `v53mp_idx_v2` trajectory index.
+#
+# `store_manifest: "idx_v2:<path>"` selects the real-data source.  The engine then
+# reads it through the Zone-2 data package
+# (`pes2ts_data.readers.idx_v2.IdxV2Reader` -> `IdxV2Dataset`) and validates every
+# batch as a shared contract SequenceBatch with per-sample `provenance_id`
+# (typed `DATA_CONTRACT_UNAVAILABLE` if the readers are missing,
+# `DATA_SOURCE_UNREACHABLE` if the index path is absent — data is never fabricated).
+#
+# STATUS: NOT runnable on a plain Windows checkout — the index lives on the WSL
+# datastore (`/pes2ts_data/v53mp_50k_data/idx_v2`).  On such a host `runner train`
+# exits 1 with `DATA_SOURCE_UNREACHABLE` (tested in tests/v5/test_data_sources.py).
+#
+# split_policy is informational (curve-hash smoke split from Zone 2, explicitly NOT
+# the frozen V5.5 ID/OOD protocol).  The two dimension fields below are optional
+# explicit contract assertions checked against the loaded dataset.
+experiment_id: v56-real-idx-v2
+seed: 17
+
+data:
+  store_manifest: "idx_v2:/pes2ts_data/v53mp_50k_data/idx_v2"
+  split_policy: idx_v2_curve_hash_v1
+  frame_feat_dim: 7      # idx_v2 adapter: 2*q_dim + 5 with q_dim=1
+  static_feat_dim: 8
+  # limit: 200           # optional per-split curve cap (group-level)
+
+model:
+  encoder: descriptor
+  core:
+    name: gru
+    hidden_dim: 64
+    layers: 2
+    dropout: 0.0
+    param_budget: 100000
+  head:
+    name: multi_head
+    q_dim: 3
+    process_classes: 3
+    dropout: 0.0
+
+loss:
+  components:
+    - {name: move_huber, weight: 1.0}
+    - {name: process_ce, weight: 0.5}
+    - {name: progress_huber, weight: 0.2}
+    - {name: trust_bce, weight: 0.2}
+
+training:
+  epochs: 3
+  batch_size: 8
+  lr: 0.001
+  weight_decay: 0.01
+  grad_clip: 1.0
+  grad_accum: 1
+  patience: 3
+  amp: false
+  ema_decay: 0.999
+  optimizer: {name: adamw}
+  callbacks: [checkpoint_best, cost_ledger, provenance_ledger, log, early_stop]
+  device: auto
+  cpu_threads: 1
+
+evaluation:
+  splits: [valid, id]
+  ood: []
+  cpu_benchmark: true

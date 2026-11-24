@@ -24,7 +24,7 @@ from typing import Final, Mapping
 
 import numpy as np
 
-from pes2ts_core.pesn.contracts.direct import (
+from pes2ts_core.contracts.direct import (
     DEFAULT_REWARD_SPEC,
     DirectAction,
     DirectRewardSpec,

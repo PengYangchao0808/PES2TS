@@ -38,7 +38,7 @@ from pes2ts_core.generation.planning.control_step import (
 )
 from pes2ts_core.generation.planning.policy_adapter import build_residual_spec
 from pes2ts_core.integration.acp.native_constraint_results import EVIDENCE_SCHEMA
-from pes2ts_core.pesn.contracts.control import PolicyRewardSpec
+from pes2ts_core.contracts.control import PolicyRewardSpec
 
 ELEMENTS = ["C", "H", "H"]
 ORIGIN_GEOMETRY = [[0.0, 0.0, 0.0], [1.5, 0.0, 0.0], [3.0, 0.0, 0.0]]

@@ -35,7 +35,13 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from pes2ts_v5.data.contracts import standard_batch_view
+from pes2ts_v5.data.contracts import (
+    contract_backend,
+    contract_version,
+    provenance_tokens,
+    to_sequence_batches,
+    validate_sequence_batch,
+)
 from pes2ts_v5.evaluation.single_step import evaluate_model_batches
 from pes2ts_v5.training._util import (
     json_safe,
@@ -192,6 +198,8 @@ class V5Trainer:
 
         # ---- optional EMA --------------------------------------------------
         self._ema_state: dict[str, torch.Tensor] | None = None
+        self._raw_state_before_ema: dict[str, torch.Tensor] | None = None
+        self.ema_applied = False
         if cfg.ema_decay is not None:
             self._ema_state = {
                 name: tensor.detach().clone()
@@ -203,9 +211,16 @@ class V5Trainer:
         self.loss_fn = loss_fn
         self.config_hash = str(config_hash or "")
         self.provenance: dict = dict(provenance or {})
-        #: validate every batch against the shared ``pes2ts_data.contracts``
-        #: StandardBatch contract (no-op when that package is absent)
+        #: validate every batch at the shared contract boundary: build a
+        #: ``SequenceBatch`` (contract v2; v1 ``StandardBatch`` compat backend while
+        #: data-zone v2 is not on disk), then ``assert_fields`` + ``validate_batch``.
         self.validate_contract = bool(validate_contract)
+        self.contract_backend = contract_backend()
+        self.contract_version = contract_version()
+        self.last_sequence_batch: Any = None
+        self.last_sequence_batches: list[Any] = []
+        self.last_validation_report: dict = {}
+        self.last_validation_reports: list[dict] = []
         self.contract_fields = frozenset(
             getattr(model, "REQUIRED_FIELDS", ()) or
             getattr(model, "required_fields", ()) or ())
@@ -234,7 +249,9 @@ class V5Trainer:
             trainer=self,
             started_at=utc_now(),
             extra={"provenance": json_safe(self.provenance),
-                   "loss_components": self._loss_components()},
+                   "loss_components": self._loss_components(),
+                   "contract": {"backend": self.contract_backend,
+                                "version": self.contract_version}},
         )
 
     def _loss_components(self) -> list[dict]:
@@ -246,18 +263,30 @@ class V5Trainer:
             getattr(callback, hook)(self.state)
 
     # ------------------------------------------------------------- batches
-    def _with_contract(self, batches):
-        """Yield ``(batch, meta)`` after the shared StandardBatch contract check.
+    def _check_contract(self, batch, metas) -> None:
+        """Build + validate the contract ``SequenceBatch`` for one batch.
 
         Raises ``pes2ts_data.contracts.ContractViolation`` (code ``MISSING_FIELD``
         / ``TRUTH_FIELD_FORBIDDEN`` / ...) instead of a bare ``KeyError`` when the
-        dataset does not provide a field the model declared.  When
-        ``pes2ts_data`` is not installed the check is a documented no-op.
+        dataset does not provide a field the model declared, and the typed
+        ``DataContractUnavailable`` when the data-zone contract is not installed.
+        The original mapping remains the model/loss transport (it carries masks).
         """
+        metas = list(metas or [])
+        tokens = provenance_tokens(metas, len(metas))
+        batches = to_sequence_batches(batch, provenance_id=tokens)
+        reports = [validate_sequence_batch(item, self.contract_fields)
+                   for item in batches]
+        self.last_sequence_batches = batches
+        self.last_sequence_batch = batches[0] if batches else None
+        self.last_validation_reports = reports
+        self.last_validation_report = reports[0] if reports else {}
+
+    def _with_contract(self, batches):
+        """Yield ``(batch, meta)`` after the shared contract boundary check."""
         for batch, metas in batches:
             if self.validate_contract:
-                standard_batch_view(batch, metas,
-                                    required_fields=self.contract_fields)
+                self._check_contract(batch, metas)
             yield batch, metas
 
     def _train_batches(self):
@@ -321,9 +350,33 @@ class V5Trainer:
                 else:
                     shadow.copy_(tensor.detach())
 
-    def _apply_ema(self) -> None:
-        if self._ema_state is not None:
-            self.model.load_state_dict(self._ema_state)
+    def apply_ema(self) -> bool:
+        """Load the EMA shadow weights into the model (``True`` when EMA exists).
+
+        The raw pre-EMA weights stay available through
+        :meth:`restore_pre_ema_weights`, so the weight swap is reversible and
+        re-applying the EMA is reproducible (same shadow tensors).
+        """
+        if self._ema_state is None:
+            return False
+        self.model.load_state_dict(self._ema_state)
+        self.ema_applied = True
+        return True
+
+    def restore_pre_ema_weights(self) -> bool:
+        """Restore the raw weights snapshotted before the EMA swap (reversible)."""
+        if self._raw_state_before_ema is None:
+            return False
+        self.model.load_state_dict(self._raw_state_before_ema)
+        self.ema_applied = False
+        return True
+
+    def ema_state(self) -> dict[str, torch.Tensor] | None:
+        """The EMA shadow state dict (``None`` when EMA is disabled)."""
+        return self._ema_state
+
+    def _apply_ema(self) -> bool:
+        return self.apply_ema()
 
     def current_lr(self) -> float:
         if not self.optimizer.param_groups:
@@ -425,8 +478,11 @@ class V5Trainer:
 
         ema_applied = False
         if self._ema_state is not None:
-            self._apply_ema()
-            ema_applied = True
+            # snapshot raw weights so the EMA swap is reversible/auditable
+            self._raw_state_before_ema = {
+                name: tensor.detach().clone()
+                for name, tensor in self.model.state_dict().items()}
+            ema_applied = self.apply_ema()
             self.save_checkpoint("ema.pt", self.history[-1]["epoch"] if self.history else 0)
 
         state.elapsed_s = time.time() - t0
@@ -447,7 +503,17 @@ class V5Trainer:
                 "enabled": self._amp_enabled,
                 "reason": self._amp_reason,
             },
-            "ema": {"decay": self.cfg.ema_decay, "applied": ema_applied},
+            "ema": {
+                "decay": self.cfg.ema_decay,
+                "applied": ema_applied,
+                "raw_snapshot": self._raw_state_before_ema is not None,
+                "reversible": True,
+            },
+            "contract": {
+                "backend": self.contract_backend,
+                "version": self.contract_version,
+                "validated": bool(self.validate_contract),
+            },
             "config_hash": self.config_hash,
             "dataset_hash": str(getattr(self.dataset, "dataset_hash", "") or ""),
             "callbacks": [cb.name for cb in self.callbacks],

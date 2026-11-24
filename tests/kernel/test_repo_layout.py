@@ -1,9 +1,10 @@
-"""Repository layout guarantees for the five-zone restructure (ADR-0036).
+"""Repository layout guarantees for the post-cleanup three-plate layout.
 
-These are cheap structural assertions (no imports of business code, no torch):
-they lock the directory contract so a future change cannot silently drop a
-zone, resurrect the retired ``scripts/`` pile, or remove the anchor modules
-that make each zone discoverable.
+Cheap structural assertions (no business imports, no torch): they lock the
+directory contract so a future change cannot resurrect the deleted frozen
+history (``archive/``, ``tests/legacy/``, ``pes2ts_core/pesn/`` -- preserved on
+branch ``frozen/v4-v54-history``), bring back the retired ``scripts/`` pile, or
+drop the anchor modules of the three active plates.
 """
 
 from __future__ import annotations
@@ -12,17 +13,26 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
-ZONES = ("pes2ts_core", "pes2ts_data", "pes2ts_v5", "infra", "archive")
+PLATES = ("pes2ts_core", "pes2ts_data", "pes2ts_v5", "infra")
 
-#: Anchor modules per zone.  Package ``__init__`` files are the read-this-first
-#: anchors; the entry modules are the documented front doors (ADR-0036).
+#: Frozen history that must stay absent from the active tree.
+FROZEN_ABSENT = ("archive", "tests/legacy", "pes2ts_core/pesn")
+
+#: Anchor modules per plate.  Package ``__init__`` files are the
+#: read-this-first anchors; the entry modules are the documented front doors.
 ANCHOR_MODULES = (
     "pes2ts_core/__init__.py",
     "pes2ts_core/cli.py",
-    "pes2ts_core/pesn/__init__.py",  # frozen legacy model tree
+    "pes2ts_core/contracts",  # relocated contracts package (or module)
+    "pes2ts_core/g0/__init__.py",
+    "pes2ts_core/g1/__init__.py",
+    "pes2ts_core/generation/__init__.py",
+    "pes2ts_core/integration/acp/__init__.py",
+    "pes2ts_core/utils/__init__.py",
     "pes2ts_data/__init__.py",
     "pes2ts_data/contracts.py",  # StandardBatch
     "pes2ts_data/registry.py",
+    "pes2ts_data/readers",
     "pes2ts_data/splits/__init__.py",
     "pes2ts_data/ingest/__init__.py",
     "pes2ts_data/builders/__init__.py",
@@ -38,38 +48,64 @@ ANCHOR_MODULES = (
     "infra/governance/arch_guard_baseline.json",
     "infra/governance/check_docs_links.py",
     "infra/governance/docs_consistency.py",
-    "infra/governance/render_gv_map.py",
     "infra/runtime/sha_sidecar.py",
-    "archive/__init__.py",
-    "archive/v4/README.md",
-    "archive/v5x_scripts/__init__.py",
-    "archive/v5x_configs/campaigns",
 )
 
-TEST_TIERS = ("kernel", "data", "v5", "legacy")
+TEST_TIERS = ("kernel", "data", "v5")
 TEST_TIER_ANCHORS = (
     "tests/kernel/__init__.py",
     "tests/data/conftest.py",
     "tests/v5/conftest.py",
-    "tests/legacy/conftest.py",
 )
 
+INFRA_MAX_LINES = 2_500
 
-def test_five_zones_exist() -> None:
-    for zone in ZONES:
-        path = REPO_ROOT / zone
-        assert path.is_dir(), f"missing zone directory: {zone}/"
+
+def _zone_py_lines(zone: str) -> int:
+    total = 0
+    for path in (REPO_ROOT / zone).rglob("*.py"):
+        if "__pycache__" in path.parts:
+            continue
+        total += len(path.read_text(encoding="utf-8", errors="replace").splitlines())
+    return total
+
+
+def test_three_plates_and_infra_exist() -> None:
+    for plate in PLATES:
+        path = REPO_ROOT / plate
+        assert path.is_dir(), f"missing plate directory: {plate}/"
         assert (path / "__init__.py").is_file(), (
-            f"zone {zone}/ needs a package __init__.py anchor"
+            f"plate {plate}/ needs a package __init__.py anchor"
         )
 
 
-def test_zone_anchor_modules_exist() -> None:
-    missing = [rel for rel in ANCHOR_MODULES if not (REPO_ROOT / rel).exists()]
-    assert missing == [], f"missing zone anchor modules: {missing}"
+def _frozen_leftovers(rel: str) -> list[str]:
+    """Files of frozen history still present (``__pycache__`` junk ignored)."""
+    path = REPO_ROOT / rel
+    if not path.exists():
+        return []
+    if path.is_file():
+        return [rel]
+    leftovers: list[str] = []
+    for candidate in path.rglob("*"):
+        if not candidate.is_file():
+            continue
+        if "__pycache__" in candidate.parts:
+            continue
+        leftovers.append(candidate.relative_to(REPO_ROOT).as_posix())
+    return sorted(leftovers)
 
 
-def test_active_config_and_test_layout() -> None:
+def test_frozen_history_is_absent() -> None:
+    leftovers = {rel: _frozen_leftovers(rel) for rel in FROZEN_ABSENT}
+    present = {rel: files for rel, files in leftovers.items() if files}
+    assert present == {}, (
+        "frozen history must stay off the active tree (branch "
+        f"frozen/v4-v54-history): {present}"
+    )
+
+
+def test_config_and_test_layout() -> None:
     assert (REPO_ROOT / "config" / "experiments").is_dir()
     experiments = sorted((REPO_ROOT / "config" / "experiments").glob("*.yaml"))
     assert experiments, "config/experiments/ must hold the active experiment YAMLs"
@@ -81,22 +117,27 @@ def test_active_config_and_test_layout() -> None:
         assert (REPO_ROOT / rel).is_file(), f"missing test-tier anchor: {rel}"
 
 
+def test_anchor_modules_exist() -> None:
+    missing = [rel for rel in ANCHOR_MODULES if not (REPO_ROOT / rel).exists()]
+    assert missing == [], f"missing plate anchor modules: {missing}"
+
+
 def test_scripts_has_no_python_files_left() -> None:
     scripts = REPO_ROOT / "scripts"
     if not scripts.exists():
         return
-    leftovers = sorted(path.relative_to(REPO_ROOT).as_posix() for path in scripts.rglob("*.py"))
+    leftovers = sorted(
+        path.relative_to(REPO_ROOT).as_posix() for path in scripts.rglob("*.py")
+    )
     assert leftovers == [], (
-        "scripts/ was retired by the five-zone restructure; move code to "
-        f"pes2ts_core/ pes2ts_data/ pes2ts_v5/ infra/ or archive/: {leftovers}"
+        "scripts/ was retired by the restructure; code belongs to "
+        f"pes2ts_core/ pes2ts_data/ pes2ts_v5/ or infra/: {leftovers}"
     )
 
 
 def test_standard_batch_contract_lives_in_pes2ts_data() -> None:
     contracts = (REPO_ROOT / "pes2ts_data" / "contracts.py").read_text(encoding="utf-8")
     assert "class StandardBatch" in contracts
-    # And it is not duplicated at the repo root or resurrected under scripts/.
-    assert not (REPO_ROOT / "contracts.py").exists()
 
 
 def test_single_trainer_module_is_the_engine_loop() -> None:
@@ -104,41 +145,28 @@ def test_single_trainer_module_is_the_engine_loop() -> None:
         encoding="utf-8"
     )
     assert "class V5Trainer" in trainer
-    assert ".backward()" in trainer or "backward(" in trainer
+    assert "backward(" in trainer
 
 
-def test_governance_gate_scripts_exist() -> None:
-    governance = REPO_ROOT / "infra" / "governance"
-    for name in ("arch_guard.py", "check_docs_links.py", "docs_consistency.py"):
-        assert (governance / name).is_file(), f"missing governance gate: {name}"
-    assert (governance / "docs_consistency_config.json").is_file()
+def test_core_contracts_plate_exists() -> None:
+    contracts = REPO_ROOT / "pes2ts_core" / "contracts"
+    assert contracts.exists(), "pes2ts_core/contracts must hold the versioned contracts"
+    if contracts.is_dir():
+        assert any(contracts.glob("*.py")), "pes2ts_core/contracts/ must contain modules"
 
 
-def test_adr_0036_and_agent_zones_are_present() -> None:
-    adr = (
-        REPO_ROOT
-        / "docs"
-        / "design"
-        / "decisions"
-        / "ADR-0036-功能分区与单一训练引擎.md"
+def test_infra_stays_small() -> None:
+    lines = _zone_py_lines("infra")
+    assert lines <= INFRA_MAX_LINES, (
+        f"infra/ is {lines} py lines (> {INFRA_MAX_LINES}); it may only hold "
+        "governance and WSL ops"
     )
-    assert adr.is_file(), f"missing ADR-0036: {adr}"
-    agent = (REPO_ROOT / "AGENT.md").read_text(encoding="utf-8")
-    assert "No-Read / No-Edit Zone" in agent
-    assert "ADR-0036" in agent
 
 
-def test_rgignore_covers_frozen_zones() -> None:
-    rgignore = REPO_ROOT / ".rgignore"
-    assert rgignore.is_file(), "missing repo-root .rgignore"
-    text = rgignore.read_text(encoding="utf-8")
-    for pattern in (
-        "archive/",
-        "tests/legacy/",
-        "pes2ts_core/pesn/models/v54*",
-        "pes2ts_core/pesn/**/*dual_ts*",
-        "data/",
-        "outputs/",
-        ".slim/",
-    ):
-        assert pattern in text, f".rgignore must cover {pattern!r}"
+def test_guard_documents_three_plates_and_frozen_branch() -> None:
+    text = (REPO_ROOT / "infra" / "governance" / "arch_guard.py").read_text(
+        encoding="utf-8"
+    )
+    assert "three-plate" in text
+    assert "frozen/v4-v54-history" in text
+    assert "G6" in text

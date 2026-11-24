@@ -37,7 +37,7 @@ from pes2ts_core.generation.planning.control_step import (
     ControlDecision,
     ControlScanState,
 )
-from pes2ts_core.pesn.contracts.control import (
+from pes2ts_core.contracts.control import (
     ACTION_SOURCE_EXPLORE,
     ACTION_SOURCE_MODEL_RESIDUAL,
     ACTION_SOURCE_PERTURB,
@@ -499,7 +499,7 @@ class ControlCaseAdapter:
         endpoint_geometry_r: Sequence[Sequence[float]],
         endpoint_geometry_p: Sequence[Sequence[float]],
     ) -> "ControlCaseAdapter":
-        from pes2ts_core.pesn.contracts.inputs import (
+        from pes2ts_core.contracts.inputs import (
             CoordinateDef,
             CoordinateSpec,
             TaskEdit,
@@ -573,7 +573,7 @@ class ControlCaseAdapter:
         spec: ResidualControlSpec,
         base_targets: Sequence[float],
     ) -> ControlInput:
-        from pes2ts_core.pesn.contracts.inputs import (
+        from pes2ts_core.contracts.inputs import (
             build_pesn_input,
         )
 
@@ -620,7 +620,7 @@ def task_graph_content(task_graph) -> dict[str, Any]:
 
 def task_graph_from_payload(payload: Mapping[str, Any]):
     """Rebuild a typed TaskGraph from its serializable payload."""
-    from pes2ts_core.pesn.contracts.inputs import BondTerm, TaskEdit, TaskGraph
+    from pes2ts_core.contracts.inputs import BondTerm, TaskEdit, TaskGraph
 
     return TaskGraph(
         schema_version=payload["schema_version"],
@@ -642,7 +642,7 @@ def task_graph_from_payload(payload: Mapping[str, Any]):
 
 def coordinate_spec_from_payload(payload: Mapping[str, Any]):
     """Rebuild a typed CoordinateSpec from its serializable payload."""
-    from pes2ts_core.pesn.contracts.inputs import CoordinateDef, CoordinateSpec
+    from pes2ts_core.contracts.inputs import CoordinateDef, CoordinateSpec
 
     return CoordinateSpec(
         schema_version=payload["schema_version"],
@@ -698,7 +698,7 @@ def _element_to_z(elements: Sequence[str]) -> tuple[int, ...]:
 
 
 def _covalent_terms(elements, geometry) -> list[Any]:
-    from pes2ts_core.pesn.contracts.inputs import BondTerm
+    from pes2ts_core.contracts.inputs import BondTerm
 
     n = len(elements)
     terms: list[BondTerm] = []

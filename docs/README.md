@@ -18,8 +18,8 @@
 
 | 文档 | 说明 |
 |---|---|
-| `docs/PES2TS_开发宪法_v1.md` | 规范根（SSOT，内容 v2.9） |
-| `AGENT.md` | 宪法执行投影 |
+| `docs/PES2TS_开发宪法_v1.md` | 规范根（SSOT，内容 v2.10；三板块所有权与历史冻结增量） |
+| `AGENT.md` | 宪法执行投影（v4.0 三板块版；≤150 行） |
 | `docs/plans/PES2TS_阶段定义_G0-G3.md` | 阶段与边界唯一来源 |
 | `docs/plans/PES2TS_完整开发流方案_整合版_v1.md` | 流程总纲 |
 | `docs/plans/PES2TS_文档修订台账.md` | 变更流水（含退役/档案条目登记） |
@@ -53,7 +53,7 @@
 | `docs/plans/PES2TS_V5.4.2_Backbone_50K_详细阶段实施方案_v1.0_20261029.md` | V5.4.2 战役（已执行） |
 | `docs/plans/PES2TS_整体开发与发布方案_v2.md` | 项目级发布主方案 |
 | `docs/plans/PES2TS_训练测试集划分标准_v1_20261120.md` | 数据划分与来源 |
-| `docs/design/PES2TS_CODE_MAP_v3_20261123.md` | **代码地图 v3（Active-Reference，新会话先读）**：五功能区（`pes2ts_core`/`pes2ts_data`/`pes2ts_v5`/`infra`/`archive`）、唯一训练引擎与 runner CLI、任务→入口表、`pes2ts_core/pesn/**` FROZEN、v2 planned 缺口收敛为 NOT_IMPLEMENTED |
+| `docs/design/PES2TS_CODE_MAP_v3_20261123.md` | **代码地图 v3（Historical，停更）**：2026-11-23 五功能区时点快照；三板块布局后活地图 = 目录树 + `infra/governance/arch_guard.py` |
 | `docs/design/PES2TS_CODE_MAP_v2_20261018.md` | 代码地图 v2（历史版；现行见 v3，v2 的 planned 区块已由 v3 收敛登记） |
 | `docs/design/PES2TS_G_V_MAPPING_v1_20261018.md` | G–V 映射（生成物，勿手改） |
 | `docs/design/decisions/` | ADR-0001…0036（全部保留；0036 = 五功能区与单一训练引擎） |
@@ -69,7 +69,13 @@
 | `docs/reports/PES2TS_开发进度报告_v1_20261123.md` | **开发进度报告 v1（Evidence-ReadOnly，宪法×最新方案×仓库现状）**：G0–G4 能力进度（§11.5 四词）、V 轴 26 注册战役 + 计划 14 战役、里程碑 M0–M8、数据仓/划分/清理实测、代码库就绪度、治理漂移 G-01…G-12、重构工作包 R1–R7、风险与 owner 决策清单；供进一步重构使用 |
 | `docs/reports/PES2TS_代码情况报告_v2_20261123.md` | **当前代码情况报告 v2（Active-Reference，重组后口径）**：五区账本（1,685 文件/1,027 `.py`/452,175 行）、四层契约实现度、健康度（lint/长函数/未接线/测试分层/门禁）、R1–R6 复审、owner 决策与工程待办、调整指南（改什么→动哪里→跑什么）、复现附录；取代 v1 |
 | `docs/reports/PES2TS_代码探查报告_v1_20261123.md` | 代码清点与归档依据 v1（历史：重组前 991 文件/443,792 行清点、40 个疑似遗留模块分类、R1–R6 审计、四类归档建议）；现行口径见 v2 |
-| `docs/reports/PES2TS_代码分区重构执行记录_v1_20261123.md` | **五功能区重构执行记录（2026-11-23，Evidence-ReadOnly）**：提交 `ccd31f2` 的 575 重命名/0 删除、逐树迁移计数、四个合同与五道硬门、门禁实跑、legacy POSIX/依赖限制、G–V 语义待决与 GPU/WSL 全量 pytest 待补 |
+| `docs/reports/PES2TS_代码分区重构执行记录_v1_20261123.md` | **五功能区重构执行记录（Evidence-ReadOnly）**：提交 `ccd31f2` 的 575 重命名/0 删除、迁移计数、四个合同与五道硬门、门禁实跑；§12 清场与冷存（2026-11-24） |
+
+## 三板块清场（2026-11-24，提交 `45797cc`）
+
+- **冷存**：`archive/`、`tests/legacy/`、`pes2ts_core/pesn/` 从 master 移出（清场提交 `45797cc`：764 文件，+428/−313,708 行）；完整历史保存在只读分支 `frozen/v4-v54-history` 与 tag `archive/pre-v55-legacy-20261123`、`archive/v5x-reorg-20261123`；`pes2ts_core/pesn/contracts/` 迁至 `pes2ts_core/contracts/`（活跃代码继续使用）。
+- **活依赖**：数据读取迁至 `pes2ts_data/readers/`（v1.0.0，纯 numpy/pyarrow 只读）；唯一 R1 桥 = `pes2ts_data/truth_bridge.py`。
+- **治理同步**：宪法 **v2.10**、`AGENT.md` **v4.0**（三板块/唯一入口/四条工程红线）、CODE_MAP v3 标 **Historical**、`check_docs_links.py` 增加 frozen-history WARN 策略（archive/tests-legacy/pesn/scripts/config-campaigns 历史链接不再阻断 CI）。清场后实测：`docs_consistency --strict` CLEAN（155 文件）、`check_docs_links` 0 error（167 docs，23 条 frozen-history 容忍）、`render_gv_map --check` current、`pytest -q tests/kernel` 44 passed。
 | `docs/infra/doc_cleanup/20261121/README.md` | 本次清理证据与维护机制 |
 
 ## 历史

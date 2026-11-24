@@ -108,7 +108,8 @@ def build_trainer(dataset):
     from pes2ts_v5.training.trainer import TrainConfig, V5Trainer
 
     def _build(core: str = "gru", *, out_dir=None, callbacks=None, loss_fn=None,
-               experiment_id: str = "test-run", **overrides):
+               experiment_id: str = "test-run", validate_contract: bool = True,
+               **overrides):
         defaults = dict(
             batch_size=2, lr=0.01, max_epochs=1, patience=10, seed=17,
             device="cpu", cpu_threads=1, max_train_batches=1, max_val_batches=1,
@@ -121,7 +122,8 @@ def build_trainer(dataset):
                         head=HeadConfig()))
         return V5Trainer(model, dataset, cfg, out_dir=out_dir,
                          experiment_id=experiment_id, callbacks=callbacks,
-                         loss_fn=loss_fn, config_hash="test-config-hash")
+                         loss_fn=loss_fn, config_hash="test-config-hash",
+                         validate_contract=validate_contract)
 
     return _build
 

@@ -79,7 +79,7 @@ from pes2ts_core.integration.acp.xtb_constraints_request import (
 from pes2ts_core.integration.acp.native_constraint_results import (
     EVIDENCE_SCHEMA,
 )
-from pes2ts_core.pesn.contracts.control import (
+from pes2ts_core.contracts.control import (
     CONTROL_TRANSITION_SCHEMA_VERSION,
     ControlAction,
     ControlTransition,
@@ -1195,7 +1195,7 @@ def run_control_scan(
 
 
 def _decision_context_vector(state: ControlScanState) -> tuple[float, ...]:
-    from pes2ts_core.pesn.contracts.control import ControlContext
+    from pes2ts_core.contracts.control import ControlContext
 
     context = ControlContext(
         nominal_lambda=float(state.last_accepted_lambda),

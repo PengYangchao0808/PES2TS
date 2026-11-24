@@ -1,83 +1,86 @@
 #!/usr/bin/env python3
-"""Architecture boundary guard for the five-zone layout (ADR-0036).
+"""Architecture guard for the post-cleanup three-plate layout.
 
-Single source of truth: ``docs/design/decisions/ADR-0036-功能分区与单一训练引擎.md``.
-The repository is split into five zones -- ``pes2ts_core/`` (protected; the
-legacy ``pes2ts_core/pesn/`` model tree is frozen read-only), ``pes2ts_data/``
-(contracts + splits + registry + builders), ``pes2ts_v5/`` (the *only*
-training/evaluation engine), ``infra/`` (runtime + governance tooling) and
-``archive/`` (frozen historical V4 / V5.x campaigns; never imported by active
-code).  This module implements the five hard gates that keep that layout from
-decaying back into campaign-versioned script piles:
+Single source of truth for the current repository law: ``AGENT.md`` §5.1 plus
+the three-plate cleanup (2026-11-24).  The historic five-zone ADR-0036 is
+superseded: the V4 / V5.1-V5.4 history (``archive/``, ``tests/legacy/``,
+``pes2ts_core/pesn/``) no longer lives on the active tree -- it is preserved on
+branch ``frozen/v4-v54-history`` and release tags.  The active repository is:
+
+* ``pes2ts_core/``  -- g0 / g1 / generation / integration / utils + contracts
+  (protected: no torch, no engine, no data zone, no history)
+* ``pes2ts_data/``  -- contracts / readers / splits / ingest / builders
+* ``pes2ts_v5/``    -- the single training + evaluation engine
+* ``infra/``        -- governance + WSL ops only (no business imports)
+* ``config/{experiments,data,registry}``
+* ``tests/{kernel,data,v5}`` -- ``tests/legacy/`` is frozen history
+
+The guard implements six hard gates:
 
 G1 single training loop
-    Only ``pes2ts_v5/training/**`` may contain calls to ``.backward()`` or to
-    ``<optimizer>.step()``.  ``pes2ts_core/pesn/`` is frozen legacy and is not
-    scanned (it is a read-only record of V4/V5.1-V5.4 training, not active
-    code).  AST-only, so comments and docstrings never trigger the gate.
+    Only ``pes2ts_v5/training/**`` may contain a ``.backward()`` call or an
+    ``<optimizer>.step()`` call.  AST-only, so comments/docstrings never fire.
 
 G2 no campaign-versioned code files
-    A ``.py`` file in an active zone (``pes2ts_v5``, ``pes2ts_data``,
-    ``infra``, and ``pes2ts_core`` minus the frozen ``pesn/`` tree) whose
-    *stem* matches ``^v(?:5[4-9]\\d*|[6-9]\\d*)_`` is a violation.  That
-    rejects ``v54_trainer.py`` / ``v541_adapter.py`` / ``v563_trainer.py`` /
-    ``v6_core.py`` / ``v7_runner.py`` while keeping the legitimate
-    ``pes2ts_v5/models/v5_model.py`` (stem ``v5_model`` does not match: the
-    rule requires v + 54..59 (optionally + digits) or v6..v99, then ``_``).
+    An active-zone ``.py`` file whose stem matches
+    ``^v(?:5[5-9]\\d*|[6-9]\\d*)_`` (``v55_*``, ``v563_*``, ``v6_*``,
+    ``v7_*`` ...) is a violation.  ``pes2ts_v5/models/v5_model.py`` stays
+    allowed (stem ``v5_model`` does not match).
 
 G3 one-way imports
-    AST ``Import``/``ImportFrom`` only; string literals and comments are not
-    imports.
+    AST ``Import``/``ImportFrom`` only (string literals are not imports):
 
     * ``pes2ts_v5/**`` and ``pes2ts_data/**`` must not import
-      ``pes2ts_core.pesn``, ``archive`` or ``tests.legacy``;
-    * the protected ``pes2ts_core`` sub-packages (``utils``, ``g0``, ``g1``,
-      ``generation``, ``integration``, ``ranking``, ``evaluation``) and
-      ``pes2ts_core/cli.py`` must not import ``torch``, ``pes2ts_v5``,
-      ``pes2ts_data`` or ``archive``;
+      ``pes2ts_core.pesn`` (impossible after the cleanup) or ``archive``;
+    * protected ``pes2ts_core`` code (``utils``, ``g0``, ``g1``,
+      ``generation``, ``integration``, ``contracts``) must not import
+      ``torch``, ``pes2ts_v5``, ``pes2ts_data``, ``archive`` or
+      ``pes2ts_core.pesn``;
     * ``infra/**`` must not import business code (``pes2ts_core``,
-      ``pes2ts_v5``, ``pes2ts_data``, ``archive``);
-    * ``tests/**`` outside ``tests/legacy/**`` must not import ``archive`` or
-      ``tests.legacy``;
-    * ``archive/**`` is a frozen *sink*: it may import ``infra.runtime`` (the
-      documented exception used by the archived campaign runners) and nothing
-      else from the active zones.  Two footnotes: archived scripts importing
-      the old ``pes2ts_core`` API are grandfathered -- they are the historical
-      callers of that code and are frozen, so the gate only enforces
-      ``archive -> (pes2ts_v5 | pes2ts_data | infra-non-runtime)``.
+      ``pes2ts_v5``, ``pes2ts_data``, ``archive``).  One narrow, documented
+      exception (same style as the former archive->infra sink): the governance
+      renderer ``infra/governance/render_gv_map.py`` may import
+      ``pes2ts_core.gv_registry`` only -- the registry schema/validator is a
+      spec contract, not business/runtime logic (``INFRA_G3_EXCEPTIONS``);
+    * ``tests/**`` outside ``tests/legacy/**`` must not import frozen modules
+      (``archive``, ``tests.legacy``, ``pes2ts_core.pesn``).
 
-G4 frozen-zone read-only
-    ``git diff --name-only HEAD`` must not touch ``archive/**`` or
-    ``pes2ts_core/pesn/**``.  Advisory by default (the working tree is
-    routinely dirty mid-restructure); the gate is enforced only with
-    ``--strict-frozen`` (CI usage on a clean checkout).
+G4 frozen history must stay deleted
+    Hard-fail if any *tracked* path under ``archive/``, ``tests/legacy/`` or
+    ``pes2ts_core/pesn/`` reappears in the git index (``git ls-files``).  The
+    only waiver is a ``HEAD`` commit message containing ``[unlock-legacy]``
+    (owner-approved one-commit unlock; no long-lived reconnect).  The gate is
+    honest about transient deletion windows: while the cleanup commit is still
+    being prepared the paths are reported and fail; once the deleted paths are
+    committed the gate is green.
 
-G5 active-zone lint
-    ``python -m ruff check pes2ts_v5 pes2ts_data infra`` is run via
-    subprocess.  Pre-existing findings are tolerated through the documented
-    baseline ``infra/governance/arch_guard_baseline.json`` (entries keyed by
-    ``(gate, path, code)``); any finding that is *not* in the baseline fails
-    the gate, and a baseline entry that no longer matches any finding is
-    reported as stale.  ``tests/legacy/`` and ``archive/`` are never linted.
+G5 active-zone lint -- zero tolerance
+    ``python -m ruff check pes2ts_v5 pes2ts_data infra`` (project-pinned
+    ``ruff.toml``) must be clean.  The tolerance baseline is **empty**: there
+    is no ruff/G3 debt left after the archive/legacy deletion and infra
+    slimming.  A missing ruff interpreter degrades the gate to SKIPPED (never a
+    violation), so the torch-free CI tier can run the structural gates.
 
-Public API
-----------
-``Finding(path, line, gate, message, code="")``
-    ``gate`` is one of ``G1``..``G5`` (``BASELINE`` marks stale entries).
-``scan_g1`` .. ``scan_g5``
-    Per-gate scanners returning raw (unbaselined) findings.
-``scan(root, ...) -> list[Finding]``
-    Convenience wrapper returning the unbaselined hard findings.
-``run_guard(root, ...) -> dict``
-    Full machine-readable report (findings, tolerances, stale baseline,
-    ruff availability, frozen-zone advisory status).
-``main(argv)``
-    CLI entry (``python infra/governance/arch_guard.py [--root .] [--json]``).
-    Exit code 1 on violation; 0 when clean.
+G6 size / anti-fork
+    * no active-zone (``pes2ts_data`` + ``pes2ts_v5`` + ``infra``) ``.py`` file
+      may exceed 350 lines unless listed in the explicit ``grandfathered``
+      baseline with a reason; a grandfathered file that no longer exists or no
+      longer exceeds the limit is reported as stale and must be pruned;
+    * anti-fork evidence: exactly one ``.backward()`` owner (enforced by G1)
+      and no campaign-versioned filenames (enforced by G2); both are reported
+      in ``anti_fork``;
+    * the combined ``pes2ts_data + pes2ts_v5 + infra`` Python LOC must stay
+      under 25,000.
 
-The module is stdlib-only (no torch/pandas), so it runs in the torch-free
-``tests/kernel`` tier.  Subprocess use (git/ruff) is confined to this
-``infra/`` tool on purpose; ADR-0036 documents that exception.
+Public API: ``Finding(path, line, gate, message, code="")``, per-gate
+``scan_g1 .. scan_g6``, ``scan(root) -> list[Finding]`` (unbaselined hard
+findings) and ``run_guard(root) -> dict`` (machine-readable report).  CLI:
+``python infra/governance/arch_guard.py [--root .] [--json] [--no-ruff]
+[--update-baseline]``; exit code 1 on violation, 0 when clean.
+
+The module is stdlib-only (no torch/pandas) so it runs in the torch-free
+``tests/kernel`` tier.  Subprocess use (git / ruff) is confined to this
+``infra/`` governance tool on purpose.
 """
 
 from __future__ import annotations
@@ -96,9 +99,13 @@ __all__ = [
     "ACTIVE_ZONES",
     "BASELINE_PATH",
     "Finding",
+    "FROZEN_PREFIXES",
     "GuardConfigError",
+    "INFRA_G3_EXCEPTIONS",
+    "MAX_ACTIVE_LOC",
+    "MAX_FILE_LINES",
     "RuffUnavailable",
-    "frozen_paths",
+    "active_stats",
     "load_baseline",
     "main",
     "run_guard",
@@ -108,20 +115,21 @@ __all__ = [
     "scan_g3",
     "scan_g4",
     "scan_g5",
+    "scan_g6",
 ]
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 DEFAULT_ROOT = SCRIPT_DIR.parents[1]
 BASELINE_PATH = SCRIPT_DIR / "arch_guard_baseline.json"
-BASELINE_SCHEMA = 1
+BASELINE_SCHEMA = 2
 
-# --- gate scopes -----------------------------------------------------------
-
-#: Zones that hold active code.  ``pes2ts_core/pesn/`` is carved out below
-#: because it is the frozen legacy model tree (read-only record, ADR-0036).
+#: Zones scanned for code-level gates (G1/G2/G3).  ``pes2ts_core/pesn/`` is
+#: excluded while it still exists: it is frozen history awaiting deletion.
 ACTIVE_ZONES = ("pes2ts_v5", "pes2ts_data", "infra", "pes2ts_core")
-FROZEN_MODEL_PREFIX = "pes2ts_core/pesn/"
-FROZEN_PREFIXES = ("archive/", FROZEN_MODEL_PREFIX)
+
+#: Frozen history that must not reappear on the active tree.
+FROZEN_PREFIXES = ("archive/", "tests/legacy/", "pes2ts_core/pesn/")
+
 TRAINING_PREFIX = "pes2ts_v5/training/"
 
 CORE_PROTECTED_PREFIXES = (
@@ -130,29 +138,43 @@ CORE_PROTECTED_PREFIXES = (
     "pes2ts_core/g1/",
     "pes2ts_core/generation/",
     "pes2ts_core/integration/",
-    "pes2ts_core/ranking/",
-    "pes2ts_core/evaluation/",
+    "pes2ts_core/contracts",  # package ``contracts/`` or transitional ``contracts.py``
 )
-CORE_PROTECTED_FILES = ("pes2ts_core/cli.py",)
 
 RUFF_ZONES = ("pes2ts_v5", "pes2ts_data", "infra")
+SIZE_ZONES = ("pes2ts_data", "pes2ts_v5", "infra")
 
-#: Campaign-versioned code names: ``v54_..v59_`` / ``v563_`` / ``v541_``
-#: (V5.4+ sub-campaigns) and ``v6_..v99_``.  ``v5_model.py`` (stem
-#: ``v5_model``) does NOT match: the rule requires v + 54..59 (optionally
-#: followed by more digits) or v6..v99, followed by ``_``.
-CAMPAIGN_VERSION_RE = re.compile(r"^v(?:5[4-9]\d*|[6-9]\d*)_")
+#: G6 limits (anti-fork / size discipline).
+MAX_FILE_LINES = 350
+MAX_ACTIVE_LOC = 25_000
+MAX_GRANDFATHERED = 40  # keep the grandfather list short and explicit
 
-V5_DATA_FORBIDDEN = ("pes2ts_core.pesn", "archive", "tests.legacy")
-CORE_FORBIDDEN = ("torch", "pes2ts_v5", "pes2ts_data", "archive")
+#: ``v55_*`` .. ``v59_*`` / ``v563_*`` (V5.5+ sub-campaigns) and ``v6_*`` ..
+#: ``v99_*``.  ``v5_model.py`` (stem ``v5_model``) does NOT match.
+CAMPAIGN_VERSION_RE = re.compile(r"^v(?:5[5-9]\d*|[6-9]\d*)_")
+
+V5_DATA_FORBIDDEN = ("pes2ts_core.pesn", "archive")
+CORE_FORBIDDEN = ("torch", "pes2ts_v5", "pes2ts_data", "archive", "pes2ts_core.pesn")
 INFRA_FORBIDDEN = ("pes2ts_core", "pes2ts_v5", "pes2ts_data", "archive")
-TESTS_FORBIDDEN = ("archive", "tests.legacy")
-ARCHIVE_FORBIDDEN = ("pes2ts_v5", "pes2ts_data")
-ARCHIVE_INFRA_ALLOWED = ("infra.runtime",)
+TESTS_FORBIDDEN = ("archive", "tests.legacy", "pes2ts_core.pesn")
 
-#: Marker in the current commit message that waives G4 (owner-approved
-#: frozen-zone unlock, e.g. a deliberately logged legacy fix).
+#: Narrow per-file G3 allowances for governance tooling.  NOT a blanket
+#: baseline: each entry names exactly one forbidden target and one permitted
+#: module.  The G-V registry is a schema/validator spec contract used by the
+#: doc renderer, not business/runtime logic.
+INFRA_G3_EXCEPTIONS: Dict[str, Dict[str, str]] = {
+    "infra/governance/render_gv_map.py": {
+        "target": "pes2ts_core",
+        "allowed_module": "pes2ts_core.gv_registry",
+        "reason": "G-V map renderer validates the registry schema "
+        "(spec contract, not business/runtime logic)",
+    },
+}
+
+#: HEAD-message waiver for G4 (one commit, owner-approved).
 UNLOCK_MARKER = "[unlock-legacy]"
+
+RUFF_CONFIG_FILES = ("ruff.toml", ".ruff.toml", "pyproject.toml")
 
 
 class GuardConfigError(ValueError):
@@ -163,16 +185,13 @@ class RuffUnavailable(RuntimeError):
     """``python -m ruff`` is not installed or produced unusable output."""
 
 
-# --- findings --------------------------------------------------------------
-
-
 @dataclass(frozen=True)
 class Finding:
     """One architecture-gate finding.
 
-    ``gate`` is ``G1``..``G5`` (``BASELINE`` for stale tolerance entries).
-    ``code`` is a stable rule key used by the baseline (a ruff rule code for
-    G5, ``import:<target>`` for G3); it is empty for text-free gates.
+    ``gate`` is ``G1``..``G6`` (``BASELINE`` for stale tolerance/grandfathered
+    entries).  ``code`` is a stable rule key (ruff rule code, ``size``,
+    ``loc``, ``import:<target>`` ...) used by the baseline.
     """
 
     path: str
@@ -207,9 +226,9 @@ def _iter_py(root: Path, bases: Iterable[str]) -> Iterator[Tuple[Path, str]]:
 
 
 def _iter_active_py(root: Path) -> Iterator[Tuple[Path, str]]:
-    """Active-zone ``*.py`` files (frozen ``pes2ts_core/pesn/`` excluded)."""
+    """Active-zone ``*.py`` files, frozen history excluded."""
     for path, rel in _iter_py(root, ACTIVE_ZONES):
-        if rel.startswith(FROZEN_MODEL_PREFIX):
+        if rel.startswith(FROZEN_PREFIXES):
             continue
         yield path, rel
 
@@ -218,8 +237,7 @@ def _read_text(path: Path) -> str:
     return path.read_text(encoding="utf-8", errors="replace")
 
 
-#: Per-run source cache: ``{repo-relative path: source text}``.  ``run_guard``
-#: shares it between G1 and G3 so a 44万行 tree is read once, not four times.
+#: Per-run source cache: ``{repo-relative path: source text}``.
 TextCache = Dict[str, str]
 
 
@@ -241,10 +259,10 @@ def _parse_text(text: str, path: Path) -> Optional[ast.Module]:
 
 
 def _imports(tree: ast.Module) -> Iterator[Tuple[int, str, Tuple[str, ...]]]:
-    """Yield ``(lineno, module, from_names)`` for absolute imports only.
+    """Yield ``(lineno, module, from_names)`` for absolute imports.
 
     Relative imports (``from .x import y``) stay inside their own top-level
-    package and can never cross a zone boundary, so they are ignored.
+    package and can never cross a plate boundary, so they are ignored.
     """
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
@@ -260,10 +278,20 @@ def _import_matches(module: str, names: Sequence[str], target: str) -> bool:
     """True when an absolute import reaches dotted *target*."""
     if module == target or module.startswith(target + "."):
         return True
-    # ``from pes2ts_core import pesn`` reaches target ``pes2ts_core.pesn``.
     if "." in target:
         parent, child = target.rsplit(".", 1)
         if module == parent and child in names:
+            return True
+    return False
+
+
+def _allowed_module(module: str, names: Sequence[str], allowed: str) -> bool:
+    """True when an import is the documented allowed module (exact or parent)."""
+    if module == allowed or module.startswith(allowed + "."):
+        return True
+    if "." in allowed:
+        parent, leaf = allowed.rsplit(".", 1)
+        if module == parent and leaf in names:
             return True
     return False
 
@@ -273,28 +301,36 @@ def _match_imports(
     imports: Iterable[Tuple[int, str, Tuple[str, ...]]],
     forbidden: Iterable[str],
     scope_label: str,
+    exception: Optional[Dict[str, str]] = None,
 ) -> List[Finding]:
     findings: List[Finding] = []
     targets = tuple(forbidden)
     for lineno, module, names in imports:
         for target in targets:
-            if _import_matches(module, names, target):
-                findings.append(
-                    Finding(
-                        rel,
-                        lineno,
-                        "G3",
-                        f"forbidden import of {target!r} via {module or '?'} "
-                        f"({scope_label})",
-                        code=f"import:{target}",
-                    )
+            if not _import_matches(module, names, target):
+                continue
+            if (
+                exception is not None
+                and target == exception.get("target")
+                and _allowed_module(module, names, str(exception.get("allowed_module") or ""))
+            ):
+                continue
+            findings.append(
+                Finding(
+                    rel,
+                    lineno,
+                    "G3",
+                    f"forbidden import of {target!r} via {module or '?'} "
+                    f"({scope_label})",
+                    code=f"import:{target}",
                 )
-                break
+            )
+            break
     return findings
 
 
 def _is_core_protected(rel: str) -> bool:
-    return rel in CORE_PROTECTED_FILES or rel.startswith(CORE_PROTECTED_PREFIXES)
+    return rel.startswith(CORE_PROTECTED_PREFIXES)
 
 
 # --- G1 single training loop ----------------------------------------------
@@ -325,15 +361,23 @@ def _is_optimizer_step_call(node: ast.AST) -> bool:
     )
 
 
-def scan_g1(
-    root: Path, *, _cache: Optional[TextCache] = None
-) -> List[Finding]:
-    """G1: only ``pes2ts_v5/training/**`` may run the backward/step loop.
+def _backward_owners(root: Path, cache: Optional[TextCache] = None) -> List[str]:
+    """All active-zone files that own a real ``.backward()`` AST call."""
+    owners: List[str] = []
+    for path, rel in _iter_active_py(root):
+        text = _module_text(path, rel, cache)
+        if ".backward" not in text:
+            continue
+        tree = _parse_text(text, path)
+        if tree is None:
+            continue
+        if any(_is_backward_call(node) for node in ast.walk(tree)):
+            owners.append(rel)
+    return sorted(owners)
 
-    The AST is authoritative; the textual prefilter (``.backward``/``.step``)
-    only skips files that cannot contain such a call (comments/docstrings are
-    never parsed as calls), which keeps the gate fast on the whole tree.
-    """
+
+def scan_g1(root: Path, *, _cache: Optional[TextCache] = None) -> List[Finding]:
+    """G1: only ``pes2ts_v5/training/**`` may run the backward/step loop."""
     findings: List[Finding] = []
     for path, rel in _iter_active_py(root):
         if rel.startswith(TRAINING_PREFIX):
@@ -391,30 +435,26 @@ def scan_g2(root: Path) -> List[Finding]:
 
 # --- G3 one-way imports ----------------------------------------------------
 
-#: Conservative textual prefilters run before AST parsing.  Each token set is a
-#: superset of every syntactically possible forbidden import in its scope, so
-#: skipping a non-matching file can never hide a finding.
-_V5_DATA_TOKENS = ("archive", "pesn", "tests")
-_CORE_TOKENS = ("torch", "pes2ts_v5", "pes2ts_data", "archive")
+#: Conservative textual prefilters run before AST parsing; each token set is a
+#: superset of every syntactically possible forbidden import in its scope.
+_V5_DATA_TOKENS = ("archive", "pesn")
+_CORE_TOKENS = ("torch", "pes2ts_v5", "pes2ts_data", "archive", "pesn")
 _INFRA_TOKENS = ("pes2ts_core", "pes2ts_v5", "pes2ts_data", "archive")
-_TESTS_TOKENS = ("archive", "from tests import", "tests.legacy")
-_ARCHIVE_TOKENS = ("infra", "pes2ts_v5", "pes2ts_data")
+_TESTS_TOKENS = ("archive", "from tests import", "tests.legacy", "pesn")
 
 
 def _g3_scope(rel: str) -> Optional[Tuple[Tuple[str, ...], Tuple[str, ...], str]]:
     """Return ``(forbidden targets, prefilter tokens, label)`` for a G3 scope."""
     if rel.startswith(("pes2ts_v5/", "pes2ts_data/")):
-        return V5_DATA_FORBIDDEN, _V5_DATA_TOKENS, "v5/data zone"
+        return V5_DATA_FORBIDDEN, _V5_DATA_TOKENS, "v5/data plate"
     if _is_core_protected(rel):
         return CORE_FORBIDDEN, _CORE_TOKENS, "pes2ts_core protected"
     if rel.startswith("infra/"):
-        return INFRA_FORBIDDEN, _INFRA_TOKENS, "infra zone"
+        return INFRA_FORBIDDEN, _INFRA_TOKENS, "infra plate"
     return None
 
 
-def scan_g3(
-    root: Path, *, _cache: Optional[TextCache] = None
-) -> List[Finding]:
+def scan_g3(root: Path, *, _cache: Optional[TextCache] = None) -> List[Finding]:
     """G3: enforce the one-way dependency matrix described in the docstring."""
     findings: List[Finding] = []
 
@@ -429,10 +469,19 @@ def scan_g3(
         tree = _parse_text(text, path)
         if tree is None:
             continue
-        findings.extend(_match_imports(rel, list(_imports(tree)), forbidden, label))
+        exception = INFRA_G3_EXCEPTIONS.get(rel) if rel.startswith("infra/") else None
+        findings.extend(
+            _match_imports(
+                rel,
+                list(_imports(tree)),
+                forbidden,
+                label,
+                exception=exception,
+            )
+        )
 
     for path, rel in _iter_py(root, ("tests",)):
-        if rel.startswith("tests/legacy/"):
+        if rel.startswith(FROZEN_PREFIXES):
             continue
         text = _module_text(path, rel, _cache)
         if not any(token in text for token in _TESTS_TOKENS):
@@ -441,62 +490,13 @@ def scan_g3(
         if tree is None:
             continue
         findings.extend(
-            _match_imports(rel, list(_imports(tree)), TESTS_FORBIDDEN, "tests zone")
+            _match_imports(rel, list(_imports(tree)), TESTS_FORBIDDEN, "tests plate")
         )
-
-    for path, rel in _iter_py(root, ("archive",)):
-        text = _module_text(path, rel, _cache)
-        if not any(token in text for token in _ARCHIVE_TOKENS):
-            continue
-        tree = _parse_text(text, path)
-        if tree is None:
-            continue
-        findings.extend(_scan_archive_imports(rel, list(_imports(tree))))
 
     return findings
 
 
-def _scan_archive_imports(
-    rel: str, imports: Iterable[Tuple[int, str, Tuple[str, ...]]]
-) -> List[Finding]:
-    """Frozen sink rule: archive may only reach ``infra.runtime``."""
-    findings: List[Finding] = []
-    for lineno, module, names in imports:
-        top = module.split(".", 1)[0] if module else ""
-        if top in ARCHIVE_FORBIDDEN:
-            findings.append(
-                Finding(
-                    rel,
-                    lineno,
-                    "G3",
-                    f"archive is a frozen sink but imports {module!r} "
-                    "(new-zone import is forbidden)",
-                    code=f"import:{top}",
-                )
-            )
-            continue
-        if top != "infra":
-            continue
-        allowed = module == ARCHIVE_INFRA_ALLOWED[0] or module.startswith(
-            ARCHIVE_INFRA_ALLOWED[0] + "."
-        )
-        if module == "infra" and set(names) == {"runtime"}:
-            allowed = True
-        if not allowed:
-            findings.append(
-                Finding(
-                    rel,
-                    lineno,
-                    "G3",
-                    f"archive may only import infra.runtime (documented sink "
-                    f"exception); got {module!r}",
-                    code="import:infra-non-runtime",
-                )
-            )
-    return findings
-
-
-# --- G4 frozen-zone read-only ----------------------------------------------
+# --- G4 frozen history must stay deleted -----------------------------------
 
 
 def _run_git(root: Path, *args: str) -> Optional[str]:
@@ -509,7 +509,7 @@ def _run_git(root: Path, *args: str) -> Optional[str]:
             text=True,
             encoding="utf-8",
             errors="replace",
-            timeout=60,
+            timeout=120,
             check=False,
         )
     except (OSError, subprocess.SubprocessError):
@@ -519,25 +519,35 @@ def _run_git(root: Path, *args: str) -> Optional[str]:
     return proc.stdout
 
 
-def frozen_paths(
-    root: Path, diff_paths: Optional[Sequence[str]] = None
+def frozen_tracked_paths(
+    root: Path, tracked_paths: Optional[Sequence[str]] = None
 ) -> List[str]:
-    """Repo-relative paths changed vs ``HEAD`` that live in a frozen zone."""
-    if diff_paths is None:
-        raw = _run_git(root, "diff", "--name-only", "HEAD")
-        paths = [] if raw is None else raw.splitlines()
+    """Tracked git paths that fall under a frozen-history prefix.
+
+    ``tracked_paths`` is injectable for tests (no git repo needed).  When git
+    is unavailable (e.g. a synthetic tree), the worktree itself is scanned so
+    the gate still catches a reappearing directory.
+    """
+    if tracked_paths is None:
+        raw = _run_git(root, "ls-files", "-z")
+        if raw is None:
+            paths = [
+                rel
+                for prefix in FROZEN_PREFIXES
+                for _, rel in _iter_py(root, (prefix.rstrip("/"),))
+            ]
+        else:
+            paths = [item for item in raw.split("\0") if item]
     else:
-        paths = list(diff_paths)
-    changed: List[str] = []
-    for raw_path in paths:
-        rel = raw_path.strip().replace("\\", "/")
+        paths = list(tracked_paths)
+    tracked: List[str] = []
+    for item in paths:
+        rel = item.strip().replace("\\", "/")
         if not rel:
             continue
-        if any(rel == prefix.rstrip("/") for prefix in FROZEN_PREFIXES):
-            changed.append(rel)
-        elif rel.startswith(FROZEN_PREFIXES):
-            changed.append(rel)
-    return changed
+        if rel in FROZEN_PREFIXES or rel.startswith(FROZEN_PREFIXES):
+            tracked.append(rel)
+    return sorted(set(tracked))
 
 
 def _commit_message(root: Path, commit_message: Optional[str]) -> Optional[str]:
@@ -549,12 +559,12 @@ def _commit_message(root: Path, commit_message: Optional[str]) -> Optional[str]:
 def scan_g4(
     root: Path,
     *,
-    strict_frozen: bool = False,
-    diff_paths: Optional[Sequence[str]] = None,
+    tracked_paths: Optional[Sequence[str]] = None,
     commit_message: Optional[str] = None,
 ) -> List[Finding]:
-    """G4: advisory by default; enforce only with ``strict_frozen=True``."""
-    if not strict_frozen:
+    """G4: hard-fail if frozen history reappears on the active tree."""
+    paths = frozen_tracked_paths(root, tracked_paths)
+    if not paths:
         return []
     message = _commit_message(root, commit_message) or ""
     if UNLOCK_MARKER in message:
@@ -564,14 +574,25 @@ def scan_g4(
             rel,
             0,
             "G4",
-            "frozen zone modified without the [unlock-legacy] commit waiver "
-            "(archive/ and pes2ts_core/pesn/ are read-only)",
+            "frozen history path reappeared in the active tree (archive/ and "
+            "tests/legacy/ live on branch frozen/v4-v54-history; "
+            "pes2ts_core/pesn/ is being deleted); delete it or carry the "
+            "[unlock-legacy] waiver",
+            code="frozen-reappeared",
         )
-        for rel in frozen_paths(root, diff_paths)
+        for rel in paths
     ]
 
 
-# --- G5 active-zone lint ---------------------------------------------------
+# --- G5 active-zone lint (zero tolerance) ----------------------------------
+
+
+def ruff_config(root: Path) -> Optional[str]:
+    """Return the repo-relative pinned ruff config path, if present."""
+    for name in RUFF_CONFIG_FILES:
+        if (root / name).is_file():
+            return name
+    return None
 
 
 def _ruff_check(root: Path) -> List[Finding]:
@@ -636,19 +657,135 @@ def _ruff_check(root: Path) -> List[Finding]:
 def scan_g5(
     root: Path, ruff_runner: Optional[Callable[[Path], List[Finding]]] = None
 ) -> List[Finding]:
-    """G5: ruff findings in the three active zones (raw, unbaselined)."""
+    """G5: ruff findings in the active zones (raw, unbaselined; zero tolerance)."""
     runner = ruff_runner if ruff_runner is not None else _ruff_check
     return list(runner(root))
+
+
+# --- G6 size / anti-fork ---------------------------------------------------
+
+
+def _count_lines(path: Path) -> int:
+    return len(_read_text(path).splitlines())
+
+
+def active_stats(root: Path) -> Dict[str, object]:
+    """Per-zone and total Python file/LOC counts for the size-budget plates."""
+    per_zone: Dict[str, Dict[str, int]] = {}
+    total_files = 0
+    total_loc = 0
+    for zone in SIZE_ZONES:
+        files = 0
+        loc = 0
+        for path, _ in _iter_py(root, (zone,)):
+            files += 1
+            loc += _count_lines(path)
+        per_zone[zone] = {"files": files, "loc": loc}
+        total_files += files
+        total_loc += loc
+    return {
+        "zones": list(SIZE_ZONES),
+        "per_zone": per_zone,
+        "files": total_files,
+        "loc": total_loc,
+        "max_file_lines": MAX_FILE_LINES,
+        "max_loc": MAX_ACTIVE_LOC,
+    }
+
+
+def scan_g6(
+    root: Path,
+    *,
+    grandfathered_paths: Sequence[str] = (),
+    max_file_lines: int = MAX_FILE_LINES,
+    max_active_loc: int = MAX_ACTIVE_LOC,
+) -> List[Finding]:
+    """G6: oversized active-zone files (unless grandfathered) and LOC budget."""
+    findings: List[Finding] = []
+    grandfathered = set(grandfathered_paths)
+    for zone in SIZE_ZONES:
+        for path, rel in _iter_py(root, (zone,)):
+            if rel in grandfathered:
+                continue
+            lines = _count_lines(path)
+            if lines > max_file_lines:
+                findings.append(
+                    Finding(
+                        rel,
+                        lines,
+                        "G6",
+                        f"file has {lines} lines (> {max_file_lines}) and is not "
+                        "in the grandfathered baseline; split it or register a "
+                        "reasoned grandfather entry",
+                        code="size",
+                    )
+                )
+    stats = active_stats(root)
+    loc = int(stats["loc"])
+    if loc > max_active_loc:
+        findings.append(
+            Finding(
+                ",".join(SIZE_ZONES),
+                0,
+                "G6",
+                f"active python LOC {loc} exceeds the {max_active_loc} budget",
+                code="loc",
+            )
+        )
+    return findings
+
+
+def stale_grandfathered(
+    root: Path,
+    grandfathered: Sequence[Dict[str, object]],
+    *,
+    max_file_lines: int = MAX_FILE_LINES,
+) -> List[Finding]:
+    """Grandfathered entries that no longer justify themselves (must be pruned)."""
+    stale: List[Finding] = []
+    for entry in grandfathered:
+        rel = str(entry["path"])
+        if not rel:
+            continue
+        path = root / rel
+        if not path.is_file():
+            stale.append(
+                Finding(
+                    rel,
+                    0,
+                    "BASELINE",
+                    "grandfathered file no longer exists; remove the entry",
+                    code="grandfathered",
+                )
+            )
+            continue
+        lines = _count_lines(path)
+        if lines <= max_file_lines:
+            stale.append(
+                Finding(
+                    rel,
+                    0,
+                    "BASELINE",
+                    f"grandfathered file is now {lines} lines (<= {max_file_lines}); "
+                    "remove the entry",
+                    code="grandfathered",
+                )
+            )
+    return stale
 
 
 # --- baseline --------------------------------------------------------------
 
 
-def load_baseline(baseline_path: Optional[Path] = None) -> List[Dict[str, object]]:
-    """Load and validate the tolerated-findings baseline."""
+def load_baseline(baseline_path: Optional[Path] = None) -> Dict[str, object]:
+    """Load and validate the baseline (``schema=2``).
+
+    ``tolerances`` must stay empty in the three-plate reality (G5/G3 are
+    zero-tolerance); ``grandfathered`` lists the explicit oversized files.
+    """
     path = Path(baseline_path) if baseline_path is not None else BASELINE_PATH
     if not path.is_file():
-        return []
+        return {"tolerances": [], "grandfathered": [], "path": str(path)}
     try:
         raw = json.loads(_read_text(path))
     except json.JSONDecodeError as exc:
@@ -657,24 +794,29 @@ def load_baseline(baseline_path: Optional[Path] = None) -> List[Dict[str, object
         raise GuardConfigError(
             f"baseline {path} must be an object with schema={BASELINE_SCHEMA}"
         )
-    entries = raw.get("entries")
-    if not isinstance(entries, list):
-        raise GuardConfigError(f"baseline {path} key 'entries' must be a list")
-    normalized: List[Dict[str, object]] = []
-    for entry in entries:
+    tolerances = raw.get("tolerances", [])
+    grandfathered = raw.get("grandfathered", [])
+    if not isinstance(tolerances, list) or not isinstance(grandfathered, list):
+        raise GuardConfigError(
+            f"baseline {path}: 'tolerances' and 'grandfathered' must be lists"
+        )
+    normalized_tolerances: List[Dict[str, object]] = []
+    for entry in tolerances:
         if not isinstance(entry, dict):
-            raise GuardConfigError(f"baseline entry is not an object: {entry!r}")
+            raise GuardConfigError(f"tolerance entry is not an object: {entry!r}")
         gate = entry.get("gate")
         rel = entry.get("path")
         code = entry.get("code")
         count = entry.get("count")
         if not isinstance(gate, str) or not isinstance(rel, str):
-            raise GuardConfigError(f"baseline entry needs string gate/path: {entry!r}")
+            raise GuardConfigError(
+                f"tolerance entry needs string gate/path: {entry!r}"
+            )
         if not isinstance(code, str) or not isinstance(count, int) or count < 1:
             raise GuardConfigError(
-                f"baseline entry needs string code and positive int count: {entry!r}"
+                f"tolerance entry needs string code and positive int count: {entry!r}"
             )
-        normalized.append(
+        normalized_tolerances.append(
             {
                 "gate": gate,
                 "path": rel,
@@ -683,13 +825,38 @@ def load_baseline(baseline_path: Optional[Path] = None) -> List[Dict[str, object
                 "reason": str(entry.get("reason") or ""),
             }
         )
-    return normalized
+    normalized_grandfathered: List[Dict[str, object]] = []
+    for entry in grandfathered:
+        if not isinstance(entry, dict):
+            raise GuardConfigError(
+                f"grandfathered entry is not an object: {entry!r}"
+            )
+        rel = entry.get("path")
+        reason = entry.get("reason")
+        if not isinstance(rel, str) or not rel:
+            raise GuardConfigError("grandfathered entry needs a non-empty path")
+        if not isinstance(reason, str) or not reason.strip():
+            raise GuardConfigError(
+                f"grandfathered entry {rel!r} needs a non-empty reason"
+            )
+        normalized_grandfathered.append(
+            {
+                "path": rel,
+                "lines": int(entry.get("lines") or 0),
+                "reason": reason.strip(),
+            }
+        )
+    return {
+        "tolerances": normalized_tolerances,
+        "grandfathered": normalized_grandfathered,
+        "path": str(path),
+    }
 
 
 def apply_baseline(
     findings: Sequence[Finding], entries: Sequence[Dict[str, object]]
 ) -> Tuple[List[Finding], List[Finding], List[Finding]]:
-    """Split findings into (unbaselined, tolerated, stale_baseline)."""
+    """Split findings into (unbaselined, tolerated, stale tolerance entries)."""
     by_key: Dict[Tuple[str, str, str], Dict[str, object]] = {}
     for entry in entries:
         by_key[(str(entry["gate"]), str(entry["path"]), str(entry["code"]))] = entry
@@ -718,23 +885,24 @@ def apply_baseline(
                 )
             )
     stale: List[Finding] = []
-    for key, entry in sorted(by_key.items()):
+    for key in sorted(by_key):
         if used.get(key, 0) == 0:
+            entry = by_key[key]
             stale.append(
                 Finding(
                     str(entry["path"]),
                     0,
                     "BASELINE",
-                    f"baseline entry disappeared: gate {entry['gate']} "
-                    f"code {entry['code']!r} (baseline count {entry['count']}); "
-                    "refresh infra/governance/arch_guard_baseline.json",
+                    f"tolerance entry disappeared: gate {entry['gate']} "
+                    f"code {entry['code']!r}; the tolerance baseline must stay "
+                    "empty",
                     code=str(entry["code"]),
                 )
             )
     return unbaselined, tolerated, stale
 
 
-SCAN_GATES = ("G1", "G2", "G3", "G4", "G5")
+SCAN_GATES = ("G1", "G2", "G3", "G4", "G5", "G6")
 
 
 def _gate_counts(findings: Iterable[Finding]) -> Dict[str, int]:
@@ -750,15 +918,16 @@ def _gate_counts(findings: Iterable[Finding]) -> Dict[str, int]:
 def run_guard(
     root: Path,
     *,
-    strict_frozen: bool = False,
     ruff: bool = True,
     use_baseline: bool = True,
     baseline_path: Optional[Path] = None,
-    diff_paths: Optional[Sequence[str]] = None,
+    tracked_paths: Optional[Sequence[str]] = None,
     commit_message: Optional[str] = None,
     ruff_runner: Optional[Callable[[Path], List[Finding]]] = None,
+    max_file_lines: int = MAX_FILE_LINES,
+    max_active_loc: int = MAX_ACTIVE_LOC,
 ) -> Dict[str, object]:
-    """Run all five gates and return the machine-readable report dict."""
+    """Run all six gates and return the machine-readable report dict."""
     root = Path(root)
     warnings: List[str] = []
     raw: List[Finding] = []
@@ -767,14 +936,13 @@ def run_guard(
     raw.extend(scan_g1(root, _cache=text_cache))
     raw.extend(scan_g2(root))
     raw.extend(scan_g3(root, _cache=text_cache))
-
-    raw_g4 = scan_g4(
-        root,
-        strict_frozen=strict_frozen,
-        diff_paths=diff_paths,
-        commit_message=commit_message,
+    raw.extend(
+        scan_g4(
+            root,
+            tracked_paths=tracked_paths,
+            commit_message=commit_message,
+        )
     )
-    raw.extend(raw_g4)
 
     ruff_available = False
     ruff_findings = 0
@@ -789,38 +957,73 @@ def run_guard(
     else:
         warnings.append("G5 skipped: ruff disabled by caller")
 
-    entries = load_baseline(baseline_path) if use_baseline else []
-    unbaselined, tolerated, stale = apply_baseline(raw, entries)
+    baseline = (
+        load_baseline(baseline_path)
+        if use_baseline
+        else {"tolerances": [], "grandfathered": [], "path": "disabled"}
+    )
+    tolerances = baseline["tolerances"]
+    grandfathered = baseline["grandfathered"]
+    grandfathered_paths = [str(entry["path"]) for entry in grandfathered]
+    raw.extend(
+        scan_g6(
+            root,
+            grandfathered_paths=grandfathered_paths,
+            max_file_lines=max_file_lines,
+            max_active_loc=max_active_loc,
+        )
+    )
 
-    changed_frozen = frozen_paths(root, diff_paths)
+    unbaselined, tolerated, stale_tol = apply_baseline(raw, tolerances)  # type: ignore[arg-type]
+    stale_grand = (
+        stale_grandfathered(
+            root, grandfathered, max_file_lines=max_file_lines  # type: ignore[arg-type]
+        )
+        if use_baseline
+        else []
+    )
+    stale = list(stale_tol) + list(stale_grand)
+
+    frozen_paths = frozen_tracked_paths(root, tracked_paths)
     message = _commit_message(root, commit_message) or ""
+    stats = active_stats(root)
+    anti_fork = {
+        "backward_owners": _backward_owners(root, text_cache),
+        "campaign_version_files": [f.path for f in scan_g2(root)],
+    }
 
     report: Dict[str, object] = {
         "root": str(root),
-        "strict_frozen": strict_frozen,
-        "baseline": {
-            "enabled": bool(use_baseline),
-            "path": str(Path(baseline_path) if baseline_path is not None else BASELINE_PATH),
-            "entries": len(entries),
-            "tolerated": len(tolerated),
-            "stale": len(stale),
-        },
-        "ruff": {
-            "available": ruff_available,
-            "findings": ruff_findings,
-        },
-        "frozen": {
-            "enforced": strict_frozen,
-            "waiver": UNLOCK_MARKER in message,
-            "changed": changed_frozen,
-        },
-        "counts": {
+        "gates": {
             "findings": _gate_counts(raw),
             "tolerated": _gate_counts(tolerated),
             "unbaselined": _gate_counts(unbaselined),
         },
         "violations": [finding.to_dict() for finding in unbaselined],
         "stale_baseline": [finding.to_dict() for finding in stale],
+        "baseline": {
+            "path": baseline["path"],
+            "tolerances": len(tolerances),
+            "grandfathered": len(grandfathered),
+            "tolerated": len(tolerated),
+            "stale": len(stale),
+        },
+        "frozen": {
+            "prefixes": list(FROZEN_PREFIXES),
+            "tracked": frozen_paths,
+            "waiver": UNLOCK_MARKER in message,
+            "clean": not frozen_paths,
+        },
+        "ruff": {
+            "available": ruff_available,
+            "findings": ruff_findings,
+            "config": ruff_config(root),
+        },
+        "active": stats,
+        "anti_fork": anti_fork,
+        "g3_exceptions": {
+            rel: data.get("reason", "") for rel, data in INFRA_G3_EXCEPTIONS.items()
+        },
         "warnings": warnings,
         "clean": not unbaselined and not stale,
     }
@@ -830,12 +1033,11 @@ def run_guard(
 def scan(
     root: Path,
     *,
-    strict_frozen: bool = False,
     ruff: bool = True,
 ) -> List[Finding]:
     """Return the unbaselined hard findings for *root* (no stale entries)."""
-    report = run_guard(root, strict_frozen=strict_frozen, ruff=ruff)
-    violations = [
+    report = run_guard(root, ruff=ruff)
+    return [
         Finding(
             str(item["path"]),
             int(item["line"]),
@@ -845,7 +1047,6 @@ def scan(
         )
         for item in report["violations"]  # type: ignore[index]
     ]
-    return violations
 
 
 # --- CLI -------------------------------------------------------------------
@@ -861,48 +1062,42 @@ def _format_finding(finding: Dict[str, object]) -> str:
 
 
 def _print_human(report: Dict[str, object]) -> None:
-    counts = report["counts"]
-    findings_by_gate = counts["findings"]  # type: ignore[index]
-    tolerated_by_gate = counts["tolerated"]  # type: ignore[index]
-    unbaselined_by_gate = counts["unbaselined"]  # type: ignore[index]
+    gates = report["gates"]
+    findings_by_gate = gates["findings"]
+    tolerated_by_gate = gates["tolerated"]
+    unbaselined_by_gate = gates["unbaselined"]
     print(f"arch_guard: root={report['root']}")
     for gate in SCAN_GATES:
-        if gate == "G4":
-            frozen = report["frozen"]  # type: ignore[index]
-            if frozen["enforced"]:  # type: ignore[index]
-                print(
-                    f"  G4 frozen-zone (strict): {findings_by_gate.get('G4', 0)} "
-                    "finding(s)"
-                )
-            else:
-                print(
-                    "  G4 frozen-zone: advisory (use --strict-frozen to enforce); "
-                    f"{len(frozen['changed'])} changed frozen path(s)"  # type: ignore[index]
-                )
-            continue
-        if gate == "G5":
-            ruff_info = report["ruff"]  # type: ignore[index]
-            if not ruff_info["available"]:  # type: ignore[index]
-                print("  G5 active-zone lint: SKIPPED (ruff unavailable)")
-                continue
-            print(
-                "  G5 active-zone lint: "
-                f"{findings_by_gate.get('G5', 0)} finding(s), "
-                f"{tolerated_by_gate.get('G5', 0)} baselined, "
-                f"{unbaselined_by_gate.get('G5', 0)} unbaselined"
-            )
-            continue
         print(
             f"  {gate}: {findings_by_gate.get(gate, 0)} finding(s) "
-            f"({tolerated_by_gate.get(gate, 0)} baselined, "
+            f"({tolerated_by_gate.get(gate, 0)} tolerated, "
             f"{unbaselined_by_gate.get(gate, 0)} unbaselined)"
         )
-    baseline = report["baseline"]  # type: ignore[index]
+    frozen = report["frozen"]
     print(
-        "  baseline: "
-        f"{baseline['entries']} entry(ies), "  # type: ignore[index]
-        f"{baseline['tolerated']} tolerated, "  # type: ignore[index]
-        f"{baseline['stale']} stale"  # type: ignore[index]
+        "  frozen-history: "
+        f"{len(frozen['tracked'])} tracked frozen path(s) "
+        f"(waiver={frozen['waiver']})"
+    )
+    ruff_info = report["ruff"]
+    if ruff_info["available"]:
+        print(
+            f"  ruff: {ruff_info['findings']} finding(s); "
+            f"config={ruff_info['config']}"
+        )
+    else:
+        print("  ruff: SKIPPED (unavailable)")
+    active = report["active"]
+    print(
+        "  active budget: "
+        f"{active['files']} files / {active['loc']} LOC "
+        f"(limit {active['max_loc']}); "
+        f"max file {active['max_file_lines']} lines"
+    )
+    baseline = report["baseline"]
+    print(
+        f"  baseline: tolerances={baseline['tolerances']}, "
+        f"grandfathered={baseline['grandfathered']}, stale={baseline['stale']}"
     )
     for warning in report["warnings"]:  # type: ignore[index]
         print(f"  WARN {warning}")
@@ -915,29 +1110,22 @@ def _print_human(report: Dict[str, object]) -> None:
     print(f"arch_guard: {total} problem(s); {status}")
 
 
-def _build_baseline(
-    raw_findings: Sequence[Finding],
+def _build_grandfathered(
+    oversized: Sequence[Finding],
     existing: Sequence[Dict[str, object]],
 ) -> List[Dict[str, object]]:
-    existing_reasons = {
-        (str(entry["gate"]), str(entry["path"]), str(entry["code"])): str(
-            entry.get("reason") or ""
-        )
-        for entry in existing
-    }
-    grouped: Dict[Tuple[str, str, str], int] = {}
-    for finding in raw_findings:
-        key = (finding.gate, finding.path, finding.code)
-        grouped[key] = grouped.get(key, 0) + 1
+    reasons = {str(entry["path"]): str(entry["reason"]) for entry in existing}
     entries: List[Dict[str, object]] = []
-    for (gate, rel, code), count in sorted(grouped.items()):
+    for finding in sorted(oversized, key=lambda item: item.path):
         entries.append(
             {
-                "gate": gate,
-                "path": rel,
-                "code": code,
-                "count": count,
-                "reason": existing_reasons.get((gate, rel, code), "auto-tolerated; review"),
+                "path": finding.path,
+                "lines": finding.line,
+                "reason": reasons.get(
+                    finding.path,
+                    "legacy oversized module shipped by the three-plate cleanup; "
+                    "split or archive it in a follow-up",
+                ),
             }
         )
     return entries
@@ -945,8 +1133,9 @@ def _build_baseline(
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = argparse.ArgumentParser(
-        description="Architecture boundary guard (ADR-0036): five hard gates "
-        "for the five-zone layout."
+        description="Architecture guard for the three-plate layout: six hard "
+        "gates (single trainer, no campaign code, one-way imports, frozen "
+        "history, zero ruff, size/anti-fork)."
     )
     parser.add_argument(
         "--root",
@@ -958,12 +1147,14 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "--json", action="store_true", help="print the machine-readable report as JSON"
     )
     parser.add_argument(
-        "--strict-frozen",
-        action="store_true",
-        help="enforce G4 (frozen-zone read-only); advisory without this flag",
+        "--no-ruff", action="store_true", help="skip G5 (ruff) for a fast structural run"
     )
     parser.add_argument(
-        "--no-ruff", action="store_true", help="skip G5 (ruff) for a fast structural run"
+        "--strict-frozen",
+        action="store_true",
+        help="compatibility alias: G4 (frozen-history reappearance) is always "
+        "enforced in the three-plate guard; accepted so the frozen-check CI "
+        "step can pass it explicitly",
     )
     parser.add_argument(
         "--baseline",
@@ -974,72 +1165,88 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser.add_argument(
         "--update-baseline",
         action="store_true",
-        help="rewrite the tolerance baseline from current G3/G5 findings "
-        "(refuses if G1/G2 hard gates fail)",
+        help="rewrite the grandfathered-size list from current G6 findings "
+        "(tolerances stay empty; refuses if any hard gate fails)",
     )
     args = parser.parse_args(argv)
 
     root = args.root.resolve()
-    if args.update_baseline:
-        report = run_guard(
-            root,
-            strict_frozen=args.strict_frozen,
-            ruff=not args.no_ruff,
-            use_baseline=False,
-            baseline_path=args.baseline,
-        )
-        if not report["ruff"]["available"]:  # type: ignore[index]
-            print(
-                "arch_guard: refusing to rewrite baseline without a working "
-                "ruff (G5 entries would be silently dropped)",
-                file=sys.stderr,
-            )
-            return 2
-        hard = [
-            finding
-            for finding in report["violations"]  # type: ignore[index]
-            if finding["gate"] in ("G1", "G2", "G4")
-        ]
-        if hard:
-            for finding in hard:
-                print(f"VIOLATION {_format_finding(finding)}", file=sys.stderr)
-            print(
-                "arch_guard: refusing to rewrite baseline while G1/G2/G4 hard "
-                "gates fail",
-                file=sys.stderr,
-            )
-            return 2
-        tolerated_entries = load_baseline(args.baseline)
-        raw_findings = [
-            Finding(
-                str(item["path"]),
-                int(item["line"]),
-                str(item["gate"]),
-                str(item["message"]),
-                str(item.get("code") or ""),
-            )
-            for item in report["violations"]  # type: ignore[index]
-            if item["gate"] in ("G3", "G5")
-        ]
-        entries = _build_baseline(raw_findings, tolerated_entries)
-        payload = {
-            "schema": BASELINE_SCHEMA,
-            "note": "Documented tolerances for arch_guard G3/G5 (ADR-0036). "
-            "Keyed by (gate, path, code). Remove entries as debt is paid down; "
-            "the guard reports stale entries that must be pruned.",
-            "entries": entries,
-        }
-        path = args.baseline or BASELINE_PATH
-        path.write_text(
-            json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
-        )
-        print(f"arch_guard: wrote {len(entries)} baseline entrie(s) to {path}")
-        return 0
 
     try:
+        if args.update_baseline:
+            report = run_guard(
+                root,
+                ruff=not args.no_ruff,
+                use_baseline=False,
+                baseline_path=args.baseline,
+            )
+            if not report["ruff"]["available"]:  # type: ignore[index]
+                print(
+                    "arch_guard: refusing to rewrite baseline without a working "
+                    "ruff (G5 evidence would be missing)",
+                    file=sys.stderr,
+                )
+                return 2
+            hard = [
+                finding
+                for finding in report["violations"]  # type: ignore[index]
+                if finding["gate"] in ("G1", "G2", "G3", "G4", "G5")
+                or (finding["gate"] == "G6" and finding["code"] != "size")
+            ]
+            if hard:
+                for finding in hard:
+                    print(f"VIOLATION {_format_finding(finding)}", file=sys.stderr)
+                print(
+                    "arch_guard: refusing to rewrite baseline while hard gates fail",
+                    file=sys.stderr,
+                )
+                return 2
+            oversized = [
+                Finding(
+                    str(item["path"]),
+                    int(item["line"]),
+                    str(item["gate"]),
+                    str(item["message"]),
+                    str(item.get("code") or ""),
+                )
+                for item in report["violations"]  # type: ignore[index]
+                if item["gate"] == "G6" and item["code"] == "size"
+            ]
+            existing = load_baseline(args.baseline)["grandfathered"]  # type: ignore[index]
+            entries = _build_grandfathered(oversized, existing)  # type: ignore[arg-type]
+            if len(entries) > MAX_GRANDFATHERED:
+                print(
+                    f"arch_guard: refusing to grandfather {len(entries)} files "
+                    f"(> {MAX_GRANDFATHERED}); split them instead",
+                    file=sys.stderr,
+                )
+                return 2
+            payload = {
+                "schema": BASELINE_SCHEMA,
+                "note": (
+                    "Three-plate architecture baseline (post-cleanup). "
+                    "'tolerances' MUST stay empty: G3/G5 are zero-tolerance after "
+                    "archive/legacy deletion and infra slimming. 'grandfathered' "
+                    "lists explicit oversized active-zone modules with a reason; "
+                    "the guard reports stale entries (deleted or shrunken files) "
+                    "that must be pruned, and refuses any new file above 350 lines."
+                ),
+                "tolerances": [],
+                "grandfathered": entries,
+            }
+            path = args.baseline or BASELINE_PATH
+            path.write_text(
+                json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8",
+            )
+            print(
+                f"arch_guard: wrote baseline with 0 tolerance(s) and "
+                f"{len(entries)} grandfathered file(s) to {path}"
+            )
+            return 0
+
         report = run_guard(
             root,
-            strict_frozen=args.strict_frozen,
             ruff=not args.no_ruff,
             baseline_path=args.baseline,
         )

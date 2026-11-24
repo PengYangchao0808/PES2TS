@@ -14,7 +14,7 @@ from pes2ts_core.generation.planning.policy_adapter import (
     build_residual_spec,
     generate_candidates,
 )
-from pes2ts_core.pesn.contracts.control import ControlContext
+from pes2ts_core.contracts.control import ControlContext
 from tests.test_control_step import build_test_control
 
 

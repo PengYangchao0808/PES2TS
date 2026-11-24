@@ -18,7 +18,7 @@ from typing import Final, Iterable, Mapping, Sequence
 
 import numpy as np
 
-from pes2ts_core.pesn.contracts.direct import DirectTransition
+from pes2ts_core.contracts.direct import DirectTransition
 from pes2ts_core.utils.hashing import sha256_bytes
 
 CANDIDATE_SCHEMA: Final[str] = "pes2ts_direct_path_candidate_v1"

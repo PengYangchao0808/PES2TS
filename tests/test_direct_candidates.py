@@ -9,7 +9,7 @@ from pes2ts_core.generation.planning.direct_candidates import (
     build_direct_path_bundle,
     candidate_from_transitions,
 )
-from pes2ts_core.pesn.contracts.direct import (
+from pes2ts_core.contracts.direct import (
     DirectAction,
     DirectState,
     DirectTransition,

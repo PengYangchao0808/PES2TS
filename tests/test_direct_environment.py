@@ -8,7 +8,7 @@ from pes2ts_core.generation.planning.direct_environment import (
     DirectEnvironment,
     FakeObservationSource,
 )
-from pes2ts_core.pesn.contracts.direct import (
+from pes2ts_core.contracts.direct import (
     DEFAULT_REWARD_SPEC,
     DirectAction,
     DirectRewardSpec,

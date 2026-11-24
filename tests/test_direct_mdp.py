@@ -12,7 +12,7 @@ from pes2ts_core.generation.planning.direct_mdp import (
     goal_connected_proxy,
     goal_potential,
 )
-from pes2ts_core.pesn.contracts.direct import (
+from pes2ts_core.contracts.direct import (
     DEFAULT_REWARD_SPEC,
     DirectAction,
     DirectRewardSpec,

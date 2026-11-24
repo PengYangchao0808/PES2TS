@@ -49,7 +49,7 @@ from pes2ts_core.generation.planning.control_step import (
     _execute_logical_target,
     freeze_control_environment,
 )
-from pes2ts_core.pesn.contracts.control import PolicyRewardSpec, ResidualControlSpec
+from pes2ts_core.contracts.control import PolicyRewardSpec, ResidualControlSpec
 
 REPLAY_BRANCH_SCHEMA = "pes2ts_control_replay_branch_v1"
 REPLAY_INJECTED_POLICY_ID = "replay_injected_v1"

@@ -1,13 +1,14 @@
-# PES2TS 开发宪法 v2.9（统一残差决策、MDP研究闭环与G2有限回退；V5.3-MP MOVE–PROCESS 统一学习增量）
+# PES2TS 开发宪法 v2.10（统一残差决策、MDP研究闭环与G2有限回退；V5.3-MP MOVE–PROCESS 统一学习增量；三板块布局与历史冻结增量）
 
 > 状态：权威（**唯一规范来源 / SSOT**）
 > 层级：全仓全局，凌驾于所有计划/设计/方案文档之上（报告为只读历史，不受改写，仅受指针约束）
 > 取代关系：保留唯一 SSOT；本版取代旧 G/R 独立学习与几何距离/位移主接口路线，采用 PES-N；原 v1 精确快照已归档
 > 上游依赖：无（本文件是规范根）
 > 下游消费者：`AGENT.md`、`docs/README.md`、`docs/plans/PES2TS_文档修订台账.md`、所有 plan/design/contracts、实验与发布流程
-> 当前版本：内容 v2.9 @ 2026-10-21（ADR-0031 MOVE–PROCESS 统一学习增量）；文件名保留 `_v1` 以兼容既有链接
+> 当前版本：内容 v2.10 @ 2026-11-24（三板块布局与历史冻结增量）；文件名保留 `_v1` 以兼容既有链接
 > 决策记录：[ADR-0010](design/decisions/ADR-0010-PES-N反应状态价值与STOP-MOVE统一决策.md)、[ADR-0011](design/decisions/ADR-0011-三模块产品架构与统一可视化.md)、[ADR-0013](design/decisions/ADR-0013-G3并行IRC预训练与模型版本体系.md)；计划：[PES-N 未来开发计划](archive_tree/20_p2_pesn_20261005_20261014/E03_pesn_kernel_ssot.md)、[G3-P1](archive_tree/20_p2_pesn_20261005_20261014/E04_g2t_ab3_ab4_g3p.md)
 > 生效边界：开发规范与规划方向生效；实现、模型、真实能力和生产默认不因本次文档变更升级
+> v2.10 增量（2026-11-24）：**三板块所有权**——`pes2ts_core/` = 化学/物理内核（`g0/`、`g1/`、`generation/`、`integration/`、`utils/`、`contracts/`，禁止 torch）；`pes2ts_data/` = 数据与真值层（`contracts/`、`readers/`、`splits/`、`ingest/`、`builders/` + 唯一 R1 桥 `pes2ts_data/truth_bridge.py`）；`pes2ts_v5/` = 唯一训练/评测引擎；`infra/` = 仅门禁与运维。历史代码移出 master 到只读 git 分支 `frozen/v4-v54-history`（完整历史保留，符合 P1，不是删除证据）。`pes2ts_core/pesn/` 冻结/删除后，§2.3/§2.6 中"pesn 为唯一预测器代码根"条款仅对新开发失效；R1–R6 不变。
 > v2.9 增量（2026-10-21）：[ADR-0031](design/decisions/ADR-0031-MOVE-PROCESS统一学习合同.md) + [MoveProcessContract v1](contracts/PES2TS_MoveProcessContract_v1.md)：V5.3-MP 的任务定为 **MOVE + PROCESS**——一个共享 EGNN，两个功能头；MOVE 输出关键原子位移并跨越 TS；PROCESS 输出有向进度 q、目标端点完成置信度 p_end 与排序分数；**No-Move = p_end ≥ τ_end 且目标化学状态一致**，q 仅辅助/诊断，不得单独触发停止；TS 永远是途经点。输入边界不变（当前单帧 + 合法有向拓扑；禁止参考端点 XYZ/历史/真值）。旧 FullPathNavigationContract v1 的 Endpoint Stop 单一 d_end 语义被本增量取代；D2-G 对旧 T1 的负结论继续有效，V5.3-MP 是独立预注册战役。§6.7 的 V5.2+ 注记自本版起仅保留为历史；任务语义以 MoveProcessContract v1 为唯一真相。
 > v2.8 增量（2026-10-21）：[ADR-0030](design/decisions/ADR-0030-V5.2全路径导航与端点停止.md) + [FullPathNavigationContract v1](contracts/PES2TS_FullPathNavigationContract_v1.md)：V5.2+ 策略任务定为 **Full-Path Navigation**（R→TS→P / P→TS→R）——Move 沿完整 canonical IRC 教师推进并**跨越 TS**；No-Move = **Endpoint Stop**（目标端点到达，d_end 候选窗口 0.10/0.30 Å）；TS 是途经点，不触发停止；q 为分段归一化辅助量（A=−1/TS=0/B=+1）。§6.7 的"完整 A→TS 与 B→TS、不跨 TS 串接"自本增量起**仅保留为 V5.1a/V4 历史教师隔离语义**，不再是 V5.2+ 训练依据。任务语义的单一真相为上述合同；文档一致性由 `scripts/agent_ops/docs_consistency.py --strict` 强制。
 > v2.7 增量：[ADR-0021](design/decisions/ADR-0021-无序双端拓扑与完整双侧TS教师主线.md)、[统一训练与进度方案v4](archive_tree/30_p3_v4x_20261015_20261018/E07_v40_v41_input_semantics.md)：登记无序双端点、完整双侧TS教师及相容研究转移的适用范围；未发布schema、未升级能力或生产默认
@@ -456,6 +457,10 @@ version bump + 变更记录；重大不变量变更须同时更新 §3 与 `AGEN
 本文件是规范根；`docs/plans/PES2TS_文档修订台账.md` 是**规范映射与取代登记**（哪份文档属于哪一主题、何状态、被谁取代）。台账服从本文件；两者不一致时，以本文件为准并修正台账。
 
 ## 15. v2–v2.6 变更记录与历史
+
+### 2026-11-24 v2.10 三板块布局与历史冻结（增量，不改写既有条款）
+
+三板块所有权生效：`pes2ts_core/`（化学/物理内核，禁止 torch）、`pes2ts_data/`（数据与真值层，含唯一 R1 桥 `pes2ts_data/truth_bridge.py`）、`pes2ts_v5/`（唯一训练/评测引擎）；`infra/` 仅门禁与运维，`config/`、`tests/{kernel,data,v5}` 为配套层。`archive/`、`tests/legacy/` 与 `pes2ts_core/pesn/` 从 master 移出，历史完整保存在只读分支 `frozen/v4-v54-history`（tag：`archive/pre-v55-legacy-20261123`、`archive/v5x-reorg-20261123`）——历史不可变、未删除证据，符合 P1；`pes2ts_core/pesn/contracts/` 迁至 `pes2ts_core/contracts/` 继续服务活跃代码。§2.3/§2.6 中"pesn 为唯一预测器代码根"仅对新开发失效；R1–R6、阶段出口与生产默认不变。
 
 2026-10-07 按[ADR-0017](design/decisions/ADR-0017-统一残差决策与G2有限回退.md)统一下一阶段：先RL后扩量、一个编码器/残差与Q两个头、MDP近似/坐标注意力消融和G2共用单步；完整承接AB4四点门与有限回退，研究环境分别冻结。新增控制/宏步/包及学习路径接口草案；R1–R6原文、正式阶段出口和生产默认保持。当前仅方案与指针同步，前版9份文档及386个业务配套哈希见[快照](archive/20261007_pre_unified_residual_rl/README.md)。
 

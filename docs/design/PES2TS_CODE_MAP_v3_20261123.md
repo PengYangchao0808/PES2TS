@@ -1,6 +1,8 @@
 # PES2TS 代码地图 v3（五功能区 / 单一训练引擎）
 
-> **状态**：Active-Reference（现行代码地图；非规范，规范以[开发宪法](../PES2TS_开发宪法_v1.md)与 [ADR-0036](decisions/ADR-0036-功能分区与单一训练引擎.md) 为准）
+> **状态**：Historical（停更：三板块布局后，目录树 + `infra/governance/arch_guard.py` 是活地图；本文件仅作 2026-11-23 五功能区时点快照）
+> **活地图**：实际目录树 + [`arch_guard.py`](../../infra/governance/arch_guard.py)（ADR-0036 五道硬门）；历史代码见只读分支 `frozen/v4-v54-history`
+> **生效边界**：不再随布局更新；新事实以开发宪法 v2.10、[`AGENT.md`](../../AGENT.md) 与实际目录为准
 > **层级**：L1 导航 / 工程架构（C 工作流；不涉及 G0–G4 能力、V 战役语义与科学结论）
 > **取代关系**：取代 [CODE_MAP v2](PES2TS_CODE_MAP_v2_20261018.md)（v2 保留为历史，不再维护）；机制规范见 ADR-0036
 > **上游依赖**：[开发宪法 v2.9](../PES2TS_开发宪法_v1.md)、[AGENT.md](../../AGENT.md) §5.1、[ADR-0025](decisions/ADR-0025-G-V双轴映射与战役注册.md)、[ADR-0036](decisions/ADR-0036-功能分区与单一训练引擎.md)、[G–V 映射](PES2TS_G_V_MAPPING_v1_20261018.md)、[阶段定义](../plans/PES2TS_阶段定义_G0-G3.md)

@@ -1,41 +1,77 @@
 {
-  "schema": 1,
-  "note": "Documented tolerances for arch_guard (ADR-0036), keyed by (gate, path, code). The five G3 entries are legacy infra couplings that predate the five-zone split and still need separate migration (render_gv_map reads the G-V registry; the three infra/runtime campaign drills import historical code). There are no G5 (ruff) tolerances as of 2026-11-24: the ruff debt in the active zones was paid down, so G5 is strict for new code. Remove entries as the debt is paid down: arch_guard reports a stale entry when it no longer matches any finding. Regenerate with `python infra/governance/arch_guard.py --update-baseline` after an approved cleanup.",
-  "entries": [
+  "schema": 2,
+  "note": "Three-plate architecture baseline (post-cleanup). 'tolerances' MUST stay empty: G3/G5 are zero-tolerance after archive/legacy deletion and infra slimming. 'grandfathered' lists explicit oversized active-zone modules with a reason; the guard reports stale entries (deleted or shrunken files) that must be pruned, and refuses any new file above 350 lines.",
+  "tolerances": [],
+  "grandfathered": [
     {
-      "gate": "G3",
-      "path": "infra/governance/render_gv_map.py",
-      "code": "import:pes2ts_core",
-      "count": 1,
-      "reason": "G-V map renderer reads pes2ts_core.gv_registry; governance tooling coupling predates the split (owner: migrate registry lookup to config/registry/g_v_map.yaml or a governance-local reader)"
+      "path": "infra/governance/arch_guard.py",
+      "lines": 1265,
+      "reason": "governance AST scanner; all six gates, baseline handling, report and CLI live in one stdlib-only tool by design"
     },
     {
-      "gate": "G3",
-      "path": "infra/runtime/concurrency_drill.py",
-      "code": "import:pes2ts_core",
-      "count": 2,
-      "reason": "legacy V5.3-MP concurrency drill imports the frozen pesn training loader and utils.hashing; should be archived with the other campaign drills"
+      "path": "pes2ts_data/builders/archive_campaigns.py",
+      "lines": 364,
+      "reason": "legacy campaign-archive builder moved from scripts/datastore during the five-zone restructure; split candidate once the campaign configs settle"
     },
     {
-      "gate": "G3",
-      "path": "infra/runtime/infra_bench.py",
-      "code": "import:archive",
-      "count": 5,
-      "reason": "legacy infrastructure benchmark imports archived V5.3-MP campaign runners/ledger; should move to archive/v5x_scripts or drop the benchmark path"
+      "path": "pes2ts_data/builders/build_channels.py",
+      "lines": 1649,
+      "reason": "legacy data builder moved from scripts/datastore; candidate for one-file-per-channel split"
     },
     {
-      "gate": "G3",
-      "path": "infra/runtime/infra_bench.py",
-      "code": "import:pes2ts_core",
-      "count": 3,
-      "reason": "legacy benchmark reuses pes2ts_core.utils.hashing only; replace with infra.runtime.sha_sidecar helpers when the file is migrated"
+      "path": "pes2ts_data/builders/build_frame_crosswalk.py",
+      "lines": 1728,
+      "reason": "legacy frame-crosswalk builder moved from scripts/datastore; split candidate"
     },
     {
-      "gate": "G3",
-      "path": "infra/runtime/thread_env_ab.py",
-      "code": "import:pes2ts_core",
-      "count": 6,
-      "reason": "legacy V5.3-MP thread/CPU A/B drill imports the frozen pesn dataset/feature modules; should be archived with the other campaign drills"
+      "path": "pes2ts_data/builders/build_g1_summary.py",
+      "lines": 1478,
+      "reason": "legacy G1 summary builder moved from scripts/datastore; split candidate"
+    },
+    {
+      "path": "pes2ts_data/builders/build_master_split.py",
+      "lines": 1222,
+      "reason": "legacy split builder moved from scripts/datastore; split candidate"
+    },
+    {
+      "path": "pes2ts_data/ingest/ledger.py",
+      "lines": 527,
+      "reason": "append-only ingest ledger state machine kept in one module so status transitions stay auditable in one place"
+    },
+    {
+      "path": "pes2ts_data/readers/key_atom_stream.py",
+      "lines": 392,
+      "reason": "ported reader; split to <=350 tracked as P2"
+    },
+    {
+      "path": "pes2ts_data/splits/policy.py",
+      "lines": 617,
+      "reason": "split policy tables and eligibility rules are normative in one place; split candidate when a second policy family lands"
+    },
+    {
+      "path": "pes2ts_v5/data/trajectories.py",
+      "lines": 561,
+      "reason": "trajectory dataset reader; decode/contract helpers kept contiguous"
+    },
+    {
+      "path": "pes2ts_v5/models/registry.py",
+      "lines": 616,
+      "reason": "model registry plus the compact core factories in one registry module (plugin contract surface)"
+    },
+    {
+      "path": "pes2ts_v5/runner.py",
+      "lines": 433,
+      "reason": "THE single training/eval CLI entry point; intentionally one file"
+    },
+    {
+      "path": "pes2ts_v5/training/callbacks.py",
+      "lines": 436,
+      "reason": "training callback contract surface (checkpoint/provenance/metrics callbacks live together by design)"
+    },
+    {
+      "path": "pes2ts_v5/training/trainer.py",
+      "lines": 644,
+      "reason": "THE single training loop (G1 invariant); exempt by design until a mechanical split preserves the one-owner rule"
     }
   ]
 }

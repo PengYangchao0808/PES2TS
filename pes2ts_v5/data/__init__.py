@@ -1,14 +1,26 @@
-"""Data layer for V5.6: manifest/spec, group split, trajectories, labels.
+"""Data layer for V5.6: manifest/spec, group split, trajectories, labels, sources.
 
 The batch contract itself is **not** duplicated here: :mod:`pes2ts_v5.data.contracts`
-lazily bridges to ``pes2ts_data.contracts`` (StandardBatch / REQUIRED_FIELDS).
+lazily bridges to ``pes2ts_data.contracts`` (contract v2 ``SequenceBatch``, with
+the v1 ``StandardBatch`` compatibility backend while data-zone v2 is not on disk)
+and there is no ``pes2ts_v5.data.idx_v2`` import surface — the real-data reader is
+lazily imported from ``pes2ts_data.readers.idx_v2``.
 """
 from pes2ts_v5.data.contracts import (
+    IDX_V2_PREFIX,
+    DataContractError,
+    DataContractUnavailable,
+    DataError,
+    DataSourceUnreachable,
     assert_batch_fields,
+    contract_backend,
     contract_version,
     contracts_available,
+    legacy_mapping,
+    make_sequence_batch,
     provenance_tokens,
-    standard_batch_view,
+    to_sequence_batches,
+    validate_sequence_batch,
 )
 from pes2ts_v5.data.labels import (
     LABEL_SPEC,
@@ -56,9 +68,18 @@ __all__ = [
     "build_move_labels",
     "build_process_labels",
     "build_trust_labels",
+    "IDX_V2_PREFIX",
+    "DataContractError",
+    "DataContractUnavailable",
+    "DataError",
+    "DataSourceUnreachable",
     "assert_batch_fields",
+    "contract_backend",
     "contract_version",
     "contracts_available",
+    "legacy_mapping",
+    "make_sequence_batch",
     "provenance_tokens",
-    "standard_batch_view",
+    "to_sequence_batches",
+    "validate_sequence_batch",
 ]
