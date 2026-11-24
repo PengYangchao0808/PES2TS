@@ -29,13 +29,11 @@ jobs:
       - name: Architecture boundary guard
         run: pytest -q tests/kernel
       - name: Base test tier (no torch)
-        # This tier deliberately has NO torch installed, so it must not collect
-        # suites that import torch at module scope. The historical V4/V5.1-V5.4
-        # tier (tests/legacy) and the V5.6 engine contracts (tests/v5) are
-        # exercised by the `pesn` job below, which installs CPU torch.
-        run: pytest -q --ignore=tests/legacy --ignore=tests/v5
+        # No torch in this job: the V5.6 engine contract suite (tests/v5) is
+        # exercised by the `engine` job below, which installs CPU torch.
+        run: pytest -q --ignore=tests/v5
 
-  pesn:
+  engine:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -49,8 +47,7 @@ jobs:
           pip install -r requirements-dev.txt
       - name: Install CPU torch
         run: pip install torch --index-url https://download.pytorch.org/whl/cpu
-      - name: Full test tier (includes legacy + V5.6 engine contracts)
-        # ``-o addopts=`` clears the daily-gate addopts (which ignores
-        # tests/legacy at collection time) so the historical tier is collected
-        # and run on Linux, where its POSIX-only imports (fcntl/resource) exist.
-        run: pytest -q -o addopts= -m "not (realdata or xtb or acp or orca)"
+      - name: Architecture boundary guard (with ruff)
+        run: pytest -q tests/kernel
+      - name: Full active tier (three plates + engine contracts)
+        run: pytest -q

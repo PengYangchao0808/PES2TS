@@ -1,17 +1,11 @@
-# PES2TS ripgrep ignore file (ADR-0036 five-zone layout).
-# Keep searches on the ACTIVE surface: pes2ts_core (minus the frozen V4/V5.x
-# model files below), pes2ts_data, pes2ts_v5, infra, docs,
-# tests/{kernel,data,v5}, config/experiments.
-
-# Zone 5: frozen historical campaigns (read-only; never imported by active code)
-archive/
-
-# Legacy test tier: historical V4 / V5.1-V5.4 tests (auto-marked `legacy`)
-tests/legacy/
-
-# Frozen V4/V5.x model files inside Zone 1
-pes2ts_core/pesn/models/v54*
-pes2ts_core/pesn/**/*dual_ts*
+# PES2TS ripgrep ignore file (three-plate layout, 2026-11-24).
+# Active surface: pes2ts_core (chemistry/physics kernel), pes2ts_data (data &
+# truth layer), pes2ts_v5 (single training/eval engine), infra, docs,
+# tests/{kernel,data,v5}, config/{experiments,data,registry}.
+#
+# Historical V4/V5.1-V5.4 code and the frozen predictor tree are NOT in this
+# worktree: they live on the read-only branch `frozen/v4-v54-history`
+# (tags: archive/pre-v55-legacy-20261123, archive/v5x-reorg-20261123).
 
 # Local data / run outputs / scratch
 data/

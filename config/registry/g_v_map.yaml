@@ -2,7 +2,8 @@
 # This file is the single machine-readable source of truth.  The human-readable
 # table in docs/design/PES2TS_G_V_MAPPING_v1_20261018.md is rendered from it.
 schema: pes2ts_gv_map_v1
-map_version: "2026-10-18.1"
+map_version: "2026-11-24.1"
+frozen_history_note: "2026-11-24 cleanup: archive/, tests/legacy/ and the frozen pes2ts_core/pesn/ tree moved OUT of master to read-only branch frozen/v4-v54-history; predictor-domain contracts relocated to pes2ts_core/contracts/ (active: core/inputs/control/direct; predictor-only modules stay frozen). Frozen paths carry the \"frozen/v4-v54-history:\" provenance prefix and are NOT required to exist in the worktree. No campaign status was changed; plan_revision is preserved."
 plan_revision: "2026-10-30.3"
 plan_revision_note: "2026-10-31 V5.4.2 WP7 EXECUTED (no_backbone_winner; A0 retained): T0 A0x3 formal + V542-A0-sanity-band PASS; T1 A1/A2/A3 S17 done, A4 gate_skipped (WP4 binding); seed17 screen top2=[A2,A3]; T3 A2/A3 S29/S43 done; T2 A5 S17 done; H2 A2_S43/A3_S43 breach (matched-A0 sign + fixed-coverage direction) => H3 eligible=[] ; final_selection zero_h3_qualified_candidates_a0_retained_no_backbone_winner; A5 supplement gate_skipped(a5_supplement_parent_gate_unmet, a5_seed17_screen_pass=false); A1-C/A5-C gate_skipped; N_core=17; budget/thresholds unchanged; confirm never read, QC=0, single lane, swap=0; report docs/reports/PES2TS_V542_Backbone_50K_实施与训练报告_20261031.md; registry status proposed -> executed. Prior: 2026-10-30 V5.4.2 WP4 diagnostic amendment (protocol_amendment_id V542_WP4_DIAG_20261030; ADR-0033 v1.3.3): A0 control correction (control_not_screened) + A4 gate_skipped under the frozen 5% drop rule; thresholds/budget values and 26-run matrix unchanged; old 2026-10-30 V5.4.2 WP0 fix-5 (ADR-0033 v1.2): Oracle gate-0 PASS_WITH_CONDITIONS 条件收口 — final_selection_rule 冻结 (H3-qualified only; MOVE-qualified 优先 PROCESS-only; min Holm-adjusted p; max effect margin; min core_time_ratio; min params; min inner-val loss; candidate_id 字典序; no dev; A0/diagnostic 不参加); route_logic 括号化 ((direction_pass AND rmse_non_inferior) OR (rmse_pass AND direction_non_inferior)) / ((auprc_pass AND q_non_inferior) OR (q_pass AND auprc_non_inferior)), seed17 screen 复用; parity 资产分层 (V541 E0 runs/ 37,900 final 主证据 + V53MP C 20k S3 formal 15,400 辅助证据, smoke/非钉死禁止); signoff roles = main_session_owner (statistics/evaluation) + oracle_reviewer (not signatory), parity/training/resource pending; 新增 canonical gate V542-A0-sanity-band (T0 A0×3 sanity band 为 T1/top2 硬前置, breach 严格阻断 T1 + 迁移审计 + 修复后 bump fingerprint 重跑 A0×3, 禁止 exception); smoke conditional_backbones [A1-C,A5-C]; runplan_pin 增 bootstrap_seed_root=20261029; fix-6 完成 426 schema tests + 20 registry tests = 446 total; WP4 budget SIGNED 2026-10-30 from the same-env 40+40 profile (cuda, 20-update warm-up excluded): core-seconds A0 1.919 / A1 1.953 / A2 2.041 / A3 1.840 / A4 1.896 / A5 1.763 / A1-C 1.337 / A5-C 1.303; ratios vs A0 0.679-1.064, all <= 2.0 (no gate_skipped_cost_ratio_exceeds_2); per_candidate_status=signed_wp4_profile; --formal now blocks on the two governance record instances (V542_RECORD_MISSING) instead of V542_BUDGET_NULL; registry status stays proposed. config version 0.1.2-wp0; old V5.4 and V5.4.1 entries unchanged. Prior: 2026-10-29 V5.4.2 WP0: ADR-0033 registered V5.4.2 Backbone-50K (status proposed; primary_g=G3.P.2; schema pes2ts_v542_campaign_v1; unified BackboneOutput z[G,64]+edge_msg[E,48] + DirectMoveDecoder w_v=49 + ReactionProcessHeadV53MP 2178; matched A0x3 RETRAIN baseline, V541 E0x3 parity/historical reference only; Oracle建议阈值 signed-frozen user_directive_20261029; budget null until same-env A0 profile, --formal typed-blocks V542_BUDGET_NULL; old V5.4 and V5.4.1 entries unchanged). Prior: 2026-10-29 V5.4.1 EXECUTED: WP0-WP7 complete, E*=E0 retained (E1/E2 H2 sign guard, E3 sign+dead => scientific_failure; E4 cost ratio 3.6455>2.0, E5/T3/T4 => gate_skipped; T4 no_new_embedding_gain); final report docs/reports/PES2TS_V541_Embedding_50K_实施与训练报告_20261029.md; confirm never read, new_QC_calls=0. Prior: 2026-10-27 ADR-0032 registered V5.4.1 (primary_g=G3.P.2; schema pes2ts_v541_campaign_v1; objective=unified_move_process only; §11.2 thresholds signed-frozen; old V5.4 unchanged); 2026-10-21 ADR-0031 V5.2/V5.2-R CLOSED; V5.3-MP registered; 30h V5.3 rollout renamed V5.3-ENG; FullPathNavigationContract v1 superseded by MoveProcessContract v1."
 
@@ -26,35 +27,35 @@ stages:
   G3.P.0:
     title: Source/identity/split reconciliation for PES-N
     stage_doc: docs/plans/PES2TS_阶段定义_G0-G3.md
-    code_globs: ["pes2ts_core/pesn/contracts/inputs.py", "pes2ts_core/pesn/offline/splits/**/*.py"]
+    code_globs: ["pes2ts_core/contracts/inputs.py", "frozen/v4-v54-history:pes2ts_core/pesn/offline/splits/**/*.py"]
   G3.P.1:
     title: Teacher state/label construction and deployable features
     stage_doc: docs/plans/PES2TS_阶段定义_G0-G3.md
-    code_globs: ["pes2ts_core/pesn/offline/data/**/*.py", "pes2ts_core/pesn/features/**/*.py"]
+    code_globs: ["frozen/v4-v54-history:pes2ts_core/pesn/offline/data/**/*.py", "frozen/v4-v54-history:pes2ts_core/pesn/features/**/*.py"]
   G3.P.2:
     title: Small-graph encoder, multi-task training and scaling ablations
     stage_doc: docs/plans/PES2TS_阶段定义_G0-G3.md
-    code_globs: ["pes2ts_core/pesn/models/**/*.py", "pes2ts_core/pesn/offline/training/**/*.py"]
+    code_globs: ["frozen/v4-v54-history:pes2ts_core/pesn/models/**/*.py", "frozen/v4-v54-history:pes2ts_core/pesn/offline/training/**/*.py"]
   G3.P.3:
     title: Frozen weights/gates, sealed evaluation and research bundle
     stage_doc: docs/plans/PES2TS_阶段定义_G0-G3.md
-    code_globs: ["pes2ts_core/pesn/offline/evaluation/**/*.py", "pes2ts_core/pesn/bundle/**/*.py"]
+    code_globs: ["frozen/v4-v54-history:pes2ts_core/pesn/offline/evaluation/**/*.py", "frozen/v4-v54-history:pes2ts_core/pesn/bundle/**/*.py"]
   G3.1:
     title: Single-point p_seed, refinement cost and Q_STOP supervision
     stage_doc: docs/plans/PES2TS_阶段定义_G0-G3.md
-    code_globs: ["pes2ts_core/pesn/inference/**/*.py", "pes2ts_core/pesn/models/**/*.py"]
+    code_globs: ["frozen/v4-v54-history:pes2ts_core/pesn/inference/**/*.py", "frozen/v4-v54-history:pes2ts_core/pesn/models/**/*.py"]
   G3.2:
     title: Context, action imitation and bounded Classic residual
     stage_doc: docs/plans/PES2TS_阶段定义_G0-G3.md
-    code_globs: ["pes2ts_core/pesn/contracts/control.py", "pes2ts_core/pesn/models/control_heads.py", "pes2ts_core/pesn/offline/control_trainer.py"]
+    code_globs: ["pes2ts_core/contracts/control.py", "frozen/v4-v54-history:pes2ts_core/pesn/models/control_heads.py", "frozen/v4-v54-history:pes2ts_core/pesn/offline/control_trainer.py"]
   G4.0:
     title: Conservative offline value/Q on compatible transitions
     stage_doc: docs/plans/PES2TS_阶段定义_G0-G3.md
-    code_globs: ["pes2ts_core/pesn/contracts/control.py", "pes2ts_core/pesn/offline/transitions.py", "pes2ts_core/pesn/offline/control_trainer.py"]
+    code_globs: ["pes2ts_core/contracts/control.py", "frozen/v4-v54-history:pes2ts_core/pesn/offline/transitions.py", "frozen/v4-v54-history:pes2ts_core/pesn/offline/control_trainer.py"]
   G4.1:
     title: Frozen-model real QC closed loop and in-train collection
     stage_doc: docs/plans/PES2TS_阶段定义_G0-G3.md
-    code_globs: ["pes2ts_core/generation/control_round.py", "pes2ts_core/integration/**/*.py"]
+    code_globs: ["frozen/v4-v54-history:pes2ts_core/generation/control_round.py", "pes2ts_core/integration/**/*.py"]
   G4.2:
     title: Full-system, cross-generator and release evidence
     stage_doc: docs/plans/PES2TS_阶段定义_G0-G3.md
@@ -68,12 +69,12 @@ campaigns:
     supporting_g: [G0, G1]
     data_dependencies: [G0, G1]
     code_scope:
-      - pes2ts_core/pesn/contracts/dual_ts.py
-      - pes2ts_core/pesn/features/dual_ts_graph.py
-      - pes2ts_core/pesn/models/dual_egnn.py
-      - pes2ts_core/pesn/models/dual_ts_policy.py
-      - pes2ts_core/pesn/offline/training/dual_ts_bc.py
-    config: archive/v5x_configs/pesn/dual_ts_observations_16x1_v1.yaml
+      - frozen/v4-v54-history:pes2ts_core/pesn/contracts/dual_ts.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/features/dual_ts_graph.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/models/dual_egnn.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/models/dual_ts_policy.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/offline/training/dual_ts_bc.py
+    config: frozen/v4-v54-history:archive/v5x_configs/pesn/dual_ts_observations_16x1_v1.yaml
     data_manifest: data/manifests/split_manifest.json
     gates: [V4-MSE-zero, V4-cos]
     evidence: docs/reports/PES2TS_实现报告_20261018.md
@@ -85,12 +86,12 @@ campaigns:
     supporting_g: [G0, G1]
     data_dependencies: [G0, G1]
     code_scope:
-      - pes2ts_core/pesn/contracts/dual_ts.py
-      - pes2ts_core/pesn/features/dual_ts_graph.py
-      - pes2ts_core/pesn/models/dual_egnn.py
-      - pes2ts_core/pesn/models/dual_egnn_painn.py
-      - pes2ts_core/pesn/offline/training/dual_ts_bc.py
-    config: archive/v5x_configs/pesn/dual_ts_observations_16x1_v1.yaml
+      - frozen/v4-v54-history:pes2ts_core/pesn/contracts/dual_ts.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/features/dual_ts_graph.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/models/dual_egnn.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/models/dual_egnn_painn.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/offline/training/dual_ts_bc.py
+    config: frozen/v4-v54-history:archive/v5x_configs/pesn/dual_ts_observations_16x1_v1.yaml
     data_manifest: data/manifests/split_manifest.json
     gates: [V4-MSE-zero, V4-cos]
     evidence: docs/reports/PES2TS_实现报告_20261018.md
@@ -102,11 +103,11 @@ campaigns:
     supporting_g: [G0, G1]
     data_dependencies: [G0, G1]
     code_scope:
-      - pes2ts_core/pesn/contracts/dual_ts.py
-      - pes2ts_core/pesn/features/dual_ts_graph_v4.py
-      - pes2ts_core/pesn/models/dual_egnn.py
-      - pes2ts_core/pesn/offline/training/dual_ts_bc.py
-    config: archive/v5x_configs/pesn/dual_ts_observations_16x1_v1.yaml
+      - frozen/v4-v54-history:pes2ts_core/pesn/contracts/dual_ts.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/features/dual_ts_graph_v4.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/models/dual_egnn.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/offline/training/dual_ts_bc.py
+    config: frozen/v4-v54-history:archive/v5x_configs/pesn/dual_ts_observations_16x1_v1.yaml
     data_manifest: data/manifests/split_manifest.json
     gates: [V4-MSE-zero, V4-cos]
     evidence: docs/reports/PES2TS_实现报告_20261018.md
@@ -118,10 +119,10 @@ campaigns:
     supporting_g: [G0, G1]
     data_dependencies: [G0, G1]
     code_scope:
-      - pes2ts_core/pesn/contracts/dual_ts.py
-      - pes2ts_core/pesn/features/dual_ts_graph_v4.py
-      - pes2ts_core/pesn/offline/training/dual_ts_campaign.py
-    config: archive/v5x_configs/pesn/dual_ts_observations_16x1_v1.yaml
+      - frozen/v4-v54-history:pes2ts_core/pesn/contracts/dual_ts.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/features/dual_ts_graph_v4.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/offline/training/dual_ts_campaign.py
+    config: frozen/v4-v54-history:archive/v5x_configs/pesn/dual_ts_observations_16x1_v1.yaml
     data_manifest: data/manifests/split_manifest.json
     gates: [V4-MSE-zero, V4-cos]
     evidence: docs/reports/PES2TS_实现报告_20261018.md
@@ -133,11 +134,11 @@ campaigns:
     supporting_g: [G0, G1]
     data_dependencies: [G0, G1]
     code_scope:
-      - pes2ts_core/pesn/contracts/dual_ts.py
-      - pes2ts_core/pesn/features/dual_ts_graph_v4.py
-      - pes2ts_core/pesn/offline/training/dual_ts_campaign.py
-      - pes2ts_core/pesn/offline/evaluation/dual_ts_protocols.py
-    config: archive/v5x_configs/pesn/dual_ts_observations_16x1_v1.yaml
+      - frozen/v4-v54-history:pes2ts_core/pesn/contracts/dual_ts.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/features/dual_ts_graph_v4.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/offline/training/dual_ts_campaign.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/offline/evaluation/dual_ts_protocols.py
+    config: frozen/v4-v54-history:archive/v5x_configs/pesn/dual_ts_observations_16x1_v1.yaml
     data_manifest: data/manifests/split_manifest.json
     gates: [V4-MSE-zero, V4-cos]
     evidence: docs/reports/PES2TS_实现报告_20261018.md
@@ -149,11 +150,11 @@ campaigns:
     supporting_g: [G3.P.2, G0, G1]
     data_dependencies: [G0, G1]
     code_scope:
-      - pes2ts_core/pesn/offline/training/dual_ts_campaign.py
-      - pes2ts_core/pesn/offline/evaluation/dual_ts_protocols.py
-      - pes2ts_core/pesn/offline/evaluation/dual_ts_freerun.py
-      - pes2ts_core/pesn/bundle/reader.py
-    config: archive/v5x_configs/pesn/dual_ts_observations_16x1_v1.yaml
+      - frozen/v4-v54-history:pes2ts_core/pesn/offline/training/dual_ts_campaign.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/offline/evaluation/dual_ts_protocols.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/offline/evaluation/dual_ts_freerun.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/bundle/reader.py
+    config: frozen/v4-v54-history:archive/v5x_configs/pesn/dual_ts_observations_16x1_v1.yaml
     data_manifest: data/manifests/split_manifest.json
     gates: [V4.7-MSE-zero, V4.7-groups, V4.7-cos, V4.7-nearTS-cos]
     evidence: docs/reports/PES2TS_实现报告_20261018.md
@@ -165,17 +166,17 @@ campaigns:
     supporting_g: [G0, G1, G3.P.0, G2.T]
     data_dependencies: [G0, G1]
     code_scope:
-      - pes2ts_core/pesn/contracts/key_atom.py
-      - pes2ts_core/pesn/features/key_atom_spec.py
-      - pes2ts_core/pesn/features/key_atom_graph.py
-      - pes2ts_core/pesn/offline/data/key_atom_teacher.py
-      - pes2ts_core/pesn/offline/data/key_atom_dataset.py
-      - pes2ts_core/pesn/offline/data/pre_relax.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/contracts/key_atom.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/features/key_atom_spec.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/features/key_atom_graph.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/offline/data/key_atom_teacher.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/offline/data/key_atom_dataset.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/offline/data/pre_relax.py
       - pes2ts_core/generation/planning/key_atom_writer.py
       - pes2ts_core/integration/acp/xtb_freeze_request.py
       - pes2ts_core/integration/acp/xtb_freeze_transport.py
       - pes2ts_core/integration/validation/xtb_ts_verification.py
-    config: archive/v5x_configs/campaigns/v5_0_data_math.yaml
+    config: frozen/v4-v54-history:archive/v5x_configs/campaigns/v5_0_data_math.yaml
     data_manifest: data/manifests/v5/split_manifest.json
     gates: [V5-G1, M0.5-oracle]
     evidence: docs/plans/PES2TS_V5.0-V5.2_十小时冲刺训练与验证执行方案_v1_20261018.md
@@ -187,19 +188,19 @@ campaigns:
     supporting_g: [G0, G1]
     data_dependencies: [G0, G1]
     code_scope:
-      - pes2ts_core/pesn/models/key_atom_mlp.py
-      - pes2ts_core/pesn/models/key_atom_egnn.py
-      - pes2ts_core/pesn/models/key_atom_painn.py
-      - pes2ts_core/pesn/offline/training/key_atom_bc.py
-    config: archive/v5x_configs/campaigns/v5_1_architecture.yaml
+      - frozen/v4-v54-history:pes2ts_core/pesn/models/key_atom_mlp.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/models/key_atom_egnn.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/models/key_atom_painn.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/offline/training/key_atom_bc.py
+    config: frozen/v4-v54-history:archive/v5x_configs/campaigns/v5_1_architecture.yaml
     data_manifest: data/manifests/v5/split_manifest.json
     gates: [V5-G1, V5-G2, V5-G3, V5-G4]
     evidence: docs/plans/PES2TS_V5.0-V5.2_十小时冲刺训练与验证执行方案_v1_20261018.md
     gate_note: superseded by V5.1a/V5.1a-R1/V5.1-R2; retained as historical registration only
     comparison_only:
-      - pes2ts_core/pesn/models/dual_egnn.py
-      - pes2ts_core/pesn/models/dual_egnn_painn.py
-      - pes2ts_core/pesn/models/dual_ts_policy.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/models/dual_egnn.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/models/dual_egnn_painn.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/models/dual_ts_policy.py
   V5.1-R2:
     title: V5.1-R2 loss scale and data integrity repair (historical; superseded by V5.1-R3)
     status: archived
@@ -207,18 +208,18 @@ campaigns:
     supporting_g: [G3.P.0, G3.P.1, G3.P.3, G0, G1]
     data_dependencies: [G0, G1]
     code_scope:
-      - pes2ts_core/pesn/offline/training/key_atom_bc.py
-      - pes2ts_core/pesn/offline/evaluation/key_atom_protocols.py
-      - archive/v5x_scripts/campaigns/run_v5_1_r2.py
-    config: archive/v5x_configs/campaigns/v5_1_r2.yaml
+      - frozen/v4-v54-history:pes2ts_core/pesn/offline/training/key_atom_bc.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/offline/evaluation/key_atom_protocols.py
+      - frozen/v4-v54-history:archive/v5x_scripts/campaigns/run_v5_1_r2.py
+    config: frozen/v4-v54-history:archive/v5x_configs/campaigns/v5_1_r2.yaml
     data_manifest: data/manifests/v5/split_manifest.json
     gates: [V5-G1, V5.1-R2-loss, V5.1-R2-data]
     evidence: docs/plans/PES2TS_V5.1-R2_损失尺度与数据完整性修复方案_v1_20261020.md
     gate_note: historical; v2.0 "features unchanged" assumption superseded by V5.1-R3 reaction-intent revision; strong/dead formulas and S1 audit inherited
     comparison_only:
-      - pes2ts_core/pesn/models/dual_egnn.py
-      - pes2ts_core/pesn/models/dual_egnn_painn.py
-      - pes2ts_core/pesn/models/dual_ts_policy.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/models/dual_egnn.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/models/dual_egnn_painn.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/models/dual_ts_policy.py
   V5.1-R3:
     title: V5.1-R3 intent-directed full-curve step baseline (forward/reverse intents; no branch)
     status: proposed
@@ -226,19 +227,19 @@ campaigns:
     supporting_g: [G3.P.0, G3.P.1, G3.P.3, G0, G1]
     data_dependencies: [G0, G1]
     code_scope:
-      - pes2ts_core/pesn/contracts/reaction_intent.py
-      - pes2ts_core/pesn/features/key_atom_graph_v3.py
-      - pes2ts_core/pesn/models/key_atom_egnn_v3.py
-      - pes2ts_core/pesn/offline/training/key_atom_bc_v3.py
-      - archive/v5x_scripts/campaigns/run_v5_1_r3.py
-    config: archive/v5x_configs/campaigns/v5_1_r3.yaml
+      - pes2ts_core/contracts/reaction_intent.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/features/key_atom_graph_v3.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/models/key_atom_egnn_v3.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/offline/training/key_atom_bc_v3.py
+      - frozen/v4-v54-history:archive/v5x_scripts/campaigns/run_v5_1_r3.py
+    config: frozen/v4-v54-history:archive/v5x_configs/campaigns/v5_1_r3.yaml
     data_manifest: data/manifests/v5/split_manifest.json
     gates: [V5-G1, V5.1-R3-relabel, V5.1-R3-reverse, V5.1-R3-loss]
     evidence: docs/plans/PES2TS_V5.1-R3_反应意图条件化与端点标签不变重训方案_v3_20261020.md
     gate_note: intent_directed_irc_step; full curve; forward/reverse intents share curve/fold; signed ΔB_intent allowed; branch removed; no Stop/Progress (V5.2+); no formal OOF, no sealed; V5.1b stays closed
     comparison_only:
-      - pes2ts_core/pesn/models/dual_egnn.py
-      - pes2ts_core/pesn/models/dual_ts_policy.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/models/dual_egnn.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/models/dual_ts_policy.py
   V5.2:
     title: V5.2 reaction intent + CV/Jacobian + progress/stop heads (known-B) (legacy TS-stop task; negative, frozen)
     status: executed
@@ -246,24 +247,24 @@ campaigns:
     supporting_g: [G3.P.0, G3.P.3, G0, G1]
     data_dependencies: [G0, G1]
     code_scope:
-      - pes2ts_core/pesn/contracts/key_atom.py
-      - pes2ts_core/pesn/features/key_atom_spec.py
-      - pes2ts_core/pesn/features/key_atom_graph.py
-      - pes2ts_core/pesn/offline/data/key_atom_teacher.py
-      - pes2ts_core/pesn/offline/data/key_atom_dataset.py
-      - pes2ts_core/pesn/offline/data/key_atom_dataset_v3.py
-      - pes2ts_core/pesn/models/key_atom_heads_v3.py
-      - pes2ts_core/pesn/models/key_atom_loss_v52_v3.py
-      - pes2ts_core/pesn/offline/training/key_atom_v52_train_v3.py
-      - archive/v5x_scripts/campaigns/r3_v52_run.py
-    config: archive/v5x_configs/campaigns/pes2ts_30h_20261020.yaml
+      - frozen/v4-v54-history:pes2ts_core/pesn/contracts/key_atom.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/features/key_atom_spec.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/features/key_atom_graph.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/offline/data/key_atom_teacher.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/offline/data/key_atom_dataset.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/offline/data/key_atom_dataset_v3.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/models/key_atom_heads_v3.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/models/key_atom_loss_v52_v3.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/offline/training/key_atom_v52_train_v3.py
+      - frozen/v4-v54-history:archive/v5x_scripts/campaigns/r3_v52_run.py
+    config: frozen/v4-v54-history:archive/v5x_configs/campaigns/pes2ts_30h_20261020.yaml
     data_manifest: data/manifests/v5/split_manifest.json
     gates: [V5.2-contract, V5.2-labels, V5.2-progress, V5.2-stop, V5.2-move-nonregression]
     evidence: docs/plans/PES2TS_30h_R3_V52_V53_分层训练与验收计划_v1.1_20261020.md
     gate_note: executed under legacy TS-neighborhood stop labels — task-definition error per ADR-0030; results valid negative evidence for old task only; superseded by V5.2-R; evidence retained
     comparison_only:
-      - pes2ts_core/pesn/models/dual_egnn.py
-      - pes2ts_core/pesn/models/dual_ts_policy.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/models/dual_egnn.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/models/dual_ts_policy.py
   V5.2-R:
     title: V5.2-R full-path navigation + endpoint stop + directed ordering (CLOSED at D2-G)
     status: archived
@@ -271,19 +272,19 @@ campaigns:
     supporting_g: [G3.P.0, G3.P.3, G0, G1]
     data_dependencies: [G0, G1]
     code_scope:
-      - pes2ts_core/pesn/offline/data/key_atom_dataset_v3.py
-      - pes2ts_core/pesn/offline/data/key_atom_endpoint_labels_v1.py
-      - pes2ts_core/pesn/models/key_atom_heads_v52r.py
-      - pes2ts_core/pesn/models/key_atom_loss_v52r_v3.py
-      - archive/v5x_scripts/campaigns/r3_v52r_run.py
-    config: archive/v5x_configs/campaigns/pes2ts_v52r_20261021.yaml
+      - frozen/v4-v54-history:pes2ts_core/pesn/offline/data/key_atom_dataset_v3.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/offline/data/key_atom_endpoint_labels_v1.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/models/key_atom_heads_v52r.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/models/key_atom_loss_v52r_v3.py
+      - frozen/v4-v54-history:archive/v5x_scripts/campaigns/r3_v52r_run.py
+    config: frozen/v4-v54-history:archive/v5x_configs/campaigns/pes2ts_v52r_20261021.yaml
     data_manifest: data/manifests/v5/split_manifest.json
     gates: [V5.2R-D0-labels, V5.2R-D1-endpoint-head, V5.2R-D2-input-sufficiency, V5.2R-D2G-review]
     evidence: docs/reports/PES2TS_V52R_输入充分性决策记录_20261021.md
     gate_note: "ADR-0030 line; D0 PASS / D1 FAIL / D0.1 PASS / D2 P1 PASS (goal-oracle) + P4 FAIL + P5 FAIL; D2-G STOP, T1 NOT authorized; GPU spend 0; negative archived; superseded by ADR-0031 / MoveProcessContract v1 for new work"
     comparison_only:
-      - pes2ts_core/pesn/models/dual_egnn.py
-      - pes2ts_core/pesn/models/dual_ts_policy.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/models/dual_egnn.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/models/dual_ts_policy.py
   V5.3-ENG:
     title: V5.3-ENG 30h no-physics rollout + constrained-relax engineering closure (historical)
     status: executed
@@ -291,18 +292,18 @@ campaigns:
     supporting_g: [G3.P.1, G3.P.3, G0, G1]
     data_dependencies: [G0, G1]
     code_scope:
-      - pes2ts_core/pesn/models/rollout_v3.py
-      - archive/v5x_scripts/agent_ops/feature_gate/v53_rollout_exec.py
-      - archive/v5x_scripts/agent_ops/feature_gate/v53_relax_exec.py
-      - archive/v5x_scripts/agent_ops/feature_gate/v53_g4_evidence.py
-    config: archive/v5x_configs/campaigns/pes2ts_30h_20261020.yaml
+      - frozen/v4-v54-history:pes2ts_core/pesn/models/rollout_v3.py
+      - frozen/v4-v54-history:archive/v5x_scripts/agent_ops/feature_gate/v53_rollout_exec.py
+      - frozen/v4-v54-history:archive/v5x_scripts/agent_ops/feature_gate/v53_relax_exec.py
+      - frozen/v4-v54-history:archive/v5x_scripts/agent_ops/feature_gate/v53_g4_evidence.py
+    config: frozen/v4-v54-history:archive/v5x_configs/campaigns/pes2ts_30h_20261020.yaml
     data_manifest: data/manifests/v5/split_manifest.json
     gates: [G4-Rollout]
     evidence: V53_ROLLOUT_REPORT.md
     gate_note: "H20 engineering-only; G4 PASS = engineering closure, NOT scientific validation; 216 no-physics episodes + 36 real xTB constrained relaxations; TS_candidate_only; no verified TS claim; superseded as the active V5.3 line by V5.3-MP (ADR-0031)"
     comparison_only:
-      - pes2ts_core/pesn/models/dual_egnn.py
-      - pes2ts_core/pesn/models/dual_ts_policy.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/models/dual_egnn.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/models/dual_ts_policy.py
   V5.3-MP:
     title: V5.3-MP large-scale MOVE + PROCESS unified training (S0 data build -> S1 2k -> S2 5k -> S3 20k)
     status: proposed
@@ -310,27 +311,27 @@ campaigns:
     supporting_g: [G3.P.0, G3.P.1, G3.P.3, G0, G1]
     data_dependencies: [G0, G1]
     code_scope:
-      - pes2ts_core/pesn/models/key_atom_heads_v3.py
-      - pes2ts_core/pesn/models/key_atom_loss_v53mp_v3.py
-      - pes2ts_core/pesn/offline/training/key_atom_v53mp_train_v3.py
-      - pes2ts_core/pesn/offline/data/key_atom_dataset_v3.py
-      - pes2ts_core/pesn/offline/data/key_atom_endpoint_labels_v1.py
-      - archive/v5x_scripts/campaigns/r3_v53mp_run.py
-      - archive/v5x_scripts/agent_ops/data_gate/r3_build_tables.py
-      - archive/v5x_scripts/agent_ops/data_gate/r3_v53mp_s0a_qualify.py
-      - archive/v5x_scripts/agent_ops/data_gate/r3_v53mp_freeze_cohort.py
-      - archive/v5x_scripts/agent_ops/data_gate/r3_v53mp_build_tables_h5.py
-      - archive/v5x_scripts/agent_ops/data_gate/r3_v53mp_finalize.py
-      - archive/v5x_scripts/campaigns/r3_v53mp_lambda_probe.py
-      - pes2ts_core/pesn/offline/publishing/export.py
-    config: archive/v5x_configs/campaigns/pes2ts_v53mp_20261021.yaml
+      - frozen/v4-v54-history:pes2ts_core/pesn/models/key_atom_heads_v3.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/models/key_atom_loss_v53mp_v3.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/offline/training/key_atom_v53mp_train_v3.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/offline/data/key_atom_dataset_v3.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/offline/data/key_atom_endpoint_labels_v1.py
+      - frozen/v4-v54-history:archive/v5x_scripts/campaigns/r3_v53mp_run.py
+      - frozen/v4-v54-history:archive/v5x_scripts/agent_ops/data_gate/r3_build_tables.py
+      - frozen/v4-v54-history:archive/v5x_scripts/agent_ops/data_gate/r3_v53mp_s0a_qualify.py
+      - frozen/v4-v54-history:archive/v5x_scripts/agent_ops/data_gate/r3_v53mp_freeze_cohort.py
+      - frozen/v4-v54-history:archive/v5x_scripts/agent_ops/data_gate/r3_v53mp_build_tables_h5.py
+      - frozen/v4-v54-history:archive/v5x_scripts/agent_ops/data_gate/r3_v53mp_finalize.py
+      - frozen/v4-v54-history:archive/v5x_scripts/campaigns/r3_v53mp_lambda_probe.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/offline/publishing/export.py
+    config: frozen/v4-v54-history:archive/v5x_configs/campaigns/pes2ts_v53mp_20261021.yaml
     data_manifest: data/manifests/v5/split_manifest.json
     gates: [V53MP-S0-data, V53MP-S1-smoke, V53MP-S2-scale, V53MP-S3-formal, V53MP-S3-closed-loop]
     evidence: docs/plans/PES2TS_V5.3-MP_大规模MOVE-PROCESS联合训练计划_v1_20261021.md
-    gate_note: "ADR-0031 / MoveProcessContract v1; one shared StarEGNNV3 (hidden48/3 layers, 55,441) + MOVE + PROCESS (q/endpoint/ordering); No-Move = p_end >= tau_end AND chemical state consistent; TS always MOVE; q auxiliary only; input single-frame + legal directed topology, no reference endpoint XYZ/history/truth; S0 builds >=20k qualified independent reactions from the ~200k IRC inventory (dedup canonical groups; current six-table = 50 curves/12,034 rows); S0-A metadata qualification reads no raw truth, S0-B authorized extraction logs every access (hard gate = no unauthorized access, not empty log); S0-D sharded lazy loader required (current KeyAtomDatasetV3 is not approved for 20k); endpoint_label_spec_v1 must pass hard-negative/coverage checks; S0-F implementation-readiness 7/7 before S1; arms A Move-only / B Move+Progress / C Move+PROCESS; S2->S3 not blocked by statistical non-significance; reference-normalized vs autonomous rollout reported separately; GPU 0 until S0 PASS and S1 explicit authorization; S0-F readiness items implemented 2026-10-21: archive/v5x_configs/campaigns/pes2ts_v53mp_20261021.yaml, key_atom_loss_v53mp_v3.py, key_atom_v53mp_train_v3.py, archive/v5x_scripts/campaigns/r3_v53mp_run.py, sharded loader (ShardedKeyAtomDatasetV3) in key_atom_dataset_v3.py, endpoint_label_spec_v1 in key_atom_endpoint_labels_v1.py, pes2ts_move_process_bundle_v1 in export.py; gate-check subcommand verifies 7/7"
+    gate_note: "ADR-0031 / MoveProcessContract v1; one shared StarEGNNV3 (hidden48/3 layers, 55,441) + MOVE + PROCESS (q/endpoint/ordering); No-Move = p_end >= tau_end AND chemical state consistent; TS always MOVE; q auxiliary only; input single-frame + legal directed topology, no reference endpoint XYZ/history/truth; S0 builds >=20k qualified independent reactions from the ~200k IRC inventory (dedup canonical groups; current six-table = 50 curves/12,034 rows); S0-A metadata qualification reads no raw truth, S0-B authorized extraction logs every access (hard gate = no unauthorized access, not empty log); S0-D sharded lazy loader required (current KeyAtomDatasetV3 is not approved for 20k); endpoint_label_spec_v1 must pass hard-negative/coverage checks; S0-F implementation-readiness 7/7 before S1; arms A Move-only / B Move+Progress / C Move+PROCESS; S2->S3 not blocked by statistical non-significance; reference-normalized vs autonomous rollout reported separately; GPU 0 until S0 PASS and S1 explicit authorization; S0-F readiness items implemented 2026-10-21: frozen/v4-v54-history:archive/v5x_configs/campaigns/pes2ts_v53mp_20261021.yaml, key_atom_loss_v53mp_v3.py, key_atom_v53mp_train_v3.py, frozen/v4-v54-history:archive/v5x_scripts/campaigns/r3_v53mp_run.py, sharded loader (ShardedKeyAtomDatasetV3) in key_atom_dataset_v3.py, endpoint_label_spec_v1 in key_atom_endpoint_labels_v1.py, pes2ts_move_process_bundle_v1 in export.py; gate-check subcommand verifies 7/7"
     comparison_only:
-      - pes2ts_core/pesn/models/dual_egnn.py
-      - pes2ts_core/pesn/models/dual_ts_policy.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/models/dual_egnn.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/models/dual_ts_policy.py
   V5.4:
     title: V5.4 from-any-point growth + relabel/reverse consistency (known-B)
     status: proposed
@@ -338,17 +339,17 @@ campaigns:
     supporting_g: [G3.P.1, G3.P.3, G0, G1]
     data_dependencies: [G0, G1]
     code_scope:
-      - pes2ts_core/pesn/offline/training/key_atom_bc.py
-      - pes2ts_core/pesn/offline/evaluation/key_atom_protocols.py
-      - archive/v5x_scripts/campaigns/run_v5_4_rollout.py
-    config: archive/v5x_configs/campaigns/v5_4_rollout.yaml
+      - frozen/v4-v54-history:pes2ts_core/pesn/offline/training/key_atom_bc.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/offline/evaluation/key_atom_protocols.py
+      - frozen/v4-v54-history:archive/v5x_scripts/campaigns/run_v5_4_rollout.py
+    config: frozen/v4-v54-history:archive/v5x_configs/campaigns/v5_4_rollout.yaml
     data_manifest: data/manifests/v5/split_manifest.json
     gates: [V5-G1, V5.4-field, V5.4-rollout, V5.4-stop]
     evidence: docs/plans/PES2TS_V5-V7_反应意图条件化与低维生长方案_v3.0_20261020.md
     gate_note: from-any-point/reverse consistency; known-B; development evidence only; formal OOF requires separate preregistered approval
     comparison_only:
-      - pes2ts_core/pesn/models/dual_egnn.py
-      - pes2ts_core/pesn/models/dual_ts_policy.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/models/dual_egnn.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/models/dual_ts_policy.py
   V5.4.1:
     title: V5.4.1 Embedding-50K single-arm unified MOVE+PROCESS benchmark (executed; E*=E0 retained)
     status: executed
@@ -356,26 +357,26 @@ campaigns:
     supporting_g: [G3.P.1, G3.P.3, G0, G1]
     data_dependencies: [G0, G1]
     code_scope:
-      - archive/v5x_configs/campaigns/pes2ts_v541_embed_50k.yaml
-      - archive/v5x_scripts/agent_ops/v541_config_schema.py
-      - tests/legacy/agent_ops/test_v541_config_schema.py
-      - pes2ts_core/pesn/models/v541/**
-      - pes2ts_core/pesn/offline/training/v541_train.py
-      - pes2ts_core/pesn/offline/training/v541_strata.py
-      - pes2ts_core/pesn/offline/training/v541_identity.py
-      - pes2ts_core/pesn/offline/training/v541_monitor.py
-      - pes2ts_core/pesn/offline/training/v541_degree_stats.py
-      - pes2ts_core/pesn/offline/evaluation/pair_ownership_v3.py
-      - pes2ts_core/pesn/offline/data/key_atom_stream_view.py
-      - archive/v5x_scripts/campaigns/v541_*.py
-    config: archive/v5x_configs/campaigns/pes2ts_v541_embed_50k.yaml
+      - frozen/v4-v54-history:archive/v5x_configs/campaigns/pes2ts_v541_embed_50k.yaml
+      - frozen/v4-v54-history:archive/v5x_scripts/agent_ops/v541_config_schema.py
+      - frozen/v4-v54-history:tests/legacy/agent_ops/test_v541_config_schema.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/models/v541/**
+      - frozen/v4-v54-history:pes2ts_core/pesn/offline/training/v541_train.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/offline/training/v541_strata.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/offline/training/v541_identity.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/offline/training/v541_monitor.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/offline/training/v541_degree_stats.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/offline/evaluation/pair_ownership_v3.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/offline/data/key_atom_stream_view.py
+      - frozen/v4-v54-history:archive/v5x_scripts/campaigns/v541_*.py
+    config: frozen/v4-v54-history:archive/v5x_configs/campaigns/pes2ts_v541_embed_50k.yaml
     data_manifest: data/manifests/v5/split_manifest.json
     gates: [V541-WP0-prereg, V541-WP1-pair-eval, V541-WP2-parity, V541-e0-reuse-decision, V541-smoke-200, V541-H0-legality, V541-H1-resource, V541-H2-move, V541-H3-process, V541-budget-signoff, V541-formal-t1]
     evidence: docs/reports/PES2TS_V541_Embedding_50K_实施与训练报告_20261029.md
     gate_note: "EXECUTED 2026-10-29 (WP0-WP7 complete): T0-R matched E0 x3 (seeds 17/29/43) + E1/E2/E3 seed17 all 37,900 updates done; E1/E2 scientific_failure (H2 sign guard), E3 scientific_failure (H2 sign+dead); E4 gate_skipped (core-time ratio 3.6455>2.0 cost gate, not a resource failure); E5 gate_skipped (parent E4 cost gate); T3 gate_skipped (n_selected=0, no candidate seeds 29/43); T4 gate_skipped (no_new_embedding_gain; capacity/depth confounds UNEXCLUDED); E*=E0 retained; dev veto not applicable (no candidate dev access, no tuning, tau frozen); rollout 1152 episodes no-physics separate reporting, QC=0; E0 bundle 8-file whitelist strict-load verified; confirm never read; new_QC_calls=0; no production No-Move / verified-TS / deployment claim. Historical Cx3 = auxiliary reference only (E0 retrained after loader-certificate EVIDENCE_MISSING + sampler non-equivalence adjudication); rollout v1 loader SIGTERM attempt-1 resource_failure preserved with loader-v2 rerun. ADR-0032 / MoveProcessContract v1 semantics unchanged; V541 run outcome vocabulary kept separate from legacy ledger status machine (unchanged)"
     comparison_only:
-      - pes2ts_core/pesn/models/dual_egnn.py
-      - pes2ts_core/pesn/models/dual_ts_policy.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/models/dual_egnn.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/models/dual_ts_policy.py
   V5.4.2:
     title: V5.4.2 single-frame spatial Backbone 50K benchmark (executed; no_backbone_winner — A0 matched baseline retained)
     status: executed
@@ -383,21 +384,21 @@ campaigns:
     supporting_g: [G3.P.1, G3.P.3, G0, G1]
     data_dependencies: [G0, G1]
     code_scope:
-      - archive/v5x_configs/campaigns/pes2ts_v542_backbone_50k.yaml
-      - archive/v5x_scripts/agent_ops/v542_config_schema.py
-      - tests/legacy/agent_ops/test_v542_config_schema.py
-      - archive/v5x_configs/campaigns/v542_templates/**
-      - pes2ts_core/pesn/models/v542/**
-      - pes2ts_core/pesn/offline/training/v542_*.py
-      - archive/v5x_scripts/agent_ops/v542_*.py
-    config: archive/v5x_configs/campaigns/pes2ts_v542_backbone_50k.yaml
+      - frozen/v4-v54-history:archive/v5x_configs/campaigns/pes2ts_v542_backbone_50k.yaml
+      - frozen/v4-v54-history:archive/v5x_scripts/agent_ops/v542_config_schema.py
+      - frozen/v4-v54-history:tests/legacy/agent_ops/test_v542_config_schema.py
+      - frozen/v4-v54-history:archive/v5x_configs/campaigns/v542_templates/**
+      - frozen/v4-v54-history:pes2ts_core/pesn/models/v542/**
+      - frozen/v4-v54-history:pes2ts_core/pesn/offline/training/v542_*.py
+      - frozen/v4-v54-history:archive/v5x_scripts/agent_ops/v542_*.py
+    config: frozen/v4-v54-history:archive/v5x_configs/campaigns/pes2ts_v542_backbone_50k.yaml
     data_manifest: /pes2ts_data/v53mp_50k_data/split_manifest_v53mp.json
     gates: [V542-WP0-prereg, V542-WP1-interface-parity, V542-WP2-candidates, V542-smoke-200, V542-profile, V542-diagnostic-2000, V542-A0-sanity-band, V542-H0-legality, V542-H1-resource, V542-H2-move, V542-H3-backbone, V542-budget-signoff, V542-formal]
     evidence: docs/reports/PES2TS_V542_Backbone_50K_实施与训练报告_20261031.md
-    gate_note: "WP0 preregistered 2026-10-29 (ADR-0033 v1.2; fix-5 condition-closure 2026-10-30 after Oracle gate-0 PASS_WITH_CONDITIONS): status proposed — no smoke/executed claim. Unified BackboneOutput(z[G,64], edge_msg[E,48]) + shared DirectMoveDecoder(w_v=49) + unchanged ReactionProcessHeadV53MP(2178); A0 = legacy StarEGNNV3 subclass adapter (hook capture, shared w_v, explicit strict mapping audit with the declared w_v dual-write alias exception over 37 backbone + 6 process-head = 43 joint keys for joint checkpoints, CPU bitwise + GPU 1e-6/1e-5 HARD-CAP parity over 6 ALL-REQUIRED checkpoints with pinned paths+SHAs — 3 V541 E0 runs/ best inner-val checkpoints from 37,900-update runs MAIN evidence (checkpoint update 37000/36400/37800) + 3 V53MP C outputs/pesn/v53mp 20k S3 formal 15,400-update-run best inner-val checkpoints AUXILIARY evidence (checkpoint update 15400/15300/15400), source_tier/run_updates/checkpoint_update pinned per row (training_updates = run_updates alias), smoke AND non-pinned checkpoints forbidden, GPU run-to-run floor is diagnostic-only and floor>cap => GPU parity inconclusive while CPU bitwise stays decisive; no torch.compile; active 55392/joint 57619 invariants); candidates A1 2L GeoEGNN / A2 single-frame PaiNN-lite v32 / A3 A1+ReactionQuery 2x24 / A4 2L sparse geometry transformer 4x12+reaction token / A5 shared GRU T4, hidden48 z64 edge_msg48, active<=70k, R3 warm-start (explicit semantic mapping table frozen per candidate + process-head fork_rng anchor + candidate fresh seeded fork_rng via sha256 init recipe with init_source_id overrides A1-C->A1, A5-C->A5 + set_seed before training + param groups by id). a0_reuse_decision=retrain_a0_x3 (INSTANCE required before T1 at outputs/pesn/v542_backbone_50k/plan/a0_reuse_decision.json; V541 E0x3 parity/historical reference only). smoke200 (conditional_backbones [A1-C,A5-C]) + same-env profile + seed17 diagnostic 2000(400+1600) A0-A5 elimination-only. formal 400+37500 in frozen stage order T0 A0x3+V542-A0-sanity-band BEFORE any T1 formal (A0x3 seed-mean vs V541 E0x3 seed-mean sanity band; breach strictly blocks T1: migration audit, per-defect-class identity bump — code=>source_tree_fingerprint, data=>data_manifest_sha256, init=>init_mapping_sha256, anchor=>process_head_anchor_sha256 — fix + bump matching layer + rerun A0x3, sanity-exception signing forbidden); A0 seeds17/29/43 mandatory; A1-A4 seed17 after diagnostic/cost gates; top2 = A1-A4 ONLY (seed17_screen_pass predicate, screen-score ranking, max 2 candidates => top2_max_runs=4; top2 freeze requires A0_S17 complete + V542-A0-sanity-band pass); A5 supplement SEPARATE (a5_full_dose_complete_and_seed17_screen_pass, a5_supplement_max_runs=2, t3_max_runs=6); A5 full-dose auto-activates only if no A1-A4 H3-qualified candidate after top2 seeds (launch_requires diagnostic/cost/H0/H1) else gate_skipped. H2 inherited per-seed with degradation<=2% wording; H3 vs matched A0 uses frozen PARENTHESIZED route_logic — MOVE pass = (direction_pass AND rmse_non_inferior) OR (rmse_pass AND direction_non_inferior), PROCESS pass = (auprc_pass AND q_non_inferior) OR (q_pass AND auprc_non_inferior), seed17 screen reuses the same logic; >=2/3 seeds, seed-averaged curve-level paired bootstrap 10000 draws (bootstrap_seed_root=20261029, deterministic subseed formula, one-sided improvement p=(1+#{improvement<=0})/10001, CI and p same draws); Holm families frozen: MOVE direction and MOVE RMSE exits each alpha .025 Holm over eligible candidates, PROCESS single family alpha .025 Holm over 2 endpoints x eligible candidates. FINAL SELECTION frozen as final_selection_rule (H3-qualified candidates only; A0/diagnostic excluded; 0 qualified => A0 retained; single => it wins; multiple => lexicographic: MOVE-qualified before PROCESS-only, min Holm-adjusted p on qualifying endpoint, max effect margin (move direction=min(rel/0.03,abs/0.01), move RMSE=rel/0.03, AUPRC=delta/0.02, q=delta/0.03), min core_time_ratio, min active params, min inner-val total loss, min candidate_id; no dev; report all qualified; rule block inside statistics/final-selection SHA and run identity; A5-C activation uses the selected candidate only). A1-C/A5-C full-dose attribution diagnostics (non-winner; activation requires H0 fixture+conditional smoke+profile+cost+budget). core_time_ratio<=2.0 vs V542 A0 same-env profile (budget null until profile; --formal typed-blocks); signoff roles = main_session_owner (statistics/evaluation) + oracle_reviewer (not signatory), parity/training/resource pending; outcome six-word vocabulary separate from legacy ledger; confirm sealed, new_QC=0, single lane, swap=0; no production No-Move/verified-TS/deployment claim; gate-2 Ruling 2 (2026-10-30): W_g/GRU bias recorded per candidate in config candidates rows — w_g_bias true for A2/A4 (biased nn.Linear(5,48)=288 params), false for A5/A5-C (bias=False=240 params/cell); gru_cell_bias A5 [true] (single biased GRUCell(48,48)=14112) and A5-C [true,false] (second GRUCell(48,48,bias=False)=13824); frozen totals 54896/55840/31584/53712 unchanged (preregistered invariants, reproduced exactly); schema exact-match: missing => V542_MISSING_FIELD, drift incl. string/int near-misses => V542_PARAM_BUDGET; status stays proposed, no commit (B1/B2 remediation lives in the parallel implementation lane); gate-0 A5/A2 closure (2026-10-30, P3 lane D): t1_start_requires = 9 canonical gates + 3 record requirements (runplan_pin_record + a0_reuse_decision_record + preregistration_signoff_record); governance.records freezes template/instance/required-fields/SHA rule (sha256 over canonical file bytes); the validator reads the two governance record instances (prereg: missing/drifted instances are t1_blocked reasons so WP0 stays green; --formal: typed V542_RECORD_MISSING when absent/unreadable/None, V542_RECORD_MISMATCH on content drift incl. decision != retrain_a0_x3 and signoff threshold drift); token-only gate-0 A2 checks converted to exact/structured fields (final_selection_rule eligible_condition H3_QUALIFIED_ONLY + single_candidate_rule_id + no_candidate_rule_id + exact prose rows; structured statistics.h3_eligible_candidates criteria/a5_rule/excluded + champion_rule requires/selection_ref/report; h2_no_breach exact prose + h2_no_breach_thresholds numerics 0.01/0.01/0.02/0.02 mirroring thresholds; a0_migration.core_loop exact enum super().forward_verbatim); typed codes 19 -> 21, prereg checks 26 -> 27; gate-3 B2/C2/C4 closure (2026-10-30, P3 remediation lane R2): the two machine-checked governance records must MIRROR the frozen config (config_path = archive/v5x_configs/campaigns/pes2ts_v542_backbone_50k.yaml, campaign_id/gv_campaign_id/schema match, A0 decision = retrain_a0_x3 with runs mirrored, signoff signed_by_roles = exact frozen role-key set with statistics_owner/evaluation_signoff = main_session_owner and oracle_reviewer = oracle_gate0_reviewer (empty roles rejected), signoff thresholds byte-equal to config thresholds via canonical JSON) and each record declares record_sha256 = sha256(canonical_bytes(payload without record_sha256)) verified against the identity module canonical_bytes recipe (missing digest => V542_RECORD_MISSING, wrong digest => V542_RECORD_MISMATCH); runplan_pin_record stays WP5-runner-verified (the WP0 validator --formal gate never reads the pin instance); budget formal gate hardened: per_candidate_core_time must be a mapping covering all 8 backbones with finite positive core times (null/empty => V542_BUDGET_NULL; list/string/partial/extra keys/zero/negative/NaN/bool => new V542_BUDGET_INVALID); typed codes 21 -> 22, prereg checks stay 27; A1 advisory CLOSED; budget signed 2026-10-30 from the same-env 40+40 profile (values unchanged by this ruling); no commit. WP4 diagnostic 2026-10-30 (Oracle WP4 ruling): A0 = control_not_screened (a0_matched_control_not_screened; matched-dose control, T0 A0×3 mandatory, no diagnostic_gate); A1/A2/A3/A5 = advance_full_dose; A4 = gate_skipped (diag_best_inner_val_drop_lt_5pct_vs_initial; 3.849742% < 5.0% frozen threshold; V542_A4_S17 and S29/S43 not activated); thresholds/budget values unchanged; status stays proposed; no formal claim. WP7 EXECUTED 2026-10-31: T0 A0x3 formal + A0 sanity band PASS (seed means: AUPRC A0 0.29670 vs V541 E0 0.28858, q_corr 0.99682 vs 0.99727, RMSE/zero -0.199%); T1 A1/A2/A3 S17 done (inner-val 0.6924 / 0.3275 / 0.6476), A4 gate_skipped; seed17 screen top2=[A2,A3] with the freeze precondition asserted; T3 A2 S29/S43 (0.3213/0.3209) and A3 S29/S43 (0.6506/0.6713) done; T2 A5 S17 done (0.7079) after the frozen no-qualified-A1-A4 activation; H2 per-seed: A2_S43 and A3_S43 breach (matched_a0.sign_abs_drop + matched_a0.fixed_coverage_direction_rel_degradation), A0_S17 marginal R3 dead-fraction drift (baseline, not a candidate gate); H3 eligible=[] (A1/A5 three seeds incomplete, A2/A3 per_seed_h2_breach, A4 diagnostic-eliminated); final_selection branch zero_h3_qualified_candidates_a0_retained_no_backbone_winner — A0 retained, NOT 'A0 won'; A5 supplement gate_skipped(a5_supplement_parent_gate_unmet; a5_seed17_screen_pass=false); A1-C gate_skipped(a1_not_in_top2_and_not_selected); A5-C gate_skipped(a5_not_selected_backbone); N_core=17 (smoke/profile excluded); confirm never read, new_QC_calls=0, single lane, swap=0; no dev access; no production No-Move/verified-TS/deployment claim; outcome vocabulary six words; report docs/reports/PES2TS_V542_Backbone_50K_实施与训练报告_20261031.md"
+    gate_note: "WP0 preregistered 2026-10-29 (ADR-0033 v1.2; fix-5 condition-closure 2026-10-30 after Oracle gate-0 PASS_WITH_CONDITIONS): status proposed — no smoke/executed claim. Unified BackboneOutput(z[G,64], edge_msg[E,48]) + shared DirectMoveDecoder(w_v=49) + unchanged ReactionProcessHeadV53MP(2178); A0 = legacy StarEGNNV3 subclass adapter (hook capture, shared w_v, explicit strict mapping audit with the declared w_v dual-write alias exception over 37 backbone + 6 process-head = 43 joint keys for joint checkpoints, CPU bitwise + GPU 1e-6/1e-5 HARD-CAP parity over 6 ALL-REQUIRED checkpoints with pinned paths+SHAs — 3 V541 E0 runs/ best inner-val checkpoints from 37,900-update runs MAIN evidence (checkpoint update 37000/36400/37800) + 3 V53MP C outputs/pesn/v53mp 20k S3 formal 15,400-update-run best inner-val checkpoints AUXILIARY evidence (checkpoint update 15400/15300/15400), source_tier/run_updates/checkpoint_update pinned per row (training_updates = run_updates alias), smoke AND non-pinned checkpoints forbidden, GPU run-to-run floor is diagnostic-only and floor>cap => GPU parity inconclusive while CPU bitwise stays decisive; no torch.compile; active 55392/joint 57619 invariants); candidates A1 2L GeoEGNN / A2 single-frame PaiNN-lite v32 / A3 A1+ReactionQuery 2x24 / A4 2L sparse geometry transformer 4x12+reaction token / A5 shared GRU T4, hidden48 z64 edge_msg48, active<=70k, R3 warm-start (explicit semantic mapping table frozen per candidate + process-head fork_rng anchor + candidate fresh seeded fork_rng via sha256 init recipe with init_source_id overrides A1-C->A1, A5-C->A5 + set_seed before training + param groups by id). a0_reuse_decision=retrain_a0_x3 (INSTANCE required before T1 at outputs/pesn/v542_backbone_50k/plan/a0_reuse_decision.json; V541 E0x3 parity/historical reference only). smoke200 (conditional_backbones [A1-C,A5-C]) + same-env profile + seed17 diagnostic 2000(400+1600) A0-A5 elimination-only. formal 400+37500 in frozen stage order T0 A0x3+V542-A0-sanity-band BEFORE any T1 formal (A0x3 seed-mean vs V541 E0x3 seed-mean sanity band; breach strictly blocks T1: migration audit, per-defect-class identity bump — code=>source_tree_fingerprint, data=>data_manifest_sha256, init=>init_mapping_sha256, anchor=>process_head_anchor_sha256 — fix + bump matching layer + rerun A0x3, sanity-exception signing forbidden); A0 seeds17/29/43 mandatory; A1-A4 seed17 after diagnostic/cost gates; top2 = A1-A4 ONLY (seed17_screen_pass predicate, screen-score ranking, max 2 candidates => top2_max_runs=4; top2 freeze requires A0_S17 complete + V542-A0-sanity-band pass); A5 supplement SEPARATE (a5_full_dose_complete_and_seed17_screen_pass, a5_supplement_max_runs=2, t3_max_runs=6); A5 full-dose auto-activates only if no A1-A4 H3-qualified candidate after top2 seeds (launch_requires diagnostic/cost/H0/H1) else gate_skipped. H2 inherited per-seed with degradation<=2% wording; H3 vs matched A0 uses frozen PARENTHESIZED route_logic — MOVE pass = (direction_pass AND rmse_non_inferior) OR (rmse_pass AND direction_non_inferior), PROCESS pass = (auprc_pass AND q_non_inferior) OR (q_pass AND auprc_non_inferior), seed17 screen reuses the same logic; >=2/3 seeds, seed-averaged curve-level paired bootstrap 10000 draws (bootstrap_seed_root=20261029, deterministic subseed formula, one-sided improvement p=(1+#{improvement<=0})/10001, CI and p same draws); Holm families frozen: MOVE direction and MOVE RMSE exits each alpha .025 Holm over eligible candidates, PROCESS single family alpha .025 Holm over 2 endpoints x eligible candidates. FINAL SELECTION frozen as final_selection_rule (H3-qualified candidates only; A0/diagnostic excluded; 0 qualified => A0 retained; single => it wins; multiple => lexicographic: MOVE-qualified before PROCESS-only, min Holm-adjusted p on qualifying endpoint, max effect margin (move direction=min(rel/0.03,abs/0.01), move RMSE=rel/0.03, AUPRC=delta/0.02, q=delta/0.03), min core_time_ratio, min active params, min inner-val total loss, min candidate_id; no dev; report all qualified; rule block inside statistics/final-selection SHA and run identity; A5-C activation uses the selected candidate only). A1-C/A5-C full-dose attribution diagnostics (non-winner; activation requires H0 fixture+conditional smoke+profile+cost+budget). core_time_ratio<=2.0 vs V542 A0 same-env profile (budget null until profile; --formal typed-blocks); signoff roles = main_session_owner (statistics/evaluation) + oracle_reviewer (not signatory), parity/training/resource pending; outcome six-word vocabulary separate from legacy ledger; confirm sealed, new_QC=0, single lane, swap=0; no production No-Move/verified-TS/deployment claim; gate-2 Ruling 2 (2026-10-30): W_g/GRU bias recorded per candidate in config candidates rows — w_g_bias true for A2/A4 (biased nn.Linear(5,48)=288 params), false for A5/A5-C (bias=False=240 params/cell); gru_cell_bias A5 [true] (single biased GRUCell(48,48)=14112) and A5-C [true,false] (second GRUCell(48,48,bias=False)=13824); frozen totals 54896/55840/31584/53712 unchanged (preregistered invariants, reproduced exactly); schema exact-match: missing => V542_MISSING_FIELD, drift incl. string/int near-misses => V542_PARAM_BUDGET; status stays proposed, no commit (B1/B2 remediation lives in the parallel implementation lane); gate-0 A5/A2 closure (2026-10-30, P3 lane D): t1_start_requires = 9 canonical gates + 3 record requirements (runplan_pin_record + a0_reuse_decision_record + preregistration_signoff_record); governance.records freezes template/instance/required-fields/SHA rule (sha256 over canonical file bytes); the validator reads the two governance record instances (prereg: missing/drifted instances are t1_blocked reasons so WP0 stays green; --formal: typed V542_RECORD_MISSING when absent/unreadable/None, V542_RECORD_MISMATCH on content drift incl. decision != retrain_a0_x3 and signoff threshold drift); token-only gate-0 A2 checks converted to exact/structured fields (final_selection_rule eligible_condition H3_QUALIFIED_ONLY + single_candidate_rule_id + no_candidate_rule_id + exact prose rows; structured statistics.h3_eligible_candidates criteria/a5_rule/excluded + champion_rule requires/selection_ref/report; h2_no_breach exact prose + h2_no_breach_thresholds numerics 0.01/0.01/0.02/0.02 mirroring thresholds; a0_migration.core_loop exact enum super().forward_verbatim); typed codes 19 -> 21, prereg checks 26 -> 27; gate-3 B2/C2/C4 closure (2026-10-30, P3 remediation lane R2): the two machine-checked governance records must MIRROR the frozen config (config_path = frozen/v4-v54-history:archive/v5x_configs/campaigns/pes2ts_v542_backbone_50k.yaml, campaign_id/gv_campaign_id/schema match, A0 decision = retrain_a0_x3 with runs mirrored, signoff signed_by_roles = exact frozen role-key set with statistics_owner/evaluation_signoff = main_session_owner and oracle_reviewer = oracle_gate0_reviewer (empty roles rejected), signoff thresholds byte-equal to config thresholds via canonical JSON) and each record declares record_sha256 = sha256(canonical_bytes(payload without record_sha256)) verified against the identity module canonical_bytes recipe (missing digest => V542_RECORD_MISSING, wrong digest => V542_RECORD_MISMATCH); runplan_pin_record stays WP5-runner-verified (the WP0 validator --formal gate never reads the pin instance); budget formal gate hardened: per_candidate_core_time must be a mapping covering all 8 backbones with finite positive core times (null/empty => V542_BUDGET_NULL; list/string/partial/extra keys/zero/negative/NaN/bool => new V542_BUDGET_INVALID); typed codes 21 -> 22, prereg checks stay 27; A1 advisory CLOSED; budget signed 2026-10-30 from the same-env 40+40 profile (values unchanged by this ruling); no commit. WP4 diagnostic 2026-10-30 (Oracle WP4 ruling): A0 = control_not_screened (a0_matched_control_not_screened; matched-dose control, T0 A0×3 mandatory, no diagnostic_gate); A1/A2/A3/A5 = advance_full_dose; A4 = gate_skipped (diag_best_inner_val_drop_lt_5pct_vs_initial; 3.849742% < 5.0% frozen threshold; V542_A4_S17 and S29/S43 not activated); thresholds/budget values unchanged; status stays proposed; no formal claim. WP7 EXECUTED 2026-10-31: T0 A0x3 formal + A0 sanity band PASS (seed means: AUPRC A0 0.29670 vs V541 E0 0.28858, q_corr 0.99682 vs 0.99727, RMSE/zero -0.199%); T1 A1/A2/A3 S17 done (inner-val 0.6924 / 0.3275 / 0.6476), A4 gate_skipped; seed17 screen top2=[A2,A3] with the freeze precondition asserted; T3 A2 S29/S43 (0.3213/0.3209) and A3 S29/S43 (0.6506/0.6713) done; T2 A5 S17 done (0.7079) after the frozen no-qualified-A1-A4 activation; H2 per-seed: A2_S43 and A3_S43 breach (matched_a0.sign_abs_drop + matched_a0.fixed_coverage_direction_rel_degradation), A0_S17 marginal R3 dead-fraction drift (baseline, not a candidate gate); H3 eligible=[] (A1/A5 three seeds incomplete, A2/A3 per_seed_h2_breach, A4 diagnostic-eliminated); final_selection branch zero_h3_qualified_candidates_a0_retained_no_backbone_winner — A0 retained, NOT 'A0 won'; A5 supplement gate_skipped(a5_supplement_parent_gate_unmet; a5_seed17_screen_pass=false); A1-C gate_skipped(a1_not_in_top2_and_not_selected); A5-C gate_skipped(a5_not_selected_backbone); N_core=17 (smoke/profile excluded); confirm never read, new_QC_calls=0, single lane, swap=0; no dev access; no production No-Move/verified-TS/deployment claim; outcome vocabulary six words; report docs/reports/PES2TS_V542_Backbone_50K_实施与训练报告_20261031.md"
     comparison_only:
-      - pes2ts_core/pesn/models/dual_egnn.py
-      - pes2ts_core/pesn/models/dual_ts_policy.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/models/dual_egnn.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/models/dual_ts_policy.py
   V5.4.3:
     title: V5.4.3 dual-Decoder 50K benchmark (frozen A0 Encoder + parameter-free DecoderContextV1 Bridge + independent MOVE/PROCESS residual tracks)
     status: proposed
@@ -405,21 +406,21 @@ campaigns:
     supporting_g: [G3.P.1, G3.P.3, G0, G1]
     data_dependencies: [G0, G1]
     code_scope:
-      - archive/v5x_configs/campaigns/pes2ts_v543_dual_decoder_50k.yaml
-      - archive/v5x_scripts/agent_ops/v543_config_schema.py
-      - tests/legacy/agent_ops/test_v543_config_schema.py
-      - archive/v5x_configs/campaigns/v543_templates/**
-      - pes2ts_core/pesn/models/v543/**
-      - pes2ts_core/pesn/offline/training/v543_*.py
-      - archive/v5x_scripts/agent_ops/v543_*.py
-    config: archive/v5x_configs/campaigns/pes2ts_v543_dual_decoder_50k.yaml
+      - frozen/v4-v54-history:archive/v5x_configs/campaigns/pes2ts_v543_dual_decoder_50k.yaml
+      - frozen/v4-v54-history:archive/v5x_scripts/agent_ops/v543_config_schema.py
+      - frozen/v4-v54-history:tests/legacy/agent_ops/test_v543_config_schema.py
+      - frozen/v4-v54-history:archive/v5x_configs/campaigns/v543_templates/**
+      - frozen/v4-v54-history:pes2ts_core/pesn/models/v543/**
+      - frozen/v4-v54-history:pes2ts_core/pesn/offline/training/v543_*.py
+      - frozen/v4-v54-history:archive/v5x_scripts/agent_ops/v543_*.py
+    config: frozen/v4-v54-history:archive/v5x_configs/campaigns/pes2ts_v543_dual_decoder_50k.yaml
     data_manifest: /pes2ts_data/v53mp_50k_data/split_manifest_v53mp.json
     gates: [V543-WP0-prereg, V543-WP1-encoder-parity, V543-WP2-bridge-context, V543-WP3-sufficiency, V543-WP4-registry-trainer, V543-smoke-200, V543-profile, V543-diagnostic-2000, V543-H0-legality, V543-H1-resource, V543-H2-move, V543-H2-process, V543-H3-move, V543-H3-process, V543-budget-signoff, V543-formal, V543-S2-conditional]
     evidence: docs/design/decisions/ADR-0034-V5.4.3-双Decoder与DecoderContextV1.md
     gate_note: "WP0 preregistered 2026-11-02 (ADR-0034; plan Frozen-Preregistered, D1–D8 signed by the repository owner through the DSH orchestration session + three run authorizations): status proposed — no smoke/training/executed claim, no candidate-gain claim. Architecture: frozen V542 A0 CoarseEncoder (57,619 = 55,392 active backbone + 49 w_v + 2,178 process head; message_mlp[-1]/norm_h[-1]/fc2 hooks, shared w_v, strict load, CPU-bitwise zero-residual parity on the three same-seed A0 checkpoints in source.checkpoints, seven equations incl. tanh(q0_raw)==q and order_score is q) + parameter-free Geometric Latent Bridge (key_v 8 polar channels, pair_s 48 dims canonical key-slot order with signed delta_b from forward edges only, Ek <= 2(P+4K), no supervision leak) + two INDEPENDENT residual tracks with mutually exclusive MoveContextV1/ProcessContextV1 views (M1–M3 formal / M4 Flow & M5 Diffusion conditional; P1–P4 formal / P4-C matched control / P5 GraphGRU conditional). Parameter matching: 36,000 target +-5% (34,200–37,800) per track, single-decoder hard cap 40,000, whole model 129,619 target / 133,219 in-band max / 150,000 hard cap, exact sum(p.numel()) assertions. Training: decoder-only, 37,900 flat updates + 400 warmup (the V542 400+37,500 split retired), LR 3e-4 AdamW wd 1e-4 clip 1.0 fp32, batch 8x4, v541_curve_stratified_v1 (spec_sha256 0769817e...), inner-val cap 8,192, identity-matched resume only, torch.compile forbidden; frozen V53MP losses L_M = L_atom + 0.5 L_pair + 0.02 L_cos and L_P = 0.5 L_ranking + 0.5 L_q + 0.012385049119773344 L_endpoint with the endpoint-label PROCESS frame mask. Screening: smoke 200 (T1) + diagnostic 2,000 (T2) + profile, seeds 17/29 first and seed 43 only for at most 2 finalists per track, no H3 selection on diagnostics. Formal matrix: 18-run ceiling = T3 7 (seed17) + T4 7 (seed29) + T5 <=4 (seed43) = 682,200 updates; T6 two_track_champions_or_retain; T7 four combos [B0, BM, BP, BMP]; T8 conditional generation separate identity. Evaluation: V543 M0/P0 recomputed matched-seed baseline, new fixed_coverage_direction_at_3 metric, q MAE/ordering primary with q_corr diagnostic-only (>=3 points, frac_curves_ge3 >= 0.70), curve-level paired cluster bootstrap 10,000 draws (seed root 20261102), Holm (MOVE two exits alpha 0.025 each; PROCESS single family alpha 0.025), thresholds signed frozen 2026-11-02 (19 appendix-B keys). Governance: confirm sealed, new_QC_calls=0, dev one-shot at T7 only, single lane, swap=0, host <= 12 GiB; preregistration_signoff_record is validator-checked at --formal (V543_RECORD_MISSING / V543_RECORD_MISMATCH) while runplan_pin_record is runner-verified at the WP5 freeze; budget.per_candidate_core_time stays null until the same-env WP7 profile (prereg => t1_blocked, --formal => V543_BUDGET_NULL). V542/V541 frozen artifacts untouched; not evidence for verified TS / production No-Move / deployment qualification / G4 exit."
     comparison_only:
-      - pes2ts_core/pesn/models/dual_egnn.py
-      - pes2ts_core/pesn/models/dual_ts_policy.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/models/dual_egnn.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/models/dual_ts_policy.py
   V5_SPRINT:
     title: V5 phase-1 ten-hour sprint (label screen, recheck, conditional OOF)
     status: executed
@@ -427,26 +428,26 @@ campaigns:
     supporting_g: [G3.P.1, G3.P.2, G3.P.3, G0, G1]
     data_dependencies: [G0, G1]
     code_scope:
-      - pes2ts_core/pesn/contracts/key_atom.py
-      - pes2ts_core/pesn/features/key_atom_spec.py
-      - pes2ts_core/pesn/features/key_atom_graph.py
-      - pes2ts_core/pesn/offline/splits/v5_fold.py
-      - pes2ts_core/pesn/offline/data/key_atom_teacher.py
-      - pes2ts_core/pesn/offline/data/key_atom_dataset.py
-      - pes2ts_core/pesn/models/key_atom_egnn.py
-      - pes2ts_core/pesn/models/key_atom_classic.py
-      - pes2ts_core/pesn/offline/training/key_atom_bc.py
-      - pes2ts_core/pesn/offline/evaluation/key_atom_protocols.py
-      - archive/v5x_scripts/campaigns/run_v5_sprint.py
-    config: archive/v5x_configs/campaigns/v5_sprint.yaml
+      - frozen/v4-v54-history:pes2ts_core/pesn/contracts/key_atom.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/features/key_atom_spec.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/features/key_atom_graph.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/offline/splits/v5_fold.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/offline/data/key_atom_teacher.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/offline/data/key_atom_dataset.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/models/key_atom_egnn.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/models/key_atom_classic.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/offline/training/key_atom_bc.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/offline/evaluation/key_atom_protocols.py
+      - frozen/v4-v54-history:archive/v5x_scripts/campaigns/run_v5_sprint.py
+    config: frozen/v4-v54-history:archive/v5x_configs/campaigns/v5_sprint.yaml
     data_manifest: data/manifests/v5/split_manifest.json
     gates: [V5-G1, V5-G2, V5-G3, V5-G4]
     evidence: docs/design/decisions/ADR-0026-V5冲刺key-atom位移合同与OOF语义.md
     gate_note: 600-minute wall clock with censored statuses per sprint plan §5.7; sealed confirm/OOD candidates registered but unopened
     comparison_only:
-      - pes2ts_core/pesn/models/dual_egnn.py
-      - pes2ts_core/pesn/models/dual_egnn_painn.py
-      - pes2ts_core/pesn/models/dual_ts_policy.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/models/dual_egnn.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/models/dual_egnn_painn.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/models/dual_ts_policy.py
   V5_1A_SPRINT:
     title: V5.1a repair sprint (inner-val best checkpoint, magnitude/pair ablation; no formal OOF)
     status: executed
@@ -454,26 +455,26 @@ campaigns:
     supporting_g: [G3.P.0, G3.P.1, G3.P.3, G0, G1]
     data_dependencies: [G0, G1]
     code_scope:
-      - pes2ts_core/pesn/contracts/key_atom.py
-      - pes2ts_core/pesn/features/key_atom_spec.py
-      - pes2ts_core/pesn/features/key_atom_graph.py
-      - pes2ts_core/pesn/offline/splits/v5_fold.py
-      - pes2ts_core/pesn/offline/data/key_atom_teacher.py
-      - pes2ts_core/pesn/offline/data/key_atom_dataset.py
-      - pes2ts_core/pesn/models/key_atom_egnn.py
-      - pes2ts_core/pesn/models/key_atom_classic.py
-      - pes2ts_core/pesn/offline/training/key_atom_bc.py
-      - pes2ts_core/pesn/offline/evaluation/key_atom_protocols.py
-      - archive/v5x_scripts/campaigns/run_v5_1_sprint.py
-    config: archive/v5x_configs/campaigns/v5_1_sprint.yaml
+      - frozen/v4-v54-history:pes2ts_core/pesn/contracts/key_atom.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/features/key_atom_spec.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/features/key_atom_graph.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/offline/splits/v5_fold.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/offline/data/key_atom_teacher.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/offline/data/key_atom_dataset.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/models/key_atom_egnn.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/models/key_atom_classic.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/offline/training/key_atom_bc.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/offline/evaluation/key_atom_protocols.py
+      - frozen/v4-v54-history:archive/v5x_scripts/campaigns/run_v5_1_sprint.py
+    config: frozen/v4-v54-history:archive/v5x_configs/campaigns/v5_1_sprint.yaml
     data_manifest: data/manifests/v5/split_manifest.json
     gates: [V5-G1, V5-G2, V5-G3, V5-G4]
     evidence: docs/plans/PES2TS_V5.1_修复冲刺与扩量准入方案_v1_20261019.md
     gate_note: repair sprint only — D1 diagnostics + 2x2 ablation + 5-fold confirm; sealed confirm/OOD stay unopened; B3 rejected_gate; V5.1b stays closed
     comparison_only:
-      - pes2ts_core/pesn/models/dual_egnn.py
-      - pes2ts_core/pesn/models/dual_egnn_painn.py
-      - pes2ts_core/pesn/models/dual_ts_policy.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/models/dual_egnn.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/models/dual_egnn_painn.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/models/dual_ts_policy.py
   V6.0:
     title: V6.0 OOF/pre-relaxed decision data (historical)
     status: archived
@@ -481,9 +482,9 @@ campaigns:
     supporting_g: [G3.P.3]
     data_dependencies: [G0, G1]
     code_scope:
-      - pes2ts_core/pesn/offline/data/decision_dataset.py
-      - pes2ts_core/pesn/offline/splits/decision_split.py
-    config: archive/v5x_configs/campaigns/v6_0_data.yaml
+      - frozen/v4-v54-history:pes2ts_core/pesn/offline/data/decision_dataset.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/offline/splits/decision_split.py
+    config: frozen/v4-v54-history:archive/v5x_configs/campaigns/v6_0_data.yaml
     data_manifest: data/manifests/v6/split_manifest.json
     gates: [V6-OOF, V6-leakage]
     evidence: docs/plans/PES2TS_PES-N_V5-V7架构调整与实施计划_v1.2_20261018.md
@@ -496,9 +497,9 @@ campaigns:
     supporting_g: [G3.P.3]
     data_dependencies: [G0, G1]
     code_scope:
-      - pes2ts_core/pesn/models/v6_progress.py
-      - pes2ts_core/pesn/offline/training/v6_train.py
-    config: archive/v5x_configs/campaigns/v6_1_progress.yaml
+      - frozen/v4-v54-history:pes2ts_core/pesn/models/v6_progress.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/offline/training/v6_train.py
+    config: frozen/v4-v54-history:archive/v5x_configs/campaigns/v6_1_progress.yaml
     data_manifest: data/manifests/v6/split_manifest.json
     gates: [V6-progress, V6-conformal]
     evidence: docs/plans/PES2TS_PES-N_V5-V7架构调整与实施计划_v1.2_20261018.md
@@ -511,9 +512,9 @@ campaigns:
     supporting_g: [G3.P.3]
     data_dependencies: [G0, G1]
     code_scope:
-      - pes2ts_core/pesn/models/v6_decoder.py
-      - pes2ts_core/pesn/offline/evaluation/decision_protocols.py
-    config: archive/v5x_configs/campaigns/v6_2_decoder.yaml
+      - frozen/v4-v54-history:pes2ts_core/pesn/models/v6_decoder.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/offline/evaluation/decision_protocols.py
+    config: frozen/v4-v54-history:archive/v5x_configs/campaigns/v6_2_decoder.yaml
     data_manifest: data/manifests/v6/split_manifest.json
     gates: [V6-decoder, V6-stop]
     evidence: docs/plans/PES2TS_PES-N_V5-V7架构调整与实施计划_v1.2_20261018.md
@@ -526,11 +527,11 @@ campaigns:
     supporting_g: [G2.T, G3.2, G4.0]
     data_dependencies: [G0, G1]
     code_scope:
-      - pes2ts_core/generation/control_round.py
+      - frozen/v4-v54-history:pes2ts_core/generation/control_round.py
       - pes2ts_core/generation/campaign.py
       - pes2ts_core/integration/acp
-      - archive/v5x_scripts/campaigns/run_v7_rollout.py
-    config: archive/v5x_configs/campaigns/v7a_rollout.yaml
+      - frozen/v4-v54-history:archive/v5x_scripts/campaigns/run_v7_rollout.py
+    config: frozen/v4-v54-history:archive/v5x_configs/campaigns/v7a_rollout.yaml
     data_manifest: data/manifests/v7/rollout_cohort.json
     gates: [V7-verified-TS, V7-cost]
     evidence: docs/plans/PES2TS_PES-N_V5-V7架构调整与实施计划_v1.2_20261018.md
@@ -543,10 +544,10 @@ campaigns:
     supporting_g: [G3.2, G2.T]
     data_dependencies: [G0, G1]
     code_scope:
-      - pes2ts_core/generation/control_round.py
-      - pes2ts_core/pesn/offline/training/decision_train.py
-      - archive/v5x_scripts/campaigns/run_v7_rollout.py
-    config: archive/v5x_configs/campaigns/v7b_calibration.yaml
+      - frozen/v4-v54-history:pes2ts_core/generation/control_round.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/offline/training/decision_train.py
+      - frozen/v4-v54-history:archive/v5x_scripts/campaigns/run_v7_rollout.py
+    config: frozen/v4-v54-history:archive/v5x_configs/campaigns/v7b_calibration.yaml
     data_manifest: data/manifests/v7/rollout_cohort.json
     gates: [V7-calibration, V7-cost]
     evidence: docs/plans/PES2TS_PES-N_V5-V7架构调整与实施计划_v1.2_20261018.md
@@ -559,10 +560,10 @@ campaigns:
     supporting_g: [G4.1, G2.T, G3.2]
     data_dependencies: [G0, G1]
     code_scope:
-      - pes2ts_core/generation/control_round.py
-      - pes2ts_core/pesn/offline/transitions.py
-      - pes2ts_core/pesn/offline/control_trainer.py
-    config: archive/v5x_configs/campaigns/v7c_rl.yaml
+      - frozen/v4-v54-history:pes2ts_core/generation/control_round.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/offline/transitions.py
+      - frozen/v4-v54-history:pes2ts_core/pesn/offline/control_trainer.py
+    config: frozen/v4-v54-history:archive/v5x_configs/campaigns/v7c_rl.yaml
     data_manifest: data/manifests/v7/transition_cohort.json
     gates: [V7-RL, V7-cost]
     evidence: docs/plans/PES2TS_PES-N_V5-V7架构调整与实施计划_v1.2_20261018.md

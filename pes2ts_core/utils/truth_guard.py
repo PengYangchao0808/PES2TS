@@ -68,12 +68,13 @@ DEFAULT_ALLOWLIST: Final[tuple[str, ...]] = (
     # quarantined TS/IPC truth through the audited accessors; every other
     # g1/g2 module stays fully guarded.
     "pes2ts_core/g1/p1_truth.py",
-    # G3-P1 B2 (ADR-0014): the predictor product's single audited truth
-    # bridge.  It calls only the audited G0 accessors, enforces frozen-split
-    # scope before access, and records its module name as the audit caller;
-    # every other pesn module stays fully guarded (no truth paths, no truth
-    # imports) and receives teacher data as plain values only.
-    "pes2ts_core/pesn/offline/data/truth_source.py",
+    # The single R1 truth bridge of the three-plate layout (2026-11-24).  It is
+    # the only sanctioned truth entry for Zones 2/3: it calls the audited G0
+    # accessors, logs every read through ``truth_reader``, and carries the
+    # frozen-split/scope checks.  It replaces the retired
+    # ``pes2ts_core/pesn/offline/data/truth_source.py`` role after the frozen
+    # V4/V5.x predictor tree moved to branch ``frozen/v4-v54-history``.
+    "pes2ts_data/truth_bridge.py",
 )
 
 #: Modules exempt ONLY from ``DYNAMIC_EXEC_RISK`` findings (project-relative).
@@ -101,14 +102,30 @@ SUBPROCESS_IMPORT_ALLOWLIST: Final[tuple[str, ...]] = (
     # argv-only ACP CLI child-process discipline (claim/receipt/log/timeout,
     # idempotent recovery); truth checks still apply to it in full.
     "pes2ts_core/integration/acp/xtb_constraints_transport.py",
-    # v53mp eval VRAM gate (3-way staggered evals): the trainer spawns ONLY
-    # ``nvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits``
-    # (argv-only, never shell=True) inside a never-raising fail-open helper
-    # (_nvidia_smi_used_mib) purely as a wall-clock wait signal — no data,
-    # no truth, no code path flows through the child process.  All other
-    # dynamic-execution findings (importlib/eval/exec) and every truth check
-    # still apply to the trainer in full.
-    "pes2ts_core/pesn/offline/training/key_atom_v53mp_train_v3.py",
+    # Architecture gate: AST scanner CLI shells out only to `git` (worktree
+    # checks) and `python -m ruff` (lint gate); argv-only, never shell=True,
+    # no data/truth flows through the child process.  All truth checks still
+    # apply to it in full.
+    "infra/governance/arch_guard.py",
+    # Data-store builders: `git mv`/`git ls-files` bookkeeping and registry
+    # reads only; argv-only subprocess usage with no truth-bearing payload.
+    "pes2ts_data/builders/archive_campaigns.py",
+    "pes2ts_data/builders/register_datastore.py",
+    # V5 engine util: only the CUDA/VRAM probe shells out (nvidia-smi,
+    # argv-only, never shell=True) as a resource signal; no data/truth flows.
+    "pes2ts_v5/training/_util.py",
+)
+
+#: Modules whose *string-literal* truth markers are legitimate non-access uses
+#: (e.g. the contract layer that must reject truth-like field names, and the
+#: datastore registry that records the read-only vault path).  Only the
+#: ``TRUTH_PATH_REF``/``TRUTH_FILE_REF`` findings are suppressed for these
+#: modules: truth imports, the truth reader and dynamic execution stay fully
+#: guarded, so a real access attempt is still caught.
+STRING_EXEMPT_ALLOWLIST: Final[tuple[str, ...]] = (
+    "pes2ts_data/contracts.py",
+    "pes2ts_data/_contract_specs.py",
+    "pes2ts_data/builders/register_datastore.py",
 )
 
 TRUTH_PATH_MARKERS: Final[tuple[str, ...]] = ("ground_truth", "truth_sources")
@@ -359,7 +376,21 @@ def _scan_file(
                 and finding.detail == "imports subprocess (manual review)"
             )
         ]
+    if relative in STRING_EXEMPT_ALLOWLIST:
+        findings = [
+            finding
+            for finding in findings
+            if finding.kind not in {TRUTH_PATH_REF, TRUTH_FILE_REF}
+        ]
     return findings
+
+
+#: Sibling package roots that belong to the active surface and must obey R1.
+#: The 2026-11-24 cleanup made ``pes2ts_data`` (data/truth layer) and
+#: ``pes2ts_v5`` (training engine) first-class active zones, so the guard scans
+#: them in addition to ``pes2ts_core``; ``infra`` is scanned too because ops
+#: tooling must never reach the truth by accident.
+EXTRA_SCAN_ROOTS: Final[tuple[str, ...]] = ("pes2ts_data", "pes2ts_v5", "infra")
 
 
 def scan_truth_access(
@@ -367,18 +398,23 @@ def scan_truth_access(
     allowlist: Sequence[str] = DEFAULT_ALLOWLIST,
     dynamic_exec_allowlist: Sequence[str] = DYNAMIC_EXEC_ALLOWLIST,
 ) -> list[Finding]:
-    """Return every finding across the package and the project ``bin/`` tree.
+    """Return every finding across the active surface and the project ``bin/``.
 
-    Modules in *allowlist* are skipped entirely; modules in
-    *dynamic_exec_allowlist* are scanned in full except that their
-    ``DYNAMIC_EXEC_RISK`` findings are suppressed; modules in
+    The scan roots are the package root plus :data:`EXTRA_SCAN_ROOTS` (sibling
+    packages of the package root's parent).  Modules in *allowlist* are skipped
+    entirely; modules in *dynamic_exec_allowlist* are scanned in full except
+    that their ``DYNAMIC_EXEC_RISK`` findings are suppressed; modules in
     ``SUBPROCESS_IMPORT_ALLOWLIST`` are scanned in full except that their
     subprocess-import finding is suppressed.
     """
     root = _resolve_scan_root(package_root)
     findings: list[Finding] = []
-    for module in _iter_modules(root):
-        findings.extend(_scan_file(module, root, allowlist, dynamic_exec_allowlist))
+    roots = [root, *(root.parent / name for name in EXTRA_SCAN_ROOTS)]
+    for scan_root in roots:
+        if not scan_root.is_dir():
+            continue
+        for module in _iter_modules(scan_root):
+            findings.extend(_scan_file(module, root, allowlist, dynamic_exec_allowlist))
     bin_dir = root.parent / "bin"
     if bin_dir.is_dir():
         for module in _iter_modules(bin_dir):

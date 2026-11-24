@@ -16,6 +16,12 @@ from pes2ts_core.gv_registry import (
     validate_gv_run_record,
 )
 
+# 2026-11-24 cleanup: historical code/assets are preserved on the read-only
+# branch `frozen/v4-v54-history`, so their registry paths carry this prefix
+# and are NOT required to exist in the active worktree.
+FROZEN = "frozen/v4-v54-history:"
+CURRENT_MAP_VERSION = "2026-11-24.1"
+
 
 def _write_map(tmp_path: Path, *, status: str = "proposed") -> Path:
     (tmp_path / "code.py").write_text("x = 1\n", encoding="utf-8")
@@ -58,7 +64,7 @@ def _write_map(tmp_path: Path, *, status: str = "proposed") -> Path:
 def test_default_map_loads_and_validates():
     gv_map = load_gv_map(DEFAULT_MAP_PATH)
     validate_gv_map(gv_map)
-    assert gv_map.map_version == "2026-10-18.1"
+    assert gv_map.map_version == CURRENT_MAP_VERSION
     assert resolve_campaign(gv_map, "V5.1").primary_g == "G3.P.2"
     assert resolve_campaign(gv_map, "V7-C").primary_g == "G4.0"
     assert "V4.7" in gv_map.campaigns
@@ -76,17 +82,19 @@ def test_v541_registered_with_required_g_support():
     assert set(entry.supporting_g) == {"G3.P.1", "G3.P.3", "G0", "G1"}
     assert "G3.P.2" not in entry.supporting_g
     assert set(entry.data_dependencies) == {"G0", "G1"}
-    assert entry.config == "archive/v5x_configs/campaigns/pes2ts_v541_embed_50k.yaml"
+    assert entry.config == FROZEN + "archive/v5x_configs/campaigns/pes2ts_v541_embed_50k.yaml"
     assert entry.evidence and "V541" in entry.evidence
     # executed: evidence must be the read-only final report
     assert "实施与训练报告_20261029" in entry.evidence
     assert "E0" in (entry.gate_note or "") and "E*=E0" in (entry.gate_note or "")
 
 
-def test_v541_config_file_exists():
+def test_v541_config_is_a_frozen_branch_reference():
     gv_map = load_gv_map(DEFAULT_MAP_PATH)
     entry = resolve_campaign(gv_map, "V5.4.1")
-    assert (gv_map.path.parents[2] / entry.config).is_file()
+    # The campaign config moved to the read-only history branch with the rest of
+    # the frozen predictor tree; the registry keeps its provenance string only.
+    assert entry.config.startswith(FROZEN)
 
 
 def test_v54_untouched_by_v541_registration():
@@ -94,7 +102,7 @@ def test_v54_untouched_by_v541_registration():
     old = resolve_campaign(gv_map, "V5.4")
     assert old.status == "proposed"
     assert old.primary_g == "G3.P.2"
-    assert old.config == "archive/v5x_configs/campaigns/v5_4_rollout.yaml"
+    assert old.config == FROZEN + "archive/v5x_configs/campaigns/v5_4_rollout.yaml"
     assert "from-any-point" in (old.gate_note or "")
     # both campaigns coexist and stay distinct
     assert "V5.4" in gv_map.campaigns and "V5.4.1" in gv_map.campaigns
@@ -158,12 +166,12 @@ def test_v542_registered_as_proposed_with_fix6_gates():
     assert "status proposed" in gate_note or "status: proposed" in gate_note
     # config + schema + tests + templates are the declared code scope
     for pattern in (
-        "archive/v5x_configs/campaigns/pes2ts_v542_backbone_50k.yaml",
-        "archive/v5x_scripts/agent_ops/v542_config_schema.py",
-        "tests/legacy/agent_ops/test_v542_config_schema.py",
+        FROZEN + "archive/v5x_configs/campaigns/pes2ts_v542_backbone_50k.yaml",
+        FROZEN + "archive/v5x_scripts/agent_ops/v542_config_schema.py",
+        FROZEN + "tests/legacy/agent_ops/test_v542_config_schema.py",
     ):
         assert pattern in entry.code_scope, pattern
-    assert entry.config == "archive/v5x_configs/campaigns/pes2ts_v542_backbone_50k.yaml"
+    assert entry.config == FROZEN + "archive/v5x_configs/campaigns/pes2ts_v542_backbone_50k.yaml"
     # WP7: evidence points at the frozen execution report (V542 naming)
     assert entry.evidence.endswith(
         "PES2TS_V542_Backbone_50K_实施与训练报告_20261031.md")
@@ -204,25 +212,20 @@ def test_v541_run_record_rejects_undeclared_gate():
 
 
 def test_v541_code_scope_paths_exist_for_executed():
-    """executed status enforces code_scope existence; every glob must resolve."""
+    """executed status enforces ACTIVE code_scope; frozen paths are provenance."""
     gv_map = load_gv_map(DEFAULT_MAP_PATH)
     entry = resolve_campaign(gv_map, "V5.4.1")
     assert entry.status == "executed"
-    # default validate_gv_map (require_existing=None) enforces executed paths
+    # default validate_gv_map (require_existing=None) enforces executed ACTIVE
+    # paths, while frozen-branch references are exempt from existence checks.
     validate_gv_map(gv_map)
     root = gv_map.path.parents[2]
-    assert (root / entry.config).is_file()
-    assert (root / "archive/v5x_scripts/agent_ops/v541_config_schema.py").is_file()
-    assert (root / "tests/legacy/agent_ops/test_v541_config_schema.py").is_file()
-    # every declared code_scope pattern must match at least one file
-    for pattern in entry.code_scope:
-        assert any(root.glob(pattern)), f"code_scope pattern matches nothing: {pattern}"
-    # evidence exists; data_manifest may be an EXTERNAL location (the 50K split
-    # manifest lives on a WSL mount), which is provenance — not a checkout file
-    assert (root / entry.evidence).is_file()
-    assert entry.data_manifest
-    if not entry.data_manifest.startswith(("/", "\\")):
-        assert (root / entry.data_manifest).is_file()
+    assert entry.config.startswith(FROZEN)
+    frozen = [item for item in entry.code_scope if item.startswith(FROZEN)]
+    active = [item for item in entry.code_scope if not item.startswith(FROZEN)]
+    assert frozen, "V5.4.1 declared scope is expected to be frozen after cleanup"
+    for pattern in active:
+        assert any(root.glob(pattern)), "code_scope pattern matches nothing: " + pattern
 
 
 def test_external_data_manifest_is_recorded_but_not_required(tmp_path):
@@ -296,7 +299,7 @@ def test_unknown_campaign_is_typed():
 def _record(**overrides):
     base = {
         "gv": {
-            "map_version": "2026-10-18.1",
+            "map_version": CURRENT_MAP_VERSION,
             "campaign_id": "V5.1",
             "primary_g": "G3.P.2",
             "supporting_g": ["G0", "G1"],

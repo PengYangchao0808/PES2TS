@@ -215,6 +215,17 @@ def _glob_exists(root: Path, pattern: str) -> bool:
         return False
 
 
+#: Provenance prefix for assets preserved on the read-only history branch.
+#: A value starting with it is recorded in the registry but never required to
+#: exist in the active worktree (the frozen tree is out of master by design).
+FROZEN_BRANCH_PREFIX = "frozen/v4-v54-history:"
+
+
+def _is_frozen_path(value: str) -> bool:
+    """True when *value* refers to an asset on the frozen history branch."""
+    return value.startswith(FROZEN_BRANCH_PREFIX)
+
+
 def _is_external_path(root: Path, value: str) -> bool:
     """True when ``value`` points outside the repository checkout.
 
@@ -283,6 +294,11 @@ def validate_gv_map(
         if not enforce:
             continue
         for pattern in campaign.code_scope:
+            if _is_frozen_path(pattern):
+                # Frozen-branch provenance: the historical code/config no longer
+                # lives in this worktree (branch ``frozen/v4-v54-history``), so
+                # the path is recorded but not required to exist.
+                continue
             if not _glob_exists(root, pattern):
                 raise GVMapError(
                     f"{where}.code_scope {pattern!r} matches no file under {root}"
@@ -294,13 +310,15 @@ def validate_gv_map(
         ):
             if value is None:
                 continue
-            if _is_external_path(root, value):
+            if _is_frozen_path(value) or _is_external_path(root, value):
                 # Declared external artifact (e.g. the WSL-mounted 50K data
                 # manifest): kept as provenance, never required to be present.
                 continue
             if not (root / value).exists():
                 raise GVMapError(f"{where}.{label} does not exist: {value}")
         for pattern in campaign.comparison_only:
+            if _is_frozen_path(pattern):
+                continue
             if not _glob_exists(root, pattern):
                 raise GVMapError(
                     f"{where}.comparison_only {pattern!r} matches no file"

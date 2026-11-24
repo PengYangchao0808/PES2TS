@@ -1,0 +1,27 @@
+# PES2TS reference environment lock (2026-11-24).
+#
+# Purpose: make the *official* verification environment reproducible.  The
+# canonical runtime is the WSL GPU environment; this lock mirrors the Windows
+# CPU environment used for the local green-gate runs and CI's CPU tier.
+#
+# Install:  pip install -r requirements-lock.txt      (CPU wheels)
+# GPU (WSL): install torch from the CUDA wheel index first, then the rest:
+#           pip install torch --index-url https://download.pytorch.org/whl/cu124
+#           pip install -r requirements-lock.txt
+#
+# requirements.txt stays the minimum-version contract; this file is the
+# reproducible snapshot.  Update it together with requirements.txt and record
+# the change in docs/plans/PES2TS_文档修订台账.md.
+torch==2.15.0+cpu
+numpy==2.5.5
+pandas==3.1.1
+pyarrow==26.0.1
+rdkit==2026.3.6
+pydantic==2.14.4
+scikit-learn==1.8.0
+scipy==1.18.1
+drfp==0.3.7
+h5py==3.16.0
+PyYAML==6.0.4
+pytest==9.2.0
+ruff==0.17.6
