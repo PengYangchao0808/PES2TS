@@ -107,10 +107,6 @@ SUBPROCESS_IMPORT_ALLOWLIST: Final[tuple[str, ...]] = (
     # no data/truth flows through the child process.  All truth checks still
     # apply to it in full.
     "infra/governance/arch_guard.py",
-    # Data-store builders: `git mv`/`git ls-files` bookkeeping and registry
-    # reads only; argv-only subprocess usage with no truth-bearing payload.
-    "pes2ts_data/builders/archive_campaigns.py",
-    "pes2ts_data/builders/register_datastore.py",
     # V5 engine util: only the CUDA/VRAM probe shells out (nvidia-smi,
     # argv-only, never shell=True) as a resource signal; no data/truth flows.
     "pes2ts_v5/training/_util.py",
@@ -125,7 +121,6 @@ SUBPROCESS_IMPORT_ALLOWLIST: Final[tuple[str, ...]] = (
 STRING_EXEMPT_ALLOWLIST: Final[tuple[str, ...]] = (
     "pes2ts_data/contracts.py",
     "pes2ts_data/_contract_specs.py",
-    "pes2ts_data/builders/register_datastore.py",
 )
 
 TRUTH_PATH_MARKERS: Final[tuple[str, ...]] = ("ground_truth", "truth_sources")

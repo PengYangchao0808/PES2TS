@@ -9,31 +9,6 @@
       "reason": "governance AST scanner; all six gates, baseline handling, report and CLI live in one stdlib-only tool by design"
     },
     {
-      "path": "pes2ts_data/builders/archive_campaigns.py",
-      "lines": 364,
-      "reason": "legacy campaign-archive builder moved from scripts/datastore during the five-zone restructure; split candidate once the campaign configs settle"
-    },
-    {
-      "path": "pes2ts_data/builders/build_channels.py",
-      "lines": 1649,
-      "reason": "legacy data builder moved from scripts/datastore; candidate for one-file-per-channel split"
-    },
-    {
-      "path": "pes2ts_data/builders/build_frame_crosswalk.py",
-      "lines": 1728,
-      "reason": "legacy frame-crosswalk builder moved from scripts/datastore; split candidate"
-    },
-    {
-      "path": "pes2ts_data/builders/build_g1_summary.py",
-      "lines": 1478,
-      "reason": "legacy G1 summary builder moved from scripts/datastore; split candidate"
-    },
-    {
-      "path": "pes2ts_data/builders/build_master_split.py",
-      "lines": 1222,
-      "reason": "legacy split builder moved from scripts/datastore; split candidate"
-    },
-    {
       "path": "pes2ts_data/ingest/ledger.py",
       "lines": 527,
       "reason": "append-only ingest ledger state machine kept in one module so status transitions stay auditable in one place"

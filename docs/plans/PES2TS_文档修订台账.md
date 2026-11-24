@@ -1,5 +1,12 @@
 # PES2TS 文档修订台账（协同性）
 
+## 2026-11-24 增量登记：三板块收口（停手线实测）
+
+- **清场**：`archive/`、`tests/legacy/`、`pes2ts_core/pesn/` 移出 master（冷存分支 `frozen/v4-v54-history`）；`pes2ts_data/builders`（6,077 行，输出已建仓登记）冻结至 tag `archive/data-builders-20261124`；活跃代码降至 **15,123 行**（arch_guard 预算内）。
+- **接线**：`pes2ts_data` 契约 v2（BaseBatch/SequenceBatch/GraphBatch）+ readers v1.0.0 + 唯一 R1 桥 `truth_bridge.py`；引擎接入 `idx_v2:<path>` 真实数据源，真实数据 1 epoch 训练通过（SequenceBatch v2.0.0 validated）。
+- **治理**：宪法 v2.10（三板块所有权 + 历史冻结增量）；`AGENT.md` 81 行；CODE_MAP v3 标 Historical 停更；arch_guard v2（G1–G6，0 tolerance/8 grandfathered）；docs 冻结链接 WARN 策略。
+- **证据**：见 [执行记录 §14](../reports/PES2TS_代码分区重构执行记录_v1_20261123.md)；本地 CPU 全量 2151 passed / 4 平台差异失败；远端冷存与 WSL GPU 验证待 owner/管理员。
+
 ## 2026-11-24 增量登记：三板块清场与治理最小化（宪法 v2.10 + AGENT v4.0 + 冻结策略）
 
 - **清场（master，提交 `45797cc`）**：`archive/`、`tests/legacy/`、`pes2ts_core/pesn/` 移出 master（764 文件，+428/−313,708 行）；完整历史保存在只读分支 **`frozen/v4-v54-history`** 与 tag **`archive/pre-v55-legacy-20261123`**、**`archive/v5x-reorg-20261123`**（历史不可变、符合 P1，不是删除证据）。`pes2ts_core/pesn/contracts/` 迁至 `pes2ts_core/contracts/`；活数据依赖迁至 `pes2ts_data/readers/`；唯一 R1 桥 = `pes2ts_data/truth_bridge.py`（`pes2ts_core/utils/truth_guard.py` allowlist 登记，门禁机器 `pes2ts_data/_truth_gate.py`）。

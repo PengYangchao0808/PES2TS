@@ -2,7 +2,7 @@
 
 The unified datastore exposes a single version-lock document,
 ``01_master_index/datastore_registry.json``, written by
-``pes2ts_data/builders/register_datastore.py``.  This module is the read/validate
+the frozen ``register_datastore.py`` (tag ``archive/data-builders-20261124``).  This module is the read/validate
 side of that contract: it parses the registry into a frozen pydantic object and
 enforces the machine-checkable invariants (schema id, ``status`` vocabulary,
 artifact sha256 shape, positive row counts) with typed errors.
@@ -68,7 +68,7 @@ class DatastoreEntry(BaseModel):
     """One artifact (or pointer) recorded in the datastore registry.
 
     Fields mirror the ``comp()`` helper of
-    ``pes2ts_data/builders/register_datastore.py``; extra keys such as ``note``
+    the frozen ``register_datastore.py`` (tag ``archive/data-builders-20261124``); extra keys such as ``note``
     or ``campaigns`` are preserved (``extra="allow"``) so the registry can grow
     without breaking readers.
     """

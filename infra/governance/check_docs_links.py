@@ -37,6 +37,7 @@ FROZEN_HISTORY_PREFIXES = (
     "pes2ts_core/pesn/",
     "scripts/",
     "config/campaigns/",
+    "pes2ts_data/builders/",
 )
 
 #: Warning text shared by every frozen-history hit (branch is the source of truth).

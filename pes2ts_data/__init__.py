@@ -18,9 +18,12 @@ This package owns the *data side* of the repository restructuring:
     Tombstone / cost-ledger readers for the retired data campaigns.
 ``pes2ts_data.registry``
     Datastore version-lock registry contract.
-``pes2ts_data.builders``
-    Moved build scripts (``scripts/datastore/*.py``); read-only here and not
-    imported at package import time to keep this package light.
+Build scripts (``scripts/datastore/*.py`` -> ``pes2ts_data/builders/``) were
+frozen out of master on 2026-11-24 (tag ``archive/data-builders-20261124``):
+the datastore they built is registered with sha256 in
+``/pes2ts_datastore/01_master_index/datastore_registry.json``.  Recover a
+builder with ``git show archive/data-builders-20261124:<path>`` if a rebuild
+is ever needed; nothing in the runtime imports those scripts.
 
 The R1 truth bridge (:mod:`pes2ts_data.truth_bridge`) is deliberately NOT
 re-exported here: it must only be imported explicitly by offline isolation

@@ -35,7 +35,7 @@ ANCHOR_MODULES = (
     "pes2ts_data/readers",
     "pes2ts_data/splits/__init__.py",
     "pes2ts_data/ingest/__init__.py",
-    "pes2ts_data/builders/__init__.py",
+    "pes2ts_data/readers/__init__.py",
     "pes2ts_v5/__init__.py",
     "pes2ts_v5/runner.py",  # the only training/eval entry point
     "pes2ts_v5/screening.py",
