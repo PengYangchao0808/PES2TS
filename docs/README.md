@@ -56,6 +56,7 @@
 | `docs/design/PES2TS_CODE_MAP_v3_20261123.md` | **代码地图 v3（Historical，停更）**：2026-11-23 五功能区时点快照；三板块布局后活地图 = 目录树 + `infra/governance/arch_guard.py` |
 | `docs/design/PES2TS_CODE_MAP_v2_20261018.md` | 代码地图 v2（历史版；现行见 v3，v2 的 planned 区块已由 v3 收敛登记） |
 | `docs/design/PES2TS_G_V_MAPPING_v1_20261018.md` | G–V 映射（生成物，勿手改） |
+| `docs/design/PES2TS_科学叙事与论文技术总纲_v1_20261124.md` | **科学叙事母版 + 论文全文草稿（Active-Proposed，v1.3）**：§1 定位与统一理论命题、§2 背景；**§3–§8 即论文第 2–7 章完整正文**——物理假设与数学推导（微扰/低维有效 PES/逆向 IRC 参数化、H1–H3 与实验 I–III）、两阶段解耦模型架构（EGNN+事件图、等变方向基残差、复合损失、架构筛选与 V5.3-MP/V5.4.2/V5.4.3 实证）、数据与图论约束工程（Reaction-QM、首次接触教师、CRG/家族划分）、单端点闭环算法（**Algorithm 1**、TS 候选截取、OptTS/IRC 验真、D3 式成本分解）、五张主图验证方案（严格成功定义、TSR(B)/成本前沿、跨家族/跨泛函迁移）、BC→在线 RL 演进（CMDP、成本感知奖励、IQL）；§9–§12 为 Scope & Limitations、Conclusion、中英文摘要与 R1–R20 补充文献；§13 使用建议、§14 工程依据索引（含数值/协议锚点与"待执行"边界）；工程审计细节不入正文 |
 | `docs/design/decisions/` | ADR-0001…0036（全部保留；0036 = 五功能区与单一训练引擎） |
 
 ## 证据与运维
